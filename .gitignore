@@ -1,0 +1,20 @@
+# Ferramentas de IA possivelmente instaladas
+/ai-jail/
+/ai-usagebar/
+/ai-memory/
+/.downloads/
+
+# Integracao local do ai-jail
+/.ai-jail
+/.ai-jail-overlays/
+
+# Integracao local do ai-memory com o Codex
+/.ai-memory.toml
+/.agents/
+/AGENTS.md
+
+# Guia local de operacao
+/commands.txt
+
+# Arquivos temporários
+tmp
