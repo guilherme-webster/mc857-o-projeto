@@ -11,7 +11,7 @@
 # Integracao local do ai-memory com o Codex
 /.ai-memory.toml
 /.agents/
-/AGENTS.md
+/AGENTS.local.md
 
 # Guia local de operacao
 /commands.txt
