@@ -4,7 +4,7 @@
 
 O sistema permitirá configurar e executar uma corrida de Fórmula 1 simulada e acompanhar sua evolução em um painel 2D. O foco será a estratégia de corrida e o comportamento dos dados, não uma reprodução física ou gráfica 3D.
 
-O simulador deverá considerar, no mínimo:
+Na visão evolutiva do produto, o simulador poderá considerar:
 
 - circuito, número de voltas, pilotos e equipes;
 - ritmo-base de carro e piloto;
@@ -17,11 +17,31 @@ O simulador deverá considerar, no mínimo:
 
 O usuário deverá conseguir:
 
-1. selecionar um cenário e ajustar seus parâmetros;
-2. iniciar, pausar, avançar e reiniciar a simulação;
-3. emitir comandos de estratégia, como uma parada e a escolha do próximo composto;
-4. acompanhar a posição dos carros no circuito, a classificação e a telemetria resumida;
-5. repetir uma corrida com a mesma semente aleatória e comparar estratégias.
+1. informar os parâmetros disponíveis para o cenário;
+2. iniciar a corrida e acompanhar sua execução até o fim;
+3. consultar o resultado e a classificação final.
+
+### Escopo acordado para o MVP
+
+O primeiro incremento demonstrável será deliberadamente estreito:
+
+- usar **um único dataset**, com fonte, versão e licença registradas;
+- suportar **um único circuito** previamente escolhido pelo grupo;
+- implementar o ETL necessário para esse dataset;
+- executar uma corrida completa, da largada à classificação final;
+- oferecer o fluxo do usuário em três telas: **Parâmetros**, **Corrida** e **Resultados**;
+- usar **Django** no backend;
+- manter a tecnologia do frontend em investigação, sem restringi-la a uma solução em Python puro.
+
+“Corrida completa” significa concluir todas as voltas previstas e produzir um
+resultado consistente. Isso não obriga o primeiro incremento a modelar todos os
+fenômenos possíveis da Fórmula 1 nem a suportar mais de uma fonte ou circuito.
+
+As anotações da reunião também mencionam modelagem de combustível e interação
+física entre carros dentro da lista do MVP, mas voltam a classificá-las como
+assuntos com os quais o grupo não se preocupará agora. Até que o grupo resolva
+essa divergência, elas serão tratadas como extensões posteriores e não como
+critérios de aceite do núcleo do MVP.
 
 ### Fora do escopo inicial
 
@@ -30,116 +50,115 @@ O usuário deverá conseguir:
 - reprodução a 60 quadros por segundo;
 - dados oficiais em tempo real durante um Grande Prêmio;
 - microsserviços, autenticação ou implantação distribuída;
-- aprendizado de máquina como requisito para o primeiro protótipo.
+- aprendizado de máquina como requisito para o primeiro protótipo;
+- modelagem detalhada da variação de massa causada pelo combustível;
+- interação física entre carros, como vácuo aerodinâmico e prevenção de sobreposição.
 
 Esses itens podem ser extensões, mas não devem bloquear o MVP.
 
-## 2. Decisão sobre a interface: Python com Streamlit
+## 2. Direção para frontend e backend
 
-É viável manter praticamente todo o código escrito pela equipe em Python. A recomendação para este projeto é usar **Streamlit** na interface e **Plotly** na visualização do circuito e dos gráficos.
+A reunião definiu **Django** para o backend e decidiu não limitar o frontend a
+uma abordagem em Python puro. A tecnologia de frontend ainda deverá ser
+investigada antes de sua adoção. Portanto, este documento não escolhe neste
+momento um framework de interface específico.
 
-Uma aplicação Streamlit continua tendo cliente e servidor: o código Python executa no servidor e o navegador atua como cliente. Entretanto, a equipe não precisa manter um *frontend* próprio em JavaScript. O Streamlit gera e atualiza a interface do navegador, aceita componentes Plotly produzidos em Python e mantém variáveis entre reexecuções por meio do estado da sessão.
+Essa direção diverge da decisão ainda descrita em `CONTRIBUTING.md`, que aponta
+Streamlit e Plotly para o MVP. O grupo deverá atualizar essa fonte de verdade ao
+formalizar as decisões da reunião; até lá, a divergência permanece explícita e
+nenhuma das duas orientações deverá ser aplicada silenciosamente à estrutura do
+código.
 
-### Por que essa opção é adequada
+O backend será responsável por receber e validar parâmetros, iniciar a
+simulação, consultar seu estado e disponibilizar os resultados. As regras da
+corrida deverão permanecer em código Python independente do Django; o framework
+será um adaptador de entrada e não a fonte de verdade da simulação.
 
-- todos os integrantes podem trabalhar predominantemente em Python;
-- formulários, seletores, tabelas e gráficos exigem pouco código de apresentação;
-- Plotly permite desenhar a polilinha da pista e os carros como marcadores interativos;
-- o painel pode ser atualizado periodicamente com um fragmento Streamlit, sem criar manualmente uma conexão WebSocket;
-- a equipe pode concentrar esforço no domínio, nos dados, na calibração e nos testes;
-- a aplicação continua acessível no navegador e é simples de demonstrar em sala.
+### Critérios para investigar o frontend
 
-### Limitação assumida
+- capacidade de representar o circuito e atualizar a posição dos carros;
+- integração simples e bem documentada com o backend Django;
+- suporte às três telas do MVP sem complexidade desnecessária;
+- facilidade de teste e domínio da tecnologia pela equipe;
+- custo de manter estado, atualização periódica e tratamento de erros;
+- possibilidade de evolução sem acoplar o motor ao framework visual.
 
-Streamlit é apropriado para um painel que atualiza algumas vezes por segundo ou a cada setor/volta, mas não para uma animação contínua de jogo. No MVP, a corrida deve avançar em **passos de simulação** e o painel deve atualizar entre 250 ms e 1 s, independentemente do tempo simulado transcorrido.
-
-Se, após o MVP, a animação suave se tornar um requisito prioritário, há duas alternativas:
-
-1. criar apenas um componente visual customizado em JavaScript, mantendo todo o domínio e a aplicação em Python; ou
-2. trocar somente a camada de interface por PySide6, caso uma aplicação desktop seja aceitável.
-
-A primeira alternativa preserva a implantação web; a segunda elimina o navegador, mas aumenta o trabalho de interface e distribuição. Nenhuma delas é necessária no escopo inicial.
+A investigação deve resultar em uma comparação curta das alternativas e em
+uma decisão registrada pelo grupo. Uma animação contínua com alta taxa de
+quadros não é necessária: o frontend poderá exibir retratos discretos do estado
+da corrida.
 
 ### Organização sugerida das telas
 
 | Tela | Responsabilidade |
 | --- | --- |
-| Configuração | Escolher corrida, pilotos, clima, semente e estratégias iniciais. |
-| Simulação | Exibir pista 2D, classificação, volta, bandeira, clima, pneus e controles. |
-| Análise | Comparar o resultado simulado com dados históricos e outras estratégias. |
-| Qualidade dos dados | Mostrar fontes, versão, cobertura, campos ausentes e validações da carga. |
+| Parâmetros | Exibir as opções suportadas para o único cenário do MVP e validar a configuração. |
+| Corrida | Iniciar a execução e exibir seu progresso, a pista e a classificação. |
+| Resultados | Apresentar classificação final, tempos e eventos relevantes. |
 
-O objeto do motor não deve ser implementado dentro da página. A sessão da interface guarda apenas o identificador ou a instância da simulação ativa e delega comandos ao controlador ou à camada de aplicação, conforme a arquitetura escolhida pelo grupo.
+O objeto do motor não deve ser implementado dentro da página nem nas *views* do
+Django. O cliente guarda apenas o identificador e a representação necessária
+para a tela; comandos e consultas são delegados ao backend.
 
 ## 3. Estilo arquitetural
 
-### 3.1 Decisão a ser tomada pelo grupo
+### 3.1 Encaminhamento da reunião e formalização
 
-A organização arquitetural **não está definida por este documento**. O grupo deverá escolher e registrar a alternativa que considerar mais adequada antes de iniciar a implementação estrutural. Duas opções compatíveis com o projeto são apresentadas abaixo: **MVC** e **arquitetura em camadas com portas e adaptadores**.
+A reunião de 25 de agosto de 2026 encaminhou a adoção da **arquitetura
+hexagonal**, principalmente para isolar o modelo interno das diferenças entre
+datasets e permitir a substituição de fontes por adaptadores.
 
-Independentemente da escolha, o projeto pode ser entregue como um único programa Python — um monólito modular — sem microsserviços. Também devem ser preservadas estas separações mínimas:
+Como a decisão afeta a estrutura e as dependências do projeto, ela somente será
+considerada aceita após o registro e a aprovação de um ADR pelo grupo. Até essa
+formalização, as árvores de diretórios deste documento são ilustrativas e não
+autorizam a criação de uma estrutura definitiva.
 
-- regras da corrida não ficam dentro das páginas Streamlit;
-- leitura de Kaggle, CSV, Parquet ou SQLite não fica dentro do motor;
+### 3.2 Aplicação da arquitetura hexagonal
+
+O núcleo da simulação expõe portas para os casos de uso e para as dependências
+externas. Django, o frontend, o ETL, os datasets e a persistência ficam nas
+bordas, implementando ou consumindo essas portas por meio de adaptadores.
+
+```text
+Frontend -> adaptador Django -> portas de entrada -> aplicação e domínio
+                                                    |
+                                             portas de saída
+                                                    |
+                         adaptadores de datasets, ETL e persistência
+```
+
+Possíveis portas, criadas somente quando houver uso concreto, incluem:
+
+- `RaceDataRepository` — consulta os dados canônicos da corrida;
+- `SimulationResultRepository` — salva configurações, sementes e resultados;
+- `RandomSource` — fornece aleatoriedade substituível e testável;
+- casos de uso para configurar, executar, consultar e obter o resultado da corrida.
+
+Cada fonte externa poderá ter seu próprio adaptador para converter nomes,
+tipos, unidades e identificadores ao esquema canônico. No MVP haverá somente o
+adaptador do dataset escolhido; novos adaptadores serão adicionados quando uma
+segunda fonte realmente for incorporada.
+
+### 3.3 Alternativa considerada — MVC
+
+MVC continua sendo uma alternativa tecnicamente possível e deverá constar no
+ADR como opção considerada. Sua nomenclatura se alinha diretamente às
+interações de interface e pode exigir menos abstrações no início. A arquitetura
+hexagonal, porém, foi o encaminhamento da reunião por tornar explícitas as
+fronteiras com os diferentes datasets.
+
+O uso de *views* pelo Django não transforma automaticamente todo o sistema em
+MVC. Independentemente da arquitetura registrada, cálculos de volta,
+estratégias e estados da corrida não devem ser implementados nas *views*.
+
+### 3.4 Fronteiras obrigatórias
+
+- regras da corrida independem de Django, do frontend e dos formatos dos datasets;
+- leitura de CSV, Parquet ou banco de dados não fica dentro do motor;
 - o estado da interface não é a fonte de verdade da corrida;
-- o motor pode ser testado sem abrir o navegador;
-- componentes não devem depender de detalhes que não utilizam.
-
-### 3.2 Alternativa A — MVC
-
-No padrão **Model–View–Controller (MVC)**, as responsabilidades podem ser distribuídas assim:
-
-| Elemento | Responsabilidade no simulador |
-| --- | --- |
-| Model | Entidades, estado da corrida, motor, estratégias, regras, repositórios e dados. |
-| View | Páginas Streamlit, tabelas, mensagens e figuras Plotly. |
-| Controller | Receber ações da interface, validá-las, chamar o Model e selecionar os dados entregues à View. |
-
-Fluxo típico:
-
-```text
-Usuário -> View Streamlit -> Controller -> Model
-             ^                            |
-             |------- RaceSnapshot -------|
-```
-
-MVC tem nomenclatura conhecida, mapeia diretamente as interações da interface e pode ser mais simples para a equipe. É importante, porém, impedir que o Controller concentre todas as regras: cálculo de volta, estratégia, estados de bandeira e eventos pertencem ao Model.
-
-### 3.3 Alternativa B — camadas com portas e adaptadores
-
-Nesta alternativa, a aplicação é organizada em apresentação, casos de uso, domínio e infraestrutura. Portas abstraem as integrações, e adaptadores convertem cada fonte para o modelo interno.
-
-```text
-Interface Streamlit -> Casos de uso -> Domínio
-                              ^
-                              |
-                    Portas e adaptadores
-                              |
-                 Dados e persistência
-```
-
-Exemplos de portas possíveis:
-
-- `RaceDataRepository` — consulta corridas, pilotos, resultados e voltas;
-- `TelemetryRepository` — consulta amostras de velocidade, acelerador e setores;
-- `TyreModelRepository` — fornece parâmetros e estatísticas de *stints*;
-- `SimulationResultRepository` — salva cenários, sementes e resultados;
-- `RandomSource` — gera eventos aleatórios de maneira substituível e testável.
-
-Essa opção explicita melhor as dependências externas e facilita substituir fontes de dados, mas introduz mais interfaces e arquivos. O grupo deve adotá-la somente se considerar esse custo justificado.
-
-### 3.4 Critérios para a escolha
-
-| Critério | MVC | Camadas com portas e adaptadores |
-| --- | --- | --- |
-| Curva de aprendizagem | Geralmente menor. | Geralmente maior. |
-| Correspondência com a interface | Direta por View e Controller. | Interface tratada como camada de apresentação. |
-| Isolamento das fontes de dados | Possível com Repository/Adapter. | Central na organização proposta. |
-| Quantidade inicial de abstrações | Menor. | Maior. |
-| Facilidade de trocar a interface | Boa se o Model estiver isolado. | Boa por definição das dependências. |
-| Adequação ao MVP | Boa. | Boa, se a equipe dominar a abordagem. |
-
-A escolha deve ser registrada em uma decisão arquitetural curta, contendo contexto, alternativa selecionada, justificativa e consequências. MVC não impede o uso dos padrões Repository, Adapter, Strategy ou State; esses padrões resolvem problemas diferentes.
+- o motor pode ser executado e testado sem navegador;
+- dependências externas e aleatoriedade são injetáveis e testáveis;
+- não serão criadas portas ou interfaces sem uma variação ou fronteira concreta.
 
 ### 3.5 Eventos internos, sem infraestrutura distribuída
 
@@ -158,16 +177,17 @@ Esses eventos alimentam o histórico, as estatísticas e a criação de um novo 
 
 | Componente | Responsabilidade | Entradas | Saídas |
 | --- | --- | --- | --- |
-| Interface Streamlit | Capturar configuração e comandos; apresentar o estado. | Ações do usuário e `RaceSnapshot`. | Comandos para os casos de uso. |
-| Controladores ou casos de uso | Orquestrar criação, avanço, pausa, reinício e comparação, conforme a arquitetura escolhida. | Comandos e identificadores. | Retratos, relatórios e erros de aplicação. |
+| Frontend web | Capturar parâmetros e apresentar o progresso e o resultado. | Ações do usuário e representação da corrida. | Requisições ao backend. |
+| Adaptador Django | Validar requisições e traduzir dados entre o protocolo web e os casos de uso. | Requisições, comandos e identificadores. | Respostas, retratos e erros de aplicação. |
+| Casos de uso | Orquestrar configuração, execução, consulta e conclusão da corrida. | Comandos e portas. | Retratos, resultados e eventos. |
 | Motor de simulação | Avançar o relógio simulado e aplicar regras. | `RaceState`, comandos, parâmetros e fonte aleatória. | Novo estado e eventos de domínio. |
 | Modelo de tempo de volta | Calcular ritmo e penalidades de cada carro. | Circuito, piloto, carro, pneu, combustível, clima e tráfego. | Tempo previsto e seus componentes. |
 | Gerenciador de estratégia | Decidir ou validar pneus e paradas. | Estado do carro e condições da corrida. | Comando de parada ou permanência. |
 | Gerenciador de corrida | Controlar largada, bandeiras, SC/VSC e término. | Eventos e relógio. | Estado global da prova. |
-| Ingestão e validação | Ler arquivos brutos, padronizar tipos e validar qualidade. | CSV/Parquet das fontes. | Tabelas canônicas e relatório de qualidade. |
+| Adaptador do dataset e ETL | Ler a fonte escolhida, padronizar tipos e validar qualidade. | Arquivos brutos do dataset do MVP. | Dados canônicos e relatório de qualidade. |
 | Calibração | Estimar parâmetros a partir de corridas históricas. | Tabelas canônicas. | Arquivo versionado de parâmetros. |
 | Persistência | Salvar dados tratados, cenários e resultados. | Objetos e tabelas internas. | Consultas reprodutíveis. |
-| Visualização 2D | Projetar a pista e posicionar marcadores por progresso. | Geometria, progresso e classificação. | Figura Plotly. |
+| Visualização 2D | Projetar a pista e posicionar marcadores por progresso. | Geometria, progresso e classificação. | Representação visual no frontend. |
 
 ### Entidades e objetos de valor do domínio
 
@@ -183,6 +203,26 @@ Os estados devem usar unidades explícitas e consistentes: segundos, quilogramas
 ## 5. Padrões de projeto recomendados
 
 Os padrões abaixo resolvem variações reais deste sistema; não devem ser aplicados apenas para aumentar o número de classes.
+
+### 5.1 Uso combinado de Adapter e Factory
+
+A reunião encaminhou uma abordagem que combina **Adapter** e **Factory**. Eles
+não são alternativas concorrentes: cada padrão resolve uma responsabilidade
+diferente.
+
+1. O `Adapter` converte os dados externos para tipos, unidades e identificadores
+   conhecidos pela aplicação.
+2. A `Factory` recebe dados já normalizados e constrói objetos complexos e
+   válidos, como `Race`, `Circuit`, participantes e `SimulationConfig`.
+3. Os casos de uso recebem os objetos prontos e não precisam conhecer o formato
+   original nem os detalhes de sua montagem.
+
+Esse encadeamento facilita acrescentar datasets sem espalhar condicionais pelo
+motor e centraliza a criação consistente dos objetos. A Factory não deve ler
+CSV, consultar banco ou decidir qual adaptador usar; essas funções pertencem às
+bordas e à composição da aplicação.
+
+### 5.2 Outros padrões aplicáveis
 
 | Padrão | Aplicação no simulador | Benefício |
 | --- | --- | --- |
@@ -204,11 +244,15 @@ A fonte aleatória deve receber uma semente e ser injetada. O mesmo cenário, a 
 - microsserviços: adicionam rede, implantação e consistência distribuída sem necessidade;
 - Active Record no domínio: acopla regras à persistência;
 - heranças profundas para carros, equipes ou pneus: prefira composição e estratégias;
-- um WebSocket criado pela equipe: o Streamlit já mantém a comunicação com o navegador.
+- comunicação em tempo real própria antes de comprovar que atualização periódica é insuficiente.
 
 ## 6. Dados sugeridos pelo professor
 
-As três bases são complementares e devem ser registradas com versão/data de download e licença. Arquivos brutos nunca devem ser editados manualmente.
+As três bases abaixo são candidatas e complementares. Para o MVP, o grupo deverá
+selecionar apenas uma delas e implementar um único ETL. As demais permanecem
+como opções para investigação e expansão posterior. Toda fonte adotada deve ter
+versão, data de download e licença registradas, e seus arquivos brutos nunca
+devem ser editados manualmente.
 
 ### 6.1 Base 1 — estratégia de pneus
 
@@ -283,7 +327,7 @@ A licença declarada é **CC0**, o que facilita o uso como espinha dorsal cadast
 
 ### 7.1 Etapas do pipeline
 
-1. **Aquisição:** baixar manualmente ou por API uma versão identificável de cada base.
+1. **Aquisição:** baixar manualmente ou por API uma versão identificável da fonte adotada.
 2. **Raw:** guardar arquivos originais, somente leitura, fora do controle de versão se forem grandes.
 3. **Validação:** conferir colunas obrigatórias, tipos, chaves, duplicatas, faixas e unidades.
 4. **Padronização:** converter nomes externos em um esquema canônico e gerar identificadores internos.
@@ -298,7 +342,11 @@ Formato sugerido:
 - SQLite para metadados, cenários e resultados do MVP;
 - JSON ou TOML versionado para parâmetros calibrados.
 
-### 7.2 Esquema canônico mínimo
+### 7.2 Esquema canônico de referência
+
+O MVP deverá implementar somente as tabelas e colunas exigidas pelo dataset e
+pelo circuito selecionados. O esquema abaixo representa a direção de evolução,
+não a obrigação de criar tabelas vazias antecipadamente:
 
 - `circuits(circuit_id, name, country, length_m, default_laps)`;
 - `drivers(driver_id, code, name)`;
@@ -327,13 +375,17 @@ Os adaptadores devem manter uma tabela de correspondência entre os identificado
 
 ### 8.1 Relógio e passo
 
-Separar **tempo simulado** de **tempo da interface**. O motor pode avançar por setor no MVP. Cada chamada a `advance()` processa o próximo setor ou evento e retorna um novo `RaceSnapshot`. O Streamlit apenas decide com que frequência chamar o caso de uso.
+Separar **tempo simulado** de **tempo da interface**. O motor pode avançar por
+setor no MVP. Cada chamada a `advance()` processa o próximo setor ou evento e
+retorna um novo `RaceSnapshot`. O backend orquestra essa execução, e o frontend
+apenas consulta retratos ou resultados na frequência definida pela solução
+escolhida.
 
 Esse desenho evita que `sleep`, taxa de atualização do navegador ou desempenho da máquina alterem o resultado da corrida.
 
 ### 8.2 Tempo de volta
 
-Uma primeira aproximação auditável é:
+Uma aproximação auditável para a evolução do modelo é:
 
 ```text
 tempo_volta = ritmo_base
@@ -346,6 +398,10 @@ tempo_volta = ritmo_base
 ```
 
 As parcelas devem ser retornadas separadamente em `LapTimeBreakdown`. Valores iniciais são hipóteses; depois devem ser calibrados e validados com as bases.
+
+O núcleo do MVP deverá implementar apenas as parcelas necessárias ao cenário
+escolhido. `penalidade_combustivel` e `penalidade_trafego` permanecem na fórmula
+como pontos de evolução até a confirmação de seu escopo pelo grupo.
 
 Para pneus, começar com uma função simples por composto, por exemplo:
 
@@ -373,23 +429,31 @@ Representar a pista por pontos ordenados e distância acumulada. Cada carro mant
 1. calcular `distancia_na_volta = distancia_total % comprimento_pista`;
 2. localizar os dois pontos que delimitam essa distância;
 3. interpolar linearmente `x` e `y`;
-4. desenhar a pista como linha e cada carro como marcador Plotly.
+4. desenhar a pista como linha e cada carro como um marcador na tecnologia de visualização escolhida.
 
 A classificação deve ser calculada pelo estado do domínio. A posição gráfica não deve ser usada como fonte de verdade.
 
 ## 9. Estrutura de diretórios sugerida
 
-Os diretórios comuns às duas alternativas podem ser organizados assim:
+Esta árvore é apenas uma ilustração das fronteiras discutidas. Ela deverá ser
+revista e aprovada no ADR antes de orientar a criação de diretórios:
 
 ```text
 .
-├── app.py
-├── pages/
-│   ├── configuracao.py
-│   ├── simulacao.py
-│   ├── analise.py
-│   └── qualidade_dados.py
-├── src/f1_simulator/
+├── backend/
+│   ├── manage.py
+│   ├── config/
+│   └── src/f1_simulator/
+│       ├── domain/
+│       ├── application/
+│       │   └── ports/
+│       ├── adapters/
+│       │   ├── django/
+│       │   ├── datasets/
+│       │   └── persistence/
+│       └── factories/
+├── frontend/
+│   └── estrutura-a-definir/
 ├── data/
 │   ├── raw/
 │   ├── curated/
@@ -404,123 +468,100 @@ Os diretórios comuns às duas alternativas podem ser organizados assim:
     └── acceptance/
 ```
 
-Se o grupo escolher **MVC**, uma possibilidade para `src/f1_simulator/` é:
-
-```text
-src/f1_simulator/
-├── model/
-│   ├── entities.py
-│   ├── events.py
-│   ├── race_state.py
-│   ├── engine.py
-│   ├── strategies.py
-│   └── repositories.py
-├── views/
-│   ├── track_plot.py
-│   ├── leaderboard.py
-│   └── session.py
-├── controllers/
-│   ├── simulation_controller.py
-│   └── analysis_controller.py
-└── data/
-    ├── datasets/
-    ├── persistence/
-    └── calibration/
-```
-
-Se o grupo escolher **camadas com portas e adaptadores**, uma possibilidade é:
-
-```text
-src/f1_simulator/
-├── domain/
-│   ├── entities.py
-│   ├── events.py
-│   ├── race_state.py
-│   ├── engine.py
-│   └── strategies.py
-├── application/
-│   ├── commands.py
-│   ├── use_cases.py
-│   └── ports.py
-├── infrastructure/
-│   ├── datasets/
-│   ├── persistence/
-│   └── calibration/
-└── presentation/
-    ├── track_plot.py
-    ├── leaderboard.py
-    └── session.py
-```
-
-Essas árvores são exemplos, não decisões. Depois da escolha, o grupo deve manter uma única organização e evitar misturar nomes de MVC e de arquitetura em camadas sem uma justificativa clara.
+Os nomes exatos dependem da decisão arquitetural formal e da tecnologia de
+frontend. O importante é que Django, datasets e persistência dependam das
+portas do núcleo, e não o contrário.
 
 Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`. Um arquivo pequeno de exemplo pode ser versionado para os testes.
 
-## 10. Plano incremental de implementação
+## 10. Próximos passos acordados
+
+1. Investigar tecnologias para o frontend, sem limitar a análise a abordagens
+   em Python puro, e comparar a integração de cada opção com Django.
+2. Estudar repositórios que implementem simuladores de corrida ou problemas
+   semelhantes, registrando ideias aproveitáveis, limitações e licenças; não
+   copiar estruturas sem relacioná-las aos requisitos deste projeto.
+3. Buscar datasets além dos sugeridos pelo professor e comparar cobertura,
+   granularidade, qualidade, licença e facilidade de integração.
+4. Escolher o único dataset e o único circuito do MVP.
+5. Escrever e aprovar o ADR que compara MVC com arquitetura hexagonal e registra
+   a decisão do grupo, suas consequências e a organização resultante.
+6. Confirmar se combustível e interação física entre carros ficam fora do MVP
+   ou se alguma aproximação mínima será critério de aceite.
+7. Atualizar CONTRIBUTING.MD para levar em conta as decisões tomadas.
+
+## 11. Plano incremental de implementação
 
 ### Fase 0 — contrato do MVP
 
 - escolher uma corrida e um circuito de referência;
-- comparar MVC e camadas com portas/adaptadores e registrar a decisão do grupo;
+- aprovar o ADR da arquitetura hexagonal, documentando MVC como alternativa considerada;
+- selecionar o dataset do MVP e registrar sua versão e licença;
+- escolher a tecnologia do frontend e documentar os critérios usados;
 - definir as telas e métricas obrigatórias;
-- registrar versões e licenças das três bases;
+- resolver a divergência de escopo sobre combustível e interação física;
 - criar critérios de aceitação e uma semente de demonstração.
 
 ### Fase 1 — dados e exploração
 
-- implementar os três adaptadores de entrada;
+- implementar o adaptador e o ETL do único dataset selecionado;
 - criar validações e esquema canônico;
 - produzir um conjunto pequeno e reproduzível para testes;
-- realizar análise exploratória de voltas, stints, clima, pits e abandonos.
+- realizar a análise exploratória necessária ao cenário escolhido.
 
 ### Fase 2 — domínio determinístico
 
 - modelar entidades, estados, comandos e retratos;
 - implementar corrida sem eventos aleatórios;
-- adicionar pneus, combustível e pit stop;
+- adicionar apenas as regras necessárias para concluir a corrida do cenário do MVP;
 - testar classificação, término e invariantes.
 
-### Fase 3 — estratégias e eventos
+### Fase 3 — aplicação web
 
-- implementar `Strategy`, `State` e eventos de domínio;
-- adicionar clima, DNF, SC e VSC;
-- injetar o gerador aleatório com semente;
-- comparar ao menos três estratégias de pneus.
+- integrar o backend Django aos casos de uso por portas de entrada;
+- implementar as telas Parâmetros, Corrida e Resultados;
+- desenhar circuito, marcadores e classificação com a tecnologia escolhida;
+- atualizar a tela da corrida em intervalo controlado;
+- tratar validações e falhas de comunicação sem mover regras para o frontend.
 
-### Fase 4 — interface Python
+### Fase 4 — integração e entrega do MVP
 
-- criar configuração em formulário Streamlit;
-- armazenar a simulação ativa no estado da sessão;
-- desenhar circuito, marcadores, classificação e histórico com Plotly;
-- atualizar apenas o painel da corrida em intervalo controlado;
-- incluir iniciar, pausar, avançar, acelerar e reiniciar.
-
-### Fase 5 — calibração e validação
-
-- calibrar parâmetros usando corridas separadas da validação;
-- medir MAE/RMSE dos tempos e erro de posição final;
-- comparar distribuições de stints, pits e DNF;
-- documentar hipóteses, limitações e sensibilidade dos parâmetros.
-
-### Fase 6 — robustez e entrega
-
-- executar testes automatizados e análise estática;
+- executar pelo frontend uma corrida completa no circuito selecionado;
+- verificar o resultado contra invariantes e referências do dataset;
 - medir tempo e memória de uma corrida completa;
 - preparar cenário de demonstração reproduzível;
-- revisar atribuições, licenças e instruções de execução.
+- executar testes automatizados e análise estática;
+- revisar atribuições, licença e instruções de execução.
 
-## 11. Estratégia de testes
+### Fase 5 — evolução do modelo
+
+- implementar `Strategy`, `State` e eventos de domínio quando exigidos pelos casos de uso;
+- adicionar clima, DNF, SC e VSC;
+- avaliar e implementar a modelagem de combustível aprovada pelo grupo;
+- avaliar interação física entre carros, incluindo vácuo e restrição de sobreposição;
+- criar perfis de pilotos a partir de análise e perfilamento dos dados.
+
+### Fase 6 — expansão de dados, calibração e validação
+
+- implementar novos adaptadores somente para datasets incorporados ao projeto;
+- calibrar parâmetros usando corridas separadas da validação;
+- medir MAE/RMSE dos tempos e erro de posição final;
+- comparar distribuições de *stints*, pits e DNF;
+- documentar hipóteses, limitações e sensibilidade dos parâmetros.
+
+## 12. Estratégia de testes
 
 ### Testes unitários
 
-- pneus nunca têm idade negativa;
-- combustível nunca fica negativo;
 - um carro retirado não volta à corrida;
 - uma corrida terminada não avança;
 - classificação respeita voltas e distância antes do tempo total;
-- pit stop troca o composto e reinicia a idade do pneu;
-- transições de `RaceState` inválidas são rejeitadas;
+- objetos construídos pela Factory respeitam suas invariantes;
 - mesma semente produz a mesma sequência de eventos.
+
+Quando as extensões correspondentes forem implementadas, acrescentar testes
+para combustível não negativo, idade dos pneus, pit stops, estados de bandeira
+e impossibilidade de dois carros ocuparem fisicamente o mesmo espaço.
 
 ### Testes baseados em propriedades
 
@@ -531,26 +572,29 @@ Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`.
 
 ### Testes de integração
 
-- cada adaptador converte uma amostra real para o esquema canônico;
+- o adaptador do MVP converte uma amostra real para o esquema canônico;
+- a Factory constrói a corrida a partir dos dados normalizados pelo adaptador;
 - chaves entre corridas, pilotos, voltas e stints são válidas;
 - um cenário salvo pode ser carregado e reproduzido;
-- a figura recebe pontos ordenados e posições dentro do comprimento da pista.
+- Django aciona os casos de uso sem importar regras para suas *views*;
+- a visualização recebe pontos ordenados e posições dentro do comprimento da pista.
 
 ### Testes de aceitação
 
-- configurar e concluir uma corrida pela interface;
-- pausar, avançar uma etapa e retomar;
-- comandar uma parada e observar a troca de composto;
-- repetir com a mesma semente e obter o mesmo resultado;
-- mudar somente a estratégia e produzir uma comparação legível.
+- informar os parâmetros aceitos na tela Parâmetros;
+- iniciar e acompanhar uma corrida completa na tela Corrida;
+- consultar a classificação final na tela Resultados;
+- rejeitar uma configuração inválida com mensagem compreensível;
+- repetir o cenário de demonstração com a mesma semente e obter o mesmo resultado.
 
-## 12. Tecnologias recomendadas
+## 13. Tecnologias e decisões atuais
 
 | Área | Tecnologia |
 | --- | --- |
-| Linguagem | Python 3.12+ |
-| Interface | Streamlit |
-| Gráficos e pista 2D | Plotly |
+| Linguagem do motor e backend | Python 3.12+ |
+| Backend web | Django |
+| Frontend | A definir após investigação; não precisa ser Python puro |
+| Gráficos e pista 2D | A definir com a tecnologia do frontend |
 | Transformação tabular | Pandas ou Polars |
 | Arquivos analíticos | Parquet com PyArrow |
 | Persistência local | SQLite |
@@ -560,26 +604,39 @@ Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`.
 
 SimPy é opcional. O MVP pode usar um relógio discreto explícito, mais simples de testar. Adotar SimPy apenas se a fila de eventos concorrentes e suas prioridades justificarem a dependência; o restante do domínio deve continuar independente dele.
 
-## 13. Riscos e decisões a registrar
+## 14. Ideias para etapas posteriores
+
+Os itens abaixo são relevantes, mas não deverão bloquear o núcleo do MVP até
+que o grupo os promova explicitamente a requisitos:
+
+- modelar a quantidade de combustível e seu consumo ao longo da corrida;
+- refletir no desempenho a redução de massa causada pelo consumo de combustível;
+- analisar os dados para definir perfis de comportamento e desempenho de pilotos;
+- modelar o vácuo aerodinâmico aproveitado por um carro que segue outro;
+- representar os carros como corpos materiais, impedindo sobreposição e ultrapassagem física impossível.
+
+Cada item precisará de hipótese explícita, dados de calibração, unidade,
+parâmetros configuráveis e testes antes de ser incorporado ao motor.
+
+## 15. Riscos e decisões a registrar
 
 | Risco | Mitigação |
 | --- | --- |
 | Escopo excessivo | Um circuito e uma corrida completa antes de generalizar. |
+| Combustível e interação física com escopo contraditório | Resolver na Fase 0 e só então incluí-los nos critérios de aceite. |
+| Arquitetura implementada antes da aprovação | Aceitar o ADR antes de criar a estrutura definitiva. |
+| Escolha precipitada do frontend | Comparar alternativas com um protótipo pequeno integrado ao Django. |
 | Modelo aparentemente preciso, mas sem evidência | Exibir decomposição do tempo e parâmetros calibrados. |
 | Junções erradas entre bases | IDs internos e tabelas de correspondência auditáveis. |
 | Telemetria pesada | Agregação prévia e Parquet; nunca carregar tudo na UI. |
-| Animação limitada no Streamlit | Atualização por passos; componente customizado somente como extensão. |
+| Atualização visual complexa | Começar com retratos periódicos e validar a necessidade de tempo real. |
 | Resultado não reproduzível | Semente, parâmetros e versão dos dados em cada execução. |
 | Licença desconhecida da Base 2 | Confirmar antes de redistribuir os arquivos. |
 | Dados históricos incompatíveis entre eras | Calibrar por era/regulamento e validar em corridas recentes. |
 
-## 14. Referências técnicas e de dados
+## 16. Referências técnicas e de dados
 
-- [Streamlit — arquitetura cliente-servidor](https://docs.streamlit.io/develop/concepts/architecture/architecture)
-- [Streamlit — fragmentos e atualizações periódicas](https://docs.streamlit.io/develop/api-reference/execution-flow/st.fragment)
-- [Streamlit — estado da sessão](https://docs.streamlit.io/develop/api-reference/caching-and-state/st.session_state)
-- [Streamlit — gráficos Plotly](https://docs.streamlit.io/develop/api-reference/charts/st.plotly_chart)
-- [Plotly para Python](https://plotly.com/python/)
+- [Documentação do Django](https://docs.djangoproject.com/)
 - [Base 1 — F1-Tyre-Strategy-Engine Datasets](https://www.kaggle.com/datasets/vanshbatra26/f1-tyre-strategy-engine-datasets)
 - [Base 2 — Formula 1: Race Data and Telemetry](https://www.kaggle.com/datasets/alexjr2001/formula-1-dataset-race-data-and-telemetry)
 - [Base 3 — Formula 1 Race Data](https://www.kaggle.com/datasets/jtrotman/formula-1-race-data)
@@ -588,9 +645,11 @@ SimPy é opcional. O MVP pode usar um relógio discreto explícito, mais simples
 
 ### Decisões resumidas
 
-- **Interface:** Streamlit + Plotly, sem JavaScript escrito pela equipe no MVP.
-- **Arquitetura:** decisão do grupo entre MVC e camadas com portas e adaptadores; ambas podem ser implementadas como monólito modular.
+- **MVP:** um dataset, um ETL, um circuito, uma corrida completa e três telas.
+- **Frontend:** tecnologia ainda em investigação, sem exigência de Python puro.
+- **Backend:** Django como adaptador web; regras da corrida permanecem independentes do framework.
+- **Arquitetura:** hexagonal encaminhada na reunião e pendente de formalização em ADR; MVC será documentada como alternativa considerada.
+- **Padrões:** uso combinado de Adapter para normalização e Factory para construção de objetos complexos.
 - **Motor:** Python independente da interface e do formato das bases.
-- **Comunicação:** chamadas no mesmo processo; sem API e WebSocket próprios no MVP.
-- **Persistência:** Parquet para dados analíticos e SQLite para cenários/resultados.
+- **Evoluções:** combustível detalhado, perfis de pilotos e interação física entre carros não bloqueiam o núcleo do MVP enquanto o grupo não resolver a divergência de escopo.
 - **Reprodutibilidade:** semente, versão dos dados e parâmetros registrados em toda simulação.
