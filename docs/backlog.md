@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:12:35Z
-- **Abertas:** 11
+- **Ultima atividade registrada:** 2026-08-28T23:22:16Z
+- **Abertas:** 14
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -52,7 +52,7 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** —
+- **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14)
 - **Criada:** 2026-08-28T23:03:16Z
 - **Atualizada:** 2026-08-28T23:03:16Z
 - **Fechada:** —
@@ -67,6 +67,9 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:19:05Z — sub-issue adicionada: #14 por @Jmvjr
+- 2026-08-28T23:16:53Z — sub-issue adicionada: #13 por @Jmvjr
+- 2026-08-28T23:15:25Z — sub-issue adicionada: #12 por @Jmvjr
 - 2026-08-28T23:03:17Z — label adicionada: História por @Jmvjr
 
 </details>
@@ -169,13 +172,13 @@
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:06:03Z
-- **Atualizada:** 2026-08-28T23:06:44Z
+- **Atualizada:** 2026-08-28T23:14:41Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>O usuário deve conseguir visualizar a pista, os carros e as posições. </pre>
 
 </details>
 
@@ -197,13 +200,13 @@
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:06:16Z
-- **Atualizada:** 2026-08-28T23:06:16Z
+- **Atualizada:** 2026-08-28T23:22:16Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>Usuário deve ser capaz de ver tela de loading enquanto simulação é computada.</pre>
 
 </details>
 
@@ -283,13 +286,13 @@
 - **Issue-pai:** [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:07:15Z
-- **Atualizada:** 2026-08-28T23:07:15Z
+- **Atualizada:** 2026-08-28T23:15:26Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>O usuário deve conseguir visualizar os resultados da simulação requisitada</pre>
 
 </details>
 
@@ -325,6 +328,90 @@
 <summary>Historico de estado</summary>
 
 - 2026-08-28T23:08:29Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:15:24Z
+- **Atualizada:** 2026-08-28T23:15:24Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve conseguir visualizar e alterar aos parâmetros configuráveis da corrida.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:15:25Z — label adicionada: Task por @Jmvjr
+
+</details>
+
+### [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:16:51Z
+- **Atualizada:** 2026-08-28T23:16:51Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve poder visualizar a pista selecionada</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:16:53Z — label adicionada: Task por @Jmvjr
+
+</details>
+
+### [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:19:03Z
+- **Atualizada:** 2026-08-28T23:19:03Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve poder escolher simulações já existentes como base</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:19:04Z — label adicionada: Task por @Jmvjr
 
 </details>
 
