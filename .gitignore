@@ -12,6 +12,7 @@
 /.ai-memory.toml
 /.agents/
 /AGENTS.local.md
+ai_memory
 
 # Guia local de operacao
 /commands.txt
