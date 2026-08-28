@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:23:06Z
-- **Abertas:** 14
+- **Ultima atividade registrada:** 2026-08-28T23:24:36Z
+- **Abertas:** 15
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -139,7 +139,7 @@
 - **Labels:** Épico
 - **Milestone:** —
 - **Issue-pai:** —
-- **Sub-issues:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6), [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7), [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
+- **Sub-issues:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6), [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7), [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8), [#15 — Simulação puxa dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/15)
 - **Criada:** 2026-08-28T23:04:57Z
 - **Atualizada:** 2026-08-28T23:12:35Z
 - **Fechada:** —
@@ -154,6 +154,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:24:36Z — sub-issue adicionada: #15 por @guilherme-webster
 - 2026-08-28T23:06:40Z — sub-issue adicionada: #8 por @Jmvjr
 - 2026-08-28T23:06:17Z — sub-issue adicionada: #7 por @Jmvjr
 - 2026-08-28T23:06:05Z — sub-issue adicionada: #6 por @Jmvjr
@@ -412,6 +413,27 @@
 <summary>Historico de estado</summary>
 
 - 2026-08-28T23:19:04Z — label adicionada: Task por @Jmvjr
+
+</details>
+
+### [#15 — Simulação puxa dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/15)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:24:35Z
+- **Atualizada:** 2026-08-28T23:24:35Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Antes de rodar, a simulação deve puxar dados do backend de maneira coerente com a configuração setada para o usuário. Então, estes dados são consumidos pelo motor do sistema que irá executar a simulação.</pre>
 
 </details>
 
