@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:41:19Z
+- **Ultima atividade registrada:** 2026-08-28T23:42:58Z
 - **Abertas:** 21
 - **Fechadas:** 0
 
@@ -470,13 +470,13 @@
 - **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:33:19Z
-- **Atualizada:** 2026-08-28T23:36:37Z
+- **Atualizada:** 2026-08-28T23:42:58Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>A tela de simulação deve exibir uma visão aérea em duas dimensões da pista, assim como a posição dos carros.</pre>
 
 </details>
 
