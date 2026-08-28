@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:32:08Z
+- **Ultima atividade registrada:** 2026-08-28T23:32:58Z
 - **Abertas:** 15
 - **Fechadas:** 0
 
@@ -262,13 +262,13 @@
 - **Issue-pai:** —
 - **Sub-issues:** [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10), [#11 — Armazenamento de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/11)
 - **Criada:** 2026-08-28T23:07:00Z
-- **Atualizada:** 2026-08-28T23:07:00Z
+- **Atualizada:** 2026-08-28T23:32:58Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>O usuário deve conseguir ver a tela com os resultados finais da simulação.</pre>
 
 </details>
 
