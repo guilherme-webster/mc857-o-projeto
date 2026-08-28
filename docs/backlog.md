@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:29:11Z
+- **Ultima atividade registrada:** 2026-08-28T23:31:22Z
 - **Abertas:** 15
 - **Fechadas:** 0
 
@@ -59,13 +59,13 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14)
 - **Criada:** 2026-08-28T23:03:16Z
-- **Atualizada:** 2026-08-28T23:03:16Z
+- **Atualizada:** 2026-08-28T23:31:22Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>Nessa tela o usuário poderá visualizar dados e poder alterá-los</pre>
 
 </details>
 
