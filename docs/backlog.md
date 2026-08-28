@@ -7,7 +7,7 @@
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
 - **Ultima atividade registrada:** 2026-08-28T23:34:10Z
-- **Abertas:** 17
+- **Abertas:** 18
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -491,6 +491,27 @@
 <summary>Descricao original</summary>
 
 <pre>A simulação deve ser processada do seu início ao fim no back-end.</pre>
+
+</details>
+
+### [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:34:08Z
+- **Atualizada:** 2026-08-28T23:34:08Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
 
 </details>
 
