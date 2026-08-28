@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:40:23Z
+- **Ultima atividade registrada:** 2026-08-28T23:41:19Z
 - **Abertas:** 21
 - **Fechadas:** 0
 
@@ -610,13 +610,13 @@
 - **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:36:18Z
-- **Atualizada:** 2026-08-28T23:37:02Z
+- **Atualizada:** 2026-08-28T23:41:19Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>A tela de simulação deve exibir as condições da corrida, como por exemplo o clima, o tempo de corrida, se há bandeira amarela/vermelha etc).</pre>
 
 </details>
 
