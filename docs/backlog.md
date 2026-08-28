@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:34:45Z
-- **Abertas:** 19
+- **Ultima atividade registrada:** 2026-08-28T23:35:58Z
+- **Abertas:** 20
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -207,7 +207,7 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** [#17 — Processamento da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/17)
+- **Sub-issues:** [#17 — Processamento da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/17), [#20 — Exibição do progresso da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/20)
 - **Criada:** 2026-08-28T23:06:16Z
 - **Atualizada:** 2026-08-28T23:22:16Z
 - **Fechada:** —
@@ -222,6 +222,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:35:58Z — sub-issue adicionada: #20 por @DaviGabrielBC
 - 2026-08-28T23:34:04Z — sub-issue adicionada: #17 por @DaviGabrielBC
 - 2026-08-28T23:06:17Z — label adicionada: História por @Jmvjr
 
@@ -534,6 +535,34 @@
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+### [#20 — Exibição do progresso da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/20)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:35:56Z
+- **Atualizada:** 2026-08-28T23:35:56Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário será informado do progresso da simulação, sabendo quão próxima está de concluida.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:35:57Z — label adicionada: Task por @DaviGabrielBC
 
 </details>
 
