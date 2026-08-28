@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:22:16Z
+- **Ultima atividade registrada:** 2026-08-28T23:23:06Z
 - **Abertas:** 14
 - **Fechadas:** 0
 
@@ -228,13 +228,13 @@
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:06:39Z
-- **Atualizada:** 2026-08-28T23:06:39Z
+- **Atualizada:** 2026-08-28T23:23:06Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>A simulação em si deve ser computada de maneira a exibir algo para o usuário.</pre>
 
 </details>
 
