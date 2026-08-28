@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:25:14Z
+- **Ultima atividade registrada:** 2026-08-28T23:28:43Z
 - **Abertas:** 15
 - **Fechadas:** 0
 
@@ -315,13 +315,13 @@
 - **Issue-pai:** [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:08:15Z
-- **Atualizada:** 2026-08-28T23:08:29Z
+- **Atualizada:** 2026-08-28T23:28:43Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>É necessário armazenar internamente os resultados e processá-los para que os resultados possam chegar ao usuário.</pre>
 
 </details>
 
