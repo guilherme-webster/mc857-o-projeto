@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:28:43Z
+- **Ultima atividade registrada:** 2026-08-28T23:29:11Z
 - **Abertas:** 15
 - **Fechadas:** 0
 
@@ -23,13 +23,18 @@
 - **Issue-pai:** —
 - **Sub-issues:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2), [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3), [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4)
 - **Criada:** 2026-08-28T22:59:38Z
-- **Atualizada:** 2026-08-28T22:59:38Z
+- **Atualizada:** 2026-08-28T23:29:11Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>O usuário deve ter acesso a uma tela que permita:
+* Ter acesso a dados pré definidos
+* Customizar parâmetros da corrida
+* Visualizar parâmetros
+* Enviar dados para o servidor
+* Padronizar os dados</pre>
 
 </details>
 
