@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:31:22Z
+- **Ultima atividade registrada:** 2026-08-28T23:32:08Z
 - **Abertas:** 15
 - **Fechadas:** 0
 
@@ -427,18 +427,25 @@
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
 - **Responsaveis:** —
-- **Labels:** —
+- **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:24:35Z
-- **Atualizada:** 2026-08-28T23:24:35Z
+- **Atualizada:** 2026-08-28T23:32:08Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>Antes de rodar, a simulação deve puxar dados do backend de maneira coerente com a configuração setada para o usuário. Então, estes dados são consumidos pelo motor do sistema que irá executar a simulação.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:32:08Z — label adicionada: História por @guilherme-webster
 
 </details>
 
