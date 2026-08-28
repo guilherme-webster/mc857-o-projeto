@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:42:58Z
+- **Ultima atividade registrada:** 2026-08-28T23:43:44Z
 - **Abertas:** 21
 - **Fechadas:** 0
 
@@ -526,13 +526,13 @@
 - **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:34:08Z
-- **Atualizada:** 2026-08-28T23:36:48Z
+- **Atualizada:** 2026-08-28T23:43:44Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>A tela de simulação deve exibir a classificação dos pilotos de forma dinâmica ao longo da corrida.</pre>
 
 </details>
 
