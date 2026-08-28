@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:37:02Z
+- **Ultima atividade registrada:** 2026-08-28T23:38:53Z
 - **Abertas:** 21
 - **Fechadas:** 0
 
@@ -348,13 +348,13 @@
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @Jmvjr
-- **Responsaveis:** —
+- **Responsaveis:** @Jmvjr
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:15:24Z
-- **Atualizada:** 2026-08-28T23:15:24Z
+- **Atualizada:** 2026-08-28T23:38:49Z
 - **Fechada:** —
 
 <details>
@@ -367,6 +367,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:38:49Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-08-28T23:15:25Z — label adicionada: Task por @Jmvjr
 
 </details>
@@ -376,13 +377,13 @@
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @Jmvjr
-- **Responsaveis:** —
+- **Responsaveis:** @Jmvjr
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:16:51Z
-- **Atualizada:** 2026-08-28T23:16:51Z
+- **Atualizada:** 2026-08-28T23:38:43Z
 - **Fechada:** —
 
 <details>
@@ -395,6 +396,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:38:43Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-08-28T23:16:53Z — label adicionada: Task por @Jmvjr
 
 </details>
@@ -404,13 +406,13 @@
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @Jmvjr
-- **Responsaveis:** —
+- **Responsaveis:** @Jmvjr
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:19:03Z
-- **Atualizada:** 2026-08-28T23:19:03Z
+- **Atualizada:** 2026-08-28T23:38:53Z
 - **Fechada:** —
 
 <details>
@@ -423,6 +425,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:38:53Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-08-28T23:19:04Z — label adicionada: Task por @Jmvjr
 
 </details>
