@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:36:48Z
+- **Ultima atividade registrada:** 2026-08-28T23:37:02Z
 - **Abertas:** 21
 - **Fechadas:** 0
 
@@ -545,18 +545,25 @@
 - **Motivo do estado:** —
 - **Autor:** @ViniciusFCoracin
 - **Responsaveis:** —
-- **Labels:** —
+- **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:34:43Z
-- **Atualizada:** 2026-08-28T23:34:43Z
+- **Atualizada:** 2026-08-28T23:36:55Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:36:55Z — label adicionada: Task por @ViniciusFCoracin
 
 </details>
 
@@ -594,18 +601,25 @@
 - **Motivo do estado:** —
 - **Autor:** @ViniciusFCoracin
 - **Responsaveis:** —
-- **Labels:** —
+- **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:36:18Z
-- **Atualizada:** 2026-08-28T23:36:18Z
+- **Atualizada:** 2026-08-28T23:37:02Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:37:02Z — label adicionada: Task por @ViniciusFCoracin
 
 </details>
 
