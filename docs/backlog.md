@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:34:10Z
-- **Abertas:** 18
+- **Ultima atividade registrada:** 2026-08-28T23:34:45Z
+- **Abertas:** 19
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -176,7 +176,7 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18)
+- **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18), [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19)
 - **Criada:** 2026-08-28T23:06:03Z
 - **Atualizada:** 2026-08-28T23:14:41Z
 - **Fechada:** —
@@ -191,6 +191,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:34:45Z — sub-issue adicionada: #19 por @ViniciusFCoracin
 - 2026-08-28T23:34:10Z — sub-issue adicionada: #18 por @ViniciusFCoracin
 - 2026-08-28T23:33:20Z — sub-issue adicionada: #16 por @ViniciusFCoracin
 - 2026-08-28T23:06:44Z — label adicionada: História por @Jmvjr
@@ -506,6 +507,27 @@
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:34:08Z
 - **Atualizada:** 2026-08-28T23:34:08Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+### [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:34:43Z
+- **Atualizada:** 2026-08-28T23:34:43Z
 - **Fechada:** —
 
 <details>
