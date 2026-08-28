@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:38:53Z
+- **Ultima atividade registrada:** 2026-08-28T23:39:04Z
 - **Abertas:** 21
 - **Fechadas:** 0
 
@@ -172,13 +172,13 @@
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @Jmvjr
-- **Responsaveis:** —
+- **Responsaveis:** @ViniciusFCoracin
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
 - **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18), [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19), [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21)
 - **Criada:** 2026-08-28T23:06:03Z
-- **Atualizada:** 2026-08-28T23:14:41Z
+- **Atualizada:** 2026-08-28T23:39:04Z
 - **Fechada:** —
 
 <details>
@@ -191,6 +191,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:39:04Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
 - 2026-08-28T23:36:19Z — sub-issue adicionada: #21 por @ViniciusFCoracin
 - 2026-08-28T23:34:45Z — sub-issue adicionada: #19 por @ViniciusFCoracin
 - 2026-08-28T23:34:10Z — sub-issue adicionada: #18 por @ViniciusFCoracin
