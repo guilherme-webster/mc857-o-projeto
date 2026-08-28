@@ -31,7 +31,7 @@ O primeiro incremento demonstrável será deliberadamente estreito:
 - executar uma corrida completa, da largada à classificação final;
 - oferecer o fluxo do usuário em três telas: **Parâmetros**, **Corrida** e **Resultados**;
 - usar **Django** no backend;
-- manter a tecnologia do frontend em investigação, sem restringi-la a uma solução em Python puro.
+- usar **Arcade** em uma aplicação desktop Python para o frontend.
 
 “Corrida completa” significa concluir todas as voltas previstas e produzir um
 resultado consistente. Isso não obriga o primeiro incremento a modelar todos os
@@ -58,47 +58,50 @@ Esses itens podem ser extensões, mas não devem bloquear o MVP.
 
 ## 2. Direção para frontend e backend
 
-A reunião definiu **Django** para o backend e decidiu não limitar o frontend a
-uma abordagem em Python puro. A tecnologia de frontend ainda deverá ser
-investigada antes de sua adoção. Portanto, este documento não escolhe neste
-momento um framework de interface específico.
+O frontend do MVP será uma aplicação desktop em Python construída com a
+biblioteca **Arcade**, conforme o
+[ADR 0001](docs/adr/0001-frontend-desktop-com-arcade.md). **Django** permanece
+como backend e expõe por HTTP/JSON os comandos e as consultas usados pelo
+cliente. Essa escolha substitui as orientações anteriores de Streamlit/Plotly e
+encerra a investigação da tecnologia de frontend.
 
-Essa direção diverge da decisão ainda descrita em `CONTRIBUTING.md`, que aponta
-Streamlit e Plotly para o MVP. O grupo deverá atualizar essa fonte de verdade ao
-formalizar as decisões da reunião; até lá, a divergência permanece explícita e
-nenhuma das duas orientações deverá ser aplicada silenciosamente à estrutura do
-código.
+A experiência de visualização terá como referência principal o projeto
+[IAmTomShaw/f1-race-replay](https://github.com/IAmTomShaw/f1-race-replay): pista
+2D, marcadores dos pilotos, leaderboard, informações de volta e controles de
+reprodução. A referência demonstra possibilidades do Arcade, mas não define a
+arquitetura nem as regras deste produto. O projeto de referência reproduz
+telemetria histórica; este projeto gera a evolução de uma corrida simulada.
 
-O backend será responsável por receber e validar parâmetros, iniciar a
-simulação, consultar seu estado e disponibilizar os resultados. As regras da
-corrida deverão permanecer em código Python independente do Django; o framework
-será um adaptador de entrada e não a fonte de verdade da simulação.
+O backend será responsável por receber e validar parâmetros, iniciar e avançar
+a simulação, consultar seu estado e disponibilizar os resultados. As regras da
+corrida deverão permanecer em código Python independente do Django e do Arcade;
+ambos são adaptadores nas bordas do sistema.
 
-### Critérios para investigar o frontend
+### Diretrizes da interface Arcade
 
-- capacidade de representar o circuito e atualizar a posição dos carros;
-- integração simples e bem documentada com o backend Django;
-- suporte às três telas do MVP sem complexidade desnecessária;
-- facilidade de teste e domínio da tecnologia pela equipe;
-- custo de manter estado, atualização periódica e tratamento de erros;
-- possibilidade de evolução sem acoplar o motor ao framework visual.
-
-A investigação deve resultar em uma comparação curta das alternativas e em
-uma decisão registrada pelo grupo. Uma animação contínua com alta taxa de
-quadros não é necessária: o frontend poderá exibir retratos discretos do estado
-da corrida.
+- uma única `arcade.Window` alterna entre `ParametersView`, `RaceView` e
+  `ResultsView`;
+- `on_update` consulta ou apresenta snapshots, mas não usa o tempo de quadro
+  para calcular a corrida;
+- chamadas HTTP não bloqueiam o laço de eventos; timeouts e falhas de conexão
+  geram mensagens compreensíveis;
+- a taxa de desenho pode ser maior que a taxa de consulta, interpolando apenas
+  a apresentação quando necessário, sem alterar o estado do domínio;
+- regras de classificação, término e posição longitudinal permanecem no motor;
+- o protótipo inicial valida OpenGL 3.3 ou superior nos ambientes do grupo e
+  mantém os testes do motor executáveis sem janela ou GPU.
 
 ### Organização sugerida das telas
 
 | Tela | Responsabilidade |
 | --- | --- |
-| Parâmetros | Exibir as opções suportadas para o único cenário do MVP e validar a configuração. |
-| Corrida | Iniciar a execução e exibir seu progresso, a pista e a classificação. |
-| Resultados | Apresentar classificação final, tempos e eventos relevantes. |
+| `ParametersView` | Exibir as opções suportadas para o único cenário do MVP e validar a configuração. |
+| `RaceView` | Iniciar a execução e exibir seu progresso, a pista, a classificação e os controles. |
+| `ResultsView` | Apresentar classificação final, tempos e eventos relevantes. |
 
-O objeto do motor não deve ser implementado dentro da página nem nas *views* do
-Django. O cliente guarda apenas o identificador e a representação necessária
-para a tela; comandos e consultas são delegados ao backend.
+O objeto do motor não deve ser implementado dentro de `arcade.View` nem nas
+*views* do Django. O cliente guarda apenas o identificador e a representação
+necessária para a tela; comandos e consultas são delegados ao backend.
 
 ## 3. Estilo arquitetural
 
@@ -113,14 +116,16 @@ considerada aceita após o registro e a aprovação de um ADR pelo grupo. Até e
 formalização, as árvores de diretórios deste documento são ilustrativas e não
 autorizam a criação de uma estrutura definitiva.
 
-### 3.2 Aplicação da arquitetura hexagonal
+### 3.2 Aplicação da arquitetura hexagonal, se aceita
 
-O núcleo da simulação expõe portas para os casos de uso e para as dependências
-externas. Django, o frontend, o ETL, os datasets e a persistência ficam nas
-bordas, implementando ou consumindo essas portas por meio de adaptadores.
+Se o ADR confirmar o encaminhamento da reunião, o núcleo da simulação exporá
+portas para os casos de uso e para as dependências externas. Django, Arcade, o
+ETL, os datasets e a persistência ficarão nas bordas, implementando ou
+consumindo essas portas por meio de adaptadores. O diagrama abaixo é
+condicional, não uma decisão já aceita.
 
 ```text
-Frontend -> adaptador Django -> portas de entrada -> aplicação e domínio
+Cliente Arcade -> HTTP/JSON -> adaptador Django -> aplicação e domínio
                                                     |
                                              portas de saída
                                                     |
@@ -153,10 +158,10 @@ estratégias e estados da corrida não devem ser implementados nas *views*.
 
 ### 3.4 Fronteiras obrigatórias
 
-- regras da corrida independem de Django, do frontend e dos formatos dos datasets;
+- regras da corrida independem de Django, Arcade e dos formatos dos datasets;
 - leitura de CSV, Parquet ou banco de dados não fica dentro do motor;
 - o estado da interface não é a fonte de verdade da corrida;
-- o motor pode ser executado e testado sem navegador;
+- o motor pode ser executado e testado sem janela, GPU ou servidor web;
 - dependências externas e aleatoriedade são injetáveis e testáveis;
 - não serão criadas portas ou interfaces sem uma variação ou fronteira concreta.
 
@@ -177,8 +182,8 @@ Esses eventos alimentam o histórico, as estatísticas e a criação de um novo 
 
 | Componente | Responsabilidade | Entradas | Saídas |
 | --- | --- | --- | --- |
-| Frontend web | Capturar parâmetros e apresentar o progresso e o resultado. | Ações do usuário e representação da corrida. | Requisições ao backend. |
-| Adaptador Django | Validar requisições e traduzir dados entre o protocolo web e os casos de uso. | Requisições, comandos e identificadores. | Respostas, retratos e erros de aplicação. |
+| Cliente desktop Arcade | Capturar parâmetros e apresentar o progresso e o resultado. | Ações do usuário e respostas HTTP/JSON. | Comandos e consultas ao backend. |
+| Adaptador Django | Validar requisições e traduzir dados entre HTTP/JSON e os casos de uso. | Requisições, comandos e identificadores. | Respostas, retratos e erros de aplicação. |
 | Casos de uso | Orquestrar configuração, execução, consulta e conclusão da corrida. | Comandos e portas. | Retratos, resultados e eventos. |
 | Motor de simulação | Avançar o relógio simulado e aplicar regras. | `RaceState`, comandos, parâmetros e fonte aleatória. | Novo estado e eventos de domínio. |
 | Modelo de tempo de volta | Calcular ritmo e penalidades de cada carro. | Circuito, piloto, carro, pneu, combustível, clima e tráfego. | Tempo previsto e seus componentes. |
@@ -187,7 +192,7 @@ Esses eventos alimentam o histórico, as estatísticas e a criação de um novo 
 | Adaptador do dataset e ETL | Ler a fonte escolhida, padronizar tipos e validar qualidade. | Arquivos brutos do dataset do MVP. | Dados canônicos e relatório de qualidade. |
 | Calibração | Estimar parâmetros a partir de corridas históricas. | Tabelas canônicas. | Arquivo versionado de parâmetros. |
 | Persistência | Salvar dados tratados, cenários e resultados. | Objetos e tabelas internas. | Consultas reprodutíveis. |
-| Visualização 2D | Projetar a pista e posicionar marcadores por progresso. | Geometria, progresso e classificação. | Representação visual no frontend. |
+| Visualização 2D Arcade | Projetar a pista e posicionar marcadores por progresso. | Geometria, progresso e classificação recebidos. | Desenho da pista, carros e leaderboard. |
 
 ### Entidades e objetos de valor do domínio
 
@@ -377,11 +382,11 @@ Os adaptadores devem manter uma tabela de correspondência entre os identificado
 
 Separar **tempo simulado** de **tempo da interface**. O motor pode avançar por
 setor no MVP. Cada chamada a `advance()` processa o próximo setor ou evento e
-retorna um novo `RaceSnapshot`. O backend orquestra essa execução, e o frontend
-apenas consulta retratos ou resultados na frequência definida pela solução
-escolhida.
+retorna um novo `RaceSnapshot`. O backend orquestra essa execução, e o cliente
+Arcade consulta retratos ou resultados em intervalos controlados.
 
-Esse desenho evita que `sleep`, taxa de atualização do navegador ou desempenho da máquina alterem o resultado da corrida.
+Esse desenho evita que `sleep`, `arcade.Window.on_update`, taxa de quadros,
+latência HTTP ou desempenho da máquina alterem o resultado da corrida.
 
 ### 8.2 Tempo de volta
 
@@ -453,7 +458,7 @@ revista e aprovada no ADR antes de orientar a criação de diretórios:
 │       │   └── persistence/
 │       └── factories/
 ├── frontend/
-│   └── estrutura-a-definir/
+│   └── arcade/                    # views, desenho, controles e cliente HTTP
 ├── data/
 │   ├── raw/
 │   ├── curated/
@@ -468,19 +473,19 @@ revista e aprovada no ADR antes de orientar a criação de diretórios:
     └── acceptance/
 ```
 
-Os nomes exatos dependem da decisão arquitetural formal e da tecnologia de
-frontend. O importante é que Django, datasets e persistência dependam das
-portas do núcleo, e não o contrário.
+Os nomes exatos dependem da decisão arquitetural formal. O importante é que
+Arcade, Django, datasets e persistência permaneçam nas bordas e que o domínio
+não dependa deles.
 
 Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`. Um arquivo pequeno de exemplo pode ser versionado para os testes.
 
 ## 10. Próximos passos acordados
 
-1. Investigar tecnologias para o frontend, sem limitar a análise a abordagens
-   em Python puro, e comparar a integração de cada opção com Django.
-2. Estudar repositórios que implementem simuladores de corrida ou problemas
-   semelhantes, registrando ideias aproveitáveis, limitações e licenças; não
-   copiar estruturas sem relacioná-las aos requisitos deste projeto.
+1. Validar um spike de Arcade com troca entre `arcade.View`, pista simples e
+   execução sem janela para os testes que não precisam de renderização.
+2. Estudar o `IAmTomShaw/f1-race-replay`, registrando apenas ideias
+   aproveitáveis, limitações e licença; não copiar estrutura, código ou recursos
+   sem relacioná-los aos requisitos e preservar as atribuições aplicáveis.
 3. Buscar datasets além dos sugeridos pelo professor e comparar cobertura,
    granularidade, qualidade, licença e facilidade de integração.
 4. Escolher o único dataset e o único circuito do MVP.
@@ -488,17 +493,18 @@ Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`.
    a decisão do grupo, suas consequências e a organização resultante.
 6. Confirmar se combustível e interação física entre carros ficam fora do MVP
    ou se alguma aproximação mínima será critério de aceite.
-7. Atualizar CONTRIBUTING.MD para levar em conta as decisões tomadas.
+7. Planejar e acompanhar o trabalho nas GitHub Issues, mantendo
+   `docs/backlog.md` como espelho gerado para agentes e consulta offline.
 
 ## 11. Plano incremental de implementação
 
 ### Fase 0 — contrato do MVP
 
 - escolher uma corrida e um circuito de referência;
-- aprovar o ADR da arquitetura hexagonal, documentando MVC como alternativa considerada;
+- decidir e aprovar o ADR de arquitetura, comparando MVC e arquitetura hexagonal;
 - selecionar o dataset do MVP e registrar sua versão e licença;
-- escolher a tecnologia do frontend e documentar os critérios usados;
-- definir as telas e métricas obrigatórias;
+- validar Arcade/OpenGL nos ambientes do grupo;
+- definir os contratos HTTP/JSON, as três `arcade.View` e as métricas obrigatórias;
 - resolver a divergência de escopo sobre combustível e interação física;
 - criar critérios de aceitação e uma semente de demonstração.
 
@@ -516,17 +522,18 @@ Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`.
 - adicionar apenas as regras necessárias para concluir a corrida do cenário do MVP;
 - testar classificação, término e invariantes.
 
-### Fase 3 — aplicação web
+### Fase 3 — backend Django e aplicação desktop
 
 - integrar o backend Django aos casos de uso por portas de entrada;
-- implementar as telas Parâmetros, Corrida e Resultados;
-- desenhar circuito, marcadores e classificação com a tecnologia escolhida;
-- atualizar a tela da corrida em intervalo controlado;
-- tratar validações e falhas de comunicação sem mover regras para o frontend.
+- definir e testar o contrato HTTP/JSON entre Django e o cliente;
+- implementar `ParametersView`, `RaceView` e `ResultsView` com Arcade;
+- desenhar circuito, marcadores e classificação a partir de `RaceSnapshot`;
+- consultar snapshots em intervalo controlado sem bloquear o laço de eventos;
+- tratar validações e falhas de comunicação sem mover regras para a interface.
 
 ### Fase 4 — integração e entrega do MVP
 
-- executar pelo frontend uma corrida completa no circuito selecionado;
+- executar pelo cliente Arcade uma corrida completa no circuito selecionado;
 - verificar o resultado contra invariantes e referências do dataset;
 - medir tempo e memória de uma corrida completa;
 - preparar cenário de demonstração reproduzível;
@@ -578,12 +585,15 @@ e impossibilidade de dois carros ocuparem fisicamente o mesmo espaço.
 - um cenário salvo pode ser carregado e reproduzido;
 - Django aciona os casos de uso sem importar regras para suas *views*;
 - a visualização recebe pontos ordenados e posições dentro do comprimento da pista.
+- o cliente HTTP converte respostas em DTOs da apresentação e trata timeout sem bloquear a janela;
+- apresentadores e controladores do Arcade podem ser testados sem contexto OpenGL.
 
 ### Testes de aceitação
 
-- informar os parâmetros aceitos na tela Parâmetros;
-- iniciar e acompanhar uma corrida completa na tela Corrida;
-- consultar a classificação final na tela Resultados;
+- informar os parâmetros aceitos em `ParametersView`;
+- iniciar e acompanhar uma corrida completa em `RaceView`;
+- pausar/continuar, ajustar a velocidade visual e reiniciar pelos controles do Arcade;
+- consultar a classificação final em `ResultsView`;
 - rejeitar uma configuração inválida com mensagem compreensível;
 - repetir o cenário de demonstração com a mesma semente e obter o mesmo resultado.
 
@@ -593,8 +603,9 @@ e impossibilidade de dois carros ocuparem fisicamente o mesmo espaço.
 | --- | --- |
 | Linguagem do motor e backend | Python 3.12+ |
 | Backend web | Django |
-| Frontend | A definir após investigação; não precisa ser Python puro |
-| Gráficos e pista 2D | A definir com a tecnologia do frontend |
+| Frontend desktop | Arcade |
+| Gráficos e pista 2D | Primitivas, textos, sprites e `arcade.View` |
+| Integração frontend/backend | HTTP/JSON com consultas periódicas no MVP |
 | Transformação tabular | Pandas ou Polars |
 | Arquivos analíticos | Parquet com PyArrow |
 | Persistência local | SQLite |
@@ -625,7 +636,8 @@ parâmetros configuráveis e testes antes de ser incorporado ao motor.
 | Escopo excessivo | Um circuito e uma corrida completa antes de generalizar. |
 | Combustível e interação física com escopo contraditório | Resolver na Fase 0 e só então incluí-los nos critérios de aceite. |
 | Arquitetura implementada antes da aprovação | Aceitar o ADR antes de criar a estrutura definitiva. |
-| Escolha precipitada do frontend | Comparar alternativas com um protótipo pequeno integrado ao Django. |
+| Arcade/OpenGL indisponível em algum ambiente | Executar o spike da Fase 0 nos ambientes do grupo e documentar requisitos e falhas. |
+| Laço gráfico bloqueado por rede ou simulação | Cliente HTTP não bloqueante e tempo simulado independente de `on_update`. |
 | Modelo aparentemente preciso, mas sem evidência | Exibir decomposição do tempo e parâmetros calibrados. |
 | Junções erradas entre bases | IDs internos e tabelas de correspondência auditáveis. |
 | Telemetria pesada | Agregação prévia e Parquet; nunca carregar tudo na UI. |
@@ -637,6 +649,8 @@ parâmetros configuráveis e testes antes de ser incorporado ao motor.
 ## 16. Referências técnicas e de dados
 
 - [Documentação do Django](https://docs.djangoproject.com/)
+- [Documentação do Python Arcade](https://api.arcade.academy/)
+- [IAmTomShaw/f1-race-replay — referência visual em Arcade](https://github.com/IAmTomShaw/f1-race-replay)
 - [Base 1 — F1-Tyre-Strategy-Engine Datasets](https://www.kaggle.com/datasets/vanshbatra26/f1-tyre-strategy-engine-datasets)
 - [Base 2 — Formula 1: Race Data and Telemetry](https://www.kaggle.com/datasets/alexjr2001/formula-1-dataset-race-data-and-telemetry)
 - [Base 3 — Formula 1 Race Data](https://www.kaggle.com/datasets/jtrotman/formula-1-race-data)
@@ -646,8 +660,9 @@ parâmetros configuráveis e testes antes de ser incorporado ao motor.
 ### Decisões resumidas
 
 - **MVP:** um dataset, um ETL, um circuito, uma corrida completa e três telas.
-- **Frontend:** tecnologia ainda em investigação, sem exigência de Python puro.
+- **Frontend:** aplicação desktop Python com Arcade e três `arcade.View`.
 - **Backend:** Django como adaptador web; regras da corrida permanecem independentes do framework.
+- **Integração:** HTTP/JSON com consultas periódicas; sem WebSocket no MVP.
 - **Arquitetura:** hexagonal encaminhada na reunião e pendente de formalização em ADR; MVC será documentada como alternativa considerada.
 - **Padrões:** uso combinado de Adapter para normalização e Factory para construção de objetos complexos.
 - **Motor:** Python independente da interface e do formato das bases.

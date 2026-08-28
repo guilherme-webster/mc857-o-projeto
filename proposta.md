@@ -14,8 +14,11 @@
 
 ## 1\. Coleta, Análise e Modelagem de Dados
 
-Utilização dos datasets sugeridos somados a fontes externas para reunir o maior volume possível de dados sobre pilotos, circuitos, histórico de corridas e desempenho dos carros.  
-Os dados serão analisados para compreender como cada variável (como tipo de pista, habilidade do piloto e características do carro) impacta diretamente o ritmo da corrida, garantindo melhor fidelidade na simulação.
+No MVP, utilização de um único dataset, com fonte, versão e licença registradas,
+para uma corrida completa em um circuito. Fontes adicionais poderão ser
+incorporadas depois do primeiro incremento sem alterar o contrato do motor. Os
+dados serão analisados para compreender como cada variável (como tipo de pista,
+habilidade do piloto e características do carro) impacta o ritmo da corrida.
 
 ## 2\. Fatores de Simulação
 
@@ -32,6 +35,17 @@ Durante a corrida, a simulação levará em conta múltiplos fatores dinâmicos,
 
 ## 3\. Arquitetura do Sistema
 
-**Backend:** Concentrará o algoritmo principal responsável por calcular tempos de volta, perda de rendimento por desgaste de pneus, paradas no box e a ocorrência de imprevistos. Esses cálculos determinarão o progresso e a posição exata de cada carro na pista a cada instante, enviando os dados atualizados para a tela.
+**Backend:** Django exporá o contrato HTTP/JSON para configurar, iniciar e
+consultar a corrida. O motor Python independente dos frameworks calculará tempos
+de volta, perda de rendimento, paradas e imprevistos conforme o escopo de cada
+incremento. O backend disponibilizará snapshots; a interface não recalculará a
+classificação nem será a fonte de verdade da simulação.
 
-**Frontend:** Permitirá ao usuário selecionar os parâmetros iniciais (pilotos, pistas, clima e estratégias) e acompanhará a corrida por meio de um mapa 2D interativo com a localização de cada piloto ao longo do circuito, além de uma tabela com as posições, voltas e tempos.
+**Frontend:** Será uma aplicação desktop em Python implementada com a biblioteca
+Arcade. Permitirá ao usuário selecionar os parâmetros iniciais (pilotos, pistas,
+clima e estratégias) e acompanhar a corrida por meio de um mapa 2D interativo
+com a localização de cada piloto ao longo do circuito, além de uma tabela com as
+posições, voltas e tempos. A experiência visual terá como referência principal o
+projeto [IAmTomShaw/f1-race-replay](https://github.com/IAmTomShaw/f1-race-replay),
+sem confundir reprodução de telemetria histórica com o motor de simulação deste
+projeto.
