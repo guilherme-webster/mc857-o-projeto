@@ -38,7 +38,12 @@ Para apenas verificar se o arquivo versionado esta atualizado:
 python3 scripts/sync_github_backlog.py --check
 ```
 
-O workflow `.github/workflows/sync-backlog.yml` tambem regenera e versiona o
-arquivo automaticamente em alteracoes de issues e comentarios. Se a branch
-principal impedir pushes do `github-actions[bot]`, execute o comando local e
-inclua `docs/backlog.md` no PR normal.
+A sincronizacao nao e executada automaticamente quando issues ou comentarios
+mudam. Para atualizar o arquivo, execute o comando local acima e versione a
+mudanca normalmente. Como alternativa manual, o workflow
+`.github/workflows/sync-backlog.yml` pode ser iniciado pela pagina Actions do
+GitHub ou com:
+
+```bash
+gh workflow run sync-backlog.yml
+```

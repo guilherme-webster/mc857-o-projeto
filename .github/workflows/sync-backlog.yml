@@ -1,28 +1,6 @@
-name: Sincronizar backlog
+name: Sincronizar backlog manualmente
 
 on:
-  issues:
-    types:
-      - opened
-      - edited
-      - deleted
-      - transferred
-      - pinned
-      - unpinned
-      - closed
-      - reopened
-      - assigned
-      - unassigned
-      - labeled
-      - unlabeled
-      - locked
-      - unlocked
-      - milestoned
-      - demilestoned
-  issue_comment:
-    types: [created, edited, deleted]
-  schedule:
-    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
