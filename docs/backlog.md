@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:39:04Z
+- **Ultima atividade registrada:** 2026-08-28T23:40:23Z
 - **Abertas:** 21
 - **Fechadas:** 0
 
@@ -554,13 +554,13 @@
 - **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:34:43Z
-- **Atualizada:** 2026-08-28T23:36:55Z
+- **Atualizada:** 2026-08-28T23:40:23Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>O usuário deve ser capaz de controlar a velocidade com que a simulação é exibida na tela (exemplo: exibir a corrida em tempo real, exibir em 10x, 50x etc).</pre>
 
 </details>
 
