@@ -11,6 +11,7 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 - [Handoffs temporarios](docs/progresso.md)
 - [Guia de contribuicao](CONTRIBUTING.md)
 - [Registros de decisoes arquiteturais](docs/adr/README.md)
+- [Fluxo e responsabilidades do ETL](docs/fluxo-etl.md)
 
 O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
 experiencia de visualizacao do projeto
