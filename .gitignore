@@ -19,3 +19,12 @@ ai_memory
 
 # Arquivos temporários
 tmp
+
+# Artefatos Python gerados localmente
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Dados brutos e resultados gerados pelo ETL
+/data/raw/
+/data/curated/
