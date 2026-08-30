@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-30T06:23:11Z
+- **Ultima atividade registrada:** 2026-08-30T07:20:02Z
 - **Abertas:** 24
 - **Fechadas:** 0
 
@@ -689,13 +689,56 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** —
 - **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-08-30T06:22:43Z
+- **Atualizada:** 2026-08-30T07:20:02Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-08-30T07:10:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467318681)
+
+<pre>Primeira fatia vertical do ETL implementada localmente.
+
+Etapa alcançada:
+- aquisição reproduzível da Base Trotman v128 com verificação SHA-256;
+- Adapter para CSV/ZIP e normalização de tipos, unidades e identificadores;
+- Factory para construir dados canônicos validados;
+- persistência SQLite e relatório JSON de qualidade;
+- amostra CC0 versionada para testes;
+- corrida 1141 usada apenas como exemplo, sem decidir o circuito oficial do MVP.
+
+Verificações:
+- 7 testes aprovados;
+- Ruff aprovado;
+- `git diff --check` aprovado;
+- arquivo real processado: 20 participantes, 1.133 voltas e 35 pit stops, sem chaves órfãs;
+- nulos foram preservados, sem preenchimento silencioso com zero.
+
+Próximos passos:
+1. escolher a corrida e o circuito oficiais;
+2. definir como tratar pit stops associados a interrupções/bandeira vermelha;
+3. conectar o SQLite canônico ao consumidor previsto na issue #3.
+
+Bloqueio atual: escolha do cenário oficial do MVP. A issue permanece aberta.</pre>
+
+#### [@guilherme-webster em 2026-08-30T07:20:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467355299)
+
+<pre>A entrega foi reorganizada para permitir commits pequenos e funcionais. Os testes foram separados por aquisição, Factory, Adapter, SQLite e ETL integrado. A descoberta padrão do unittest também foi corrigida (`tests` agora é pacote e expõe o layout `src`).
+
+Verificações atualizadas:
+- `python3 -m unittest -v`: 13 testes aprovados;
+- descoberta explícita com `unittest discover`: 13 testes aprovados;
+- Ruff aprovado;
+- `git diff --check` aprovado.
+
+A implementação permanece sem commits para revisão e divisão pelo responsável.</pre>
 
 </details>
 
