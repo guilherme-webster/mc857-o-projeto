@@ -28,3 +28,6 @@ __pycache__/
 # Dados brutos e resultados gerados pelo ETL
 /data/raw/
 /data/curated/
+
+.vscode
+*.pyc
