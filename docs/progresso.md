@@ -13,4 +13,4 @@ arquivo: o estado oficial continua no GitHub.
 
 | Issue | Responsavel | Atualizado em | Etapa em que ficou | Evidencias | Proximo passo ou bloqueio |
 | --- | --- | --- | --- | --- | --- |
-| — | — | — | Nenhum handoff temporario pendente. | — | — |
+| #24 | @guilherme-webster | 2026-08-30T03:45:43-03:00 | Arquitetura e fonte inicial definidas; nenhum codigo de ETL iniciado. A issue permanece vinculada ao epico funcional #1, sem criacao de epico tecnico. | ADR 0002 aceito com data de 2026-08-28: arquitetura hexagonal, Adapter + Factory e dataset Trotman v128/CC0. Documentos de arquitetura e desenvolvimento atualizados; backlog com 24 issues abertas sincronizado. | Escolher a corrida e o circuito de referencia, registrar download e checksum da base e definir o esquema canonico minimo para iniciar a primeira fatia do ETL. |
