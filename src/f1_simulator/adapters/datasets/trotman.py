@@ -1,3 +1,5 @@
+"""Dataset adapter for the versioned James Trotman Formula 1 CSV files."""
+
 from __future__ import annotations
 
 import csv
@@ -21,7 +23,12 @@ class TrotmanDatasetError(ValueError):
 
 
 class TrotmanDatasetAdapter:
-    """Normalize one race from version 128 of the Trotman dataset."""
+    """Adapt version 128 of the Trotman CSV schema to normalized race rows.
+
+    The adapter accepts either the verified ZIP or an unpacked directory used
+    by small test fixtures. Trotman's ``\\N`` marker becomes ``None`` and all
+    time durations are emitted in milliseconds without imputation.
+    """
 
     REQUIRED_COLUMNS = {
         "circuits.csv": {
@@ -90,6 +97,12 @@ class TrotmanDatasetAdapter:
             )
 
     def load_race(self, race_external_id: int) -> NormalizedRaceData:
+        """Join and normalize all CSV rows belonging to ``race_external_id``.
+
+        Missing files, columns, referenced entities and malformed scalar values
+        raise ``TrotmanDatasetError`` before data reaches the shared factory.
+        """
+
         race_key = str(race_external_id)
         race_rows = self._read_rows("races.csv", lambda row: row["raceId"] == race_key)
         race_row = self._exactly_one(race_rows, f"raceId={race_key}")

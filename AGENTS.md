@@ -55,6 +55,9 @@ explicita e sem registrar versao, data, licenca e transformacoes.
 - Nao adicione abstracoes, dependencias ou padroes sem um problema concreto.
 - Mantenha unidades explicitas, parametros configuraveis e simulacoes
   reproduziveis por semente.
+- Escreva docstrings e comentarios ricos para contratos, invariantes,
+  conversoes e decisoes nao obvias. Explique o motivo e as fronteiras do
+  codigo, sem apenas parafrasear sua sintaxe.
 - Adicione ou atualize testes para comportamento novo e para correcoes de bugs.
 - Execute as verificacoes relevantes disponiveis no repositorio. Se alguma nao
   puder ser executada, explique o motivo no encerramento.

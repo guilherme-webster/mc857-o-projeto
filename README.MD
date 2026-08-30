@@ -55,6 +55,15 @@ Execute os testes sem instalar dependencias adicionais:
 python3 -m unittest -v
 ```
 
+O projeto usa o layout `src`: o pacote `f1_simulator` fica dentro dessa pasta,
+mas ainda nao e instalado no ambiente Python. A suite configura esse caminho em
+`tests/__init__.py`. Para importar o pacote em um comando Python avulso, informe
+o caminho explicitamente:
+
+```bash
+PYTHONPATH=src python3 -c "from f1_simulator.domain.race_data import RaceData"
+```
+
 ## Sincronizar o backlog
 
 Crie, edite, feche ou reabra as tarefas diretamente no GitHub. Para atualizar o

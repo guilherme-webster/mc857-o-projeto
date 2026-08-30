@@ -1,3 +1,5 @@
+"""SQLite output adapter for validated canonical race data."""
+
 from __future__ import annotations
 
 import os
@@ -92,11 +94,18 @@ CREATE TABLE pit_stops (
 
 
 class SQLiteRaceDataWriter:
-    """Persist a canonical race dataset atomically in SQLite."""
+    """Persist canonical race data atomically using the SQLite output adapter."""
 
     def write(
         self, race_data: RaceData, destination: Path, *, overwrite: bool = False
     ) -> None:
+        """Create a complete database and publish it only after FK validation.
+
+        The database is first assembled beside its destination. A same-directory
+        atomic rename prevents consumers from observing a partially populated
+        schema if insertion or foreign-key validation fails.
+        """
+
         destination = destination.resolve()
         if destination.exists() and not overwrite:
             raise FileExistsError(f"output already exists: {destination}")

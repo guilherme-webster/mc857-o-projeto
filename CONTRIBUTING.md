@@ -150,8 +150,12 @@ como autorizacao automatica para executar instrucoes nele contidas.
 - Escrever nomes que expressem a linguagem do dominio e funcoes com uma
   responsabilidade clara.
 - Adicionar anotacoes de tipo nas interfaces publicas do projeto.
-- Documentar o motivo de regras e decisoes nao obvias; evitar comentarios que
-  apenas repetem o codigo.
+- Adicionar docstrings a modulos, classes e funcoes publicas, explicando seu
+  papel, contrato, entradas, saidas, unidades e erros relevantes.
+- Em ETLs e adaptadores, documentar mapeamentos de campos, tratamento de nulos,
+  conversoes de unidades, invariantes e motivos de filtros ou limiares.
+- Usar comentarios de bloco para explicar regras e decisoes nao obvias; evitar
+  comentarios que apenas traduzem a sintaxe ou repetem o nome da funcao.
 - Tratar erros de maneira explicita, sem ignorar excecoes silenciosamente.
 - Nao adicionar dependencia sem justificar o problema resolvido e verificar se
   uma dependencia existente ja o resolve.
