@@ -1,3 +1,5 @@
+"""Construct and validate canonical race data from normalized primitive rows."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -22,10 +24,29 @@ class RaceDataValidationError(ValueError):
 
 
 class RaceDataFactory:
-    """Build domain objects without reading files or knowing source schemas."""
+    """Build canonical domain objects without knowing any external schema.
+
+    Adapters are responsible for parsing source formats into primitive rows.
+    This factory is the single validation boundary that assigns canonical IDs,
+    checks value ranges and rejects broken relationships before persistence or
+    simulation code can observe the data.
+    """
 
     @classmethod
     def create(cls, normalized: NormalizedRaceData) -> RaceData:
+        """Validate normalized rows and return one internally consistent race.
+
+        Numeric durations use milliseconds, coordinates use decimal degrees and
+        altitude uses metres. ``RaceDataValidationError`` identifies malformed
+        values, duplicate business keys and references to missing entities.
+        """
+
+        source_name = cls._text({"source_name": normalized.source_name}, "source_name")
+        source_version = cls._positive_int(
+            {"source_version": normalized.source_version}, "source_version"
+        )
+        source_sha256 = cls._sha256(normalized.source_sha256)
+
         circuit_id = cls._canonical_id("circuit", normalized.circuit["external_id"])
         race_id = cls._canonical_id("race", normalized.race["external_id"])
         if str(normalized.race["circuit_external_id"]) != str(
@@ -81,7 +102,10 @@ class RaceDataFactory:
         entries = tuple(
             cls._entry(row, race_id, driver_ids, team_ids) for row in normalized.entries
         )
+        if not entries:
+            raise RaceDataValidationError("race must contain at least one entry")
         entry_driver_ids = {entry.driver_id for entry in entries}
+        entry_team_ids = {entry.team_id for entry in entries}
         cls._require_unique(
             ((entry.race_id, entry.driver_id) for entry in entries), "race entries"
         )
@@ -89,9 +113,21 @@ class RaceDataFactory:
             ((entry.race_id, entry.classification_order) for entry in entries),
             "classification order",
         )
+        cls._require_unique(
+            (
+                (entry.race_id, entry.finish_position)
+                for entry in entries
+                if entry.finish_position is not None
+            ),
+            "finish positions",
+        )
         if entry_driver_ids != set(driver_ids.values()):
             raise RaceDataValidationError(
                 "drivers and race entries must describe the same participants"
+            )
+        if entry_team_ids != set(team_ids.values()):
+            raise RaceDataValidationError(
+                "teams and race entries must describe the same participants"
             )
 
         laps = tuple(cls._lap(row, race_id, driver_ids) for row in normalized.laps)
@@ -119,30 +155,30 @@ class RaceDataFactory:
         source_ids = [
             SourceId(
                 "circuit",
-                normalized.source_name,
+                source_name,
                 str(normalized.circuit["external_id"]),
                 circuit_id,
             ),
             SourceId(
                 "race",
-                normalized.source_name,
+                source_name,
                 str(normalized.race["external_id"]),
                 race_id,
             ),
         ]
         source_ids.extend(
-            SourceId("driver", normalized.source_name, external_id, canonical_id)
+            SourceId("driver", source_name, external_id, canonical_id)
             for external_id, canonical_id in driver_ids.items()
         )
         source_ids.extend(
-            SourceId("team", normalized.source_name, external_id, canonical_id)
+            SourceId("team", source_name, external_id, canonical_id)
             for external_id, canonical_id in team_ids.items()
         )
 
         return RaceData(
-            source_name=normalized.source_name,
-            source_version=normalized.source_version,
-            source_sha256=normalized.source_sha256,
+            source_name=source_name,
+            source_version=source_version,
+            source_sha256=source_sha256,
             circuit=circuit,
             race=race,
             drivers=drivers,
@@ -306,3 +342,15 @@ class RaceDataFactory:
         if value is not None and not isinstance(value, time):
             raise RaceDataValidationError(f"{key} must be a time or null")
         return value
+
+    @staticmethod
+    def _sha256(value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower() if isinstance(value, str) else ""
+        hexadecimal = set("0123456789abcdef")
+        if len(normalized) != 64 or any(char not in hexadecimal for char in normalized):
+            raise RaceDataValidationError(
+                "source_sha256 must be a 64-character hexadecimal digest or null"
+            )
+        return normalized
