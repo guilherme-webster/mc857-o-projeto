@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-30T08:06:03Z
+- **Ultima atividade registrada:** 2026-08-30T08:25:23Z
 - **Abertas:** 25
 - **Fechadas:** 0
 
@@ -689,7 +689,7 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** —
 - **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-08-30T08:06:03Z
+- **Atualizada:** 2026-08-30T08:25:23Z
 - **Fechada:** —
 
 <details>
@@ -700,7 +700,7 @@
 </details>
 
 <details>
-<summary>Comentarios (3)</summary>
+<summary>Comentarios (4)</summary>
 
 #### [@guilherme-webster em 2026-08-30T07:10:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467318681)
 
@@ -763,6 +763,13 @@ Verificações:
 - segunda execução sem `--overwrite`: recusada corretamente, preservando a saída existente.
 
 Próximos passos funcionais permanecem: escolher a corrida/circuito oficiais, decidir a política para pit stops associados a interrupções e conectar o dado canônico ao consumidor da issue #3. A issue #24 permanece aberta.
+</pre>
+
+#### [@guilherme-webster em 2026-08-30T08:25:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467625125)
+
+<pre>Documentacao complementar criada em `docs/fluxo-etl.md` para explicar o fluxo completo entre ponto de composicao, portas, adapter Trotman, DTO normalizado, servico de ingestao, Factory, dominio canonico e writer SQLite. O documento tambem inclui um exemplo de integracao de uma nova fonte e uma tabela resumindo as fronteiras. O README agora aponta para esse guia.
+
+Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao foram reexecutados.
 </pre>
 
 </details>
