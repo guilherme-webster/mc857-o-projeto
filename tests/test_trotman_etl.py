@@ -6,7 +6,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from f1_simulator.application.etl import run_trotman_etl
+from f1_simulator.adapters.datasets.trotman import TrotmanDatasetAdapter
+from f1_simulator.adapters.persistence.sqlite_race_data import SQLiteRaceDataWriter
+from f1_simulator.application.etl import run_race_etl
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,8 +22,9 @@ class TrotmanEtlTest(unittest.TestCase):
             database = temporary / "race.sqlite"
             report_path = temporary / "quality.json"
 
-            report = run_trotman_etl(
-                FIXTURE,
+            report = run_race_etl(
+                TrotmanDatasetAdapter(FIXTURE),
+                SQLiteRaceDataWriter(),
                 1141,
                 database,
                 report_path,

@@ -1,3 +1,5 @@
+"""Coordinate race-data ingestion, persistence and quality reporting."""
+
 from __future__ import annotations
 
 import json
@@ -5,24 +7,34 @@ import os
 import tempfile
 from pathlib import Path
 
-from f1_simulator.adapters.datasets.trotman import TrotmanDatasetAdapter
-from f1_simulator.adapters.persistence.sqlite_race_data import SQLiteRaceDataWriter
+from f1_simulator.application.ports.race_data import (
+    RaceDatasetPort,
+    RaceDataWriterPort,
+)
+from f1_simulator.application.race_data_ingestion import RaceDataIngestionService
 from f1_simulator.domain.race_data import RaceData
-from f1_simulator.factories.race_data_factory import RaceDataFactory
 
 
-def run_trotman_etl(
-    source: Path,
+def run_race_etl(
+    dataset: RaceDatasetPort,
+    writer: RaceDataWriterPort,
     race_external_id: int,
     destination: Path,
     report_destination: Path,
     *,
     overwrite: bool = False,
 ) -> dict[str, object]:
-    normalized = TrotmanDatasetAdapter(source).load_race(race_external_id)
-    race_data = RaceDataFactory.create(normalized)
+    """Ingest, validate and persist one race supplied by any dataset adapter.
+
+    Dataset selection and storage selection are injected at the composition
+    root. This function coordinates the batch and removes the database output
+    if writing its companion quality report fails, avoiding a partially
+    published pair of artifacts.
+    """
+
+    race_data = RaceDataIngestionService(dataset).load_race(race_external_id)
     report = build_quality_report(race_data)
-    SQLiteRaceDataWriter().write(race_data, destination, overwrite=overwrite)
+    writer.write(race_data, destination, overwrite=overwrite)
     try:
         _write_report(report, report_destination, overwrite=overwrite)
     except Exception:
@@ -32,6 +44,14 @@ def run_trotman_etl(
 
 
 def build_quality_report(data: RaceData) -> dict[str, object]:
+    """Summarize validated data and flag suspicious, source-preserved values.
+
+    Duplicate and orphan counts are zero because the factory rejects those
+    conditions before a ``RaceData`` instance can reach this function. A long
+    pit stop remains a warning: historical data may legitimately include red
+    flags or unusual timing and must not be silently discarded.
+    """
+
     long_pit_stops = sum(
         1
         for stop in data.pit_stops
@@ -83,6 +103,8 @@ def build_quality_report(data: RaceData) -> dict[str, object]:
 def _write_report(
     report: dict[str, object], destination: Path, *, overwrite: bool
 ) -> None:
+    """Publish the JSON report atomically through a same-directory rename."""
+
     destination = destination.resolve()
     if destination.exists() and not overwrite:
         raise FileExistsError(f"quality report already exists: {destination}")

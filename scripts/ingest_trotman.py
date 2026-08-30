@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Run the generic race ETL with the Trotman and SQLite adapters."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,6 +18,8 @@ DEFAULT_SOURCE = ROOT / "data" / "raw" / "formula-1-race-data-v128.zip"
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse source, race and output paths supplied to the ETL command."""
+
     parser = argparse.ArgumentParser(
         description="Normaliza uma corrida da Base Trotman v128 em SQLite."
     )
@@ -30,14 +34,25 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    from f1_simulator.adapters.datasets.trotman import TrotmanDatasetError
-    from f1_simulator.application.etl import run_trotman_etl
+    """Compose concrete adapters and report expected ingestion errors to the CLI."""
+
+    from f1_simulator.adapters.datasets.trotman import (
+        TrotmanDatasetAdapter,
+        TrotmanDatasetError,
+    )
+    from f1_simulator.adapters.persistence.sqlite_race_data import SQLiteRaceDataWriter
+    from f1_simulator.application.etl import run_race_etl
     from f1_simulator.factories.race_data_factory import RaceDataValidationError
 
     args = parse_args()
     try:
-        report = run_trotman_etl(
-            args.source,
+        # This CLI is the composition root: it chooses concrete adapters while
+        # the application service remains independent of Trotman and SQLite.
+        dataset = TrotmanDatasetAdapter(args.source)
+        writer = SQLiteRaceDataWriter()
+        report = run_race_etl(
+            dataset,
+            writer,
             args.race_id,
             args.output,
             args.report,
