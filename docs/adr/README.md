@@ -14,6 +14,7 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | ADR | Status | Decisao |
 | --- | --- | --- |
 | [0001](0001-frontend-desktop-com-arcade.md) | aceita | Frontend desktop em Python com Arcade. |
+| [0002](0002-arquitetura-hexagonal-e-integracao-de-dados.md) | aceita | Arquitetura hexagonal, integracao com Adapter + Factory e dataset Trotman para o MVP. |
 
 ## Modelo
 
@@ -44,7 +45,6 @@ Qual alternativa foi escolhida e por que ela atende melhor aos criterios?
 - Acoes de implementacao ou validacao necessarias.
 ```
 
-O ADR da escolha entre MVC e camadas com portas e adaptadores continua
-obrigatorio e deve incluir como as pastas e dependencias refletirao a decisao.
-Enquanto ele nao for aceito, nenhum outro ADR autoriza implicitamente uma
-estrutura definitiva para `src/`.
+O [ADR 0002](0002-arquitetura-hexagonal-e-integracao-de-dados.md) encerra a
+escolha entre MVC e camadas com portas e adaptadores. Alteracoes futuras dessas
+fronteiras devem ser registradas em um novo ADR que substitua a decisao aceita.

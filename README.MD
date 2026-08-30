@@ -16,8 +16,10 @@ O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
 experiencia de visualizacao do projeto
 [IAmTomShaw/f1-race-replay](https://github.com/IAmTomShaw/f1-race-replay). Django
 permanece como backend, e o motor de simulacao continuara independente dos dois
-frameworks. A escolha entre MVC e camadas com portas e adaptadores ainda deve
-ser registrada em um ADR antes de orientar a estrutura definitiva do codigo.
+frameworks. O
+[ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md)
+estabelece arquitetura hexagonal, integracao de dados com Adapter + Factory e a
+base Formula 1 Race Data, de James Trotman, como fonte inicial unica do MVP.
 
 Os comandos oficiais de instalacao, testes, analise estatica e execucao serao
 adicionados aqui quando a configuracao inicial do projeto for aprovada.

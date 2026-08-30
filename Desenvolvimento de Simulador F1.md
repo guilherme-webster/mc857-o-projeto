@@ -105,24 +105,19 @@ necessária para a tela; comandos e consultas são delegados ao backend.
 
 ## 3. Estilo arquitetural
 
-### 3.1 Encaminhamento da reunião e formalização
+### 3.1 Decisão arquitetural
 
-A reunião de 25 de agosto de 2026 encaminhou a adoção da **arquitetura
-hexagonal**, principalmente para isolar o modelo interno das diferenças entre
-datasets e permitir a substituição de fontes por adaptadores.
+Em 28 de agosto de 2026, o grupo adotou a **arquitetura hexagonal**, conforme o
+[ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md),
+principalmente para isolar o modelo interno das diferenças entre datasets e
+permitir a substituição de fontes por adaptadores.
 
-Como a decisão afeta a estrutura e as dependências do projeto, ela somente será
-considerada aceita após o registro e a aprovação de um ADR pelo grupo. Até essa
-formalização, as árvores de diretórios deste documento são ilustrativas e não
-autorizam a criação de uma estrutura definitiva.
+### 3.2 Aplicação da arquitetura hexagonal
 
-### 3.2 Aplicação da arquitetura hexagonal, se aceita
-
-Se o ADR confirmar o encaminhamento da reunião, o núcleo da simulação exporá
-portas para os casos de uso e para as dependências externas. Django, Arcade, o
-ETL, os datasets e a persistência ficarão nas bordas, implementando ou
-consumindo essas portas por meio de adaptadores. O diagrama abaixo é
-condicional, não uma decisão já aceita.
+O núcleo da simulação expõe portas para os casos de uso e para dependências
+externas quando houver uma fronteira ou variação concreta. Django, Arcade, o
+ETL, os datasets e a persistência ficam nas bordas, implementando ou consumindo
+essas portas por meio de adaptadores.
 
 ```text
 Cliente Arcade -> HTTP/JSON -> adaptador Django -> aplicação e domínio
@@ -146,11 +141,10 @@ segunda fonte realmente for incorporada.
 
 ### 3.3 Alternativa considerada — MVC
 
-MVC continua sendo uma alternativa tecnicamente possível e deverá constar no
-ADR como opção considerada. Sua nomenclatura se alinha diretamente às
-interações de interface e pode exigir menos abstrações no início. A arquitetura
-hexagonal, porém, foi o encaminhamento da reunião por tornar explícitas as
-fronteiras com os diferentes datasets.
+MVC foi considerado por alinhar sua nomenclatura diretamente às interações de
+interface e poder exigir menos abstrações no início. A arquitetura hexagonal foi
+escolhida por tornar explícitas as fronteiras com datasets, frameworks e
+persistência.
 
 O uso de *views* pelo Django não transforma automaticamente todo o sistema em
 MVC. Independentemente da arquitetura registrada, cálculos de volta,
@@ -205,14 +199,15 @@ Esses eventos alimentam o histórico, as estatísticas e a criação de um novo 
 
 Os estados devem usar unidades explícitas e consistentes: segundos, quilogramas, metros, quilômetros por hora e graus Celsius. Tempos textuais devem ser convertidos para número na ingestão, não dentro do motor.
 
-## 5. Padrões de projeto recomendados
+## 5. Padrões de projeto
 
 Os padrões abaixo resolvem variações reais deste sistema; não devem ser aplicados apenas para aumentar o número de classes.
 
 ### 5.1 Uso combinado de Adapter e Factory
 
-A reunião encaminhou uma abordagem que combina **Adapter** e **Factory**. Eles
-não são alternativas concorrentes: cada padrão resolve uma responsabilidade
+O [ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md)
+adotou uma abordagem combinada, ou híbrida, entre **Adapter** e **Factory**.
+Eles não são alternativas concorrentes: cada padrão resolve uma responsabilidade
 diferente.
 
 1. O `Adapter` converte os dados externos para tipos, unidades e identificadores
@@ -251,13 +246,13 @@ A fonte aleatória deve receber uma semente e ser injetada. O mesmo cenário, a 
 - heranças profundas para carros, equipes ou pneus: prefira composição e estratégias;
 - comunicação em tempo real própria antes de comprovar que atualização periódica é insuficiente.
 
-## 6. Dados sugeridos pelo professor
+## 6. Fontes de dados avaliadas
 
-As três bases abaixo são candidatas e complementares. Para o MVP, o grupo deverá
-selecionar apenas uma delas e implementar um único ETL. As demais permanecem
-como opções para investigação e expansão posterior. Toda fonte adotada deve ter
-versão, data de download e licença registradas, e seus arquivos brutos nunca
-devem ser editados manualmente.
+As três bases abaixo são complementares. O grupo selecionou a Base 3, Formula 1
+Race Data de James Trotman, como fonte inicial única do MVP e implementará um
+único ETL. As demais permanecem como opções para investigação e expansão
+posterior. Toda fonte adotada deve ter versão, data de download e licença
+registradas, e seus arquivos brutos nunca devem ser editados manualmente.
 
 ### 6.1 Base 1 — estratégia de pneus
 
@@ -299,7 +294,7 @@ Uso no projeto:
 
 Limitações: telemetria em alta frequência aumenta custo de memória e processamento e não deve ser lida inteira pela interface. A ingestão deve gerar agregados em Parquet. A página consultada não declara licença; antes de versionar ou redistribuir qualquer arquivo, a equipe deve confirmar as condições da versão baixada.
 
-### 6.3 Base 3 — histórico relacional de corridas
+### 6.3 Base 3 — histórico relacional de corridas — selecionada para o MVP
 
 **Fonte:** [Formula 1 Race Data](https://www.kaggle.com/datasets/jtrotman/formula-1-race-data)
 
@@ -313,9 +308,16 @@ Uso no projeto:
 - estimar taxas históricas de abandono e categorias de término;
 - montar amostras de treino, calibração e validação separadas por corrida.
 
-A licença declarada é **CC0**, o que facilita o uso como espinha dorsal cadastral. A base não substitui os dados de composto, clima ou telemetria detalhada das duas primeiras fontes.
+A versão inicial selecionada é a **128** e a licença declarada é **CC0**, o que
+facilita o uso como espinha dorsal cadastral. A base não substitui os dados de
+composto, clima ou telemetria detalhada das duas primeiras fontes. Essas lacunas
+não autorizam combinar outra fonte silenciosamente no MVP.
 
 ### 6.4 Matriz de uso das fontes
+
+A matriz abaixo registra possibilidades de evolução. No MVP, somente a Base 3
+será ingerida; referências às Bases 1 e 2 não autorizam sua incorporação nesse
+incremento.
 
 | Necessidade | Base principal | Complemento | Observação |
 | --- | --- | --- | --- |
@@ -440,8 +442,9 @@ A classificação deve ser calculada pelo estado do domínio. A posição gráfi
 
 ## 9. Estrutura de diretórios sugerida
 
-Esta árvore é apenas uma ilustração das fronteiras discutidas. Ela deverá ser
-revista e aprovada no ADR antes de orientar a criação de diretórios:
+Esta árvore orienta a separação inicial definida pelo ADR 0002. Os nomes exatos
+podem evoluir conforme as primeiras fatias verticais, desde que preservem as
+dependências da arquitetura hexagonal:
 
 ```text
 .
@@ -473,9 +476,9 @@ revista e aprovada no ADR antes de orientar a criação de diretórios:
     └── acceptance/
 ```
 
-Os nomes exatos dependem da decisão arquitetural formal. O importante é que
-Arcade, Django, datasets e persistência permaneçam nas bordas e que o domínio
-não dependa deles.
+O importante é que Arcade, Django, datasets e persistência permaneçam nas
+bordas e que o domínio não dependa deles. Portas, adaptadores e factories devem
+ser criados apenas quando a fatia implementada exigir essas responsabilidades.
 
 Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`. Um arquivo pequeno de exemplo pode ser versionado para os testes.
 
@@ -486,11 +489,11 @@ Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`.
 2. Estudar o `IAmTomShaw/f1-race-replay`, registrando apenas ideias
    aproveitáveis, limitações e licença; não copiar estrutura, código ou recursos
    sem relacioná-los aos requisitos e preservar as atribuições aplicáveis.
-3. Buscar datasets além dos sugeridos pelo professor e comparar cobertura,
-   granularidade, qualidade, licença e facilidade de integração.
-4. Escolher o único dataset e o único circuito do MVP.
-5. Escrever e aprovar o ADR que compara MVC com arquitetura hexagonal e registra
-   a decisão do grupo, suas consequências e a organização resultante.
+3. Escolher uma corrida e um circuito presentes na base Formula 1 Race Data para
+   o cenário de referência do MVP.
+4. Refinar a issue #24 e implementar a primeira fatia do ETL usando a versão 128
+   da base selecionada.
+5. Definir o esquema canônico mínimo compartilhado entre o Adapter e a Factory.
 6. Confirmar se combustível e interação física entre carros ficam fora do MVP
    ou se alguma aproximação mínima será critério de aceite.
 7. Planejar e acompanhar o trabalho nas GitHub Issues, mantendo
@@ -501,8 +504,8 @@ Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`.
 ### Fase 0 — contrato do MVP
 
 - escolher uma corrida e um circuito de referência;
-- decidir e aprovar o ADR de arquitetura, comparando MVC e arquitetura hexagonal;
-- selecionar o dataset do MVP e registrar sua versão e licença;
+- aplicar o ADR 0002 e preservar as fronteiras da arquitetura hexagonal;
+- registrar a data de download e o checksum da versão 128 do dataset do MVP;
 - validar Arcade/OpenGL nos ambientes do grupo;
 - definir os contratos HTTP/JSON, as três `arcade.View` e as métricas obrigatórias;
 - resolver a divergência de escopo sobre combustível e interação física;
@@ -602,6 +605,9 @@ e impossibilidade de dois carros ocuparem fisicamente o mesmo espaço.
 | Área | Tecnologia |
 | --- | --- |
 | Linguagem do motor e backend | Python 3.12+ |
+| Arquitetura | Hexagonal |
+| Integração de dados | Adapter + Factory |
+| Dataset inicial | Formula 1 Race Data, versão 128, CC0 |
 | Backend web | Django |
 | Frontend desktop | Arcade |
 | Gráficos e pista 2D | Primitivas, textos, sprites e `arcade.View` |
@@ -635,7 +641,7 @@ parâmetros configuráveis e testes antes de ser incorporado ao motor.
 | --- | --- |
 | Escopo excessivo | Um circuito e uma corrida completa antes de generalizar. |
 | Combustível e interação física com escopo contraditório | Resolver na Fase 0 e só então incluí-los nos critérios de aceite. |
-| Arquitetura implementada antes da aprovação | Aceitar o ADR antes de criar a estrutura definitiva. |
+| Abstrações arquiteturais prematuras | Criar portas e interfaces somente para fronteiras ou variações concretas. |
 | Arcade/OpenGL indisponível em algum ambiente | Executar o spike da Fase 0 nos ambientes do grupo e documentar requisitos e falhas. |
 | Laço gráfico bloqueado por rede ou simulação | Cliente HTTP não bloqueante e tempo simulado independente de `on_update`. |
 | Modelo aparentemente preciso, mas sem evidência | Exibir decomposição do tempo e parâmetros calibrados. |
@@ -663,8 +669,9 @@ parâmetros configuráveis e testes antes de ser incorporado ao motor.
 - **Frontend:** aplicação desktop Python com Arcade e três `arcade.View`.
 - **Backend:** Django como adaptador web; regras da corrida permanecem independentes do framework.
 - **Integração:** HTTP/JSON com consultas periódicas; sem WebSocket no MVP.
-- **Arquitetura:** hexagonal encaminhada na reunião e pendente de formalização em ADR; MVC será documentada como alternativa considerada.
-- **Padrões:** uso combinado de Adapter para normalização e Factory para construção de objetos complexos.
+- **Arquitetura:** hexagonal, aceita no ADR 0002; MVC foi a alternativa considerada.
+- **Padrões:** uso combinado de Adapter para normalização e Factory para construção de objetos complexos, aceito no ADR 0002.
+- **Dataset inicial:** Formula 1 Race Data de James Trotman, versão 128 e licença CC0.
 - **Motor:** Python independente da interface e do formato das bases.
 - **Evoluções:** combustível detalhado, perfis de pilotos e interação física entre carros não bloqueiam o núcleo do MVP enquanto o grupo não resolver a divergência de escopo.
 - **Reprodutibilidade:** semente, versão dos dados e parâmetros registrados em toda simulação.

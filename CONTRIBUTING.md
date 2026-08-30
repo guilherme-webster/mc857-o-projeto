@@ -38,14 +38,20 @@ O plano atual estabelece:
 - Arcade para a interface grafica desktop do MVP;
 - Django como backend acessado pelo cliente Arcade por um contrato HTTP/JSON;
 - uma aplicacao modular, sem microsservicos ou WebSocket proprio;
+- arquitetura hexagonal, com dominio e casos de uso no nucleo;
+- integracao de dados combinando Adapter para normalizacao e Factory para
+  construcao de objetos validos;
 - motor de simulacao independente da interface e das fontes de dados;
 - execucao reproduzivel com fonte aleatoria injetada e semente registrada;
+- dataset `jtrotman/formula-1-race-data`, versao 128 e licenca CC0, como fonte
+  inicial unica do MVP;
 - arquivos brutos e grandes fora do Git, com pequenas amostras versionadas para
   testes quando necessario.
 
-A escolha entre MVC e camadas com portas e adaptadores permanece pendente. Ela
-deve ser aprovada pelo grupo e registrada em `docs/adr/` antes de orientar a
-estrutura definitiva de `src/`.
+A escolha entre MVC e camadas com portas e adaptadores foi encerrada pelo
+[ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md).
+Novas abstracoes devem continuar justificadas por fronteiras ou variacoes
+concretas, sem antecipar componentes apenas para reproduzir um diagrama.
 
 ## Fluxo de desenvolvimento
 

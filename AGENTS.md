@@ -21,12 +21,14 @@ locais. Ele pode complementar, mas nao substituir, as regras versionadas.
 
 ## Estado arquitetural atual
 
-A arquitetura entre MVC e camadas com portas e adaptadores ainda nao foi
-decidida. Nao apresente uma das alternativas como se estivesse aprovada e nao
-crie uma estrutura hibrida por conveniencia. Uma decisao estrutural deve ser
-registrada em um ADR aceito pelo grupo.
+A arquitetura hexagonal foi aceita no ADR 0002. Dominio e casos de uso ficam no
+nucleo; Arcade, Django, ingestao, datasets e persistencia ficam nas bordas. A
+integracao de dados combina Adapter, para normalizar formatos externos, e
+Factory, para construir objetos validos a partir dos dados canonicos. Nao
+transforme essa combinacao de padroes em uma arquitetura hibrida nem crie
+interfaces sem uma fronteira ou variacao concreta.
 
-Enquanto a decisao estiver pendente, preserve estas fronteiras:
+Preserve estas fronteiras:
 
 - regras da corrida independem de Arcade, Django e formatos de dados;
 - `arcade.View`, widgets e estado da janela nao sao a fonte de verdade da
@@ -39,6 +41,10 @@ O frontend do MVP foi escolhido: sera uma aplicacao desktop feita com a
 biblioteca Python Arcade, conforme o ADR aceito em `docs/adr/`. Django continua
 como adaptador do backend. Nao substitua essa combinacao nem acople o laco de
 renderizacao ao relogio da simulacao sem um novo ADR aceito.
+
+O dataset inicial do MVP e `jtrotman/formula-1-race-data`, versao 128, com
+licenca CC0, conforme o ADR 0002. Nao acrescente outra fonte ao MVP sem decisao
+explicita e sem registrar versao, data, licenca e transformacoes.
 
 ## Forma de trabalhar
 
