@@ -21,8 +21,39 @@ frameworks. O
 estabelece arquitetura hexagonal, integracao de dados com Adapter + Factory e a
 base Formula 1 Race Data, de James Trotman, como fonte inicial unica do MVP.
 
-Os comandos oficiais de instalacao, testes, analise estatica e execucao serao
-adicionados aqui quando a configuracao inicial do projeto for aprovada.
+## ETL da Base Trotman
+
+Baixe e verifique o arquivo bruto da versao 128:
+
+```bash
+python3 scripts/download_trotman.py
+```
+
+Converta uma corrida para o esquema canonico em SQLite. O `raceId` 1141 e usado
+apenas como exemplo reproduzivel da corrida de Sao Paulo de 2024; a corrida
+oficial do MVP ainda deve ser escolhida pelo grupo.
+
+```bash
+python3 scripts/ingest_trotman.py \
+  --race-id 1141 \
+  --output data/curated/race-1141.sqlite \
+  --report data/curated/race-1141-quality.json
+```
+
+Arquivos em `data/raw/` e `data/curated/` sao locais e ignorados pelo Git. A
+origem, versao, licenca e checksum esperado estao registrados em
+`data/sources/trotman-v128.json`.
+
+O SQLite gerado contem `metadata`, `source_ids`, `circuits`, `drivers`, `teams`,
+`races`, `race_entries`, `laps` e `pit_stops`. Tempos sao armazenados em
+milissegundos e ausencias permanecem `NULL`. O JSON de qualidade registra
+contagens, nulos, duplicatas, referencias orfas e pit stops anormalmente longos.
+
+Execute os testes sem instalar dependencias adicionais:
+
+```bash
+python3 -m unittest -v
+```
 
 ## Sincronizar o backlog
 
