@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-28T23:43:44Z
-- **Abertas:** 21
+- **Ultima atividade registrada:** 2026-08-30T06:23:11Z
+- **Abertas:** 24
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -21,7 +21,7 @@
 - **Labels:** Épico
 - **Milestone:** —
 - **Issue-pai:** —
-- **Sub-issues:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2), [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3), [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4)
+- **Sub-issues:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2), [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3), [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4), [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Criada:** 2026-08-28T22:59:38Z
 - **Atualizada:** 2026-08-28T23:29:11Z
 - **Fechada:** —
@@ -41,6 +41,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-30T06:22:44Z — sub-issue adicionada: #24 por @guilherme-webster
 - 2026-08-28T23:04:16Z — sub-issue adicionada: #4 por @Jmvjr
 - 2026-08-28T23:04:02Z — sub-issue adicionada: #3 por @Jmvjr
 - 2026-08-28T23:03:17Z — sub-issue adicionada: #2 por @Jmvjr
@@ -118,13 +119,13 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:04:14Z
-- **Atualizada:** 2026-08-28T23:04:40Z
+- **Atualizada:** 2026-08-30T06:21:20Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>Configuração do usuário deve puxar dados do backend e passar para a etapa de simulação</pre>
 
 </details>
 
@@ -297,7 +298,7 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
-- **Sub-issues:** —
+- **Sub-issues:** [#23 — Resultado final da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/23)
 - **Criada:** 2026-08-28T23:07:15Z
 - **Atualizada:** 2026-08-28T23:15:26Z
 - **Fechada:** —
@@ -312,6 +313,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-08-28T23:48:15Z — sub-issue adicionada: #23 por @DaviGabrielBC
 - 2026-08-28T23:07:17Z — label adicionada: História por @Jmvjr
 
 </details>
@@ -624,6 +626,84 @@
 <summary>Historico de estado</summary>
 
 - 2026-08-28T23:37:02Z — label adicionada: Task por @ViniciusFCoracin
+
+</details>
+
+### [#22 — teste](https://github.com/guilherme-webster/mc857-o-projeto/issues/22)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:45:38Z
+- **Atualizada:** 2026-08-28T23:45:38Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+### [#23 — Resultado final da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/23)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:48:14Z
+- **Atualizada:** 2026-08-28T23:48:14Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Na tela de resultados, o usuário poderá visualizar uma tabela contendo o ranque e os tempos finais de todos os jogadores</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-28T23:48:16Z — label adicionada: Task por @DaviGabrielBC
+
+</details>
+
+### [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
+- **Sub-issues:** —
+- **Criada:** 2026-08-30T06:22:43Z
+- **Atualizada:** 2026-08-30T06:22:43Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-08-30T06:22:44Z — label adicionada: História por @guilherme-webster
+- 2026-08-30T06:22:43Z — atribuida: @guilherme-webster por @guilherme-webster
 
 </details>
 
