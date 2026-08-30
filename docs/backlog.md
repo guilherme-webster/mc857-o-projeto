@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-30T07:20:02Z
-- **Abertas:** 24
+- **Ultima atividade registrada:** 2026-08-30T08:06:03Z
+- **Abertas:** 25
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -689,7 +689,7 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** —
 - **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-08-30T07:20:02Z
+- **Atualizada:** 2026-08-30T08:06:03Z
 - **Fechada:** —
 
 <details>
@@ -700,7 +700,7 @@
 </details>
 
 <details>
-<summary>Comentarios (2)</summary>
+<summary>Comentarios (3)</summary>
 
 #### [@guilherme-webster em 2026-08-30T07:10:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467318681)
 
@@ -740,6 +740,31 @@ Verificações atualizadas:
 
 A implementação permanece sem commits para revisão e divisão pelo responsável.</pre>
 
+#### [@guilherme-webster em 2026-08-30T08:06:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467542384)
+
+<pre>A fronteira do ETL foi revisada após feedback de legibilidade, importação e extensibilidade.
+
+Etapa alcançada:
+- documentado o layout `src` e o uso de `PYTHONPATH=src` para imports Python avulsos;
+- criados os contratos `RaceDatasetPort` e `RaceDataWriterPort`;
+- criado `RaceDataIngestionService` como articulador genérico entre adapters de datasets, Factory e domínio;
+- removidas as dependências diretas da aplicação em Trotman e SQLite; o script Trotman agora é o ponto de composição dos adapters concretos;
+- adicionadas docstrings sobre contratos, unidades, nulos, invariantes e atomicidade, além da regra correspondente em `CONTRIBUTING.md` e `AGENTS.md`;
+- ampliada a Factory para validar metadados da fonte, SHA-256, corrida sem participantes, equipes não representadas e posições finais duplicadas;
+- ampliado o teste de construção para comparar o agregado canônico completo (metadados, circuito, corrida, pilotos, equipes, inscrições, voltas, pit stops e IDs de origem), com casos inválidos de faixas e durações;
+- adicionado teste com adapter fictício para provar a substituição da fonte sem alterar o serviço.
+
+Verificações:
+- `python3 -m unittest -v`: 18 testes aprovados;
+- Ruff format/check: aprovado nos arquivos alterados;
+- `git diff --check`: aprovado;
+- import avulso com `PYTHONPATH=src`: aprovado;
+- ZIP real Trotman v128 processado: 20 participantes, 10 equipes, 1.133 voltas e 35 pit stops;
+- segunda execução sem `--overwrite`: recusada corretamente, preservando a saída existente.
+
+Próximos passos funcionais permanecem: escolher a corrida/circuito oficiais, decidir a política para pit stops associados a interrupções e conectar o dado canônico ao consumidor da issue #3. A issue #24 permanece aberta.
+</pre>
+
 </details>
 
 <details>
@@ -747,6 +772,27 @@ A implementação permanece sem commits para revisão e divisão pelo responsáv
 
 - 2026-08-30T06:22:44Z — label adicionada: História por @guilherme-webster
 - 2026-08-30T06:22:43Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#25 — Implementar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/25)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-08-30T07:58:27Z
+- **Atualizada:** 2026-08-30T07:58:27Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
 
 </details>
 
