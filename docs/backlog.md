@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-08-30T06:23:11Z
-- **Abertas:** 24
+- **Ultima atividade registrada:** 2026-08-30T08:25:23Z
+- **Abertas:** 25
 - **Fechadas:** 0
 
 ## Issues abertas
@@ -689,7 +689,7 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** —
 - **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-08-30T06:22:43Z
+- **Atualizada:** 2026-08-30T08:25:23Z
 - **Fechada:** —
 
 <details>
@@ -700,10 +700,106 @@
 </details>
 
 <details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-08-30T07:10:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467318681)
+
+<pre>Primeira fatia vertical do ETL implementada localmente.
+
+Etapa alcançada:
+- aquisição reproduzível da Base Trotman v128 com verificação SHA-256;
+- Adapter para CSV/ZIP e normalização de tipos, unidades e identificadores;
+- Factory para construir dados canônicos validados;
+- persistência SQLite e relatório JSON de qualidade;
+- amostra CC0 versionada para testes;
+- corrida 1141 usada apenas como exemplo, sem decidir o circuito oficial do MVP.
+
+Verificações:
+- 7 testes aprovados;
+- Ruff aprovado;
+- `git diff --check` aprovado;
+- arquivo real processado: 20 participantes, 1.133 voltas e 35 pit stops, sem chaves órfãs;
+- nulos foram preservados, sem preenchimento silencioso com zero.
+
+Próximos passos:
+1. escolher a corrida e o circuito oficiais;
+2. definir como tratar pit stops associados a interrupções/bandeira vermelha;
+3. conectar o SQLite canônico ao consumidor previsto na issue #3.
+
+Bloqueio atual: escolha do cenário oficial do MVP. A issue permanece aberta.</pre>
+
+#### [@guilherme-webster em 2026-08-30T07:20:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467355299)
+
+<pre>A entrega foi reorganizada para permitir commits pequenos e funcionais. Os testes foram separados por aquisição, Factory, Adapter, SQLite e ETL integrado. A descoberta padrão do unittest também foi corrigida (`tests` agora é pacote e expõe o layout `src`).
+
+Verificações atualizadas:
+- `python3 -m unittest -v`: 13 testes aprovados;
+- descoberta explícita com `unittest discover`: 13 testes aprovados;
+- Ruff aprovado;
+- `git diff --check` aprovado.
+
+A implementação permanece sem commits para revisão e divisão pelo responsável.</pre>
+
+#### [@guilherme-webster em 2026-08-30T08:06:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467542384)
+
+<pre>A fronteira do ETL foi revisada após feedback de legibilidade, importação e extensibilidade.
+
+Etapa alcançada:
+- documentado o layout `src` e o uso de `PYTHONPATH=src` para imports Python avulsos;
+- criados os contratos `RaceDatasetPort` e `RaceDataWriterPort`;
+- criado `RaceDataIngestionService` como articulador genérico entre adapters de datasets, Factory e domínio;
+- removidas as dependências diretas da aplicação em Trotman e SQLite; o script Trotman agora é o ponto de composição dos adapters concretos;
+- adicionadas docstrings sobre contratos, unidades, nulos, invariantes e atomicidade, além da regra correspondente em `CONTRIBUTING.md` e `AGENTS.md`;
+- ampliada a Factory para validar metadados da fonte, SHA-256, corrida sem participantes, equipes não representadas e posições finais duplicadas;
+- ampliado o teste de construção para comparar o agregado canônico completo (metadados, circuito, corrida, pilotos, equipes, inscrições, voltas, pit stops e IDs de origem), com casos inválidos de faixas e durações;
+- adicionado teste com adapter fictício para provar a substituição da fonte sem alterar o serviço.
+
+Verificações:
+- `python3 -m unittest -v`: 18 testes aprovados;
+- Ruff format/check: aprovado nos arquivos alterados;
+- `git diff --check`: aprovado;
+- import avulso com `PYTHONPATH=src`: aprovado;
+- ZIP real Trotman v128 processado: 20 participantes, 10 equipes, 1.133 voltas e 35 pit stops;
+- segunda execução sem `--overwrite`: recusada corretamente, preservando a saída existente.
+
+Próximos passos funcionais permanecem: escolher a corrida/circuito oficiais, decidir a política para pit stops associados a interrupções e conectar o dado canônico ao consumidor da issue #3. A issue #24 permanece aberta.
+</pre>
+
+#### [@guilherme-webster em 2026-08-30T08:25:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467625125)
+
+<pre>Documentacao complementar criada em `docs/fluxo-etl.md` para explicar o fluxo completo entre ponto de composicao, portas, adapter Trotman, DTO normalizado, servico de ingestao, Factory, dominio canonico e writer SQLite. O documento tambem inclui um exemplo de integracao de uma nova fonte e uma tabela resumindo as fronteiras. O README agora aponta para esse guia.
+
+Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao foram reexecutados.
+</pre>
+
+</details>
+
+<details>
 <summary>Historico de estado</summary>
 
 - 2026-08-30T06:22:44Z — label adicionada: História por @guilherme-webster
 - 2026-08-30T06:22:43Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#25 — Implementar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/25)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-08-30T07:58:27Z
+- **Atualizada:** 2026-08-30T07:58:27Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
 
 </details>
 

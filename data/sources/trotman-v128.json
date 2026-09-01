@@ -1,0 +1,10 @@
+{
+  "dataset_ref": "jtrotman/formula-1-race-data",
+  "dataset_url": "https://www.kaggle.com/datasets/jtrotman/formula-1-race-data",
+  "download_url": "https://www.kaggle.com/api/v1/datasets/download/jtrotman/formula-1-race-data?datasetVersionNumber=128",
+  "version": 128,
+  "license": "CC0: Public Domain",
+  "downloaded_at": "2026-08-30",
+  "archive_name": "formula-1-race-data-v128.zip",
+  "archive_sha256": "a2bc49fd55b10543f9e598c181cc549af8ea425ecbc411a86f9ff99520e30c44"
+}
