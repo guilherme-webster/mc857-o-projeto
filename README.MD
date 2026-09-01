@@ -65,6 +65,24 @@ o caminho explicitamente:
 PYTHONPATH=src python3 -c "from f1_simulator.domain.race_data import RaceData"
 ```
 
+## Tela inicial com Arcade
+
+Crie um ambiente virtual, instale as dependencias e execute a tela de
+configuracao:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m frontend.arcade
+```
+
+A `ParametersView` apresenta os dados historicos da corrida de referencia como
+somente leitura e permite alterar o numero de voltas. O botao de clima abre uma
+segunda `arcade.View`, na qual uma condicao pode ser aplicada a intervalos de
+voltas. O botao de inicio valida o formulario, mas a conexao com Django e com o
+motor pertence a um incremento posterior.
+
 ## Sincronizar o backlog
 
 Crie, edite, feche ou reabra as tarefas diretamente no GitHub. Para atualizar o
