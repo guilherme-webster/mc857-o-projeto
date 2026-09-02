@@ -41,6 +41,21 @@ TIMELINE_RIGHT = TIMELINE_LEFT + TIMELINE_WIDTH
 SUMMARY_PAGE_SIZE = 8
 SUMMARY_PREVIOUS_BOUNDS = (1100, 238, 28, 24)
 SUMMARY_NEXT_BOUNDS = (1192, 238, 28, 24)
+NAVIGATION_BOUNDS = {
+    "Sessão": (0, 570, SIDEBAR_WIDTH, 42),
+    "Pista": (0, 528, SIDEBAR_WIDTH, 42),
+    "Clima": (0, 476, SIDEBAR_WIDTH, 42),
+    "Assistências": (0, 434, SIDEBAR_WIDTH, 42),
+    "Regras": (0, 392, SIDEBAR_WIDTH, 42),
+    "Carros": (0, 350, SIDEBAR_WIDTH, 42),
+}
+TOPIC_DESCRIPTIONS = {
+    "Sessão": "Os parâmetros gerais da sessão serão configurados aqui.",
+    "Pista": "Autódromo José Carlos Pace • São Paulo, Brasil",
+    "Assistências": "As assistências de pilotagem ainda não fazem parte do MVP.",
+    "Regras": "As regras configuráveis serão adicionadas em um próximo incremento.",
+    "Carros": "A seleção e os ajustes dos carros dependem da integração com o ETL.",
+}
 MUTED_BORDER_COLOR = (35, 47, 61)
 SURFACE_COLOR = (12, 19, 29)
 CARD_COLOR = (15, 24, 36)
@@ -88,7 +103,7 @@ class DashboardButton:
         )
 
 
-class WeatherConfigurationView(UIView):
+class TrackConfigurationView(UIView):
     """Edit a lap weather schedule while keeping rules outside the UI.
 
     Clicking a palette item selects a condition. A click-drag over the bar
@@ -100,6 +115,7 @@ class WeatherConfigurationView(UIView):
         super().__init__()
         self.parent = parent
         self.schedule = schedule
+        self.active_topic = "Clima"
         self.selected_weather = WEATHER_OPTIONS[0]
         self._drag_start_lap: int | None = None
         self._drag_current_lap: int | None = None
@@ -210,6 +226,10 @@ class WeatherConfigurationView(UIView):
 
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
+        topic = self._topic_at_position(x, y)
+        if topic is not None:
+            self._select_topic(topic)
+            return
         action_button = self._button_at_position(x, y)
         if action_button is not None:
             self._pressed_button = action_button
@@ -313,9 +333,38 @@ class WeatherConfigurationView(UIView):
         """Return the custom action button under the pointer, when present."""
 
         return next(
-            (button for button in self._action_buttons if button.contains(x, y)),
+            (
+                button
+                for button in self._action_buttons
+                if button.contains(x, y)
+                and (button is not self.apply_button or self.active_topic == "Clima")
+            ),
             None,
         )
+
+    @staticmethod
+    def _topic_at_position(x: int, y: int) -> str | None:
+        """Return the sidebar topic represented by a pointer position."""
+
+        for topic, bounds in NAVIGATION_BOUNDS.items():
+            if TrackConfigurationView._position_in_bounds(x, y, bounds):
+                return topic
+        return None
+
+    def _select_topic(self, topic: str) -> None:
+        """Activate one track topic and expose only its relevant widgets."""
+
+        self.active_topic = topic
+        climate_visible = topic == "Clima"
+        self.start_lap_input.visible = climate_visible
+        self.end_lap_input.visible = climate_visible
+        if climate_visible:
+            self._set_status(
+                "Escolha uma condição e arraste sobre a timeline.",
+                SECONDARY_TEXT_COLOR,
+            )
+        else:
+            self._set_status(TOPIC_DESCRIPTIONS[topic], SECONDARY_TEXT_COLOR)
 
     def _handle_summary_navigation(self, x: int, y: int) -> bool:
         """Change summary pages when one of the compact controls is clicked."""
@@ -388,17 +437,39 @@ class WeatherConfigurationView(UIView):
 
         self._draw_shell()
         self._draw_action_buttons()
-        self._draw_weather_palette()
-        self._draw_timeline()
-        self._draw_weather_legend()
-        self._draw_summary_cards()
-        for text in self._static_texts:
-            text.draw()
+        if self.active_topic == "Clima":
+            self._draw_weather_palette()
+            self._draw_timeline()
+            self._draw_weather_legend()
+            self._draw_summary_cards()
+        else:
+            self._draw_topic_placeholder()
+        for index in (0, 1, 2, 9, 10):
+            self._static_texts[index].draw()
+        self._draw_navigation_texts()
+        if self.active_topic == "Clima":
+            for text in self._static_texts[11:]:
+                text.draw()
         self._status_text.draw()
         arcade.draw_texture_rect(
             self._logo.texture,
             arcade.LBWH(8, 683, 46, 22),
         )
+
+    def _draw_navigation_texts(self) -> None:
+        """Draw sidebar labels with emphasis following the active topic."""
+
+        for topic, (_, bottom, _, height) in NAVIGATION_BOUNDS.items():
+            arcade.Text(
+                topic,
+                38,
+                bottom + height / 2,
+                PRIMARY_TEXT_COLOR
+                if topic == self.active_topic
+                else SECONDARY_TEXT_COLOR,
+                11,
+                anchor_y="center",
+            ).draw()
 
     def _draw_shell(self) -> None:
         """Draw header, navigation rail and the three content cards."""
@@ -421,8 +492,11 @@ class WeatherConfigurationView(UIView):
         self._draw_rounded_panel(
             358, 492, 124, 34, 5, CARD_COLOR_LIGHT, MUTED_BORDER_COLOR
         )
-        arcade.draw_lbwh_rectangle_filled(0, 476, SIDEBAR_WIDTH, 42, (55, 18, 25))
-        arcade.draw_lbwh_rectangle_filled(0, 476, 3, 42, ACCENT_COLOR)
+        active_bounds = NAVIGATION_BOUNDS[self.active_topic]
+        arcade.draw_lbwh_rectangle_filled(*active_bounds, (55, 18, 25))
+        arcade.draw_lbwh_rectangle_filled(
+            active_bounds[0], active_bounds[1], 3, active_bounds[3], ACCENT_COLOR
+        )
         self._draw_rounded_panel(
             1086, 680, 72, 28, 6, CARD_COLOR_LIGHT, MUTED_BORDER_COLOR
         )
@@ -431,6 +505,8 @@ class WeatherConfigurationView(UIView):
         """Draw custom rounded buttons with hover and pressed feedback."""
 
         for button in self._action_buttons:
+            if button is self.apply_button and self.active_topic != "Clima":
+                continue
             hovered = button is self._hovered_button
             pressed = button is self._pressed_button
             if button.primary:
@@ -456,6 +532,43 @@ class WeatherConfigurationView(UIView):
                 11,
                 anchor_x="center",
                 anchor_y="center",
+            ).draw()
+
+    def _draw_topic_placeholder(self) -> None:
+        """Present the selected topic without inventing unsupported settings."""
+
+        self._draw_rounded_panel(
+            198, 110, 1038, 466, 6, CARD_COLOR, MUTED_BORDER_COLOR
+        )
+        arcade.Text(
+            self.active_topic,
+            230,
+            520,
+            PRIMARY_TEXT_COLOR,
+            20,
+            bold=True,
+        ).draw()
+        arcade.Text(
+            TOPIC_DESCRIPTIONS[self.active_topic],
+            230,
+            482,
+            SECONDARY_TEXT_COLOR,
+            12,
+        ).draw()
+        if self.active_topic == "Pista":
+            arcade.Text(
+                "São Paulo Grand Prix 2024",
+                230,
+                430,
+                PRIMARY_TEXT_COLOR,
+                14,
+            ).draw()
+            arcade.Text(
+                f"{self.schedule.total_laps} voltas • dados canônicos do dataset Trotman v128",
+                230,
+                400,
+                SECONDARY_TEXT_COLOR,
+                11,
             ).draw()
 
     def _draw_weather_palette(self) -> None:
@@ -735,8 +848,8 @@ class WeatherConfigurationView(UIView):
             arcade.Text("Assistências", 38, 450, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Regras", 38, 408, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Carros", 38, 366, SECONDARY_TEXT_COLOR, 11),
-            arcade.Text("Clima por volta", 198, 614, PRIMARY_TEXT_COLOR, 26, bold=True),
-            arcade.Text(f"Defina as condições climáticas ao longo das {self.schedule.total_laps} voltas da corrida.", 198, 590, SECONDARY_TEXT_COLOR, 11),
+            arcade.Text("Configuração da pista", 198, 614, PRIMARY_TEXT_COLOR, 26, bold=True),
+            arcade.Text("Autódromo José Carlos Pace • São Paulo, Brasil", 198, 590, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Intervalo de voltas", 214, 548, PRIMARY_TEXT_COLOR, 12, bold=True),
             arcade.Text("Volta inicial", 276, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"),
             arcade.Text("Volta final", 420, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"),
@@ -800,3 +913,8 @@ class WeatherConfigurationView(UIView):
             max(radius - inset, 0),
             fill_color,
         )
+
+
+# Transitional name retained for callers created before this view expanded
+# from a climate-only editor into the complete track configuration shell.
+WeatherConfigurationView = TrackConfigurationView

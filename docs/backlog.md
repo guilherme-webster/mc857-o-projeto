@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-01T22:04:02Z
-- **Abertas:** 26
+- **Ultima atividade registrada:** 2026-09-02T15:08:26Z
+- **Abertas:** 29
 - **Fechadas:** 1
 
 ## Issues abertas
@@ -689,15 +689,35 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** —
+- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
 - **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-08-30T08:25:23Z
+- **Atualizada:** 2026-09-01T23:33:21Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.</pre>
+<pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.
+
+as subissues envolvem implementar componentes que servirão para comunicação com o consumo dos dados do ETL. 
+
+RaceDataRepository é apenas um contrato, não executa nada;
+SQLiteRaceDataRepository é quem realmente consulta o banco;
+GetSimulationScenario só se justifica se houver alguma regra ou composição além de repassar a consulta;
+
+Ideia de fluxo:
+
+Persistência SQLite
+        ↓
+SQLiteRaceDataRepository:  é quem realmente consulta o banco;
+        ↓ implementa a porta
+RaceDataRepository:  é apenas um contrato, não executa nada;
+        ↓
+Caso de uso GetSimulationScenario: só se justifica se houver alguma regra ou composição além de repassar a consulta; averiguar se faz sentido dentro do contexto do projeto
+        ↓
+DTO com as opções da corrida
+        ↓ futuramente
+Django → HTTP/JSON → Arcade</pre>
 
 </details>
 
@@ -779,6 +799,9 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-01T22:36:36Z — sub-issue adicionada: #32 por @guilherme-webster
+- 2026-09-01T22:35:54Z — sub-issue adicionada: #31 por @guilherme-webster
+- 2026-09-01T22:35:19Z — sub-issue adicionada: #30 por @guilherme-webster
 - 2026-08-30T06:22:44Z — label adicionada: História por @guilherme-webster
 - 2026-08-30T06:22:43Z — atribuida: @guilherme-webster por @guilherme-webster
 
@@ -790,18 +813,25 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
 - **Responsaveis:** —
-- **Labels:** —
+- **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-08-30T07:58:27Z
-- **Atualizada:** 2026-08-30T07:58:27Z
+- **Atualizada:** 2026-09-01T22:12:34Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-01T22:12:34Z — label adicionada: Task por @guilherme-webster
 
 </details>
 
@@ -816,7 +846,7 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-09-01T21:06:18Z
-- **Atualizada:** 2026-09-01T22:04:02Z
+- **Atualizada:** 2026-09-02T15:08:26Z
 - **Fechada:** —
 
 <details>
@@ -827,7 +857,7 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 </details>
 
 <details>
-<summary>Comentarios (9)</summary>
+<summary>Comentarios (10)</summary>
 
 #### [@Jmvjr em 2026-09-01T21:10:18Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500479689)
 
@@ -929,6 +959,20 @@ Verificações: 36 testes passando, `compileall`, `git diff --check` e inspeçã
 
 Verificações: 37 testes passando, `compileall`, `git diff --check` e inspeção visual no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
 
+#### [@Jmvjr em 2026-09-02T15:08:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5511748928)
+
+<pre>Fluxo de configuração reorganizado conforme nova direção:
+
+- a tela inicial agora seleciona a pista da simulação;
+- como o ADR 0002 limita o MVP a um circuito, a seleção apresenta apenas o Autódromo José Carlos Pace com os dados atuais;
+- o antigo editor climático passou a ser `TrackConfigurationView`, uma tela geral de configuração da pista;
+- o menu lateral alterna entre Sessão, Pista, Clima, Assistências, Regras e Carros;
+- Clima mantém toda a edição funcional existente; Pista exibe os dados disponíveis; tópicos ainda fora do MVP mostram seu estado sem inventar parâmetros;
+- o nome `WeatherConfigurationView` foi preservado como alias temporário para compatibilidade;
+- adicionados testes para abrir a pista selecionada e navegar pelos tópicos.
+
+Verificações: 39 testes passando, `compileall`, inspeção visual das telas e `git diff --check` nos arquivos-fonte. O espelho gerado `docs/backlog.md` contém um espaço final proveniente do texto de uma issue e não foi editado manualmente. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
 </details>
 
 <details>
@@ -936,6 +980,69 @@ Verificações: 37 testes passando, `compileall`, `git diff --check` e inspeçã
 
 - 2026-09-01T21:06:20Z — label adicionada: Task por @Jmvjr
 - 2026-09-01T21:06:18Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
+### [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:35:17Z
+- **Atualizada:** 2026-09-01T22:35:17Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+### [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:35:52Z
+- **Atualizada:** 2026-09-01T22:35:52Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>componente que serve apenas para leitura</pre>
+
+</details>
+
+### [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:36:34Z
+- **Atualizada:** 2026-09-01T22:36:34Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
 
 </details>
 

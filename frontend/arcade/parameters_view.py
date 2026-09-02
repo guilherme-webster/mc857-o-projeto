@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from copy import deepcopy
+from pathlib import Path
 
 import arcade
 from arcade.gui import UIDropdown, UIFlatButton, UIInputText, UIView
@@ -30,12 +31,17 @@ from frontend.arcade.theme import (
 )
 
 
-class ParametersView(UIView):
-    """Render and collect the initial race configuration with Arcade widgets.
+TRACK_CARD_BOUNDS = (104, 230, 1072, 300)
+CONFIGURE_TRACK_BOUNDS = (880, 270, 240, 52)
+LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
 
-    The view owns only presentation state. A future HTTP client or application
-    controller can be injected through ``on_start``; no simulation rule or
-    frame-dependent clock is implemented here.
+
+class ParametersView(UIView):
+    """Select the circuit that will be configured for the simulation.
+
+    The MVP currently exposes only the circuit selected by ADR 0002. Legacy
+    form widgets remain as hidden controller state so the configuration contract
+    and tests stay compatible while the visible flow becomes track-first.
     """
 
     def __init__(
@@ -48,7 +54,7 @@ class ParametersView(UIView):
         self.initial = initial or ConfigurationFormData()
         self.configuration = self.initial
         self._on_start = on_start
-        self._status_message = "Ajuste os parâmetros editáveis para continuar."
+        self._status_message = "Selecione uma pista para abrir suas configurações."
         self._status_color = SECONDARY_TEXT_COLOR
         self._controls = {
             control.identifier: control for control in self.layout.controls
@@ -67,13 +73,23 @@ class ParametersView(UIView):
         self.start_button = self._add_button(
             "start_simulation", self.submit_configuration, primary=True
         )
-        self._static_texts = self._create_static_texts()
+        for widget in (
+            self.preset_dropdown,
+            self.laps_input,
+            self.weather_button,
+            self.reset_button,
+            self.start_button,
+        ):
+            widget.visible = False
+        self._configure_pressed = False
+        self._configure_hovered = False
+        self._logo_texture = arcade.load_texture(LOGO_PATH)
         self._status_text = arcade.Text(
             self._status_message,
-            48,
-            72,
+            104,
+            166,
             self._status_color,
-            14,
+            12,
         )
         weather_control = self._controls["weather_summary"]
         self._weather_summary_text = arcade.Text(
@@ -185,8 +201,8 @@ class ParametersView(UIView):
         self._update_weather_summary()
         self._set_status("Configuração restaurada.", SECONDARY_TEXT_COLOR)
 
-    def open_weather_configuration(self) -> None:
-        """Validate the lap count and navigate to weather-by-lap editing."""
+    def open_track_configuration(self) -> None:
+        """Validate the selected scenario and open its track configurator."""
 
         try:
             self.configuration = ConfigurationFormData.from_text(
@@ -198,14 +214,19 @@ class ParametersView(UIView):
             self._set_status(str(error), ERROR_COLOR)
             return
 
-        from frontend.arcade.weather_view import WeatherConfigurationView
+        from frontend.arcade.weather_view import TrackConfigurationView
 
         self.window.show_view(
-            WeatherConfigurationView(
+            TrackConfigurationView(
                 parent=self,
                 schedule=self.configuration.weather_schedule,
             )
         )
+
+    def open_weather_configuration(self) -> None:
+        """Keep the former navigation entry compatible during the UI migration."""
+
+        self.open_track_configuration()
 
     def accept_weather_schedule(self, schedule: WeatherSchedule) -> None:
         """Receive a weather schedule saved by the secondary Arcade view."""
@@ -245,14 +266,150 @@ class ParametersView(UIView):
         arcade.set_background_color(BACKGROUND_COLOR)
 
     def on_draw_before_ui(self) -> None:
-        """Draw the static panels and labels behind the interactive widgets."""
+        """Draw the track-selection screen before hidden controller widgets."""
 
-        self._draw_panels()
-        arcade.draw_lbwh_rectangle_filled(48, 638, 72, 4, ACCENT_COLOR)
-        for text in self._static_texts:
-            text.draw()
-        self._weather_summary_text.draw()
+        arcade.draw_lbwh_rectangle_filled(0, 0, 1280, 720, BACKGROUND_COLOR)
+        arcade.draw_lbwh_rectangle_filled(0, 668, 1280, 52, (7, 12, 19))
+        arcade.draw_line(0, 668, 1280, 668, PANEL_BORDER_COLOR, 1)
+        arcade.draw_texture_rect(
+            self._logo_texture,
+            arcade.LBWH(16, 683, 46, 22),
+        )
+        self._draw_rounded_panel(
+            *TRACK_CARD_BOUNDS, 10, PANEL_COLOR, PANEL_BORDER_COLOR
+        )
+        self._draw_track_button()
+        self._draw_track_texts()
         self._status_text.draw()
+
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int) -> None:
+        """Provide hover feedback for the selected track action."""
+
+        self._configure_hovered = self._contains(CONFIGURE_TRACK_BOUNDS, x, y)
+
+    def on_mouse_press(
+        self, x: int, y: int, button: int, modifiers: int
+    ) -> None:
+        """Begin the custom configure-button interaction."""
+
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            self._configure_pressed = self._contains(
+                CONFIGURE_TRACK_BOUNDS, x, y
+            )
+
+    def on_mouse_release(
+        self, x: int, y: int, button: int, modifiers: int
+    ) -> None:
+        """Open the track configurator when the button click completes."""
+
+        if button != arcade.MOUSE_BUTTON_LEFT:
+            return
+        should_open = self._configure_pressed and self._contains(
+            CONFIGURE_TRACK_BOUNDS, x, y
+        )
+        self._configure_pressed = False
+        if should_open:
+            self.open_track_configuration()
+
+    def _draw_track_button(self) -> None:
+        """Draw the rounded action that enters the selected track."""
+
+        left, bottom, width, height = CONFIGURE_TRACK_BOUNDS
+        fill = (
+            (161, 22, 31)
+            if self._configure_pressed
+            else (232, 43, 53)
+            if self._configure_hovered
+            else (204, 31, 42)
+        )
+        self._draw_rounded_panel(
+            left, bottom, width, height, 8, fill, (238, 55, 64)
+        )
+        arcade.Text(
+            "Selecionar e configurar",
+            left + width / 2,
+            bottom + height / 2,
+            PRIMARY_TEXT_COLOR,
+            12,
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+
+    def _draw_track_texts(self) -> None:
+        """Draw the single circuit currently supported by the MVP dataset."""
+
+        summary = self.configuration.weather_schedule.compact_summary(2)
+        texts = (
+            arcade.Text("SIMULADOR DE CORRIDA", 76, 690, SECONDARY_TEXT_COLOR, 10, bold=True),
+            arcade.Text("Selecione a pista", 104, 602, PRIMARY_TEXT_COLOR, 30, bold=True),
+            arcade.Text("Escolha onde a simulação será realizada.", 104, 570, SECONDARY_TEXT_COLOR, 13),
+            arcade.Text("PISTA DISPONÍVEL", 136, 486, ACCENT_COLOR, 9, bold=True),
+            arcade.Text("Autódromo José Carlos Pace", 136, 442, PRIMARY_TEXT_COLOR, 24, bold=True),
+            arcade.Text("São Paulo, Brasil", 136, 410, SECONDARY_TEXT_COLOR, 13),
+            arcade.Text("São Paulo Grand Prix 2024", 136, 360, PRIMARY_TEXT_COLOR, 13),
+            arcade.Text(f"{self.configuration.laps} voltas", 136, 332, SECONDARY_TEXT_COLOR, 11),
+            arcade.Text("Dataset Trotman v128 • circuito único do MVP", 136, 286, SECONDARY_TEXT_COLOR, 10),
+            arcade.Text("Configuração atual", 620, 442, SECONDARY_TEXT_COLOR, 10),
+            arcade.Text(summary, 620, 410, PRIMARY_TEXT_COLOR, 11, width=220, multiline=True),
+        )
+        for text in texts:
+            text.draw()
+
+    @staticmethod
+    def _contains(
+        bounds: tuple[int, int, int, int], x: int, y: int
+    ) -> bool:
+        """Return whether a pointer lies inside one custom control."""
+
+        left, bottom, width, height = bounds
+        return left <= x <= left + width and bottom <= y <= bottom + height
+
+    @staticmethod
+    def _draw_rounded_rectangle(
+        left: float,
+        bottom: float,
+        width: float,
+        height: float,
+        radius: float,
+        color: tuple[int, ...],
+    ) -> None:
+        """Fill a rounded rectangle with Arcade's basic primitives."""
+
+        radius = min(radius, width / 2, height / 2)
+        arcade.draw_lbwh_rectangle_filled(
+            left + radius, bottom, width - 2 * radius, height, color
+        )
+        arcade.draw_lbwh_rectangle_filled(
+            left, bottom + radius, width, height - 2 * radius, color
+        )
+        for center_x in (left + radius, left + width - radius):
+            for center_y in (bottom + radius, bottom + height - radius):
+                arcade.draw_circle_filled(center_x, center_y, radius, color)
+
+    @classmethod
+    def _draw_rounded_panel(
+        cls,
+        left: float,
+        bottom: float,
+        width: float,
+        height: float,
+        radius: float,
+        fill_color: tuple[int, ...],
+        border_color: tuple[int, ...],
+    ) -> None:
+        """Draw a one-pixel rounded border around a filled panel."""
+
+        cls._draw_rounded_rectangle(
+            left, bottom, width, height, radius, border_color
+        )
+        cls._draw_rounded_rectangle(
+            left + 1,
+            bottom + 1,
+            width - 2,
+            height - 2,
+            max(radius - 1, 0),
+            fill_color,
+        )
 
     def _draw_panels(self) -> None:
         """Draw the three content cards declared by the shared layout."""

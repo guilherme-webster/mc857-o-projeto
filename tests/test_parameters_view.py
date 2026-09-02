@@ -11,12 +11,16 @@ try:
         ConfigurationFormData,
         WeatherSchedule,
     )
-    from frontend.arcade.parameters_view import ParametersView
+    from frontend.arcade.parameters_view import (
+        CONFIGURE_TRACK_BOUNDS,
+        ParametersView,
+    )
     from frontend.arcade.weather_view import (
         TIMELINE_BOTTOM,
         TIMELINE_LEFT,
         TIMELINE_WIDTH,
         SUMMARY_NEXT_BOUNDS,
+        NAVIGATION_BOUNDS,
         WEATHER_ICON_PATHS,
         WEATHER_PALETTE_BOUNDS,
         WEATHER_TIMELINE_COLORS,
@@ -97,6 +101,36 @@ class ParametersViewTest(unittest.TestCase):
 
         self.assertIsInstance(self.window.current_view, WeatherConfigurationView)
         self.assertEqual(self.window.current_view.schedule.total_laps, 71)
+
+    def test_initial_screen_opens_the_selected_track_configuration(self) -> None:
+        view = ParametersView()
+        self.window.show_view(view)
+        left, bottom, width, height = CONFIGURE_TRACK_BOUNDS
+        x = int(left + width / 2)
+        y = int(bottom + height / 2)
+
+        view.on_mouse_press(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
+        view.on_mouse_release(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
+
+        self.assertIsInstance(self.window.current_view, WeatherConfigurationView)
+        self.assertFalse(view.preset_dropdown.visible)
+        self.assertFalse(view.laps_input.visible)
+
+    def test_track_configuration_uses_the_sidebar_to_change_topics(self) -> None:
+        parent = ParametersView()
+        view = WeatherConfigurationView(parent, WeatherSchedule.dry(69))
+        left, bottom, width, height = NAVIGATION_BOUNDS["Pista"]
+
+        view.on_mouse_press(
+            int(left + width / 2),
+            int(bottom + height / 2),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
+        )
+
+        self.assertEqual(view.active_topic, "Pista")
+        self.assertFalse(view.start_lap_input.visible)
+        self.assertFalse(view.end_lap_input.visible)
 
     def test_weather_view_applies_an_interval_and_saves_it_in_parent(self) -> None:
         parent = ParametersView()
