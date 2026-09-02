@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-01T18:07:06Z
-- **Abertas:** 26
-- **Fechadas:** 0
+- **Ultima atividade registrada:** 2026-09-02T15:08:26Z
+- **Abertas:** 29
+- **Fechadas:** 1
 
 ## Issues abertas
 
@@ -58,7 +58,7 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14), [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26)
+- **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14), [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26), [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29)
 - **Criada:** 2026-08-28T23:03:16Z
 - **Atualizada:** 2026-08-28T23:31:22Z
 - **Fechada:** —
@@ -73,6 +73,7 @@
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-01T21:06:20Z — sub-issue adicionada: #29 por @Jmvjr
 - 2026-09-01T15:38:19Z — sub-issue adicionada: #26 por @Jmvjr
 - 2026-08-28T23:19:05Z — sub-issue adicionada: #14 por @Jmvjr
 - 2026-08-28T23:16:53Z — sub-issue adicionada: #13 por @Jmvjr
@@ -688,15 +689,35 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** —
+- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
 - **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-08-30T08:25:23Z
+- **Atualizada:** 2026-09-01T23:33:21Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.</pre>
+<pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.
+
+as subissues envolvem implementar componentes que servirão para comunicação com o consumo dos dados do ETL. 
+
+RaceDataRepository é apenas um contrato, não executa nada;
+SQLiteRaceDataRepository é quem realmente consulta o banco;
+GetSimulationScenario só se justifica se houver alguma regra ou composição além de repassar a consulta;
+
+Ideia de fluxo:
+
+Persistência SQLite
+        ↓
+SQLiteRaceDataRepository:  é quem realmente consulta o banco;
+        ↓ implementa a porta
+RaceDataRepository:  é apenas um contrato, não executa nada;
+        ↓
+Caso de uso GetSimulationScenario: só se justifica se houver alguma regra ou composição além de repassar a consulta; averiguar se faz sentido dentro do contexto do projeto
+        ↓
+DTO com as opções da corrida
+        ↓ futuramente
+Django → HTTP/JSON → Arcade</pre>
 
 </details>
 
@@ -778,6 +799,9 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-01T22:36:36Z — sub-issue adicionada: #32 por @guilherme-webster
+- 2026-09-01T22:35:54Z — sub-issue adicionada: #31 por @guilherme-webster
+- 2026-09-01T22:35:19Z — sub-issue adicionada: #30 por @guilherme-webster
 - 2026-08-30T06:22:44Z — label adicionada: História por @guilherme-webster
 - 2026-08-30T06:22:43Z — atribuida: @guilherme-webster por @guilherme-webster
 
@@ -789,12 +813,12 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
 - **Responsaveis:** —
-- **Labels:** —
+- **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-08-30T07:58:27Z
-- **Atualizada:** 2026-08-30T07:58:27Z
+- **Atualizada:** 2026-09-01T22:12:34Z
 - **Fechada:** —
 
 <details>
@@ -804,10 +828,230 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 
 </details>
 
-### [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26)
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-01T22:12:34Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T21:06:18Z
+- **Atualizada:** 2026-09-02T15:08:26Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve poder escolher o clima da pista em cada uma das voltas</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (10)</summary>
+
+#### [@Jmvjr em 2026-09-01T21:10:18Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500479689)
+
+<pre>Etapa concluida localmente, sem commit: adicionada uma timeline colorida na WeatherConfigurationView. Seco usa amarelo, chuva leve azul claro e chuva intensa azul escuro; cada faixa ocupa largura proporcional ao numero inclusivo de voltas configuradas. A barra atualiza imediatamente ao aplicar um intervalo e inclui legenda e marcacoes de volta inicial, intermediaria e final. Verificacoes: 32 testes aprovados com Arcade 3.3.3 e ARCADE_GUI_TEST=True; compileall e git diff --check aprovados; tela 1280x720 renderizada e inspecionada. Proximo passo: revisao e commit pelo responsavel. Nenhum git add, commit ou push foi executado.</pre>
+
+#### [@Jmvjr em 2026-09-01T21:15:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500537398)
+
+<pre>Andamento da tela de configuração de clima:
+
+- adicionada seleção da condição por uma paleta de cores;
+- adicionada pintura de um intervalo diretamente na timeline por clique e arraste, com prévia durante o gesto;
+- o intervalo é inclusivo, aceita arraste nos dois sentidos e limita solturas além das extremidades à primeira/última volta;
+- os campos numéricos continuam disponíveis e são sincronizados com a seleção feita pelo mouse;
+- adicionados testes da seleção da paleta, pintura reversa e limite da timeline.
+
+Verificações executadas: `ARCADE_GUI_TEST=True .venv/bin/python -m unittest -v` (35 testes, todos passando), `compileall` e `git diff --check`. Também foi feita inspeção visual da tela Arcade.
+
+Próximo passo: revisão manual da interação e decisão sobre eventuais ajustes visuais. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-01T21:32:09Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500718784)
+
+<pre>Atualização da implementação:
+
+- reformulado o visual da tela de clima conforme o mockup enviado;
+- adicionados cabeçalho, menu lateral, cards escuros, timeline com divisores, legenda e resumo por intervalo;
+- adicionada a logo fornecida em `frontend/arcade/assets/f1-logo.png`, com o arquivo original preservado como `f1-original.png`;
+- removida a opção Nublado, pois ela não faz parte das condições suportadas atualmente pelo projeto;
+- mantida a configuração rápida por clique na condição e arraste na timeline.
+
+Verificações: 35 testes passando, `compileall`, `git diff --check` e inspeção visual headless no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-01T21:36:24Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500765119)
+
+<pre>Refinamento visual concluído:
+
+- botões de ação agora possuem borda permanente e estados próprios para normal, hover e pressionado;
+- campos numéricos receberam fundo e bordas coerentes com o dashboard;
+- botões da paleta ganharam borda, realce superior e destaque mais claro da condição selecionada;
+- timeline recebeu moldura externa, realce interno e divisores com contorno, marca central e número da volta.
+
+Verificações: 35 testes passando, `compileall`, `git diff --check` e inspeção visual headless no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-01T21:40:18Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500805608)
+
+<pre>Correção visual das bordas concluída:
+
+- substituídos os botões quadrados do `UIFlatButton` por botões desenhados com cantos realmente arredondados e áreas clicáveis equivalentes;
+- adicionados estados hover e pressionado aos novos botões;
+- paleta climática, campos, painéis e cards de resumo agora usam cantos arredondados;
+- timeline recebeu extremidades arredondadas e moldura curva, preservando segmentos e divisores.
+
+Verificações: 35 testes passando, `compileall`, `git diff --check` e inspeção visual no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-01T21:43:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500836227)
+
+<pre>Ajustes finais de alinhamento concluídos:
+
+- timeline ampliada para ocupar toda a largura interna do card;
+- adicionada borda arredondada contínua e mais visível ao redor da barra;
+- valores dos campos de volta inicial/final centralizados horizontal e verticalmente;
+- rótulos desses campos centralizados sobre os respectivos inputs;
+- marcações e divisores foram reposicionados proporcionalmente à nova largura.
+
+Verificações: 35 testes passando, `compileall`, `git diff --check` e inspeção visual no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-01T21:45:36Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5500860145)
+
+<pre>Correção adicional da timeline concluída:
+
+- removidas as abas/quinas causadas pelo preenchimento retangular atravessando as extremidades arredondadas;
+- moldura e conteúdo agora são desenhados em camadas separadas;
+- segmentos inicial e final recebem pontas arredondadas próprias dentro da borda;
+- divisores continuam alinhados proporcionalmente ao espaço interno da barra;
+- validado visualmente também o caso de intervalo único (voltas 1–69: Seco).
+
+Verificações: 35 testes passando, `compileall`, `git diff --check` e inspeção visual no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-01T22:00:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5501016952)
+
+<pre>Ícones climáticos integrados:
+
+- adicionados ícones Lucide para Seco (`sun`), Chuva leve (`cloud-drizzle`) e Chuva intensa (`cloud-rain-wind`);
+- SVGs-fonte e PNGs transparentes 64x64 armazenados em `frontend/arcade/assets/icons/`;
+- ícones aplicados à paleta, legenda da timeline e cards de resumo;
+- licença ISC e origem registradas em `LUCIDE_LICENSE.txt`;
+- adicionado teste garantindo que todas as condições suportadas possuem asset.
+
+Verificações: 36 testes passando, `compileall`, `git diff --check` e inspeção visual no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-01T22:04:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5501048818)
+
+<pre>Resumo por intervalo sem corte concluído:
+
+- removido o limite fixo de quatro intervalos (`ranges()[:4]`);
+- até oito intervalos são exibidos em uma grade compacta de duas linhas;
+- cenários com mais de oito intervalos recebem paginação anterior/próxima, mantendo todos acessíveis;
+- validado visualmente com os sete intervalos do exemplo enviado;
+- adicionado teste cobrindo dez intervalos e a navegação para a segunda página.
+
+Verificações: 37 testes passando, `compileall`, `git diff --check` e inspeção visual no Arcade. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-02T15:08:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/29#issuecomment-5511748928)
+
+<pre>Fluxo de configuração reorganizado conforme nova direção:
+
+- a tela inicial agora seleciona a pista da simulação;
+- como o ADR 0002 limita o MVP a um circuito, a seleção apresenta apenas o Autódromo José Carlos Pace com os dados atuais;
+- o antigo editor climático passou a ser `TrackConfigurationView`, uma tela geral de configuração da pista;
+- o menu lateral alterna entre Sessão, Pista, Clima, Assistências, Regras e Carros;
+- Clima mantém toda a edição funcional existente; Pista exibe os dados disponíveis; tópicos ainda fora do MVP mostram seu estado sem inventar parâmetros;
+- o nome `WeatherConfigurationView` foi preservado como alias temporário para compatibilidade;
+- adicionados testes para abrir a pista selecionada e navegar pelos tópicos.
+
+Verificações: 39 testes passando, `compileall`, inspeção visual das telas e `git diff --check` nos arquivos-fonte. O espelho gerado `docs/backlog.md` contém um espaço final proveniente do texto de uma issue e não foi editado manualmente. Nenhum commit, push ou staging foi realizado pelo agente.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-01T21:06:20Z — label adicionada: Task por @Jmvjr
+- 2026-09-01T21:06:18Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
+### [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:35:17Z
+- **Atualizada:** 2026-09-01T22:35:17Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+### [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:35:52Z
+- **Atualizada:** 2026-09-01T22:35:52Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>componente que serve apenas para leitura</pre>
+
+</details>
+
+### [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:36:34Z
+- **Atualizada:** 2026-09-01T22:36:34Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+## Issues fechadas
+
+### [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
 - **Autor:** @Jmvjr
 - **Responsaveis:** @Jmvjr
 - **Labels:** —
@@ -815,8 +1059,8 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-09-01T15:38:17Z
-- **Atualizada:** 2026-09-01T18:07:06Z
-- **Fechada:** —
+- **Atualizada:** 2026-09-01T19:32:45Z
+- **Fechada:** 2026-09-01T19:32:45Z
 
 <details>
 <summary>Descricao original</summary>
@@ -849,10 +1093,7 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-01T19:32:46Z — fechada por @Jmvjr
 - 2026-09-01T15:38:27Z — atribuida: @Jmvjr por @Jmvjr
 
 </details>
-
-## Issues fechadas
-
-Nenhuma issue fechada.
