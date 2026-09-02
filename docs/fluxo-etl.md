@@ -202,3 +202,38 @@ regra de dominio que o contrato canonico ainda nao representa.
 | `RaceData` | Nao | Ja chega validado | Nao |
 | `run_race_etl` | Nao | Nao | Delega para o writer |
 | Persistence adapter | Nao | Valida integridade da escrita | Sim |
+
+## Consumo do SQLite canonico
+
+O caminho de leitura e separado do ETL. Depois que o arquivo canonico foi
+publicado, consumidores nao voltam ao ZIP nem ao `TrotmanDatasetAdapter`:
+
+```text
+SQLite canonico
+    |
+    v
+SQLiteRaceDataRepository
+    |
+    | implementa RaceDataRepository
+    v
+RaceData
+    |
+    v
+casos de uso da configuracao e da simulacao
+```
+
+`RaceDataRepository` e a porta de leitura controlada pela aplicacao.
+`SQLiteRaceDataRepository` e o adapter que conhece SQL e reconstroi o agregado
+completo. A leitura e feita em modo somente leitura, valida chaves estrangeiras
+e traduz falhas do SQLite para erros definidos junto da porta.
+
+```python
+repository = SQLiteRaceDataRepository(Path("data/curated/race-1141.sqlite"))
+race_data = repository.get_race("race:1141")
+```
+
+Ainda nao existe um caso de uso `GetSimulationScenario`: enquanto ele apenas
+repassaria `repository.get_race()`, seria uma camada sem comportamento. Ele
+devera ser introduzido quando houver uma regra concreta, como selecionar os
+campos da tela, aplicar valores padrao ou combinar a corrida historica com uma
+configuracao submetida pelo usuario.
