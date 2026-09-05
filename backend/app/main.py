@@ -1,9 +1,11 @@
+import json
 import sqlite3
 from pathlib import Path
 from typing import Optional
+
+from app.config import DEFAULT_RACE_DB
 from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import DEFAULT_RACE_DB
 
 app = FastAPI(
     title="F1 Simulation Engine API",
@@ -137,3 +139,22 @@ def dump_entire_database():
         "tables_count": len(tables),
         "data": full_database
     }
+
+
+@app.get("/simulation/race", tags=["Simulation"])
+def obter_dados_corrida():
+    DATA_FILE_PATH = Path(__file__).parent / "../races/race.json"
+    print(f"Verificando existência do arquivo: {DATA_FILE_PATH}")
+    if not DATA_FILE_PATH.exists():
+        raise HTTPException(
+            status_code=404, detail="Arquivo de telemetria da corrida não encontrado."
+        )
+
+    try:
+        with open(DATA_FILE_PATH, "r", encoding="utf-8") as f:
+            dados = json.load(f)
+        return dados
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro ao processar dados da corrida: {e}"
+        )
