@@ -83,6 +83,17 @@ segunda `arcade.View`, na qual uma condicao pode ser aplicada a intervalos de
 voltas. O botao de inicio valida o formulario, mas a conexao com Django e com o
 motor pertence a um incremento posterior.
 
+## Tela de simulação da corrida
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m frontend.arcade.race_view
+```
+
+Por enquanto, a simulação da corrida consiste de uma pista oval e dois carros
+com velocidade constante
+
 ## Sincronizar o backlog
 
 Crie, edite, feche ou reabra as tarefas diretamente no GitHub. Para atualizar o
