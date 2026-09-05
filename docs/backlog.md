@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-02T15:08:26Z
+- **Ultima atividade registrada:** 2026-09-02T19:25:46Z
 - **Abertas:** 29
-- **Fechadas:** 1
+- **Fechadas:** 2
 
 ## Issues abertas
 
@@ -93,13 +93,40 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:04:00Z
-- **Atualizada:** 2026-08-28T23:04:00Z
+- **Atualizada:** 2026-09-02T19:24:33Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-02T19:24:33Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/3#issuecomment-5515100675)
+
+<pre>Primeira fatia de consumo do ETL implementada localmente na branch `gwc-etl`, sem commit.
+
+Etapa alcancada:
+- adicionada a porta de leitura `RaceDataRepository`, com erros independentes de SQLite;
+- implementado `SQLiteRaceDataRepository`, que abre o arquivo canonico em modo somente leitura e reconstroi o agregado `RaceData` completo;
+- preservados metadados, circuito, corrida, pilotos, equipes, inscricoes, voltas, pit stops e identificadores de origem;
+- falhas de schema e dados persistidos sao traduzidas para `RaceDataRepositoryError`; corrida ausente usa `RaceDataNotFoundError`;
+- leitura rejeita chaves estrangeiras quebradas, metadados invalidos e identificadores de origem ausentes;
+- corrigido fechamento explicito das conexoes do writer SQLite, pois o context manager de `sqlite3.Connection` controla a transacao, mas nao fecha o recurso;
+- documentado o caminho de consumo em `docs/fluxo-etl.md`.
+
+Verificacoes:
+- `python3 -W always::ResourceWarning -m unittest -v`: 25 testes aprovados e sem ResourceWarning;
+- Ruff format/check aprovado nos arquivos alterados;
+- `git diff --check` aprovado;
+- arquivo real `data/curated/race-1141.sqlite` lido com sucesso: 20 pilotos, 10 equipes, 20 inscricoes, 1.133 voltas, 35 pit stops e 32 IDs de origem.
+
+Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um novo DTO de tela, porque neste momento seriam apenas repasse sem regra propria. O proximo passo da issue e conectar a porta a um consumidor concreto da configuracao/simulacao; nesse ponto deve ser criada apenas a projecao exigida pelo contrato real. A issue permanece aberta.
+</pre>
 
 </details>
 
@@ -689,9 +716,9 @@
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
+- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32), [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34)
 - **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-09-01T23:33:21Z
+- **Atualizada:** 2026-09-02T19:25:05Z
 - **Fechada:** —
 
 <details>
@@ -699,7 +726,7 @@
 
 <pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.
 
-as subissues envolvem implementar componentes que servirão para comunicação com o consumo dos dados do ETL. 
+as subissues envolvem implementar componentes que servirão para comunicação com o consumo dos dados do ETL.
 
 RaceDataRepository é apenas um contrato, não executa nada;
 SQLiteRaceDataRepository é quem realmente consulta o banco;
@@ -717,7 +744,8 @@ Caso de uso GetSimulationScenario: só se justifica se houver alguma regra ou co
         ↓
 DTO com as opções da corrida
         ↓ futuramente
-Django → HTTP/JSON → Arcade</pre>
+Django → HTTP/JSON → Arcade
+</pre>
 
 </details>
 
@@ -799,6 +827,7 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-02T19:19:09Z — sub-issue adicionada: #34 por @guilherme-webster
 - 2026-09-01T22:36:36Z — sub-issue adicionada: #32 por @guilherme-webster
 - 2026-09-01T22:35:54Z — sub-issue adicionada: #31 por @guilherme-webster
 - 2026-09-01T22:35:19Z — sub-issue adicionada: #30 por @guilherme-webster
@@ -835,10 +864,205 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 
 </details>
 
-### [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29)
+### [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:35:17Z
+- **Atualizada:** 2026-09-02T19:25:45Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-02T19:25:45Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/30#issuecomment-5515116567)
+
+<pre>Implementacao local concluida, ainda sem commit: adicionada a porta `RaceDataRepository` com `get_race(race_id) -&gt; RaceData`, acompanhada de `RaceDataRepositoryError` e `RaceDataNotFoundError`. O contrato usa apenas identificadores e entidades canonicas e nao expoe SQLite aos consumidores. A implementacao concreta e seus testes estao descritos na issue #31. A issue permanece aberta ate revisao e versionamento.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-02T19:19:25Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:35:52Z
+- **Atualizada:** 2026-09-02T19:25:46Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>componente que serve apenas para leitura</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-02T19:25:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/31#issuecomment-5515116877)
+
+<pre>Implementacao local concluida, ainda sem commit: criado `SQLiteRaceDataRepository` para reconstruir o agregado `RaceData` completo a partir do SQLite curado.
+
+Comportamentos cobertos:
+- conexao em modo somente leitura, sem criar banco ausente;
+- leitura de metadados, circuito, corrida, pilotos, equipes, inscricoes, voltas, pit stops e IDs de origem;
+- ordem deterministica de participantes, voltas e paradas;
+- erros de SQLite traduzidos para a porta da aplicacao;
+- distincao entre corrida inexistente e falha de armazenamento;
+- rejeicao de schema invalido, chaves estrangeiras quebradas e rastreabilidade ausente;
+- fechamento explicito das conexoes do reader e do writer.
+
+Verificacoes: 25 testes aprovados com `ResourceWarning` habilitado, Ruff aprovado, `git diff --check` aprovado e leitura do SQLite real confirmada com 20 pilotos, 10 equipes, 20 inscricoes, 1.133 voltas, 35 pit stops e 32 IDs de origem. A issue permanece aberta ate revisao e versionamento.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-02T19:19:30Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:36:34Z
+- **Atualizada:** 2026-09-02T19:19:35Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-02T19:19:35Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-02T19:19:08Z
+- **Atualizada:** 2026-09-02T19:19:47Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-02T19:19:47Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+## Issues fechadas
+
+### [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T15:38:17Z
+- **Atualizada:** 2026-09-01T19:32:45Z
+- **Fechada:** 2026-09-01T19:32:45Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Implementação de um layout básico para a tela de configuração</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@Jmvjr em 2026-09-01T15:49:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5496598985)
+
+<pre>Etapa concluida: implementado o wireframe Python da tela inicial de configuracao, independente de Arcade, com paineis para dados de referencia, parametros de cenario e acoes. Os dados historicos da corrida 1141 permanecem somente leitura; voltas, clima e semente sao editaveis. Verificacoes: python3 -m unittest -v tests.test_configuration_layout (3 testes aprovados); python3 -m compileall -q frontend/arcade; git diff --check. A suite completa executou 21 testes, com 1 erro preexistente: tests.test_sync_github_backlog importa o pacote scripts de /home/jmvjr/Documentos/unicamp/GeoBench/spada. Proximo passo: uma ParametersView em Arcade deve renderizar este layout e conectar os controles ao contrato HTTP/JSON quando o backend existir.</pre>
+
+#### [@Jmvjr em 2026-09-01T17:44:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5498000115)
+
+<pre>Implementacao atualizada para Arcade 3.3.3: criada uma ParametersView executavel com uma unica arcade.Window, campos UIInputText, seletores UIDropdown e botoes UIFlatButton. A geometria e o estado/validacao permanecem separados da View, permitindo testes sem colocar regras de simulacao na interface. Dados historicos do ETL sao somente leitura; voltas, clima e semente sao editaveis. O ponto de entrada e python -m frontend.arcade. Verificacoes: suite completa em ambiente temporario com Arcade 3.3.3 e ARCADE_GUI_TEST=True, 26 testes aprovados; compileall aprovado; git diff --check aprovado; janela 1280x720 renderizada e inspecionada. Proximo passo: revisar, criar commit e conectar o callback de inicio ao contrato HTTP/JSON quando o backend estiver disponivel. A issue permanece aberta ate a mudanca ser revisada e versionada.</pre>
+
+#### [@Jmvjr em 2026-09-01T17:57:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5498151771)
+
+<pre>Adicionado requirements.txt com arcade==3.3.3 e atualizado o README para instalacao com python -m venv e pip, sem depender de Pipenv. Verificacoes: pip install --dry-run -r requirements.txt e git diff --check aprovados.</pre>
+
+#### [@Jmvjr em 2026-09-01T18:07:05Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5498261871)
+
+<pre>Layout ajustado sem commit: os campos de clima inicial e semente foram removidos da ParametersView e substituidos por Configurar clima por volta. O botao abre uma segunda Arcade View, onde o usuario aplica Seco, Chuva leve ou Chuva intensa a intervalos inclusivos de voltas, visualiza o cronograma consolidado e salva ou cancela. O estado armazena uma condicao por volta e preserva/trunca o cronograma quando a quantidade de voltas muda. Verificacoes: 31 testes aprovados com Arcade 3.3.3 e ARCADE_GUI_TEST=True; compileall e git diff --check aprovados; as duas telas 1280x720 foram renderizadas e inspecionadas. Nenhum commit, git add ou push foi executado.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-01T19:32:46Z — fechada por @Jmvjr
+- 2026-09-01T15:38:27Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
+### [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
 - **Autor:** @Jmvjr
 - **Responsaveis:** @Jmvjr
 - **Labels:** Task
@@ -846,8 +1070,8 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-09-01T21:06:18Z
-- **Atualizada:** 2026-09-02T15:08:26Z
-- **Fechada:** —
+- **Atualizada:** 2026-09-02T15:13:07Z
+- **Fechada:** 2026-09-02T15:13:07Z
 
 <details>
 <summary>Descricao original</summary>
@@ -978,122 +1202,8 @@ Verificações: 39 testes passando, `compileall`, inspeção visual das telas e 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-02T15:13:07Z — fechada por @Jmvjr
 - 2026-09-01T21:06:20Z — label adicionada: Task por @Jmvjr
 - 2026-09-01T21:06:18Z — atribuida: @Jmvjr por @Jmvjr
-
-</details>
-
-### [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
-- **Sub-issues:** —
-- **Criada:** 2026-09-01T22:35:17Z
-- **Atualizada:** 2026-09-01T22:35:17Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-### [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
-- **Sub-issues:** —
-- **Criada:** 2026-09-01T22:35:52Z
-- **Atualizada:** 2026-09-01T22:35:52Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>componente que serve apenas para leitura</pre>
-
-</details>
-
-### [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
-- **Sub-issues:** —
-- **Criada:** 2026-09-01T22:36:34Z
-- **Atualizada:** 2026-09-01T22:36:34Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-## Issues fechadas
-
-### [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26)
-
-- **Estado:** fechada
-- **Motivo do estado:** completed
-- **Autor:** @Jmvjr
-- **Responsaveis:** @Jmvjr
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
-- **Sub-issues:** —
-- **Criada:** 2026-09-01T15:38:17Z
-- **Atualizada:** 2026-09-01T19:32:45Z
-- **Fechada:** 2026-09-01T19:32:45Z
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Implementação de um layout básico para a tela de configuração</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (4)</summary>
-
-#### [@Jmvjr em 2026-09-01T15:49:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5496598985)
-
-<pre>Etapa concluida: implementado o wireframe Python da tela inicial de configuracao, independente de Arcade, com paineis para dados de referencia, parametros de cenario e acoes. Os dados historicos da corrida 1141 permanecem somente leitura; voltas, clima e semente sao editaveis. Verificacoes: python3 -m unittest -v tests.test_configuration_layout (3 testes aprovados); python3 -m compileall -q frontend/arcade; git diff --check. A suite completa executou 21 testes, com 1 erro preexistente: tests.test_sync_github_backlog importa o pacote scripts de /home/jmvjr/Documentos/unicamp/GeoBench/spada. Proximo passo: uma ParametersView em Arcade deve renderizar este layout e conectar os controles ao contrato HTTP/JSON quando o backend existir.</pre>
-
-#### [@Jmvjr em 2026-09-01T17:44:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5498000115)
-
-<pre>Implementacao atualizada para Arcade 3.3.3: criada uma ParametersView executavel com uma unica arcade.Window, campos UIInputText, seletores UIDropdown e botoes UIFlatButton. A geometria e o estado/validacao permanecem separados da View, permitindo testes sem colocar regras de simulacao na interface. Dados historicos do ETL sao somente leitura; voltas, clima e semente sao editaveis. O ponto de entrada e python -m frontend.arcade. Verificacoes: suite completa em ambiente temporario com Arcade 3.3.3 e ARCADE_GUI_TEST=True, 26 testes aprovados; compileall aprovado; git diff --check aprovado; janela 1280x720 renderizada e inspecionada. Proximo passo: revisar, criar commit e conectar o callback de inicio ao contrato HTTP/JSON quando o backend estiver disponivel. A issue permanece aberta ate a mudanca ser revisada e versionada.</pre>
-
-#### [@Jmvjr em 2026-09-01T17:57:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5498151771)
-
-<pre>Adicionado requirements.txt com arcade==3.3.3 e atualizado o README para instalacao com python -m venv e pip, sem depender de Pipenv. Verificacoes: pip install --dry-run -r requirements.txt e git diff --check aprovados.</pre>
-
-#### [@Jmvjr em 2026-09-01T18:07:05Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/26#issuecomment-5498261871)
-
-<pre>Layout ajustado sem commit: os campos de clima inicial e semente foram removidos da ParametersView e substituidos por Configurar clima por volta. O botao abre uma segunda Arcade View, onde o usuario aplica Seco, Chuva leve ou Chuva intensa a intervalos inclusivos de voltas, visualiza o cronograma consolidado e salva ou cancela. O estado armazena uma condicao por volta e preserva/trunca o cronograma quando a quantidade de voltas muda. Verificacoes: 31 testes aprovados com Arcade 3.3.3 e ARCADE_GUI_TEST=True; compileall e git diff --check aprovados; as duas telas 1280x720 foram renderizadas e inspecionadas. Nenhum commit, git add ou push foi executado.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-01T19:32:46Z — fechada por @Jmvjr
-- 2026-09-01T15:38:27Z — atribuida: @Jmvjr por @Jmvjr
 
 </details>
