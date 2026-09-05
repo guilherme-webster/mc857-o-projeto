@@ -1,0 +1,11 @@
+[project]
+name = "f1-sim_-frontend"
+version = "0.1.0"
+description = "Frontend Arcade para o simulador de F1"
+requires-python = ">=3.11"
+dependencies = [
+    "arcade>=3.0.0",
+]
+
+[project.scripts]
+simulador = "main:main"
