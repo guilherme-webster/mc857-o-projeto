@@ -1,11 +1,13 @@
-from fastapi import FastAPI, HTTPException
+import sqlite3
+from pathlib import Path
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from app.engine.simulation import run_batch_simulation
 from app.config import DEFAULT_RACE_DB
 
 app = FastAPI(
     title="F1 Simulation Engine API",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Libera CORS para o frontend local
@@ -17,34 +19,121 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Armazenamento em memória para as simulações prontas (ou pode salvar em arquivo)
-SIMULATIONS_CACHE = {}
+
+def get_db_connection():
+    """Gera uma conexão SQLite somente leitura com suporte a dicionários."""
+    if not DEFAULT_RACE_DB.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Arquivo {DEFAULT_RACE_DB} não encontrado no volume."
+        )
+    conn = sqlite3.connect(f"file:{DEFAULT_RACE_DB}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-@app.get("/")
+def validate_table_exists(conn: sqlite3.Connection, table_name: str) -> None:
+    """Verifica se a tabela solicitada existe no banco para evitar erros de SQL."""
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+        (table_name,)
+    )
+    if not cursor.fetchone():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tabela '{table_name}' não existe no banco de dados."
+        )
+
+
+@app.get("/", tags=["Health"])
 def health_check():
+    """Health check do backend e verificação do arquivo de banco curado."""
     return {
         "status": "online",
         "etl_db_found": DEFAULT_RACE_DB.exists()
     }
 
 
-@app.post("/api/simulations/{race_id}/run")
-def trigger_simulation(race_id: int, laps: int = 10):
-    """Calcula a corrida inteira e armazena o resultado."""
-    result = run_batch_simulation(race_id=race_id, total_laps=laps)
-    SIMULATIONS_CACHE[race_id] = result
+@app.get("/api/etl/tables", tags=["ETL Inspector"])
+def list_tables():
+    """Lista todas as tabelas criadas pelo ETL no banco SQLite."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+    )
+    tables = [row["name"] for row in cursor.fetchall()]
+    conn.close()
+    return {"tables": tables, "count": len(tables)}
+
+
+@app.get("/api/etl/schema/{table_name}", tags=["ETL Inspector"])
+def get_table_schema(table_name: str):
+    """Mostra as colunas e tipos de dados de uma tabela específica."""
+    conn = get_db_connection()
+    validate_table_exists(conn, table_name)
+    cursor = conn.cursor()
+    cursor.execute(f'PRAGMA table_info("{table_name}");')
+    columns = [
+        {
+            "column_id": row[0],
+            "name": row[1],
+            "type": row[2],
+            "notnull": bool(row[3])
+        }
+        for row in cursor.fetchall()
+    ]
+    conn.close()
+    return {"table": table_name, "columns": columns}
+
+
+@app.get("/api/etl/preview/{table_name}", tags=["ETL Inspector"])
+def preview_table_data(
+    table_name: str,
+    limit: int = Query(default=10, ge=1, le=1000,
+                       description="Quantidade de linhas a retornar")
+):
+    """Mostra as primeiras N linhas de qualquer tabela do ETL."""
+    conn = get_db_connection()
+    validate_table_exists(conn, table_name)
+    cursor = conn.cursor()
+    cursor.execute(f'SELECT * FROM "{table_name}" LIMIT ?', (limit,))
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"table": table_name, "count": len(rows), "data": rows}
+
+
+@app.get("/api/etl/table/{table_name}", tags=["ETL Inspector"])
+def get_full_table(table_name: str):
+    """Retorna todos os registros de uma tabela sem corte de paginação."""
+    conn = get_db_connection()
+    validate_table_exists(conn, table_name)
+    cursor = conn.cursor()
+    cursor.execute(f'SELECT * FROM "{table_name}"')
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"table": table_name, "total_rows": len(rows), "data": rows}
+
+
+@app.get("/api/etl/database/dump", tags=["ETL Inspector"])
+def dump_entire_database():
+    """Retorna o banco inteiro: todas as tabelas com todos os seus registros."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';"
+    )
+    tables = [row["name"] for row in cursor.fetchall()]
+
+    full_database = {}
+    for table in tables:
+        cursor.execute(f'SELECT * FROM "{table}"')
+        full_database[table] = [dict(row) for row in cursor.fetchall()]
+
+    conn.close()
     return {
-        "status": "completed",
-        "race_id": race_id,
-        "message": "Simulação pronta para consumo pelo frontend."
+        "database": DEFAULT_RACE_DB.name,
+        "tables_count": len(tables),
+        "data": full_database
     }
-
-
-@app.get("/api/simulations/{race_id}")
-def get_simulation_data(race_id: int):
-    """O Frontend consome esse endpoint para obter o 'replay' da corrida."""
-    if race_id not in SIMULATIONS_CACHE:
-        raise HTTPException(
-            status_code=404, detail="Simulação não encontrada. Execute o POST primeiro.")
-    return SIMULATIONS_CACHE[race_id]
