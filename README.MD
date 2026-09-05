@@ -15,12 +15,49 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 
 O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
 experiencia de visualizacao do projeto
-[IAmTomShaw/f1-race-replay](https://github.com/IAmTomShaw/f1-race-replay). Django
-permanece como backend, e o motor de simulacao continuara independente dos dois
+[IAmTomShaw/f1-race-replay](https://github.com/IAmTomShaw/f1-race-replay). FastAPI 
+será o backend, e o motor de simulacao continuara independente dos dois
 frameworks. O
 [ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md)
 estabelece arquitetura hexagonal, integracao de dados com Adapter + Factory e a
 base Formula 1 Race Data, de James Trotman, como fonte inicial unica do MVP.
+
+## 📦 Pré-requisitos e Dependências
+
+Antes de iniciar a execução do projeto, certifique-se de possuir as ferramentas abaixo instaladas no seu ambiente.
+
+---
+
+### 1. Docker & Docker Compose
+
+* **Instalação:**
+  * **Windows / macOS:** Baixe e instale o [Docker Desktop](https://www.docker.com/products/docker-desktop/). No Windows, certifique-se de habilitar a integração com o WSL2 durante o assistente.
+  * **Linux (Ubuntu/Debian):**
+    ```bash
+    curl -fsSL [https://get.docker.com](https://get.docker.com) | sh
+    sudo usermod -aG docker $USER
+    ```
+
+* **Como verificar se está instalado:**
+  ```bash
+  docker --version
+  docker compose version
+
+### 2. uv (Gerenciador de Pacotes e Python)
+
+* **Instalação:**
+  * **Windows (PowerShell / WinGet):**
+    ```powershell
+    winget install astral-sh.uv
+    ```
+  * **Linux / macOS / WSL:**
+    ```bash
+    curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+    ```
+
+* **Como verificar se está instalado:**
+  ```bash
+  uv --version
 
 ## ETL da Base Trotman
 
@@ -65,17 +102,68 @@ o caminho explicitamente:
 PYTHONPATH=src python3 -c "from f1_simulator.domain.race_data import RaceData"
 ```
 
-## Tela inicial com Arcade
+## Como Executar a Aplicação
 
-Crie um ambiente virtual, instale as dependencias e execute a tela de
-configuracao:
+Você pode executar a aplicação completa (comunicação Frontend + Backend) ou rodar as camadas isoladamente dependendo da etapa de desenvolvimento.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python -m frontend.arcade
-```
+---
+
+### Opção 1: Aplicação Completa (Frontend + Backend)
+
+1. **Sincronize o ambiente local:**
+   ```powershell
+   uv sync
+   ```
+
+2. **Execute o inicializador:**
+   ```powershell
+   uv run python run.py
+   ```
+   * O backend estará acessível em: `http://localhost:8000`
+   * Documentação da API (Swagger): `http://localhost:8000/docs`
+   * A janela da interface Arcade abrirá automaticamente assim que os serviços estiverem prontos.
+
+---
+
+### Opção 2: Somente o Frontend (Telas e Simulação Visual)
+
+1. **Sincronize o ambiente local:**
+   ```powershell
+   uv sync
+   ```
+
+2. **Execute a tela desejada:**
+   * **Tela principal de parâmetros:**
+     ```powershell
+     uv run python -m frontend.arcade
+     ```
+   * **Visualização da corrida (Renderização de Pista):**
+     ```powershell
+     uv run python -m frontend.arcade.race_view
+     ```
+
+---
+
+### Opção 3: Somente o Backend (FastAPI e Banco de Dados)
+
+* **Subir em primeiro plano (com logs interativos):**
+  ```bash
+  docker compose up --build
+  ```
+
+* **Subir em segundo plano (detached mode):**
+  ```bash
+  docker compose up -d
+  ```
+
+* **Parar o backend:**
+  ```bash
+  docker compose down
+  ```
+
+## Telas implementadas com Arcade
+
+### Tela inicial
 
 A `ParametersView` apresenta os dados historicos da corrida de referencia como
 somente leitura e permite alterar o numero de voltas. O botao de clima abre uma
@@ -83,18 +171,14 @@ segunda `arcade.View`, na qual uma condicao pode ser aplicada a intervalos de
 voltas. O botao de inicio valida o formulario, mas a conexao com Django e com o
 motor pertence a um incremento posterior.
 
-## Tela de simulação da corrida
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python -m frontend.arcade.race_view
-```
+### Tela de simulação da corrida
 
 Por enquanto, a simulação da corrida consiste de uma pista oval e dois carros
 com velocidade constante
 
-## Sincronizar o backlog
+## Git Actions
+
+### Sincronizar o backlog
 
 Crie, edite, feche ou reabra as tarefas diretamente no GitHub. Para atualizar o
 espelho local, incluindo comentarios e historico de issues fechadas:
@@ -119,3 +203,7 @@ GitHub ou com:
 ```bash
 gh workflow run sync-backlog.yml
 ```
+
+### Regras de pull request
+
+Por exemplo, apenas a develop pode ser mergeada na main
