@@ -1,0 +1,293 @@
+{
+  "artifact": "tests/fixtures/trotman_v128_tracks_2025/pit_lane_points.csv",
+  "artifact_sha256": "105c93557927680f6447b2828f854e6af7849f4508c350a2d743cb163cdbbda9",
+  "purpose": "mock pit-lane paths and representative service points",
+  "generated_at": "2026-09-08",
+  "source": {
+    "library": "FastF1",
+    "library_version": "3.8.3",
+    "software_license": "MIT",
+    "upstream_data_license": "not granted by the FastF1 software license; upstream terms apply",
+    "year": 2025,
+    "session": "R",
+    "events": [
+      {
+        "round_number": 1,
+        "circuit_id": "1",
+        "circuit_name": "Albert Park Grand Prix Circuit",
+        "driver": "NOR",
+        "pit_in_lap": 34,
+        "pit_out_lap": 35,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.746835,
+        "point_count": 80
+      },
+      {
+        "round_number": 2,
+        "circuit_id": "17",
+        "circuit_name": "Shanghai International Circuit",
+        "driver": "HAM",
+        "pit_in_lap": 13,
+        "pit_out_lap": 14,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.35443,
+        "point_count": 80
+      },
+      {
+        "round_number": 3,
+        "circuit_id": "22",
+        "circuit_name": "Suzuka Circuit",
+        "driver": "ANT",
+        "pit_in_lap": 31,
+        "pit_out_lap": 32,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.632911,
+        "point_count": 80
+      },
+      {
+        "round_number": 4,
+        "circuit_id": "3",
+        "circuit_name": "Bahrain International Circuit",
+        "driver": "PIA",
+        "pit_in_lap": 14,
+        "pit_out_lap": 15,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.278481,
+        "point_count": 80
+      },
+      {
+        "round_number": 5,
+        "circuit_id": "77",
+        "circuit_name": "Jeddah Corniche Circuit",
+        "driver": "NOR",
+        "pit_in_lap": 34,
+        "pit_out_lap": 35,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.291139,
+        "point_count": 80
+      },
+      {
+        "round_number": 6,
+        "circuit_id": "79",
+        "circuit_name": "Miami International Autodrome",
+        "driver": "NOR",
+        "pit_in_lap": 29,
+        "pit_out_lap": 30,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.367089,
+        "point_count": 80
+      },
+      {
+        "round_number": 7,
+        "circuit_id": "21",
+        "circuit_name": "Autodromo Enzo e Dino Ferrari",
+        "driver": "VER",
+        "pit_in_lap": 29,
+        "pit_out_lap": 30,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.35443,
+        "point_count": 80
+      },
+      {
+        "round_number": 8,
+        "circuit_id": "6",
+        "circuit_name": "Circuit de Monaco",
+        "driver": "NOR",
+        "pit_in_lap": 19,
+        "pit_out_lap": 20,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.253165,
+        "point_count": 80
+      },
+      {
+        "round_number": 9,
+        "circuit_id": "4",
+        "circuit_name": "Circuit de Barcelona-Catalunya",
+        "driver": "PIA",
+        "pit_in_lap": 22,
+        "pit_out_lap": 23,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.303797,
+        "point_count": 80
+      },
+      {
+        "round_number": 10,
+        "circuit_id": "7",
+        "circuit_name": "Circuit Gilles Villeneuve",
+        "driver": "RUS",
+        "pit_in_lap": 13,
+        "pit_out_lap": 14,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.658228,
+        "point_count": 80
+      },
+      {
+        "round_number": 11,
+        "circuit_id": "70",
+        "circuit_name": "Red Bull Ring",
+        "driver": "PIA",
+        "pit_in_lap": 24,
+        "pit_out_lap": 25,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.329114,
+        "point_count": 80
+      },
+      {
+        "round_number": 12,
+        "circuit_id": "9",
+        "circuit_name": "Silverstone Circuit",
+        "driver": "PIA",
+        "pit_in_lap": 11,
+        "pit_out_lap": 12,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.43038,
+        "point_count": 80
+      },
+      {
+        "round_number": 13,
+        "circuit_id": "13",
+        "circuit_name": "Circuit de Spa-Francorchamps",
+        "driver": "ANT",
+        "pit_in_lap": 12,
+        "pit_out_lap": 13,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.443038,
+        "point_count": 80
+      },
+      {
+        "round_number": 14,
+        "circuit_id": "11",
+        "circuit_name": "Hungaroring",
+        "driver": "RUS",
+        "pit_in_lap": 19,
+        "pit_out_lap": 20,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.506329,
+        "point_count": 80
+      },
+      {
+        "round_number": 15,
+        "circuit_id": "39",
+        "circuit_name": "Circuit Park Zandvoort",
+        "driver": "PIA",
+        "pit_in_lap": 23,
+        "pit_out_lap": 24,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.265823,
+        "point_count": 80
+      },
+      {
+        "round_number": 16,
+        "circuit_id": "14",
+        "circuit_name": "Autodromo Nazionale di Monza",
+        "driver": "NOR",
+        "pit_in_lap": 46,
+        "pit_out_lap": 47,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.278481,
+        "point_count": 80
+      },
+      {
+        "round_number": 17,
+        "circuit_id": "73",
+        "circuit_name": "Baku City Circuit",
+        "driver": "VER",
+        "pit_in_lap": 40,
+        "pit_out_lap": 41,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.392405,
+        "point_count": 80
+      },
+      {
+        "round_number": 18,
+        "circuit_id": "15",
+        "circuit_name": "Marina Bay Street Circuit",
+        "driver": "HAM",
+        "pit_in_lap": 24,
+        "pit_out_lap": 25,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.43038,
+        "point_count": 80
+      },
+      {
+        "round_number": 19,
+        "circuit_id": "69",
+        "circuit_name": "Circuit of the Americas",
+        "driver": "ANT",
+        "pit_in_lap": 31,
+        "pit_out_lap": 32,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.405063,
+        "point_count": 80
+      },
+      {
+        "round_number": 20,
+        "circuit_id": "32",
+        "circuit_name": "Autodromo Hermanos Rodriguez",
+        "driver": "RUS",
+        "pit_in_lap": 25,
+        "pit_out_lap": 26,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.493671,
+        "point_count": 80
+      },
+      {
+        "round_number": 21,
+        "circuit_id": "18",
+        "circuit_name": "Autodromo Jose Carlos Pace",
+        "driver": "ALB",
+        "pit_in_lap": 35,
+        "pit_out_lap": 36,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.772152,
+        "point_count": 80
+      },
+      {
+        "round_number": 22,
+        "circuit_id": "80",
+        "circuit_name": "Las Vegas Strip Street Circuit",
+        "driver": "VER",
+        "pit_in_lap": 25,
+        "pit_out_lap": 26,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.481013,
+        "point_count": 80
+      },
+      {
+        "round_number": 23,
+        "circuit_id": "78",
+        "circuit_name": "Losail International Circuit",
+        "driver": "PIA",
+        "pit_in_lap": 24,
+        "pit_out_lap": 25,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.303797,
+        "point_count": 80
+      },
+      {
+        "round_number": 24,
+        "circuit_id": "24",
+        "circuit_name": "Yas Marina Circuit",
+        "driver": "LEC",
+        "pit_in_lap": 16,
+        "pit_out_lap": 17,
+        "minimum_speed_kph": 0.0,
+        "service_path_fraction": 0.392405,
+        "point_count": 80
+      }
+    ]
+  },
+  "transform": {
+    "track_artifact": "tests/fixtures/trotman_v128_tracks_2025/track_points.csv",
+    "track_artifact_sha256": "4a6281576eb41d664b2232e55ffb070136fc6ac42bb056dd078b725a4ea35db6",
+    "coordinates": "same centered uniform scale as the matching track",
+    "sampling": "equal intervals of geometric pit-path progress",
+    "points_per_track": 80,
+    "track_count": 24,
+    "service_point": "center sample among observed minimum-speed positions"
+  },
+  "retention": {
+    "raw_telemetry": "not written",
+    "fastf1_cache": "temporary; deleted when generation exits"
+  }
+}
