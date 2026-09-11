@@ -1,13 +1,7 @@
-"""ETL inspector endpoints for exploring the curated SQLite database.
-
-These routes expose the raw tables produced by the ETL for debugging and
-inspection. They read the database through the shared helpers in ``app.db``.
-"""
-
 from __future__ import annotations
 
 from app.config import DEFAULT_RACE_DB
-from app.db import get_db_connection, validate_table_exists
+from app.race_store import get_db_connection, validate_table_exists
 from fastapi import APIRouter, Query
 
 router = APIRouter(prefix="/api/etl", tags=["ETL Inspector"])
@@ -15,7 +9,6 @@ router = APIRouter(prefix="/api/etl", tags=["ETL Inspector"])
 
 @router.get("/tables")
 def list_tables() -> dict:
-    """Lista todas as tabelas criadas pelo ETL no banco SQLite."""
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -29,7 +22,6 @@ def list_tables() -> dict:
 
 @router.get("/schema/{table_name}")
 def get_table_schema(table_name: str) -> dict:
-    """Mostra as colunas e tipos de dados de uma tabela específica."""
 
     conn = get_db_connection()
     validate_table_exists(conn, table_name)
@@ -55,7 +47,6 @@ def preview_table_data(
         default=10, ge=1, le=1000, description="Quantidade de linhas a retornar"
     ),
 ) -> dict:
-    """Mostra as primeiras N linhas de qualquer tabela do ETL."""
 
     conn = get_db_connection()
     validate_table_exists(conn, table_name)
@@ -68,7 +59,6 @@ def preview_table_data(
 
 @router.get("/table/{table_name}")
 def get_full_table(table_name: str) -> dict:
-    """Retorna todos os registros de uma tabela sem corte de paginação."""
 
     conn = get_db_connection()
     validate_table_exists(conn, table_name)
@@ -81,7 +71,6 @@ def get_full_table(table_name: str) -> dict:
 
 @router.get("/database/dump")
 def dump_entire_database() -> dict:
-    """Retorna o banco inteiro: todas as tabelas com todos os seus registros."""
 
     conn = get_db_connection()
     cursor = conn.cursor()

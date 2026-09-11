@@ -1,4 +1,5 @@
 from __future__ import annotations
+from __future__ import annotations
 
 import sqlite3
 import statistics
@@ -78,12 +79,6 @@ def _build_parameters(
 
 
 def _estimate_base_pace(lap_times: list[int]) -> float:
-    """Use the median of the fastest quartile as clean-air pace.
-
-    The fastest laps approximate low-fuel, fresh-tire running, which is a better
-    baseline than the overall mean skewed by traffic and worn tires. Assumes a
-    non-empty input, guaranteed by the caller.
-    """
 
     ordered = sorted(lap_times)
     quartile = max(1, len(ordered) // 4)
@@ -91,13 +86,6 @@ def _estimate_base_pace(lap_times: list[int]) -> float:
 
 
 def _estimate_degradation(lap_times: list[int]) -> float:
-    """Approximate per-lap degradation from the least-squares trend of lap times.
-
-    The slope over lap index captures how much slower the car gets each lap.
-    With fewer than three laps, or a flat/negative trend (fuel burn dominating),
-    the result is ``0.0``: the source shows no measurable degradation, which is a
-    fact rather than a placeholder.
-    """
 
     count = len(lap_times)
     if count < 3:
@@ -115,11 +103,6 @@ def _estimate_degradation(lap_times: list[int]) -> float:
 
 
 def _estimate_pit_loss(connection: sqlite3.Connection, driver_id: str) -> float:
-    """Average recorded pit-stop duration in milliseconds.
-
-    Returns ``0.0`` when the car has no recorded stop with a duration: the
-    source reports no pit loss, so none is applied.
-    """
 
     durations = [
         row["duration_ms"]
@@ -135,9 +118,65 @@ def _estimate_pit_loss(connection: sqlite3.Connection, driver_id: str) -> float:
 
 
 def _display_name(entry: sqlite3.Row) -> str:
-    """Build a readable driver name from the available name columns."""
 
     given = (entry["given_name"] or "").strip()
     family = (entry["family_name"] or "").strip()
     full = f"{given} {family}".strip()
     return full or entry["driver_id"]
+
+
+# Tables whose row counts summarize the size of a curated race.
+_COUNTED_TABLES = ("drivers", "teams", "race_entries", "laps", "pit_stops")
+
+
+def load_race_summary(db_path: Path) -> dict[str, object]:
+
+    if not db_path.exists():
+        raise FileNotFoundError(f"curated race database not found: {db_path}")
+
+    connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    connection.row_factory = sqlite3.Row
+    try:
+        metadata = {
+            row["key"]: row["value"]
+            for row in connection.execute("SELECT key, value FROM metadata")
+        }
+        race = connection.execute("SELECT * FROM races LIMIT 1").fetchone()
+        circuit = connection.execute("SELECT * FROM circuits LIMIT 1").fetchone()
+        counts = {
+            table: connection.execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()[
+                "n"
+            ]
+            for table in _COUNTED_TABLES
+        }
+    finally:
+        connection.close()
+
+    if race is None or circuit is None:
+        raise ValueError(f"curated database has no race or circuit: {db_path}")
+
+    return {
+        "source": {
+            "name": metadata.get("source_name"),
+            "version": metadata.get("source_version"),
+            "sha256": metadata.get("source_sha256"),
+        },
+        "race": {
+            "race_id": race["race_id"],
+            "name": race["name"],
+            "season": race["season"],
+            "round_number": race["round_number"],
+            "race_date": race["race_date"],
+            "start_time_utc": race["start_time_utc"],
+        },
+        "circuit": {
+            "circuit_id": circuit["circuit_id"],
+            "name": circuit["name"],
+            "location": circuit["location"],
+            "country": circuit["country"],
+            "latitude_deg": circuit["latitude_deg"],
+            "longitude_deg": circuit["longitude_deg"],
+            "altitude_m": circuit["altitude_m"],
+        },
+        "counts": counts,
+    }

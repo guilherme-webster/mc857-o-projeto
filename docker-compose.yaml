@@ -1,13 +1,15 @@
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: f1-sim-backend
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./data:/data:ro
+      - ./src:/app/src
+      - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app/src

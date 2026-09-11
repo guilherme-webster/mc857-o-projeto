@@ -1,4 +1,11 @@
 from pathlib import Path
 
 DATA_DIR = Path("/data/curated")
-DEFAULT_RACE_DB = DATA_DIR / "race-1141.sqlite"
+RACES_INDEX = DATA_DIR / "races-index.json"
+
+RAW_SOURCE = Path("/data/raw/formula-1-race-data-v128.zip")
+
+CURRENT_RACE_DB = DATA_DIR / "current-race.sqlite"
+CURRENT_RACE_REPORT = DATA_DIR / "current-race-quality.json"
+
+DEFAULT_RACE_DB = CURRENT_RACE_DB

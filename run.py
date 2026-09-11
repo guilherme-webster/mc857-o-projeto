@@ -15,10 +15,32 @@ class Colors:
     CYAN = "\033[96m"
     RED = "\033[91m"
 
+def generate_race_catalog():
+
+    print(
+        f"{Colors.BLUE}[1/4] Gerando catalogo de corridas (races-index.json)...{Colors.RESET}"
+    )
+    try:
+        subprocess.run(
+            [sys.executable, "scripts/list_races.py"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print(f"{Colors.GREEN}      Catalogo de corridas gerado.{Colors.RESET}")
+    except subprocess.CalledProcessError:
+        print(
+            f"{Colors.YELLOW}      Nao foi possivel gerar o catalogo "
+            f"(arquivo bruto ausente?). A lista de corridas ficara vazia."
+            f"{Colors.RESET}"
+        )
+
 
 def start_system():
+    generate_race_catalog()
+
     print(
-        f"{Colors.BLUE}[1/3] Subindo containers Docker (Backend)...{Colors.RESET}")
+        f"{Colors.BLUE}[2/4] Subindo containers Docker (Backend)...{Colors.RESET}")
     try:
         subprocess.run(
             ["docker", "compose", "up", "-d", "--build"],
@@ -32,7 +54,7 @@ def start_system():
         )
         sys.exit(1)
 
-    print(f"{Colors.GREEN}[2/3] Backend inicializado.{Colors.RESET}")
+    print(f"{Colors.GREEN}[3/4] Backend inicializado.{Colors.RESET}")
     print(
         f"      Backend pronto: {Colors.CYAN}http://localhost:8000{Colors.RESET}")
     print(
@@ -43,7 +65,7 @@ def start_system():
 
     time.sleep(1)
 
-    print(f"{Colors.GREEN}[3/3] Iniciando o frontend Arcade...{Colors.RESET}")
+    print(f"{Colors.GREEN}[4/4] Iniciando o frontend Arcade...{Colors.RESET}")
     try:
         subprocess.run(
             ["uv", "run", "python", "-m", "frontend.arcade"],
