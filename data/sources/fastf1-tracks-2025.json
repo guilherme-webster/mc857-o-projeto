@@ -1,0 +1,275 @@
+{
+  "artifact": "tests/fixtures/trotman_v128_tracks_2025/track_points.csv",
+  "artifact_sha256": "4a6281576eb41d664b2232e55ffb070136fc6ac42bb056dd078b725a4ea35db6",
+  "purpose": "mock 2D centerlines for the 2025 calendar; not authoritative telemetry",
+  "generated_at": "2026-09-08",
+  "source": {
+    "library": "FastF1",
+    "library_version": "3.8.3",
+    "software_license": "MIT",
+    "upstream": "Formula 1 live timing data accessed through FastF1",
+    "upstream_data_license": "not granted by the FastF1 software license; upstream terms apply",
+    "year": 2025,
+    "session": "R",
+    "circuit_id_mapping": "Trotman v128 circuits.csv and races.csv",
+    "events": [
+      {
+        "round_number": 1,
+        "circuit_id": "1",
+        "circuit_name": "Albert Park Grand Prix Circuit",
+        "event": "Australian Grand Prix",
+        "driver": "NOR",
+        "lap_number": 43,
+        "lap_length_m": 5239.904,
+        "point_count": 240
+      },
+      {
+        "round_number": 2,
+        "circuit_id": "17",
+        "circuit_name": "Shanghai International Circuit",
+        "event": "Chinese Grand Prix",
+        "driver": "HAM",
+        "lap_number": 41,
+        "lap_length_m": 5393.264,
+        "point_count": 240
+      },
+      {
+        "round_number": 3,
+        "circuit_id": "22",
+        "circuit_name": "Suzuka Circuit",
+        "event": "Japanese Grand Prix",
+        "driver": "ANT",
+        "lap_number": 50,
+        "lap_length_m": 5766.29,
+        "point_count": 240
+      },
+      {
+        "round_number": 4,
+        "circuit_id": "3",
+        "circuit_name": "Bahrain International Circuit",
+        "event": "Bahrain Grand Prix",
+        "driver": "PIA",
+        "lap_number": 36,
+        "lap_length_m": 5376.465,
+        "point_count": 240
+      },
+      {
+        "round_number": 5,
+        "circuit_id": "77",
+        "circuit_name": "Jeddah Corniche Circuit",
+        "event": "Saudi Arabian Grand Prix",
+        "driver": "NOR",
+        "lap_number": 41,
+        "lap_length_m": 6075.859,
+        "point_count": 240
+      },
+      {
+        "round_number": 6,
+        "circuit_id": "79",
+        "circuit_name": "Miami International Autodrome",
+        "event": "Miami Grand Prix",
+        "driver": "NOR",
+        "lap_number": 36,
+        "lap_length_m": 5323.365,
+        "point_count": 240
+      },
+      {
+        "round_number": 7,
+        "circuit_id": "21",
+        "circuit_name": "Autodromo Enzo e Dino Ferrari",
+        "event": "Emilia Romagna Grand Prix",
+        "driver": "VER",
+        "lap_number": 58,
+        "lap_length_m": 4881.133,
+        "point_count": 240
+      },
+      {
+        "round_number": 8,
+        "circuit_id": "6",
+        "circuit_name": "Circuit de Monaco",
+        "event": "Monaco Grand Prix",
+        "driver": "NOR",
+        "lap_number": 78,
+        "lap_length_m": 3283.953,
+        "point_count": 240
+      },
+      {
+        "round_number": 9,
+        "circuit_id": "4",
+        "circuit_name": "Circuit de Barcelona-Catalunya",
+        "event": "Spanish Grand Prix",
+        "driver": "PIA",
+        "lap_number": 61,
+        "lap_length_m": 4632.792,
+        "point_count": 240
+      },
+      {
+        "round_number": 10,
+        "circuit_id": "7",
+        "circuit_name": "Circuit Gilles Villeneuve",
+        "event": "Canadian Grand Prix",
+        "driver": "RUS",
+        "lap_number": 63,
+        "lap_length_m": 4298.139,
+        "point_count": 240
+      },
+      {
+        "round_number": 11,
+        "circuit_id": "70",
+        "circuit_name": "Red Bull Ring",
+        "event": "Austrian Grand Prix",
+        "driver": "PIA",
+        "lap_number": 59,
+        "lap_length_m": 4294.891,
+        "point_count": 240
+      },
+      {
+        "round_number": 12,
+        "circuit_id": "9",
+        "circuit_name": "Silverstone Circuit",
+        "event": "British Grand Prix",
+        "driver": "PIA",
+        "lap_number": 51,
+        "lap_length_m": 5818.925,
+        "point_count": 240
+      },
+      {
+        "round_number": 13,
+        "circuit_id": "13",
+        "circuit_name": "Circuit de Spa-Francorchamps",
+        "event": "Belgian Grand Prix",
+        "driver": "ANT",
+        "lap_number": 32,
+        "lap_length_m": 6941.238,
+        "point_count": 240
+      },
+      {
+        "round_number": 14,
+        "circuit_id": "11",
+        "circuit_name": "Hungaroring",
+        "event": "Hungarian Grand Prix",
+        "driver": "RUS",
+        "lap_number": 45,
+        "lap_length_m": 4354.063,
+        "point_count": 240
+      },
+      {
+        "round_number": 15,
+        "circuit_id": "39",
+        "circuit_name": "Circuit Park Zandvoort",
+        "event": "Dutch Grand Prix",
+        "driver": "PIA",
+        "lap_number": 60,
+        "lap_length_m": 4238.799,
+        "point_count": 240
+      },
+      {
+        "round_number": 16,
+        "circuit_id": "14",
+        "circuit_name": "Autodromo Nazionale di Monza",
+        "event": "Italian Grand Prix",
+        "driver": "NOR",
+        "lap_number": 53,
+        "lap_length_m": 5739.493,
+        "point_count": 240
+      },
+      {
+        "round_number": 17,
+        "circuit_id": "73",
+        "circuit_name": "Baku City Circuit",
+        "event": "Azerbaijan Grand Prix",
+        "driver": "VER",
+        "lap_number": 50,
+        "lap_length_m": 5931.594,
+        "point_count": 240
+      },
+      {
+        "round_number": 18,
+        "circuit_id": "15",
+        "circuit_name": "Marina Bay Street Circuit",
+        "event": "Singapore Grand Prix",
+        "driver": "HAM",
+        "lap_number": 48,
+        "lap_length_m": 4893.053,
+        "point_count": 240
+      },
+      {
+        "round_number": 19,
+        "circuit_id": "69",
+        "circuit_name": "Circuit of the Americas",
+        "event": "United States Grand Prix",
+        "driver": "ANT",
+        "lap_number": 33,
+        "lap_length_m": 5446.989,
+        "point_count": 240
+      },
+      {
+        "round_number": 20,
+        "circuit_id": "32",
+        "circuit_name": "Autodromo Hermanos Rodriguez",
+        "event": "Mexico City Grand Prix",
+        "driver": "RUS",
+        "lap_number": 50,
+        "lap_length_m": 4239.312,
+        "point_count": 240
+      },
+      {
+        "round_number": 21,
+        "circuit_id": "18",
+        "circuit_name": "Autodromo Jose Carlos Pace",
+        "event": "São Paulo Grand Prix",
+        "driver": "ALB",
+        "lap_number": 59,
+        "lap_length_m": 4231.626,
+        "point_count": 240
+      },
+      {
+        "round_number": 22,
+        "circuit_id": "80",
+        "circuit_name": "Las Vegas Strip Street Circuit",
+        "event": "Las Vegas Grand Prix",
+        "driver": "VER",
+        "lap_number": 50,
+        "lap_length_m": 6139.217,
+        "point_count": 240
+      },
+      {
+        "round_number": 23,
+        "circuit_id": "78",
+        "circuit_name": "Losail International Circuit",
+        "event": "Qatar Grand Prix",
+        "driver": "PIA",
+        "lap_number": 44,
+        "lap_length_m": 5394.424,
+        "point_count": 240
+      },
+      {
+        "round_number": 24,
+        "circuit_id": "24",
+        "circuit_name": "Yas Marina Circuit",
+        "event": "Abu Dhabi Grand Prix",
+        "driver": "LEC",
+        "lap_number": 45,
+        "lap_length_m": 5213.787,
+        "point_count": 240
+      }
+    ]
+  },
+  "transform": {
+    "input_columns": [
+      "Distance",
+      "X",
+      "Y"
+    ],
+    "finite_samples_only": true,
+    "sampling": "linear interpolation at equal lap-distance intervals",
+    "points_per_track": 240,
+    "track_count": 24,
+    "coordinates": "centered, uniformly scaled, unitless [-1, 1]",
+    "closed_polylines": true
+  },
+  "retention": {
+    "raw_telemetry": "not written",
+    "fastf1_cache": "temporary; deleted when generation exits"
+  }
+}

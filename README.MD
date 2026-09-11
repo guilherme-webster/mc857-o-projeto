@@ -87,6 +87,38 @@ O SQLite gerado contem `metadata`, `source_ids`, `circuits`, `drivers`, `teams`,
 milissegundos e ausencias permanecem `NULL`. O JSON de qualidade registra
 contagens, nulos, duplicatas, referencias orfas e pit stops anormalmente longos.
 
+### Geometrias mockadas das pistas
+
+A fixture `tests/fixtures/trotman_v128_tracks_2025/` contém as polilinhas das
+24 pistas do calendário de 2025 e seus pit lanes. Cada pit lane inclui um ponto
+de serviço representativo. Os dados foram derivados offline do FastF1; cache,
+telemetria bruta e scripts de geração não fazem parte do repositório. Consulte
+o ADR 0003 e os manifestos em `data/sources/` para proveniência, transformação
+e limitações de uso. O visualizador temporário usado para inspecionar os mocks
+também não faz parte do repositório.
+
+Para incluir os tracos e pit lanes mockados da issue #51 no mesmo SQLite,
+acrescente `--geometry-dir` ao comando de ingestao:
+
+```bash
+python3 scripts/ingest_trotman.py \
+  --source tests/fixtures/trotman_v128_sample \
+  --race-id 1141 \
+  --geometry-dir tests/fixtures/trotman_v128_tracks_2025 \
+  --output data/curated/race-1141-geometry.sqlite \
+  --report data/curated/race-1141-geometry-quality.json
+```
+
+Esse exemplo usa a amostra pequena de corrida. Para processar os dados completos,
+omita `--source` depois de baixar o Trotman v128. O comando importa apenas a
+geometria do circuito da corrida, validando ambos os CSVs e seus manifestos.
+Os mocks das 24 pistas continuam disponiveis para outras corridas suportadas.
+
+X/Y sao normalizados e sem unidade; distancia acumulada da pista e em metros.
+Os mocks sao de 2025: seu uso com uma corrida de outro ano fica explicito no
+relatorio. Consulte o [contrato de consumo](docs/fluxo-etl.md#geometria-de-pista-e-pit-lane)
+para ler as novas tabelas com `SQLiteTrackGeometryRepository`.
+
 Execute os testes sem instalar dependencias adicionais:
 
 ```bash

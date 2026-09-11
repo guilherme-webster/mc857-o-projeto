@@ -5,14 +5,20 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 from f1_simulator.application.ports.race_data import (
     RaceDatasetPort,
     RaceDataWriterPort,
 )
+from f1_simulator.application.ports.track_geometry import TrackGeometryDatasetPort
 from f1_simulator.application.race_data_ingestion import RaceDataIngestionService
 from f1_simulator.domain.race_data import RaceData
+from f1_simulator.factories.track_geometry_factory import (
+    TrackGeometryFactory,
+    TrackGeometryValidationError,
+)
 
 
 def run_race_etl(
@@ -23,6 +29,7 @@ def run_race_etl(
     report_destination: Path,
     *,
     overwrite: bool = False,
+    geometry_dataset: TrackGeometryDatasetPort | None = None,
 ) -> dict[str, object]:
     """Ingest, validate and persist one race supplied by any dataset adapter.
 
@@ -30,9 +37,22 @@ def run_race_etl(
     root. This function coordinates the batch and removes the database output
     if writing its companion quality report fails, avoiding a partially
     published pair of artifacts.
+
+    Geometry is opt-in and joined by canonical circuit ID before persistence.
+    If requested, both paths must validate; a missing mock never falls back to
+    another circuit. Without it, the historical ETL contract is unchanged.
     """
 
     race_data = RaceDataIngestionService(dataset).load_race(race_external_id)
+    if geometry_dataset is not None:
+        geometry = TrackGeometryFactory.build(
+            geometry_dataset.load_geometry(race_data.circuit.circuit_id)
+        )
+        if geometry.circuit_id != race_data.circuit.circuit_id:
+            raise TrackGeometryValidationError(
+                "geometry belongs to a different circuit"
+            )
+        race_data = replace(race_data, geometry=geometry)
     report = build_quality_report(race_data)
     writer.write(race_data, destination, overwrite=overwrite)
     try:
@@ -57,7 +77,7 @@ def build_quality_report(data: RaceData) -> dict[str, object]:
         for stop in data.pit_stops
         if stop.duration_ms is not None and stop.duration_ms > 300_000
     )
-    return {
+    report = {
         "source": {
             "name": data.source_name,
             "version": data.source_version,
@@ -98,6 +118,26 @@ def build_quality_report(data: RaceData) -> dict[str, object]:
             "pit_stops_over_300_seconds": long_pit_stops,
         },
     }
+    if data.geometry is not None:
+        geometry = data.geometry
+        report["row_counts"].update(
+            track_points=len(geometry.track_points),
+            pit_lane_points=len(geometry.pit_lane_points),
+            geometry_sources=2,
+        )
+        report["geometry"] = {
+            "circuit_id": geometry.circuit_id,
+            "coordinates": "normalized_xy_unitless",
+            "lap_length_m": geometry.lap_length_m,
+            "source_year": geometry.track_source.source_year,
+            "track_artifact_sha256": geometry.track_source.artifact_sha256,
+            "pit_lane_artifact_sha256": geometry.pit_lane_source.artifact_sha256,
+            "mock": True,
+        }
+        report["warnings"]["geometry_source_year_differs_from_race"] = (
+            geometry.track_source.source_year != data.race.season
+        )
+    return report
 
 
 def _write_report(

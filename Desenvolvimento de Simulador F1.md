@@ -313,6 +313,12 @@ facilita o uso como espinha dorsal cadastral. A base não substitui os dados de
 composto, clima ou telemetria detalhada das duas primeiras fontes. Essas lacunas
 não autorizam combinar outra fonte silenciosamente no MVP.
 
+O [ADR 0003](docs/adr/0003-geometria-mockada-derivada-do-fastf1.md) registra
+uma excecao explicita e limitada: FastF1 pode ser usado offline para gerar uma
+polilinha mockada de cada circuito. A fixture inicial cobre as 24 etapas de
+2025, associadas aos IDs do Trotman v128, sem reter ou versionar telemetria e
+cache.
+
 ### 6.4 Matriz de uso das fontes
 
 A matriz abaixo registra possibilidades de evolução. No MVP, somente a Base 3
@@ -364,7 +370,8 @@ não a obrigação de criar tabelas vazias antecipadamente:
 - `pit_stops(race_id, driver_id, lap_number, stationary_time_s)`;
 - `stints(race_id, driver_id, stint_number, compound, start_lap, end_lap, air_temp_c, track_temp_c)`;
 - `telemetry(race_id, driver_id, lap_number, sample_time_ms, speed_kph, rpm, throttle_pct, brake)`;
-- `track_points(circuit_id, sequence, x, y, cumulative_distance_m)`.
+- `track_points(circuit_id, sequence, x, y, cumulative_distance_m)`;
+- `pit_lane_points(circuit_id, sequence, x, y, path_fraction, is_service_point)`.
 
 Os adaptadores devem manter uma tabela de correspondência entre os identificadores das fontes. Não usar apenas o nome textual de piloto, equipe ou Grande Prêmio como chave de junção.
 
