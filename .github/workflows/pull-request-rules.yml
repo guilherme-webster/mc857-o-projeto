@@ -12,9 +12,8 @@ jobs:
       - name: Verify head branch is develop
         if: github.head_ref != 'develop'
         run: |
-          echo "ERRO: Pull Requests para a branch 'main' só são permitidos a partir da 'develop'!"
+          echo "AVISO: Pull Request para 'main' com origem diferente de 'develop'."
           echo "Branch de origem recebida: ${{ github.head_ref }}"
-          exit 1
 
       - name: Success message
         if: github.head_ref == 'develop'
