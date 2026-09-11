@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sqlite3
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 from f1_simulator.domain.race_data import RaceData
@@ -116,14 +117,20 @@ class SQLiteRaceDataWriter:
         os.close(file_descriptor)
         temporary = Path(temporary_name)
         try:
-            with sqlite3.connect(temporary) as connection:
-                connection.executescript(SCHEMA)
-                self._insert(connection, race_data)
-                violations = connection.execute("PRAGMA foreign_key_check").fetchall()
-                if violations:
-                    raise sqlite3.IntegrityError(
-                        f"foreign key violations after import: {violations}"
-                    )
+            # A sqlite3.Connection context manager controls transactions but
+            # does not close the connection. Closing it explicitly is also
+            # required before replacing the temporary file on every platform.
+            with closing(sqlite3.connect(temporary)) as connection:
+                with connection:
+                    connection.executescript(SCHEMA)
+                    self._insert(connection, race_data)
+                    violations = connection.execute(
+                        "PRAGMA foreign_key_check"
+                    ).fetchall()
+                    if violations:
+                        raise sqlite3.IntegrityError(
+                            f"foreign key violations after import: {violations}"
+                        )
             os.replace(temporary, destination)
         except Exception:
             temporary.unlink(missing_ok=True)

@@ -14,6 +14,14 @@ from f1_simulator.application.race_data_dto import NormalizedRaceData
 from f1_simulator.domain.race_data import RaceData
 
 
+class RaceDataRepositoryError(RuntimeError):
+    """Report that canonical race data could not be read safely."""
+
+
+class RaceDataNotFoundError(RaceDataRepositoryError):
+    """Report that a requested canonical race does not exist."""
+
+
 class RaceDatasetPort(Protocol):
     """Load one external race into the source-independent normalized contract.
 
@@ -35,5 +43,19 @@ class RaceDataWriterPort(Protocol):
         self, race_data: RaceData, destination: Path, *, overwrite: bool = False
     ) -> None:
         """Write all canonical entities to ``destination`` atomically."""
+
+        ...
+
+
+class RaceDataRepository(Protocol):
+    """Read canonical race aggregates without exposing persistence details.
+
+    Consumers use canonical identifiers such as ``race:1141``. Implementations
+    must reconstruct the complete aggregate or raise a repository error; they
+    must never return partially loaded race data.
+    """
+
+    def get_race(self, race_id: str) -> RaceData:
+        """Return one complete canonical race aggregate."""
 
         ...
