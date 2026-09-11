@@ -1,0 +1,21 @@
+name: Enforce develop to main PR
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify head branch is develop
+        if: github.head_ref != 'develop'
+        run: |
+          echo "ERRO: Pull Requests para a branch 'main' só são permitidos a partir da 'develop'!"
+          echo "Branch de origem recebida: ${{ github.head_ref }}"
+          exit 1
+
+      - name: Success message
+        if: github.head_ref == 'develop'
+        run: echo "Origem válida (develop -> main). Pronto para revisão."

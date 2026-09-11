@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-02T19:25:46Z
-- **Abertas:** 29
-- **Fechadas:** 2
+- **Ultima atividade registrada:** 2026-09-09T23:19:04Z
+- **Abertas:** 35
+- **Fechadas:** 5
 
 ## Issues abertas
 
@@ -490,34 +490,6 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 
 </details>
 
-### [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @ViniciusFCoracin
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:33:19Z
-- **Atualizada:** 2026-08-28T23:42:58Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>A tela de simulação deve exibir uma visão aérea em duas dimensões da pista, assim como a posição dos carros.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:36:37Z — label adicionada: Task por @ViniciusFCoracin
-
-</details>
-
 ### [#17 — Processamento da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/17)
 
 - **Estado:** aberta
@@ -669,13 +641,21 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:45:38Z
-- **Atualizada:** 2026-08-28T23:45:38Z
+- **Atualizada:** 2026-09-04T22:15:18Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-04T22:15:18Z — responsavel removido: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-09-03T23:50:41Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 
 </details>
 
@@ -836,46 +816,18 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 
 </details>
 
-### [#25 — Implementar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/25)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-08-30T07:58:27Z
-- **Atualizada:** 2026-09-01T22:12:34Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-01T22:12:34Z — label adicionada: Task por @guilherme-webster
-
-</details>
-
 ### [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
-- **Responsaveis:** —
+- **Responsaveis:** @guilherme-webster
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Sub-issues:** —
 - **Criada:** 2026-09-01T22:35:17Z
-- **Atualizada:** 2026-09-02T19:25:45Z
+- **Atualizada:** 2026-09-02T19:30:08Z
 - **Fechada:** —
 
 <details>
@@ -898,6 +850,7 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-02T19:30:08Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-09-02T19:19:25Z — label adicionada: Task por @guilherme-webster
 
 </details>
@@ -907,13 +860,13 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
-- **Responsaveis:** —
+- **Responsaveis:** @guilherme-webster
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Sub-issues:** —
 - **Criada:** 2026-09-01T22:35:52Z
-- **Atualizada:** 2026-09-02T19:25:46Z
+- **Atualizada:** 2026-09-02T19:30:03Z
 - **Fechada:** —
 
 <details>
@@ -947,6 +900,7 @@ Verificacoes: 25 testes aprovados com `ResourceWarning` habilitado, Ruff aprovad
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-02T19:30:03Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-09-02T19:19:30Z — label adicionada: Task por @guilherme-webster
 
 </details>
@@ -984,13 +938,13 @@ Verificacoes: 25 testes aprovados com `ResourceWarning` habilitado, Ruff aprovad
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
-- **Responsaveis:** —
+- **Responsaveis:** @guilherme-webster
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Sub-issues:** —
 - **Criada:** 2026-09-02T19:19:08Z
-- **Atualizada:** 2026-09-02T19:19:47Z
+- **Atualizada:** 2026-09-02T19:30:12Z
 - **Fechada:** —
 
 <details>
@@ -1003,11 +957,306 @@ Verificacoes: 25 testes aprovados com `ResourceWarning` habilitado, Ruff aprovad
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-02T19:30:12Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-09-02T19:19:47Z — label adicionada: Task por @guilherme-webster
 
 </details>
 
+### [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#37 — Docker - conteinerizar a aplicação](https://github.com/guilherme-webster/mc857-o-projeto/issues/37), [#38 — Configurar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/38), [#39 — Padronização e Qualidade de Código](https://github.com/guilherme-webster/mc857-o-projeto/issues/39)
+- **Criada:** 2026-09-04T00:07:17Z
+- **Atualizada:** 2026-09-04T00:10:50Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Configurar a infraestrutura do projeto, garantindo um ambiente de desenvolvimento padronizado entre os integrantes do grupo e a automação de validações de código.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-04T00:16:18Z — sub-issue adicionada: #39 por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:15:03Z — sub-issue adicionada: #38 por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:12:30Z — sub-issue adicionada: #37 por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:07:17Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#37 — Docker - conteinerizar a aplicação](https://github.com/guilherme-webster/mc857-o-projeto/issues/37)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
+- **Sub-issues:** —
+- **Criada:** 2026-09-04T00:12:28Z
+- **Atualizada:** 2026-09-04T22:14:50Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>conteinerizar o backend e o frontend com Docker para padronizar o ambiente de desenvolvimento e execução.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-04T22:14:50Z — label adicionada: História por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:39:57Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#38 — Configurar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/38)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
+- **Sub-issues:** —
+- **Criada:** 2026-09-04T00:15:02Z
+- **Atualizada:** 2026-09-04T22:14:57Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>configurar um pipeline de Integração Contínua (CI) para validar builds, linters e testes 
+
+Esse ticket será um constante lembrete de implementar boas práticas de CI</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-04T22:14:57Z — label adicionada: História por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:42:15Z — marcada como duplicada por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:17:34Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#39 — Padronização e Qualidade de Código](https://github.com/guilherme-webster/mc857-o-projeto/issues/39)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
+- **Sub-issues:** —
+- **Criada:** 2026-09-04T00:16:17Z
+- **Atualizada:** 2026-09-04T22:15:04Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>padronizar o estilo de código e validações pré-commit para evitar inconsistências e erros de sintaxe no repositório</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-04T22:15:04Z — label adicionada: História por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
+- **Criada:** 2026-09-04T23:01:05Z
+- **Atualizada:** 2026-09-04T23:02:44Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Correlação entre atributos do carro, piloto, etc com tempo de uma volta
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-08T22:18:09Z — sub-issue adicionada: #51 por @Jmvjr
+- 2026-09-04T23:02:44Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43), [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47)
+- **Criada:** 2026-09-04T23:02:55Z
+- **Atualizada:** 2026-09-04T23:03:36Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Endpoints, integração com o front, fornecer arquivo de reprodução da simulação</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-05T19:56:27Z — sub-issue adicionada: #47 por @Gustavo-Jun-Tsuji
+- 2026-09-05T16:38:00Z — sub-issue adicionada: #43 por @Gustavo-Jun-Tsuji
+- 2026-09-04T23:02:57Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+- **Sub-issues:** —
+- **Criada:** 2026-09-05T16:37:59Z
+- **Atualizada:** 2026-09-05T16:38:09Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-05T16:38:09Z — label adicionada: História por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+- **Sub-issues:** —
+- **Criada:** 2026-09-05T19:56:26Z
+- **Atualizada:** 2026-09-05T19:56:38Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-05T19:56:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
 ## Issues fechadas
+
+### [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:33:19Z
+- **Atualizada:** 2026-09-05T00:04:58Z
+- **Fechada:** 2026-09-05T00:04:58Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>A tela de simulação deve exibir uma visão aérea em duas dimensões da pista, assim como a posição dos carros.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-05T00:04:59Z — fechada por @ViniciusFCoracin
+- 2026-08-28T23:36:37Z — label adicionada: Task por @ViniciusFCoracin
+
+</details>
+
+### [#25 — Implementar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/25)
+
+- **Estado:** fechada
+- **Motivo do estado:** duplicate
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-08-30T07:58:27Z
+- **Atualizada:** 2026-09-04T00:42:15Z
+- **Fechada:** 2026-09-04T00:42:15Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-04T00:42:15Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-01T22:12:34Z — label adicionada: Task por @guilherme-webster
+
+</details>
 
 ### [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26)
 
@@ -1205,5 +1454,86 @@ Verificações: 39 testes passando, `compileall`, inspeção visual das telas e 
 - 2026-09-02T15:13:07Z — fechada por @Jmvjr
 - 2026-09-01T21:06:20Z — label adicionada: Task por @Jmvjr
 - 2026-09-01T21:06:18Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
+### [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+- **Sub-issues:** —
+- **Criada:** 2026-09-08T22:18:07Z
+- **Atualizada:** 2026-09-09T23:19:04Z
+- **Fechada:** 2026-09-08T23:32:20Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Mockagem de dados para representação de pistas</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (9)</summary>
+
+#### [@Jmvjr em 2026-09-08T22:25:28Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592701537)
+
+<pre>Início da implementação da geração de geometria mockada de pistas. Escopo confirmado: usar FastF1 apenas como fonte temporária, derivar uma polilinha normalizada para a amostra de dados, registrar proveniência e remover automaticamente cache/telemetria temporários; nenhuma alteração de visualização nesta issue e nenhum dado preexistente será apagado.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:38:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592838768)
+
+<pre>Geração de pistas concluída para o circuito do MVP (Interlagos, circuitId 18), sem integração visual. Entregue: gerador FastF1 parametrizável; transformação pura para polilinha fechada/normalizada; fixture track_points.csv com 240 pontos e distância acumulada; manifesto de proveniência/checksum; ADR 0003; documentação e testes. A aquisição usou FastF1 3.8.3, GP de São Paulo 2024, corrida, volta 67 de VER. Cache e telemetria ficaram em diretório temporário e foram removidos automaticamente; dados preexistentes não foram apagados e a saída recusa sobrescrita por padrão. Verificações: 56 testes OK, 13 testes Arcade ignorados por exigirem ARCADE_GUI_TEST=True; teste específico do artefato/checksum OK; git diff --check passa nas mudanças da implementação, com whitespace preexistente apenas no backlog gerado a partir de uma issue. Próximo passo, fora desta issue: consumir a polilinha na visualização da issue 13. Limitação registrada: a licença MIT cobre o software FastF1, não concede direitos adicionais sobre os dados upstream.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:38:27Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592838925)
+
+<pre>Critérios atendidos para a geração mockada do circuito do MVP; visualização permanece na issue 13.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:49:32Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592950139)
+
+<pre>Validação complementar concluída após o fechamento: foi adicionado `scripts/preview_track_geometry.py`, um visualizador Arcade de desenvolvimento que lê o `track_points.csv` versionado, preserva a proporção da geometria e marca o início/fim da volta. O comando `--check` valida o arquivo sem abrir janela.
+
+Verificações: `python3 -m unittest -v` (59 testes, 13 pulados por dependerem da configuração gráfica), `uv run python scripts/preview_track_geometry.py --check` (240 pontos válidos) e inicialização real da janela/render loop Arcade sem erros. Este utilitário é apenas diagnóstico da geometria gerada e não implementa o fluxo de produto da issue #13.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:57:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593019022)
+
+<pre>Escopo reaberto por solicitação do usuário: ampliar a geração mockada de Interlagos para as 24 etapas do calendário de 2025. A implementação continuará restrita à geometria reduzida, sem reter cache ou telemetria bruta, com IDs associados ao Trotman v128 e validação individual dos artefatos. A issue #13 permanece fora do escopo; o visualizador será usado apenas como diagnóstico.</pre>
+
+#### [@Jmvjr em 2026-09-08T23:12:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593145842)
+
+<pre>Ampliação para o calendário completo de 2025 concluída. Foram geradas 24 geometrias vinculadas aos `circuitId` do Trotman v128 em `tests/fixtures/trotman_v128_tracks_2025/track_points.csv`: 5.760 linhas de dados, 240 pontos por pista, polilinhas fechadas e escala uniforme. O manifesto agregado `data/sources/fastf1-tracks-2025.json` registra FastF1 3.8.3, sessão/piloto/volta/comprimento de cada etapa, transformação, retenção e checksum. O cache e a telemetria permaneceram em diretório temporário e foram removidos; a fixture anterior de Interlagos e os demais dados existentes foram preservados.
+
+Também foram entregues gerador atômico em lote, escritor multi-circuito, seleção por `--circuit-id`/listagem no visualizador, testes e documentação/ADR atualizados. Verificações: 62 testes OK (13 GUI pulados pela configuração existente), 24 IDs e 5.760 pontos conferidos, checksum válido, proteção contra sobrescrita OK, `git diff --check` OK fora do backlog gerado e renderização real de uma pista agregada iniciada sem erro. A issue #13 continua fora deste escopo.</pre>
+
+#### [@Jmvjr em 2026-09-08T23:18:56Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593200341)
+
+<pre>Escopo reaberto para completar a geometria necessária à simulação: derivar também o caminho do pit lane e um ponto de serviço representativo para cada uma das 24 pistas, mantendo as mesmas coordenadas normalizadas do traçado principal. A classificação posterior de curvas e retas é viável a partir da curvatura da polilinha, mas não faz parte desta etapa.</pre>
+
+#### [@Jmvjr em 2026-09-08T23:32:19Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593353177)
+
+<pre>Complemento de pit lane concluído. A fixture `tests/fixtures/trotman_v128_tracks_2025/pit_lane_points.csv` contém 24 caminhos entrada→saída, 80 pontos por circuito (1.920 no total) e exatamente um `isServicePoint=true` por pista. As coordenadas usam a mesma transformação do traçado principal. O ponto de serviço é representativo, inferido de uma parada observada, e não identifica a garagem exata de cada equipe. Proveniência e checksum estão em `data/sources/fastf1-pit-lanes-2025.json`.
+
+O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Conforme solicitado, os três scripts FastF1 e o módulo auxiliar de geração foram removidos após a geração; ficaram apenas mocks, manifestos, visualizador e testes de integridade. Cache e telemetria temporários foram removidos. Verificações: 60 testes OK (13 GUI condicionais pulados), 24/1.920/24 contagens conferidas, checksum válido, `git diff --check` OK fora do backlog gerado e renderização Arcade real sem erro. Curvas e retas poderão ser classificadas posteriormente pela curvatura da polilinha, fora desta etapa.</pre>
+
+#### [@Jmvjr em 2026-09-09T23:19:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5610073659)
+
+<pre>Limpeza final solicitada: o visualizador temporário `scripts/preview_track_geometry.py` e seus testes específicos foram removidos. Os mocks de pista/pit lane, manifestos e testes de integridade permaneceram. `scripts/__init__.py` foi mantido porque também evita colisão com um pacote externo homônimo e é necessário ao teste de sincronização do backlog. Verificação: 55 testes OK, 13 GUI condicionais pulados; nenhuma referência ao visualizador permanece fora do histórico gerado.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-08T23:32:20Z — fechada por @Jmvjr
+- 2026-09-08T23:18:55Z — reaberta por @Jmvjr
+- 2026-09-08T23:12:47Z — fechada por @Jmvjr
+- 2026-09-08T22:57:29Z — reaberta por @Jmvjr
+- 2026-09-08T22:38:28Z — fechada por @Jmvjr
+- 2026-09-08T22:18:09Z — label adicionada: História por @Jmvjr
+- 2026-09-08T22:18:08Z — atribuida: @Jmvjr por @Jmvjr
 
 </details>
