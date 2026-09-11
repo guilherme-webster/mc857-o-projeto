@@ -87,6 +87,16 @@ O SQLite gerado contem `metadata`, `source_ids`, `circuits`, `drivers`, `teams`,
 milissegundos e ausencias permanecem `NULL`. O JSON de qualidade registra
 contagens, nulos, duplicatas, referencias orfas e pit stops anormalmente longos.
 
+### Geometrias mockadas das pistas
+
+A fixture `tests/fixtures/trotman_v128_tracks_2025/` contém as polilinhas das
+24 pistas do calendário de 2025 e seus pit lanes. Cada pit lane inclui um ponto
+de serviço representativo. Os dados foram derivados offline do FastF1; cache,
+telemetria bruta e scripts de geração não fazem parte do repositório. Consulte
+o ADR 0003 e os manifestos em `data/sources/` para proveniência, transformação
+e limitações de uso. O visualizador temporário usado para inspecionar os mocks
+também não faz parte do repositório.
+
 Execute os testes sem instalar dependencias adicionais:
 
 ```bash

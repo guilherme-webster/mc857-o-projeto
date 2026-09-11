@@ -1,0 +1,36 @@
+{
+  "artifact": "tests/fixtures/trotman_v128_sample/track_points.csv",
+  "artifact_sha256": "8a3bdde9f734bb5b273e4d75af762414802dd707c7d97a0773c93c141ee1d915",
+  "purpose": "mock 2D circuit centerline; not authoritative telemetry",
+  "generated_at": "2026-09-08",
+  "source": {
+    "library": "FastF1",
+    "library_version": "3.8.3",
+    "software_license": "MIT",
+    "upstream": "Formula 1 live timing data accessed through FastF1",
+    "upstream_data_license": "not granted by the FastF1 software license; upstream terms apply",
+    "year": 2024,
+    "event": "São Paulo Grand Prix",
+    "round_number": 21,
+    "session": "R",
+    "driver": "VER",
+    "lap_number": 67
+  },
+  "transform": {
+    "input_columns": [
+      "Distance",
+      "X",
+      "Y"
+    ],
+    "finite_samples_only": true,
+    "sampling": "linear interpolation at equal lap-distance intervals",
+    "point_count": 240,
+    "coordinates": "centered, uniformly scaled, unitless [-1, 1]",
+    "lap_length_m": 4251.55,
+    "closed_polyline": true
+  },
+  "retention": {
+    "raw_telemetry": "not written",
+    "fastf1_cache": "temporary; deleted when generation exits"
+  }
+}

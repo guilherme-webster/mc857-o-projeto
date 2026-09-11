@@ -15,6 +15,7 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | --- | --- | --- |
 | [0001](0001-frontend-desktop-com-arcade.md) | aceita | Frontend desktop em Python com Arcade. |
 | [0002](0002-arquitetura-hexagonal-e-integracao-de-dados.md) | aceita | Arquitetura hexagonal, integracao com Adapter + Factory e dataset Trotman para o MVP. |
+| [0003](0003-geometria-mockada-derivada-do-fastf1.md) | aceita | FastF1 somente na geracao offline de geometria mockada, sem reter telemetria. |
 
 ## Modelo
 
