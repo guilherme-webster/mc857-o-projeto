@@ -1,5 +1,89 @@
 # Fluxo e responsabilidades do ETL
 
+## Geometria de pista e pit lane
+
+A extensao da issue #34 consome os CSVs reduzidos da issue #51, conforme o
+ADR 0003. Eles ja contem coordenadas X/Y normalizadas. Nao sao um DataFrame
+de latitude/longitude e nao exigem Pandas: a leitura tabular fica no adapter.
+O ponto geografico de `circuits.csv` continua preservado como localizacao do
+circuito, separado de seu contorno.
+
+O fluxo opcional e:
+
+1. `scripts/ingest_trotman.py --geometry-dir ...` compoe
+   `MockTrackDatasetAdapter`, com os dois CSVs e os dois manifestos de 2025.
+2. `run_race_etl` carrega a corrida como antes e solicita sua geometria pelo
+   `circuit_id` canonico; o adapter usa o mapeamento `circuitId` do Trotman
+   registrado na issue #51, sem fazer associacao por nome.
+3. O adapter verifica SHA-256 dos arquivos, a referencia do pit lane ao
+   checksum do tracado, circuito, contagens e comprimento declarado. Converte
+   campos numericos e booleanos e ordena as linhas por `sequence`.
+4. `TrackGeometryFactory` valida o DTO `NormalizedTrackGeometry`: sequencia
+   contigua desde zero, numeros finitos, distancia crescente desde zero,
+   fechamento explicito da pista, progresso do pit lane de zero a um e
+   exatamente um ponto de servico. Nao ha preenchimento ou reparo silencioso.
+5. O caso de uso associa `TrackGeometry` a `RaceData.geometry` somente se o
+   circuito coincidir. O writer publica corrida e geometria no mesmo SQLite,
+   com chaves estrangeiras e as tabelas abaixo. O relatorio inclui contagens,
+   checksums, comprimento e aviso quando o ano do mock difere do ano da corrida.
+6. `SQLiteTrackGeometryRepository` implementa `TrackGeometryRepository` e
+   devolve as duas polilinhas e suas proveniencias, revalidadas pela Factory.
+
+| Tabela | Conteudo e unidades |
+| --- | --- |
+| `track_points` | `circuit_id`, `sequence`, `x_normalized`, `y_normalized`, `cumulative_distance_m`. X/Y sem unidade; distancia da volta em metros. |
+| `pit_lane_points` | Mesmo circuito e sistema X/Y; `sequence`, `path_fraction` em [0, 1] e `is_service_point` booleano (0/1 no SQLite). |
+| `geometry_sources` | Uma linha por caminho: ferramenta/versao, ano, data de geracao, origem, licenca dos dados, checksums do artefato e manifesto, transformacao. |
+
+O comprimento e a distancia declarada no mock, nao uma medida oficial da pista.
+Nao se deve calcular metros ou velocidade usando diretamente X/Y nem tratar
+`path_fraction` como tempo ou distancia fisica do pit lane. Pista e pit lane
+devem receber a mesma escala e translacao na apresentacao; normalizar cada um
+separadamente destruiria seu alinhamento. O ponto de servico e representativo,
+sem identificar o box individual de uma equipe. O campo `upstream` ausente no
+manifesto do pit lane permanece `NULL`; a licenca dos dados e os checksums
+continuam obrigatorios.
+
+Exemplo de consumo, com `PYTHONPATH=src`:
+
+```python
+from pathlib import Path
+
+from f1_simulator.adapters.persistence.sqlite_track_geometry import (
+    SQLiteTrackGeometryRepository,
+)
+from f1_simulator.application.ports.track_geometry import TrackGeometryRepository
+
+repository: TrackGeometryRepository = SQLiteTrackGeometryRepository(
+    Path("data/curated/race-1141-geometry.sqlite")
+)
+geometry = repository.get_geometry("circuit:18")
+track_xy = [(p.x_normalized, p.y_normalized) for p in geometry.track_points]
+distances_m = [p.cumulative_distance_m for p in geometry.track_points]
+pit_xy = [(p.x_normalized, p.y_normalized) for p in geometry.pit_lane_points]
+service = next(p for p in geometry.pit_lane_points if p.is_service_point)
+```
+
+O repository abre o banco somente para leitura. Circuito sem geometria, ou
+banco historico criado sem ela, gera `TrackGeometryNotFoundError`; arquivo
+inexistente, esquema parcial e dados corrompidos geram
+`TrackGeometryRepositoryError`. O ID de circuito deve vir da corrida escolhida.
+
+Sem `--geometry-dir`, o comando e o esquema historicos continuam funcionando.
+Com essa opcao, ambos os caminhos sao obrigatorios e uma pista ausente falha
+explicitamente, sem trocar por outro circuito. A ingestao processa uma corrida
+por execucao, usando a pista correspondente entre os 24 mocks disponiveis.
+`--geometry-manifests-dir` permite localizar os manifestos fora do diretorio
+padrao `data/sources`. A fixture isolada de Interlagos/2024, sem pit lane
+correspondente, nao faz parte desse contrato de entrada.
+
+Esta entrega prepara os dados para modelagem e apresentacao; nao implementa
+interpolacao de carros, classificacao de curvas/retas ou endpoints de produto.
+Os dados de mock, incluindo sua licenca upstream, permanecem distintos do
+historico CC0 do Trotman.
+
+## Fluxo historico da corrida
+
 Este documento explica como os dados de uma fonte externa atravessam o ETL ate
 se tornarem dados canonicos prontos para persistencia e consumo pelo restante do
 sistema.

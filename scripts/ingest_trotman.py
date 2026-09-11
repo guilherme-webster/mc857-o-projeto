@@ -28,6 +28,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument(
+        "--geometry-dir",
+        type=Path,
+        help="diretorio dos CSVs track_points.csv e pit_lane_points.csv da issue 51",
+    )
+    parser.add_argument(
+        "--geometry-manifests-dir",
+        type=Path,
+        default=ROOT / "data" / "sources",
+        help="diretorio dos manifestos fastf1-tracks-2025.json e fastf1-pit-lanes-2025.json",
+    )
+    parser.add_argument(
         "--overwrite", action="store_true", help="substitui saidas existentes"
     )
     return parser.parse_args()
@@ -43,6 +54,13 @@ def main() -> int:
     from f1_simulator.adapters.persistence.sqlite_race_data import SQLiteRaceDataWriter
     from f1_simulator.application.etl import run_race_etl
     from f1_simulator.factories.race_data_factory import RaceDataValidationError
+    from f1_simulator.adapters.datasets.mock_track_geometry import (
+        MockTrackDatasetAdapter,
+        MockTrackDatasetError,
+    )
+    from f1_simulator.factories.track_geometry_factory import (
+        TrackGeometryValidationError,
+    )
 
     args = parse_args()
     try:
@@ -50,6 +68,14 @@ def main() -> int:
         # the application service remains independent of Trotman and SQLite.
         dataset = TrotmanDatasetAdapter(args.source)
         writer = SQLiteRaceDataWriter()
+        geometry_dataset = None
+        if args.geometry_dir is not None:
+            geometry_dataset = MockTrackDatasetAdapter(
+                args.geometry_dir / "track_points.csv",
+                args.geometry_manifests_dir / "fastf1-tracks-2025.json",
+                args.geometry_dir / "pit_lane_points.csv",
+                args.geometry_manifests_dir / "fastf1-pit-lanes-2025.json",
+            )
         report = run_race_etl(
             dataset,
             writer,
@@ -57,10 +83,13 @@ def main() -> int:
             args.output,
             args.report,
             overwrite=args.overwrite,
+            geometry_dataset=geometry_dataset,
         )
     except (
         TrotmanDatasetError,
         RaceDataValidationError,
+        MockTrackDatasetError,
+        TrackGeometryValidationError,
         OSError,
         sqlite3.Error,
     ) as error:

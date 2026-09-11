@@ -8,8 +8,11 @@ import tempfile
 from contextlib import closing
 from pathlib import Path
 
+from f1_simulator.adapters.persistence.sqlite_track_geometry import (
+    GEOMETRY_SCHEMA,
+    insert_geometry,
+)
 from f1_simulator.domain.race_data import RaceData
-
 
 SCHEMA = """
 PRAGMA foreign_keys = ON;
@@ -117,13 +120,16 @@ class SQLiteRaceDataWriter:
         os.close(file_descriptor)
         temporary = Path(temporary_name)
         try:
-            # A sqlite3.Connection context manager controls transactions but
-            # does not close the connection. Closing it explicitly is also
-            # required before replacing the temporary file on every platform.
+            # Closing is separate from committing: sqlite3's transaction
+            # context alone leaves the file open during atomic publication.
             with closing(sqlite3.connect(temporary)) as connection:
                 with connection:
-                    connection.executescript(SCHEMA)
+                    connection.executescript(
+                        SCHEMA + (GEOMETRY_SCHEMA if race_data.geometry else "")
+                    )
                     self._insert(connection, race_data)
+                    if race_data.geometry is not None:
+                        insert_geometry(connection, race_data.geometry)
                     violations = connection.execute(
                         "PRAGMA foreign_key_check"
                     ).fetchall()
