@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from f1_simulator.adapters.datasets.trotman import TrotmanDatasetAdapter
@@ -23,7 +24,7 @@ class SQLiteRaceDataWriterTest(unittest.TestCase):
             destination = Path(temporary_directory) / "race.sqlite"
             SQLiteRaceDataWriter().write(race_data, destination)
 
-            with sqlite3.connect(destination) as connection:
+            with closing(sqlite3.connect(destination)) as connection:
                 self.assertEqual(
                     connection.execute("SELECT COUNT(*) FROM laps").fetchone(), (6,)
                 )

@@ -4,6 +4,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from f1_simulator.adapters.datasets.trotman import TrotmanDatasetAdapter
@@ -49,7 +50,7 @@ class TrotmanEtlTest(unittest.TestCase):
                 json.loads(report_path.read_text(encoding="utf-8")), report
             )
 
-            with sqlite3.connect(database) as connection:
+            with closing(sqlite3.connect(database)) as connection:
                 self.assertEqual(
                     connection.execute(
                         "SELECT race_id, season, round_number FROM races"
