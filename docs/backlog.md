@@ -6,8 +6,8 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-09T23:19:04Z
-- **Abertas:** 35
+- **Ultima atividade registrada:** 2026-09-11T21:02:06Z
+- **Abertas:** 37
 - **Fechadas:** 5
 
 ## Issues abertas
@@ -696,7 +696,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32), [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34)
+- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32), [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34), [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53)
 - **Criada:** 2026-08-30T06:22:43Z
 - **Atualizada:** 2026-09-02T19:25:05Z
 - **Fechada:** —
@@ -807,6 +807,7 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-11T20:22:54Z — sub-issue adicionada: #53 por @guilherme-webster
 - 2026-09-02T19:19:09Z — sub-issue adicionada: #34 por @guilherme-webster
 - 2026-09-01T22:36:36Z — sub-issue adicionada: #32 por @guilherme-webster
 - 2026-09-01T22:35:54Z — sub-issue adicionada: #31 por @guilherme-webster
@@ -944,13 +945,51 @@ Verificacoes: 25 testes aprovados com `ResourceWarning` habilitado, Ruff aprovad
 - **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Sub-issues:** —
 - **Criada:** 2026-09-02T19:19:08Z
-- **Atualizada:** 2026-09-02T19:30:12Z
+- **Atualizada:** 2026-09-11T21:02:06Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-09-11T20:24:10Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/34#issuecomment-5640207905)
+
+<pre>Etapa implementada localmente: ETL de geometria usando os CSVs de pista e pit lane da issue #51, conforme o ADR 0003 e a escolha confirmada nesta sessão.
+
+Entrega:
+- Adapter para os CSVs reduzidos, validando checksums, manifestos, vínculo entre os caminhos, circuito, contagens e comprimento;
+- DTO, Factory e domínio canônicos com coordenadas X/Y sem unidade, distância acumulada em metros, progresso do pit lane e ponto de serviço representativo;
+- ingestão opcional por --geometry-dir no ETL da corrida, unindo pelo circuit_id e persistindo track_points, pit_lane_points e geometry_sources no mesmo SQLite;
+- SQLiteTrackGeometryRepository para consumo das duas polilinhas e proveniência, com leitura somente leitura e revalidação;
+- relatório com contagens e aviso para diferença entre o ano do mock (2025) e o da corrida;
+- documentação de execução e contrato de consumo em README.MD e docs/fluxo-etl.md.
+
+Verificações:
+- 74 testes executados: 61 passaram, 13 testes gráficos pulados pela configuração existente; 19 testes novos;
+- validação dos 24 circuitos da fixture;
+- ZIP real Trotman v128, corrida 1141: 20 pilotos, 1.133 voltas, 35 pit stops, 240 pontos de pista, 80 de pit lane; leitura canônica pelo repository OK;
+- Ruff check/format e git diff --check OK;
+- execução com Python 3.14; sintaxe dos arquivos alterados validada para Python 3.12, mas esse runtime não está disponível no ambiente. A suíte ainda emite um ResourceWarning de conexão SQLite não fechada em testes preexistentes.
+
+Localização: branch local gwc-etl-geometria, worktree ../mc857-etl-geometria, baseada em 95b63e4 (origin/51-pistas-de-corrida), que contém a main 338f38f. A gwc-etl original foi preservada. Nenhum commit ou push foi realizado.
+
+Próximo passo: revisar e versionar o diff, integrar com o trabalho da issue #51 via develop e conectar os consumidores de modelagem/apresentação. Os commits de RaceDataRepository da gwc-etl original continuam separados; esta entrega fornece o repository específico de geometria. A issue permanece aberta enquanto a entrega está local.
+
+Limites: ingestão de uma corrida/circuito por execução, mock de 2025 sem interpolação de carros, classificação de curvas/retas ou novos endpoints. O pit lane mantém a escala da pista; X/Y não são geolocalização nem metros. FastF1/Pandas não são dependências de execução. A divergência preexistente FastAPI na main versus Django no plano/ADR não foi alterada por esta entrega.
+</pre>
+
+#### [@guilherme-webster em 2026-09-11T21:02:05Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/34#issuecomment-5640593651)
+
+<pre>Preparação do diff da branch local gwc-etl-geometria para revisão: .gitignore agora ignora *.egg-info/ e /build/. Os dois arquivos .pyc anteriormente versionados foram retirados apenas do índice; arquivos locais preservados e conferidos por SHA-256.
+
+Verificações: git check-ignore confirma as exclusões; git diff --check e git diff --cached --check passaram. Testes não foram reexecutados porque esta etapa altera somente o rastreamento de artefatos gerados. Nenhum commit criado. Próximo passo: separar o commit de higiene do commit funcional de geometria e da documentação. A implementação segue local, com revisão e integração pendentes.
+</pre>
 
 </details>
 
@@ -1121,7 +1160,7 @@ Esse ticket será um constante lembrete de implementar boas práticas de CI</pre
 - **Labels:** Épico
 - **Milestone:** —
 - **Issue-pai:** —
-- **Sub-issues:** [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43), [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47)
+- **Sub-issues:** [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43), [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47), [#54 — Carregar dados de pista no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/54)
 - **Criada:** 2026-09-04T23:02:55Z
 - **Atualizada:** 2026-09-04T23:03:36Z
 - **Fechada:** —
@@ -1136,6 +1175,7 @@ Esse ticket será um constante lembrete de implementar boas práticas de CI</pre
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-11T20:24:01Z — sub-issue adicionada: #54 por @guilherme-webster
 - 2026-09-05T19:56:27Z — sub-issue adicionada: #47 por @Gustavo-Jun-Tsuji
 - 2026-09-05T16:38:00Z — sub-issue adicionada: #43 por @Gustavo-Jun-Tsuji
 - 2026-09-04T23:02:57Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
@@ -1195,6 +1235,56 @@ Esse ticket será um constante lembrete de implementar boas práticas de CI</pre
 <summary>Historico de estado</summary>
 
 - 2026-09-05T19:56:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T20:22:52Z
+- **Atualizada:** 2026-09-11T20:22:52Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-11T20:22:54Z — label adicionada: História por @guilherme-webster
+- 2026-09-11T20:22:52Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#54 — Carregar dados de pista no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/54)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T20:24:00Z
+- **Atualizada:** 2026-09-11T20:24:00Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
 
 </details>
 
