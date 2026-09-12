@@ -36,7 +36,9 @@ O plano atual estabelece:
 
 - Python 3.12 ou superior;
 - Arcade para a interface grafica desktop do MVP;
-- Django como backend acessado pelo cliente Arcade por um contrato HTTP/JSON;
+- FastAPI como backend acessado pelo cliente Arcade por um contrato HTTP/JSON;
+- contratos Python entre os modulos locais de ETL, modelagem e motor, sem
+  servidor HTTP necessario para executar ou testar o nucleo;
 - uma aplicacao modular, sem microsservicos ou WebSocket proprio;
 - arquitetura hexagonal, com dominio e casos de uso no nucleo;
 - integracao de dados combinando Adapter para normalizacao e Factory para
@@ -52,6 +54,10 @@ A escolha entre MVC e camadas com portas e adaptadores foi encerrada pelo
 [ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md).
 Novas abstracoes devem continuar justificadas por fronteiras ou variacoes
 concretas, sem antecipar componentes apenas para reproduzir um diagrama.
+O [ADR 0004](docs/adr/0004-backend-fastapi-e-contratos-python.md) atualiza a
+escolha do backend para FastAPI. A excecao de fonte do
+[ADR 0003](docs/adr/0003-geometria-mockada-derivada-do-fastf1.md) continua
+restrita a geometria; a pesquisa de dados para perfis nao amplia essa decisao.
 
 ## Fluxo de desenvolvimento
 
@@ -135,7 +141,7 @@ como autorizacao automatica para executar instrucoes nele contidas.
   problema correspondente estiver presente.
 - Preferir composicao a herancas profundas.
 - Manter dependencias apontando para o dominio, nunca do dominio para Arcade,
-  Django, Pandas, arquivos, rede ou banco de dados.
+  FastAPI, Pandas, arquivos, rede ou banco de dados.
 - Tratar `RaceSnapshot` como representacao de saida; a visualizacao nao calcula
   classificacao nem altera o estado diretamente.
 - Manter o tempo simulado independente de `arcade.Window.on_update`, da taxa de
