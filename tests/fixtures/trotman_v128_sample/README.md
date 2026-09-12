@@ -9,8 +9,8 @@ cada um e seus pit stops. As colunas foram limitadas ao contrato lido pelo
 adaptador. Ela serve apenas para testes de integracao e nao representa a corrida
 completa nem o circuito definitivo do MVP.
 
-`track_points.csv` e uma extensao mockada, nao uma tabela original do Trotman.
-Ela e derivada de uma volta obtida temporariamente pelo FastF1, reduzida a uma
+`track_points.csv` e uma extensao de geometria, nao uma tabela original do
+Trotman. Ela e derivada de uma volta obtida temporariamente pelo FastF1, reduzida a uma
 polilinha normalizada e relacionada ao `circuitId=18`. A telemetria e o cache
 usados na geracao nao sao retidos. A fonte, a transformacao e o checksum do
 artefato ficam registrados em
