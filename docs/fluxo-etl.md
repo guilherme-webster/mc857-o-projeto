@@ -1,5 +1,10 @@
 # Fluxo e responsabilidades do ETL
 
+Este guia descreve o fluxo por corrida e sua geometria. O
+[ETL completo e enriquecimento FastF1](etl-enriquecimento.md), autorizado pelo
+[ADR 0005](adr/0005-historico-completo-e-enriquecimento-fastf1.md), acrescenta o catalogo
+historico e as observacoes de sessoes sem substituir esse contrato.
+
 ## Geometria de pista e pit lane
 
 A extensao da issue #34 consome os CSVs reduzidos da issue #51, conforme o
@@ -25,7 +30,8 @@ O fluxo opcional e:
 5. O caso de uso associa `TrackGeometry` a `RaceData.geometry` somente se o
    circuito coincidir. O writer publica corrida e geometria no mesmo SQLite,
    com chaves estrangeiras e as tabelas abaixo. O relatorio inclui contagens,
-   checksums, comprimento e aviso quando o ano do mock difere do ano da corrida.
+   checksums, comprimento e aviso quando o ano da geometria difere do ano da
+   corrida.
 6. `SQLiteTrackGeometryRepository` implementa `TrackGeometryRepository` e
    devolve as duas polilinhas e suas proveniencias, revalidadas pela Factory.
 
@@ -35,7 +41,8 @@ O fluxo opcional e:
 | `pit_lane_points` | Mesmo circuito e sistema X/Y; `sequence`, `path_fraction` em [0, 1] e `is_service_point` booleano (0/1 no SQLite). |
 | `geometry_sources` | Uma linha por caminho: ferramenta/versao, ano, data de geracao, origem, licenca dos dados, checksums do artefato e manifesto, transformacao. |
 
-O comprimento e a distancia declarada no mock, nao uma medida oficial da pista.
+O comprimento e a distancia declarada na geometria, nao uma medida oficial da
+pista.
 Nao se deve calcular metros ou velocidade usando diretamente X/Y nem tratar
 `path_fraction` como tempo ou distancia fisica do pit lane. Pista e pit lane
 devem receber a mesma escala e translacao na apresentacao; normalizar cada um
@@ -72,15 +79,15 @@ inexistente, esquema parcial e dados corrompidos geram
 Sem `--geometry-dir`, o comando e o esquema historicos continuam funcionando.
 Com essa opcao, ambos os caminhos sao obrigatorios e uma pista ausente falha
 explicitamente, sem trocar por outro circuito. A ingestao processa uma corrida
-por execucao, usando a pista correspondente entre os 24 mocks disponiveis.
+por execucao, usando a pista correspondente entre as 24 geometrias disponiveis.
 `--geometry-manifests-dir` permite localizar os manifestos fora do diretorio
 padrao `data/sources`. A fixture isolada de Interlagos/2024, sem pit lane
 correspondente, nao faz parte desse contrato de entrada.
 
 Esta entrega prepara os dados para modelagem e apresentacao; nao implementa
 interpolacao de carros, classificacao de curvas/retas ou endpoints de produto.
-Os dados de mock, incluindo sua licenca upstream, permanecem distintos do
-historico CC0 do Trotman.
+Os dados de geometria derivados, incluindo sua licenca upstream, permanecem
+distintos do historico CC0 do Trotman.
 
 ## Fluxo historico da corrida
 

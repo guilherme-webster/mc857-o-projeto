@@ -25,17 +25,17 @@ O usuário deverá conseguir:
 
 O primeiro incremento demonstrável será deliberadamente estreito:
 
-- usar **um único dataset**, com fonte, versão e licença registradas;
+- usar **Trotman v128 e enriquecimento offline FastF1**, conforme o [ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md), com proveniência registrada;
 - suportar **um único circuito** previamente escolhido pelo grupo;
 - implementar o ETL necessário para esse dataset;
 - executar uma corrida completa, da largada à classificação final;
 - oferecer o fluxo do usuário em três telas: **Parâmetros**, **Corrida** e **Resultados**;
-- usar **Django** no backend;
+- usar **FastAPI** no backend;
 - usar **Arcade** em uma aplicação desktop Python para o frontend.
 
 “Corrida completa” significa concluir todas as voltas previstas e produzir um
 resultado consistente. Isso não obriga o primeiro incremento a modelar todos os
-fenômenos possíveis da Fórmula 1 nem a suportar mais de uma fonte ou circuito.
+fenômenos possíveis da Fórmula 1 nem a suportar mais de um circuito na simulação.
 
 As anotações da reunião também mencionam modelagem de combustível e interação
 física entre carros dentro da lista do MVP, mas voltam a classificá-las como
@@ -60,8 +60,9 @@ Esses itens podem ser extensões, mas não devem bloquear o MVP.
 
 O frontend do MVP será uma aplicação desktop em Python construída com a
 biblioteca **Arcade**, conforme o
-[ADR 0001](docs/adr/0001-frontend-desktop-com-arcade.md). **Django** permanece
-como backend e expõe por HTTP/JSON os comandos e as consultas usados pelo
+[ADR 0001](docs/adr/0001-frontend-desktop-com-arcade.md). **FastAPI** é o backend
+escolhido no [ADR 0004](docs/adr/0004-backend-fastapi-e-contratos-python.md) e
+expõe por HTTP/JSON os comandos e as consultas usados pelo
 cliente. Essa escolha substitui as orientações anteriores de Streamlit/Plotly e
 encerra a investigação da tecnologia de frontend.
 
@@ -74,8 +75,15 @@ telemetria histórica; este projeto gera a evolução de uma corrida simulada.
 
 O backend será responsável por receber e validar parâmetros, iniciar e avançar
 a simulação, consultar seu estado e disponibilizar os resultados. As regras da
-corrida deverão permanecer em código Python independente do Django e do Arcade;
+corrida deverão permanecer em código Python independente do FastAPI e do Arcade;
 ambos são adaptadores nas bordas do sistema.
+
+ETL, repositories, perfilamento e motor usam contratos Python no mesmo processo.
+Não precisam receber requisições HTTP para colaborar. FastAPI traduz a entrada
+externa para os mesmos casos de uso, executáveis também sem servidor. A opção
+de executar o próprio Arcade junto do núcleo, dispensando o transporte HTTP
+entre os dois, permanece uma alternativa a decidir; execução local também pode
+envolver processos ou containers separados.
 
 ### Diretrizes da interface Arcade
 
@@ -100,7 +108,7 @@ ambos são adaptadores nas bordas do sistema.
 | `ResultsView` | Apresentar classificação final, tempos e eventos relevantes. |
 
 O objeto do motor não deve ser implementado dentro de `arcade.View` nem nas
-*views* do Django. O cliente guarda apenas o identificador e a representação
+rotas do FastAPI. O cliente guarda apenas o identificador e a representação
 necessária para a tela; comandos e consultas são delegados ao backend.
 
 ## 3. Estilo arquitetural
@@ -115,12 +123,12 @@ permitir a substituição de fontes por adaptadores.
 ### 3.2 Aplicação da arquitetura hexagonal
 
 O núcleo da simulação expõe portas para os casos de uso e para dependências
-externas quando houver uma fronteira ou variação concreta. Django, Arcade, o
+externas quando houver uma fronteira ou variação concreta. FastAPI, Arcade, o
 ETL, os datasets e a persistência ficam nas bordas, implementando ou consumindo
 essas portas por meio de adaptadores.
 
 ```text
-Cliente Arcade -> HTTP/JSON -> adaptador Django -> aplicação e domínio
+Cliente Arcade -> HTTP/JSON -> adaptador FastAPI -> aplicação e domínio
                                                     |
                                              portas de saída
                                                     |
@@ -146,13 +154,13 @@ interface e poder exigir menos abstrações no início. A arquitetura hexagonal 
 escolhida por tornar explícitas as fronteiras com datasets, frameworks e
 persistência.
 
-O uso de *views* pelo Django não transforma automaticamente todo o sistema em
+O uso de rotas pelo FastAPI não transforma automaticamente todo o sistema em
 MVC. Independentemente da arquitetura registrada, cálculos de volta,
-estratégias e estados da corrida não devem ser implementados nas *views*.
+estratégias e estados da corrida não devem ser implementados nas rotas.
 
 ### 3.4 Fronteiras obrigatórias
 
-- regras da corrida independem de Django, Arcade e dos formatos dos datasets;
+- regras da corrida independem de FastAPI, Arcade e dos formatos dos datasets;
 - leitura de CSV, Parquet ou banco de dados não fica dentro do motor;
 - o estado da interface não é a fonte de verdade da corrida;
 - o motor pode ser executado e testado sem janela, GPU ou servidor web;
@@ -177,7 +185,7 @@ Esses eventos alimentam o histórico, as estatísticas e a criação de um novo 
 | Componente | Responsabilidade | Entradas | Saídas |
 | --- | --- | --- | --- |
 | Cliente desktop Arcade | Capturar parâmetros e apresentar o progresso e o resultado. | Ações do usuário e respostas HTTP/JSON. | Comandos e consultas ao backend. |
-| Adaptador Django | Validar requisições e traduzir dados entre HTTP/JSON e os casos de uso. | Requisições, comandos e identificadores. | Respostas, retratos e erros de aplicação. |
+| Adaptador FastAPI | Validar requisições e traduzir dados entre HTTP/JSON e os casos de uso. | Requisições, comandos e identificadores. | Respostas, retratos e erros de aplicação. |
 | Casos de uso | Orquestrar configuração, execução, consulta e conclusão da corrida. | Comandos e portas. | Retratos, resultados e eventos. |
 | Motor de simulação | Avançar o relógio simulado e aplicar regras. | `RaceState`, comandos, parâmetros e fonte aleatória. | Novo estado e eventos de domínio. |
 | Modelo de tempo de volta | Calcular ritmo e penalidades de cada carro. | Circuito, piloto, carro, pneu, combustível, clima e tráfego. | Tempo previsto e seus componentes. |
@@ -249,9 +257,10 @@ A fonte aleatória deve receber uma semente e ser injetada. O mesmo cenário, a 
 ## 6. Fontes de dados avaliadas
 
 As três bases abaixo são complementares. O grupo selecionou a Base 3, Formula 1
-Race Data de James Trotman, como fonte inicial única do MVP e implementará um
-único ETL. As demais permanecem como opções para investigação e expansão
-posterior. Toda fonte adotada deve ter versão, data de download e licença
+Race Data de James Trotman, como fonte inicial. O ADR 0005 amplia o ETL para
+todos os seus CSVs e acrescenta observações offline do FastF1. As outras duas
+bases Kaggle permanecem opções de investigação. Toda fonte adotada deve ter
+versão, data de download e licença
 registradas, e seus arquivos brutos nunca devem ser editados manualmente.
 
 ### 6.1 Base 1 — estratégia de pneus
@@ -314,27 +323,27 @@ composto, clima ou telemetria detalhada das duas primeiras fontes. Essas lacunas
 não autorizam combinar outra fonte silenciosamente no MVP.
 
 O [ADR 0003](docs/adr/0003-geometria-mockada-derivada-do-fastf1.md) registra
-uma excecao explicita e limitada: FastF1 pode ser usado offline para gerar uma
-polilinha mockada de cada circuito. A fixture inicial cobre as 24 etapas de
+a decisao inicial de usar FastF1 offline para gerar uma
+polilinha reduzida derivada de cada circuito. A fixture inicial cobre as 24 etapas de
 2025, associadas aos IDs do Trotman v128, sem reter ou versionar telemetria e
-cache.
+cache. O [ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md) amplia esse
+escopo para sessoes historicas e contexto de modelagem. Os comandos e contratos
+estao em [ETL enriquecido](docs/etl-enriquecimento.md).
 
 ### 6.4 Matriz de uso das fontes
 
-A matriz abaixo registra possibilidades de evolução. No MVP, somente a Base 3
-será ingerida; referências às Bases 1 e 2 não autorizam sua incorporação nesse
-incremento.
+A matriz distingue observações já ingeríveis de parâmetros que ainda precisam
+ser modelados. As Bases 1 e 2 do Kaggle não foram adotadas por esta ampliação.
 
-| Necessidade | Base principal | Complemento | Observação |
-| --- | --- | --- | --- |
-| Pilotos, equipes, circuitos e corridas | Base 3 | Base 2 | Usar identificadores canônicos internos. |
-| Tempos de volta e ritmo-base | Base 3 | Base 2 | Filtrar pit laps, SC/VSC e voltas anormais. |
-| Estratégia e duração de *stints* | Base 1 | Base 2 | A Base 1 tem o rótulo `StintLength`. |
-| Curva de degradação | Base 2 | Bases 1 e 3 | Estimar com voltas limpas dentro do mesmo *stint*. |
-| Pit stops | Base 3 | Base 2 | Separar tempo parado de perda total no pit lane. |
-| Clima | Base 2 | Base 1 | A Base 1 contém médias por *stint*. |
-| Falhas e abandonos | Base 3 | — | Segmentar por era para evitar parâmetros irreais. |
-| Pista 2D | coordenadas da Base 2, se presentes | GeoJSON/FastF1 | Não inferir geometria apenas de latitude/longitude do circuito. |
+| Necessidade | Fonte atual | Observação |
+| --- | --- | --- |
+| Pilotos, equipes, circuitos e corridas | Trotman v128 | Cadastro completo e IDs canônicos. |
+| Tempos de volta e classificação | Trotman; observações de sessões FastF1 separadas | Divergências não são resolvidas por sobrescrita implícita. |
+| Stints, compostos e idade dos pneus | FastF1 | Contexto por volta; não é um coeficiente de degradação calibrado. |
+| Pit stops | Trotman; entrada/saída de boxes FastF1 | Duração registrada não equivale automaticamente a tempo parado ou perda total. |
+| Clima e bandeiras | FastF1 | Chuva booleana, séries temporais e ausências explícitas. |
+| Falhas e abandonos | Trotman; mensagens FastF1 como contexto | Não inferir causa ou probabilidade sem modelagem. |
+| Pista 2D | Geometrias do ADR 0003; marcadores FastF1 | Coordenadas, unidades e aproximações são distintas; não inferir aderência. |
 
 ## 7. Pipeline e modelo de dados
 
@@ -351,7 +360,7 @@ incremento.
 Formato sugerido:
 
 - CSV apenas na entrada ou exportação;
-- Parquet para telemetria e tabelas analíticas;
+- SQLite para as observações históricas e de sessão do ADR 0005; Parquet permanece opção posterior se medições de volume justificarem;
 - SQLite para metadados, cenários e resultados do MVP;
 - JSON ou TOML versionado para parâmetros calibrados.
 
@@ -456,17 +465,15 @@ dependências da arquitetura hexagonal:
 ```text
 .
 ├── backend/
-│   ├── manage.py
-│   ├── config/
-│   └── src/f1_simulator/
-│       ├── domain/
-│       ├── application/
-│       │   └── ports/
-│       ├── adapters/
-│       │   ├── django/
-│       │   ├── datasets/
-│       │   └── persistence/
-│       └── factories/
+│   └── app/                       # adaptador FastAPI e composicao de dependencias
+├── src/f1_simulator/
+│   ├── domain/
+│   ├── application/
+│   │   └── ports/
+│   ├── adapters/
+│   │   ├── datasets/
+│   │   └── persistence/
+│   └── factories/
 ├── frontend/
 │   └── arcade/                    # views, desenho, controles e cliente HTTP
 ├── data/
@@ -483,7 +490,7 @@ dependências da arquitetura hexagonal:
     └── acceptance/
 ```
 
-O importante é que Arcade, Django, datasets e persistência permaneçam nas
+O importante é que Arcade, FastAPI, datasets e persistência permaneçam nas
 bordas e que o domínio não dependa deles. Portas, adaptadores e factories devem
 ser criados apenas quando a fatia implementada exigir essas responsabilidades.
 
@@ -532,10 +539,10 @@ Os arquivos grandes de `data/raw` e `data/curated` devem entrar no `.gitignore`.
 - adicionar apenas as regras necessárias para concluir a corrida do cenário do MVP;
 - testar classificação, término e invariantes.
 
-### Fase 3 — backend Django e aplicação desktop
+### Fase 3 — backend FastAPI e aplicação desktop
 
-- integrar o backend Django aos casos de uso por portas de entrada;
-- definir e testar o contrato HTTP/JSON entre Django e o cliente;
+- integrar o backend FastAPI aos casos de uso por portas de entrada;
+- definir e testar o contrato HTTP/JSON entre FastAPI e o cliente;
 - implementar `ParametersView`, `RaceView` e `ResultsView` com Arcade;
 - desenhar circuito, marcadores e classificação a partir de `RaceSnapshot`;
 - consultar snapshots em intervalo controlado sem bloquear o laço de eventos;
@@ -593,7 +600,7 @@ e impossibilidade de dois carros ocuparem fisicamente o mesmo espaço.
 - a Factory constrói a corrida a partir dos dados normalizados pelo adaptador;
 - chaves entre corridas, pilotos, voltas e stints são válidas;
 - um cenário salvo pode ser carregado e reproduzido;
-- Django aciona os casos de uso sem importar regras para suas *views*;
+- FastAPI aciona os casos de uso sem importar regras para suas rotas;
 - a visualização recebe pontos ordenados e posições dentro do comprimento da pista.
 - o cliente HTTP converte respostas em DTOs da apresentação e trata timeout sem bloquear a janela;
 - apresentadores e controladores do Arcade podem ser testados sem contexto OpenGL.
@@ -615,7 +622,7 @@ e impossibilidade de dois carros ocuparem fisicamente o mesmo espaço.
 | Arquitetura | Hexagonal |
 | Integração de dados | Adapter + Factory |
 | Dataset inicial | Formula 1 Race Data, versão 128, CC0 |
-| Backend web | Django |
+| Backend web | FastAPI |
 | Frontend desktop | Arcade |
 | Gráficos e pista 2D | Primitivas, textos, sprites e `arcade.View` |
 | Integração frontend/backend | HTTP/JSON com consultas periódicas no MVP |
@@ -661,7 +668,7 @@ parâmetros configuráveis e testes antes de ser incorporado ao motor.
 
 ## 16. Referências técnicas e de dados
 
-- [Documentação do Django](https://docs.djangoproject.com/)
+- [Documentação do FastAPI](https://fastapi.tiangolo.com/)
 - [Documentação do Python Arcade](https://api.arcade.academy/)
 - [IAmTomShaw/f1-race-replay — referência visual em Arcade](https://github.com/IAmTomShaw/f1-race-replay)
 - [Base 1 — F1-Tyre-Strategy-Engine Datasets](https://www.kaggle.com/datasets/vanshbatra26/f1-tyre-strategy-engine-datasets)
@@ -674,7 +681,7 @@ parâmetros configuráveis e testes antes de ser incorporado ao motor.
 
 - **MVP:** um dataset, um ETL, um circuito, uma corrida completa e três telas.
 - **Frontend:** aplicação desktop Python com Arcade e três `arcade.View`.
-- **Backend:** Django como adaptador web; regras da corrida permanecem independentes do framework.
+- **Backend:** FastAPI como adaptador web; regras da corrida permanecem independentes do framework.
 - **Integração:** HTTP/JSON com consultas periódicas; sem WebSocket no MVP.
 - **Arquitetura:** hexagonal, aceita no ADR 0002; MVC foi a alternativa considerada.
 - **Padrões:** uso combinado de Adapter para normalização e Factory para construção de objetos complexos, aceito no ADR 0002.
