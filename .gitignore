@@ -24,6 +24,8 @@ tmp
 __pycache__/
 *.py[cod]
 .pytest_cache/
+*.egg-info/
+/build/
 
 # Dados brutos e resultados gerados pelo ETL
 /data/raw/

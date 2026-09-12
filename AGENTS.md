@@ -22,7 +22,7 @@ locais. Ele pode complementar, mas nao substituir, as regras versionadas.
 ## Estado arquitetural atual
 
 A arquitetura hexagonal foi aceita no ADR 0002. Dominio e casos de uso ficam no
-nucleo; Arcade, Django, ingestao, datasets e persistencia ficam nas bordas. A
+nucleo; Arcade, FastAPI, ingestao, datasets e persistencia ficam nas bordas. A
 integracao de dados combina Adapter, para normalizar formatos externos, e
 Factory, para construir objetos validos a partir dos dados canonicos. Nao
 transforme essa combinacao de padroes em uma arquitetura hibrida nem crie
@@ -30,7 +30,7 @@ interfaces sem uma fronteira ou variacao concreta.
 
 Preserve estas fronteiras:
 
-- regras da corrida independem de Arcade, Django e formatos de dados;
+- regras da corrida independem de Arcade, FastAPI e formatos de dados;
 - `arcade.View`, widgets e estado da janela nao sao a fonte de verdade da
   simulacao;
 - ingestao e persistencia nao fazem parte do motor;
@@ -38,13 +38,19 @@ Preserve estas fronteiras:
 - o motor deve poder ser executado e testado sem janela, GPU ou servidor web.
 
 O frontend do MVP foi escolhido: sera uma aplicacao desktop feita com a
-biblioteca Python Arcade, conforme o ADR aceito em `docs/adr/`. Django continua
-como adaptador do backend. Nao substitua essa combinacao nem acople o laco de
-renderizacao ao relogio da simulacao sem um novo ADR aceito.
+biblioteca Python Arcade, conforme o ADR aceito em `docs/adr/`. FastAPI e o
+adaptador do backend, conforme o ADR 0004. ETL, modelagem e motor comunicam-se
+por contratos Python no mesmo processo; nao exigem HTTP entre modulos locais.
+Nao substitua essa combinacao nem acople o laco de renderizacao ao relogio da
+simulacao sem um novo ADR aceito.
 
 O dataset inicial do MVP e `jtrotman/formula-1-race-data`, versao 128, com
 licenca CC0, conforme o ADR 0002. Nao acrescente outra fonte ao MVP sem decisao
 explicita e sem registrar versao, data, licenca e transformacoes.
+O ADR 0005 amplia o ETL para os 14 CSVs do Trotman v128 e para observacoes
+complementares de sessoes FastF1, offline e com proveniencia. Dados brutos,
+telemetria e bancos completos continuam fora do Git. Novas fontes alem desse
+escopo ainda exigem decisao explicita.
 
 ## Forma de trabalhar
 
