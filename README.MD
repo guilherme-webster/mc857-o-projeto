@@ -12,6 +12,7 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 - [Guia de contribuicao](CONTRIBUTING.md)
 - [Registros de decisoes arquiteturais](docs/adr/README.md)
 - [Fluxo e responsabilidades do ETL](docs/fluxo-etl.md)
+- [ETL completo: Trotman e FastF1](docs/etl-enriquecimento.md)
 - [Proposta de planejamento da modelagem](docs/planejamento-modelagem.md)
 - [Dados e plano de perfilamento dos pilotos](docs/perfilamento-pilotos.md)
 
@@ -22,7 +23,9 @@ será o backend, e o motor de simulacao continuara independente dos dois
 frameworks. O
 [ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md)
 estabelece arquitetura hexagonal, integracao de dados com Adapter + Factory e a
-base Formula 1 Race Data, de James Trotman, como fonte inicial unica do MVP.
+base Formula 1 Race Data, de James Trotman, como fonte inicial. O
+[ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md) amplia o ETL para
+o historico completo e observacoes complementares do FastF1.
 
 ## 📦 Pré-requisitos e Dependências
 
@@ -62,6 +65,11 @@ Antes de iniciar a execução do projeto, certifique-se de possuir as ferramenta
   uv --version
 
 ## ETL da Base Trotman
+
+O fluxo abaixo importa uma corrida. Para os 14 CSVs completos, usar
+`python3 scripts/ingest_trotman.py --all-tables --output data/curated/history.sqlite`.
+O [guia de enriquecimento](docs/etl-enriquecimento.md) mostra aquisicao FastF1,
+contratos Python, relatorios internos e limites de cobertura.
 
 Baixe e verifique o arquivo bruto da versao 128:
 

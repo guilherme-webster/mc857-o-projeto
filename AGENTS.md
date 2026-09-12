@@ -47,8 +47,10 @@ simulacao sem um novo ADR aceito.
 O dataset inicial do MVP e `jtrotman/formula-1-race-data`, versao 128, com
 licenca CC0, conforme o ADR 0002. Nao acrescente outra fonte ao MVP sem decisao
 explicita e sem registrar versao, data, licenca e transformacoes.
-O ADR 0003 permite FastF1 exclusivamente para geometria derivada offline.
-Ampliar seu uso para perfilamento, pneus ou clima ainda exige nova decisao.
+O ADR 0005 amplia o ETL para os 14 CSVs do Trotman v128 e para observacoes
+complementares de sessoes FastF1, offline e com proveniencia. Dados brutos,
+telemetria e bancos completos continuam fora do Git. Novas fontes alem desse
+escopo ainda exigem decisao explicita.
 
 ## Forma de trabalhar
 

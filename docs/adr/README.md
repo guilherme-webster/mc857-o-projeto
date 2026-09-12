@@ -15,8 +15,9 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | --- | --- | --- |
 | [0001](0001-frontend-desktop-com-arcade.md) | aceita; backend atualizado pelo 0004 | Frontend desktop em Python com Arcade. |
 | [0002](0002-arquitetura-hexagonal-e-integracao-de-dados.md) | aceita; backend atualizado pelo 0004 | Arquitetura hexagonal, integracao com Adapter + Factory e dataset Trotman para o MVP. |
-| [0003](0003-geometria-mockada-derivada-do-fastf1.md) | aceita | FastF1 somente na geracao offline de geometria reduzida derivada, sem reter telemetria. |
+| [0003](0003-geometria-mockada-derivada-do-fastf1.md) | aceita; escopo de dados ampliado pelo 0005 | Geometria reduzida derivada offline. |
 | [0004](0004-backend-fastapi-e-contratos-python.md) | aceita | FastAPI substitui Django; integracao interna por contratos Python. |
+| [0005](0005-historico-completo-e-enriquecimento-fastf1.md) | aceita | Historico Trotman completo e observacoes complementares FastF1 offline. |
 
 ## Modelo
 

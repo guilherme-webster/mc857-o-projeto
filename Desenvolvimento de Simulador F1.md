@@ -25,7 +25,7 @@ O usuário deverá conseguir:
 
 O primeiro incremento demonstrável será deliberadamente estreito:
 
-- usar **um único dataset**, com fonte, versão e licença registradas;
+- usar **Trotman v128 e enriquecimento offline FastF1**, conforme o [ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md), com proveniência registrada;
 - suportar **um único circuito** previamente escolhido pelo grupo;
 - implementar o ETL necessário para esse dataset;
 - executar uma corrida completa, da largada à classificação final;
@@ -35,7 +35,7 @@ O primeiro incremento demonstrável será deliberadamente estreito:
 
 “Corrida completa” significa concluir todas as voltas previstas e produzir um
 resultado consistente. Isso não obriga o primeiro incremento a modelar todos os
-fenômenos possíveis da Fórmula 1 nem a suportar mais de uma fonte ou circuito.
+fenômenos possíveis da Fórmula 1 nem a suportar mais de um circuito na simulação.
 
 As anotações da reunião também mencionam modelagem de combustível e interação
 física entre carros dentro da lista do MVP, mas voltam a classificá-las como
@@ -257,9 +257,10 @@ A fonte aleatória deve receber uma semente e ser injetada. O mesmo cenário, a 
 ## 6. Fontes de dados avaliadas
 
 As três bases abaixo são complementares. O grupo selecionou a Base 3, Formula 1
-Race Data de James Trotman, como fonte inicial única do MVP e implementará um
-único ETL. As demais permanecem como opções para investigação e expansão
-posterior. Toda fonte adotada deve ter versão, data de download e licença
+Race Data de James Trotman, como fonte inicial. O ADR 0005 amplia o ETL para
+todos os seus CSVs e acrescenta observações offline do FastF1. As outras duas
+bases Kaggle permanecem opções de investigação. Toda fonte adotada deve ter
+versão, data de download e licença
 registradas, e seus arquivos brutos nunca devem ser editados manualmente.
 
 ### 6.1 Base 1 — estratégia de pneus
@@ -322,27 +323,27 @@ composto, clima ou telemetria detalhada das duas primeiras fontes. Essas lacunas
 não autorizam combinar outra fonte silenciosamente no MVP.
 
 O [ADR 0003](docs/adr/0003-geometria-mockada-derivada-do-fastf1.md) registra
-uma excecao explicita e limitada: FastF1 pode ser usado offline para gerar uma
+a decisao inicial de usar FastF1 offline para gerar uma
 polilinha reduzida derivada de cada circuito. A fixture inicial cobre as 24 etapas de
 2025, associadas aos IDs do Trotman v128, sem reter ou versionar telemetria e
-cache.
+cache. O [ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md) amplia esse
+escopo para sessoes historicas e contexto de modelagem. Os comandos e contratos
+estao em [ETL enriquecido](docs/etl-enriquecimento.md).
 
 ### 6.4 Matriz de uso das fontes
 
-A matriz abaixo registra possibilidades de evolução. No MVP, somente a Base 3
-será ingerida; referências às Bases 1 e 2 não autorizam sua incorporação nesse
-incremento.
+A matriz distingue observações já ingeríveis de parâmetros que ainda precisam
+ser modelados. As Bases 1 e 2 do Kaggle não foram adotadas por esta ampliação.
 
-| Necessidade | Base principal | Complemento | Observação |
-| --- | --- | --- | --- |
-| Pilotos, equipes, circuitos e corridas | Base 3 | Base 2 | Usar identificadores canônicos internos. |
-| Tempos de volta e ritmo-base | Base 3 | Base 2 | Filtrar pit laps, SC/VSC e voltas anormais. |
-| Estratégia e duração de *stints* | Base 1 | Base 2 | A Base 1 tem o rótulo `StintLength`. |
-| Curva de degradação | Base 2 | Bases 1 e 3 | Estimar com voltas limpas dentro do mesmo *stint*. |
-| Pit stops | Base 3 | Base 2 | Separar tempo parado de perda total no pit lane. |
-| Clima | Base 2 | Base 1 | A Base 1 contém médias por *stint*. |
-| Falhas e abandonos | Base 3 | — | Segmentar por era para evitar parâmetros irreais. |
-| Pista 2D | coordenadas da Base 2, se presentes | GeoJSON/FastF1 | Não inferir geometria apenas de latitude/longitude do circuito. |
+| Necessidade | Fonte atual | Observação |
+| --- | --- | --- |
+| Pilotos, equipes, circuitos e corridas | Trotman v128 | Cadastro completo e IDs canônicos. |
+| Tempos de volta e classificação | Trotman; observações de sessões FastF1 separadas | Divergências não são resolvidas por sobrescrita implícita. |
+| Stints, compostos e idade dos pneus | FastF1 | Contexto por volta; não é um coeficiente de degradação calibrado. |
+| Pit stops | Trotman; entrada/saída de boxes FastF1 | Duração registrada não equivale automaticamente a tempo parado ou perda total. |
+| Clima e bandeiras | FastF1 | Chuva booleana, séries temporais e ausências explícitas. |
+| Falhas e abandonos | Trotman; mensagens FastF1 como contexto | Não inferir causa ou probabilidade sem modelagem. |
+| Pista 2D | Geometrias do ADR 0003; marcadores FastF1 | Coordenadas, unidades e aproximações são distintas; não inferir aderência. |
 
 ## 7. Pipeline e modelo de dados
 
@@ -359,7 +360,7 @@ incremento.
 Formato sugerido:
 
 - CSV apenas na entrada ou exportação;
-- Parquet para telemetria e tabelas analíticas;
+- SQLite para as observações históricas e de sessão do ADR 0005; Parquet permanece opção posterior se medições de volume justificarem;
 - SQLite para metadados, cenários e resultados do MVP;
 - JSON ou TOML versionado para parâmetros calibrados.
 

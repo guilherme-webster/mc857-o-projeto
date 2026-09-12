@@ -1,5 +1,10 @@
 # Fluxo e responsabilidades do ETL
 
+Este guia descreve o fluxo por corrida e sua geometria. O
+[ETL completo e enriquecimento FastF1](etl-enriquecimento.md), autorizado pelo
+[ADR 0005](adr/0005-historico-completo-e-enriquecimento-fastf1.md), acrescenta o catalogo
+historico e as observacoes de sessoes sem substituir esse contrato.
+
 ## Geometria de pista e pit lane
 
 A extensao da issue #34 consome os CSVs reduzidos da issue #51, conforme o

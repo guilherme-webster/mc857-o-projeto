@@ -5,6 +5,10 @@
 - Responsaveis: grupo do projeto; decisao comunicada por Guilherme nesta revisao
 - Substitui: escolha de Django nos ADRs 0001 e 0002; demais decisoes preservadas
 
+> Atualizacao em 2026-09-12: o [ADR 0005](0005-historico-completo-e-enriquecimento-fastf1.md)
+> autoriza historico completo e enriquecimento offline com FastF1. As restricoes
+> de fonte anteriores permanecem abaixo apenas como contexto historico.
+
 ## Contexto
 
 O usuario confirmou que o grupo escolheu FastAPI em lugar de Django e pediu

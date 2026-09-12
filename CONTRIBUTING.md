@@ -55,9 +55,10 @@ A escolha entre MVC e camadas com portas e adaptadores foi encerrada pelo
 Novas abstracoes devem continuar justificadas por fronteiras ou variacoes
 concretas, sem antecipar componentes apenas para reproduzir um diagrama.
 O [ADR 0004](docs/adr/0004-backend-fastapi-e-contratos-python.md) atualiza a
-escolha do backend para FastAPI. A excecao de fonte do
-[ADR 0003](docs/adr/0003-geometria-mockada-derivada-do-fastf1.md) continua
-restrita a geometria; a pesquisa de dados para perfis nao amplia essa decisao.
+escolha do backend para FastAPI. O [ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md)
+amplia a ingestao para o historico Trotman completo e o enriquecimento offline
+com sessoes FastF1. Perfilamento e coeficientes de simulacao continuam separados
+da normalizacao dos fatos.
 
 ## Fluxo de desenvolvimento
 

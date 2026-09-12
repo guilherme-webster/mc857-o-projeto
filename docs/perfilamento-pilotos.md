@@ -1,5 +1,11 @@
 # Perfilamento de pilotos: dados, limites e plano de implementação
 
+> Atualização em 12/09/2026: a ampliação de dados foi autorizada no
+> [ADR 0005](adr/0005-historico-completo-e-enriquecimento-fastf1.md) e implementada no
+> [ETL enriquecido](etl-enriquecimento.md). As observações abaixo sobre o código
+> anterior retratam o levantamento de 11/09; métodos e coeficientes de
+> perfilamento continuam propostas, não resultados do ETL.
+
 **Status: proposta, sem modelo implementado ou nova ingestão.** Pesquisa em
 11/09/2026 para [#61](https://github.com/guilherme-webster/mc857-o-projeto/issues/61),
 [#66](https://github.com/guilherme-webster/mc857-o-projeto/issues/66) e

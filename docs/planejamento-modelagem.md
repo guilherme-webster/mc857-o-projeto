@@ -1,5 +1,11 @@
 # Planejamento da modelagem do simulador
 
+> Atualização em 12/09/2026: a ampliação de dados foi autorizada no
+> [ADR 0005](adr/0005-historico-completo-e-enriquecimento-fastf1.md) e implementada no
+> [ETL enriquecido](etl-enriquecimento.md). As observações abaixo sobre o código
+> anterior retratam o levantamento de 11/09; métodos e coeficientes de
+> perfilamento continuam propostas, não resultados do ETL.
+
 **Status: proposta de modelagem, sem implementação. A escolha de FastAPI foi
 confirmada e registrada no ADR 0004; os demais recortes continuam em discussão.**
 Levantamento em 11/09/2026: `develop` em `3ea8a0b` e `origin/main` em

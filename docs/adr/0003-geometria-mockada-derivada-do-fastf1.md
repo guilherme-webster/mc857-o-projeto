@@ -9,6 +9,10 @@
 > significa dados inventados. Preserva-se o texto historico e o escopo aceito.
 > A reducao dos dados nao altera por si so as condicoes de uso da fonte.
 
+> Atualizacao em 2026-09-12: o [ADR 0005](0005-historico-completo-e-enriquecimento-fastf1.md)
+> autoriza historico completo e enriquecimento offline com FastF1. As restricoes
+> de fonte anteriores permanecem abaixo apenas como contexto historico.
+
 ## Contexto
 
 O dataset Trotman v128 registra apenas latitude e longitude de cada circuito,

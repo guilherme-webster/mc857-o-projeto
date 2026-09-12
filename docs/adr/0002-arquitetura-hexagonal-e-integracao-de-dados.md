@@ -8,6 +8,10 @@
 > substitui a escolha de Django por FastAPI. As demais decisoes permanecem
 > vigentes; o texto abaixo preserva o contexto original.
 
+> Atualizacao em 2026-09-12: o [ADR 0005](0005-historico-completo-e-enriquecimento-fastf1.md)
+> autoriza historico completo e enriquecimento offline com FastF1. As restricoes
+> de fonte anteriores permanecem abaixo apenas como contexto historico.
+
 ## Contexto
 
 O simulador precisa manter as regras da corrida independentes do cliente Arcade,
