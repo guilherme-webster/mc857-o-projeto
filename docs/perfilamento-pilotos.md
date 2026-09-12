@@ -1,5 +1,10 @@
 # Perfilamento de pilotos: dados, limites e plano de implementação
 
+> Implementação inicial após integração do ETL: veja o
+> [contrato executável de ritmo e consistência](modelagem-pilotos-inicial.md).
+> O texto abaixo preserva o planejamento anterior; o novo documento distingue
+> o recorte implementado de calibração, validação e extensões ainda pendentes.
+
 > Atualização em 12/09/2026: a ampliação de dados foi autorizada no
 > [ADR 0005](adr/0005-historico-completo-e-enriquecimento-fastf1.md) e implementada no
 > [ETL enriquecido](etl-enriquecimento.md). As observações abaixo sobre o código

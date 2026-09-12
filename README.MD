@@ -253,3 +253,10 @@ gh workflow run sync-backlog.yml
 ### Regras de pull request
 
 Por exemplo, apenas a develop pode ser mergeada na main
+
+## Modelagem inicial de pilotos
+
+O [guia da modelagem inicial](docs/modelagem-pilotos-inicial.md) descreve o caso
+de uso Python `profile_drivers`, as métricas de ritmo/consistência, os filtros
+explícitos e a CLI com gráficos opcionais. Consome o histórico enriquecido sem
+HTTP. O método é exploratório e não representa calibração do motor.
