@@ -7,6 +7,7 @@ import argparse
 import json
 import sqlite3
 import sys
+from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,6 +17,17 @@ sys.path.insert(0, str(ROOT / "src"))
 
 if TYPE_CHECKING:
     from f1_simulator.application.profile_drivers import ProfileRun
+
+
+def driver_labels(run: ProfileRun) -> dict[str, str]:
+    """Use human names, disambiguating homonyms without changing canonical IDs."""
+    names = dict(run.driver_names)
+    labels = {p.driver_id: names.get(p.driver_id, p.driver_id) for p in run.profiles}
+    counts = Counter(label.casefold() for label in labels.values())
+    return {
+        key: f"{label} ({key})" if counts[label.casefold()] > 1 else label
+        for key, label in labels.items()
+    }
 
 
 def plot_audit(run: ProfileRun, destination: Path) -> None:
@@ -30,7 +42,9 @@ def plot_audit(run: ProfileRun, destination: Path) -> None:
     import matplotlib.pyplot as plt
 
     destination.mkdir(parents=True, exist_ok=False)
-    labels = [p.driver_id for p in run.profiles]
+    driver_ids = [p.driver_id for p in run.profiles]
+    names = driver_labels(run)
+    labels = [names[driver] for driver in driver_ids]
     fig, ax = plt.subplots(figsize=(11, max(4, len(labels) * 0.3)))
     counts = [p.compared_laps for p in run.profiles]
     ax.barh(labels, counts, label="Comparáveis")
@@ -71,17 +85,20 @@ def plot_audit(run: ProfileRun, destination: Path) -> None:
             s=25,
             label="Entrada/saída dos boxes",
         )
-        for driver_index, driver in enumerate(labels):
-            color = plt.get_cmap("tab20")(driver_index % 20)
+        for driver_index, driver in enumerate(driver_ids):
+            palette = "tab20" if driver_index < 20 else "tab20b"
+            color = plt.get_cmap(palette)(driver_index % 20)
             usable = [
                 lap for lap in rows if lap.driver_id == driver and not lap.exclusions
             ]
+            if not usable:
+                continue
             axes[0].scatter(
                 [lap.lap_number for lap in usable],
                 [lap.lap_time_ms / 1000 for lap in usable],
                 s=10,
                 color=color,
-                label=driver,
+                label=names[driver],
             )
             axes[1].scatter(
                 [lap.lap_number for lap in usable],
@@ -90,7 +107,10 @@ def plot_audit(run: ProfileRun, destination: Path) -> None:
                 color=color,
             )
         axes[0].set(ylabel="Tempo observado (s)", title=session_id)
-        axes[0].legend(fontsize=7, ncol=4)
+        axes[0].legend(
+            fontsize=7, ncol=4, loc="upper center", bbox_to_anchor=(0.5, 1.48)
+        )
+        fig.subplots_adjust(hspace=0.4)
         axes[1].axhline(0, color="black", linewidth=0.7)
         axes[1].set(
             xlabel="Número da volta",

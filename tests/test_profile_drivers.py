@@ -197,6 +197,36 @@ class ProfileDriversIntegrationTests(unittest.TestCase):
         self.assertEqual(result["profiles"][0]["contexts"][0]["reference_ms"], 97000)
         self.assertIn("not_estimated", result["uncertainty"])
 
+    def test_names_come_from_canonical_catalog_and_keep_ids(self):
+        from scripts.profile_drivers import driver_labels
+
+        run = profile_drivers(
+            self.repository, session_ids=("session:1141:R",), config=CONFIG
+        )
+        self.assertEqual(
+            driver_labels(run),
+            {"driver:830": "Max Verstappen", "driver:839": "Esteban Ocon"},
+        )
+        self.assertEqual(run.profiles[0].driver_id, "driver:830")
+        self.assertEqual(run.profiles[0].contexts[0].reference_ms, 97000)
+
+    def test_homonyms_are_distinct_and_missing_name_has_fallback(self):
+        from scripts.profile_drivers import driver_labels
+
+        run = profile_drivers(
+            self.repository, session_ids=("session:1141:R",), config=CONFIG
+        )
+        same = replace(
+            run,
+            driver_names=(("driver:830", "Alex Smith"), ("driver:839", "Alex Smith")),
+        )
+        labels = driver_labels(same)
+        self.assertEqual(labels["driver:830"], "Alex Smith (driver:830)")
+        self.assertNotEqual(labels["driver:830"], labels["driver:839"])
+        self.assertEqual(
+            driver_labels(replace(run, driver_names=()))["driver:830"], "driver:830"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

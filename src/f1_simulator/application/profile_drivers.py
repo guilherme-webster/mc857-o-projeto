@@ -36,6 +36,7 @@ class ProfileRun:
     interpretation: str = (
         "descriptive driver/team performance; not isolated skill or prediction"
     )
+    driver_names: tuple[tuple[str, str], ...] = ()
 
 
 def profile_drivers(
@@ -110,6 +111,17 @@ def profile_drivers(
             )
         )
     profiles, audit = estimate_profiles(tuple(laps), tuple(drivers), config)
+    # Names are display metadata from the canonical catalog, never join keys.
+    # Missing names retain the ID as a diagnostic fallback for older datasets.
+    names = {}
+    for driver in repository.records("drivers"):
+        if driver["driver_id"] in drivers:
+            name = " ".join(
+                str(driver[field] or "").strip()
+                for field in ("given_name", "family_name")
+            ).strip()
+            if name:
+                names[driver["driver_id"]] = name
     relevant = [
         r
         for r in reports
@@ -125,4 +137,5 @@ def profile_drivers(
         ),
         profiles,
         audit,
+        driver_names=tuple(sorted(names.items())),
     )
