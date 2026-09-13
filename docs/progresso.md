@@ -187,3 +187,78 @@ de promover outra regra padrão. ETL e motor permanecem fora desta alteração.
 Sugestão de commits: `feat(modelagem): compare contextos e estime incerteza por evento`
 (código, CLI e testes) e `docs(modelagem): registre sensibilidade e limites dos perfis`
 (guias, README e progresso).
+
+### Contrato do perfil e aquisição da temporada — 13/09/2026 (-03:00)
+
+Issues #66/#67; branch `40-modelagem-dos-dados`, base `5034dde`. Backlog
+sincronizado antes de trabalhar, sem diff; #66 atribuída a @guilherme-webster,
+#67 aberta e sem responsável. Implementados os itens 1 e 2 autorizados:
+especificação de efeitos de ritmo/variabilidade e ampliação via ETL existente.
+
+`docs/contrato-perfil-simulacao.md` define significado, unidades, fórmula
+candidata de ritmo, distinção entre MAD e incerteza, indisponibilidade, riscos
+de dupla contagem de equipe e critérios de aceite da integração futura.
+O motor não foi integrado nesta fatia; distribuição de ruído, referência por
+circuito e separação piloto/equipe permanecem decisões de calibração.
+
+Plano expandido registrado antes da aquisição e de qualquer métrica nova:
+18 corridas de desenvolvimento, seis reservadas (etapas 3/6/9/14/18/23).
+Os cinco eventos já vistos foram todos incluídos no desenvolvimento. Hash
+`c28b469f24beab166b6386dced4fead51d0610864d6c23925e1f6ed8010cbb03`.
+A divisão não é estritamente temporal. Nenhum perfil novo foi calculado.
+
+ETL FastF1 3.8.3 executado para as 19 corridas restantes, sem telemetria, no
+ambiente existente `/tmp/mc857-evaluation-venv/bin/python`. Criados bancos
+separados de desenvolvimento (18 corridas, 20.262 observações) e completo
+(24 corridas, 26.604 observações), preservando a base anterior. Reserva tem
+6.342 observações; não confundir essas contagens com cobertura comparável.
+Manifestos e auditoria local conservam proveniência e qualidade. `t0_date`
+indisponível e telemetria não solicitada permanecem explícitos.
+
+Verificações: integridade e chaves SQLite aprovadas nos dois bancos, sessões
+exatamente conforme plano, relatórios antigos preservados e contagens conferidas.
+147 testes sem falhas, 13 ignorados; Ruff, links e sintaxe dos comandos passaram.
+Guia: `docs/amostra-pilotos-2024-expandida.md`; bancos/logs/auditoria fora do Git.
+
+Próximo passo: explorar estabilidade e comparações no desenvolvimento usando
+somente o banco de 18 eventos; congelar decisões antes de avaliar a reserva.
+Não executar a CLI de avaliação com o plano expandido durante essa exploração,
+pois ela calcula ambos os grupos. Exemplo Python seguro está no guia.
+
+Sem commits, push ou mensagens ao GitHub; levar este andamento à #67 quando
+a publicação for autorizada. Sugestão de commits:
+`docs(modelagem): especifique efeitos de ritmo e variabilidade` e
+`feat(dados): configure amostra de 2024 com eventos reservados`.
+
+### Exploração exclusiva do desenvolvimento — 13/09/2026 (-03:00)
+
+Continuação de #66/#67, branch `40-modelagem-dos-dados`. Preservadas as mudanças
+pendentes do contrato e da aquisição anterior. Backlog sincronizado sem diff.
+Implementados caso de uso `analyze_development` e CLI própria, sem solicitar
+registros das sessões reservadas. Quatro agrupamentos, suporte/bootstrap e
+influência por retirada de um evento; gráficos PNG/SVG e CSVs publicados em
+pasta nova, sem tocar no banco completo com reserva.
+
+Original: 12.558/20.262 voltas comparáveis (61,98%), 23/24 pilotos com perfil.
+Cobertura das alternativas: 58,52%/47,70%/45,23%. Jack Doohan mantém apenas um
+evento; Bearman tem três. Ritmo original: Pérez −0,358%, Zhou +0,441%,
+Verstappen −0,555%, Norris −0,673%. São observações piloto/equipe/contexto,
+sem ranking de habilidade. Retirar um evento não é erro de previsão.
+
+Decisões para avaliação futura registradas em
+`configs/profile-validation-decision-2024.json`: preservar variante original,
+filtros, mínimos e bootstrap; métricas descritivas e ausência sem imputação;
+sem aprovação automática. Reserva não avaliada. Próximo passo é consultar a
+reserva com essas escolhas fixadas, registrando qualquer revisão posterior.
+
+Artefatos: `data/curated/development-studies/development-1147b746d0c14c22bcff802f2f219c41/`.
+Duas execuções produziram JSON e oito CSVs idênticos. Gráfico original inspecionado.
+152 testes sem falhas, 13 ignorados; Ruff, whitespace, links e correspondência
+entre plano e registro de decisões aprovados. Cinco testes novos cobrem isolamento
+da reserva, influência conhecida, mínimo de eventos e falha de publicação.
+Guia: `docs/analise-desenvolvimento-pilotos-2024.md`.
+
+Não criados commits, push ou mensagens ao GitHub. Registro local para posterior
+publicação na #67 quando autorizada. Para o diff acumulado, agrupar contrato,
+plano e aquisição anteriores em `feat(modelagem): defina contrato e reserve amostra de 2024`;
+a exploração atual em `feat(modelagem): analise estabilidade no desenvolvimento`.
