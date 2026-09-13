@@ -276,3 +276,9 @@ pipenv run python -B scripts/analyze_profile_contexts.py \
   --database data/curated/history-profile-evaluation-2024.sqlite \
   --plan configs/profile-evaluation-2024.json
 ```
+
+O [contrato dos efeitos do perfil](docs/contrato-perfil-simulacao.md) especifica
+ritmo, variabilidade, unidades e critérios da futura integração com o motor.
+A [amostra expandida de 2024](docs/amostra-pilotos-2024-expandida.md) separa
+18 corridas de desenvolvimento e seis reservadas antes de consultar métricas
+novas; o guia contém os comandos de aquisição pelo ETL existente.
