@@ -218,3 +218,11 @@ Para repetir a geração sem colisão de diretório ou erro de redirecionamento,
 use o [bloco com pasta nova por execução](commits-modelagem-pilotos.md#gerar-os-gráficos-novamente).
 O JSON é saída e não precisa existir previamente; sua pasta precisa existir.
 Preserve `data/curated/history-fastf1-2024.sqlite`, que é a entrada da análise.
+
+## Ampliação da amostra e nomes nos gráficos
+
+A [pesquisa de fontes e amostra ampliada](fontes-e-amostra-pilotos.md) registra
+três corridas de 2024, 3.223 observações e 1.844 voltas comparáveis, além da
+avaliação de OpenF1, Vansh, AlexJR e Jolpica. Isso amplia a exploração, sem
+constituir validação fora da amostra. Os gráficos passam a exibir nomes do
+cadastro canônico, com IDs preservados no contrato e nos cálculos.

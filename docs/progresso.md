@@ -81,3 +81,37 @@ reingeridos em modo estrito. Gráficos PNG/SVG e JSON gerados com sucesso em
 O comando repetível usa uma pasta nova por execução; não é necessário excluir
 o banco nem criar o JSON de saída antecipadamente. Comandos de commits e
 execução em `docs/commits-modelagem-pilotos.md`. Nenhum commit foi executado.
+
+### Pesquisa de fontes, ampliação da amostra e nomes — 13/09/2026 (-03:00)
+
+Continuação das issues #61/#66/#67, na branch `40-modelagem-dos-dados`.
+Amostra ampliada via FastF1 existente para Bahrein, Silverstone e São Paulo/2024:
+3.223 observações, 1.844 voltas comparáveis; 20 de 23 pilotos com estimativa
+agregada ao exigir dois eventos. Banco anterior preservado; novo recorte sem
+telemetria de alta frequência, explicitamente registrada como não solicitada.
+
+Investigados OpenF1, Jolpica e as bases AlexJR/Vansh sugeridas pelo professor.
+Foram consultados metadados, adquirido e auditado o ZIP Vansh v1 (11 CSVs) e
+comparadas 57 voltas OpenF1/FastF1: 56 iguais e primeira volta com diferença de
+475 ms. Janela OpenF1 do carro 11 retornou 18 intervalos, candidatos para
+modelagem posterior de tráfego. Nenhuma fonte nova foi mesclada automaticamente
+com os fatos canônicos. Evidências e condições estão em
+`docs/fontes-e-amostra-pilotos.md`; downloads/manifestos fora do Git.
+
+Gráficos passam a usar nomes do cadastro canônico, conservando IDs estáveis,
+desambiguando homônimos e preservando fallback para ausência de nome. Gerados
+JSON, PNG e SVG em `data/curated/perfil-ampliado.aPAUuF/`; imagens inspecionadas.
+Verificações: 119 testes sem falhas, 13 ignorados por condições gráficas; Ruff,
+whitespace, links locais e sintaxe dos comandos passaram.
+
+Próximo passo: reservar eventos não usados para validação e especificar a
+adoção de intervalos OpenF1 (proveniência, condições de dados, mapeamento de
+sessão/piloto e alinhamento temporal), conforme o guia. Ampliar amostra ainda
+não comprova robustez preditiva. Sem commits, push ou mensagens ao GitHub;
+este registro deve ser levado à #67 quando o envio for autorizado.
+
+Sugestões de commits desta fatia:
+`fix(graficos): exiba nomes dos pilotos preservando os IDs` (aplicação, CLI e
+testes) e `docs(modelagem): registre fontes e ampliação da amostra` (guia de
+fontes, atualização da modelagem e progresso). O espelho gerado só precisa de
+commit separado se a sincronização produzir diff.
