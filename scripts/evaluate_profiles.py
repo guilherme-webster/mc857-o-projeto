@@ -73,6 +73,7 @@ def plot_evaluation(result: ProfileEvaluation, directory: Path) -> None:
     import matplotlib.pyplot as plt
 
     names = _names(result)
+    support = {(r.partition, r.driver_id): r for r in result.support}
     events = sorted(result.coverage, key=lambda e: (e.race_date, e.session_id))
     drivers = sorted(
         result.comparisons, key=lambda r: (names[r.driver_id], r.driver_id)
@@ -111,7 +112,7 @@ def plot_evaluation(result: ProfileEvaluation, directory: Path) -> None:
     save(fig, "coverage")
 
     fig, axes = plt.subplots(
-        1, 2, figsize=(14, max(5, len(drivers) * 0.32)), sharey=True
+        1, 2, figsize=(18, max(6, len(drivers) * 0.65)), sharey=True
     )
     for ax, field, title in zip(
         axes, ("pace", "consistency"), ("Ritmo relativo (%)", "Dispersão MAD (%)")
@@ -128,7 +129,21 @@ def plot_evaluation(result: ProfileEvaluation, directory: Path) -> None:
                 (b, "validation", "s"),
             ):
                 if value is not None:
-                    ax.scatter(value, i, color=colors[role], marker=marker, s=24)
+                    evidence = support[(role, row.driver_id)]
+                    interval = getattr(evidence, f"{field}_interval_pct")
+                    y = i + (-0.12 if role == "development" else 0.12)
+                    if interval is not None:
+                        ax.plot(
+                            interval, [y, y], color=colors[role], alpha=0.6, linewidth=2
+                        )
+                    ax.scatter(
+                        value,
+                        y,
+                        edgecolors=colors[role],
+                        facecolors="none" if evidence.warnings else colors[role],
+                        marker=marker,
+                        s=30,
+                    )
             if a is None and b is None:
                 ax.text(
                     0.02,
@@ -142,9 +157,31 @@ def plot_evaluation(result: ProfileEvaluation, directory: Path) -> None:
                 [], [], color=colors[role], marker=marker, label=role_names[role]
             )
         ax.axvline(0, color="lightgray", linewidth=0.8)
-        ax.set(xlabel=title, title="Estimativas independentes por grupo")
+        ax.set(
+            xlabel=title,
+            title=f"Intervalo bootstrap por evento ({result.bootstrap.confidence:.0%})\nMarcador vazio: suporte limitado; não é teste de outliers",
+        )
         ax.legend(fontsize=8)
-    axes[0].set_yticks(range(len(drivers)), [names[r.driver_id] for r in drivers])
+    labels = []
+    for row in drivers:
+        counts = []
+        for role in ("development", "validation"):
+            evidence = support.get((role, row.driver_id))
+            value = getattr(row, f"{role}_pace_pct")
+            detail = (
+                f"{evidence.compared_laps}v/{evidence.contexts}c/{evidence.events}e"
+                if evidence
+                else "ausente"
+            )
+            counts.append(
+                f"{roles[role]}: {detail}" + (" [insuf.]" if value is None else "")
+            )
+        labels.append(names[row.driver_id] + "\n" + " · ".join(counts))
+    axes[0].set_yticks(range(len(drivers)), labels, fontsize=8)
+    fig.suptitle(
+        "v: voltas comparáveis · c: contextos · e: eventos; poucos eventos limitam a incerteza",
+        fontsize=10,
+    )
     axes[0].invert_yaxis()
     save(fig, "stability")
 
@@ -162,7 +199,7 @@ def plot_evaluation(result: ProfileEvaluation, directory: Path) -> None:
                 values.append(value if value is not None else float("nan"))
             matrix.append(values)
         fig, ax = plt.subplots(
-            figsize=(max(9, len(events) * 1.4), max(5, len(drivers) * 0.3))
+            figsize=(max(12, len(events) * 2), max(6, len(drivers) * 0.57))
         )
         if matrix:
             finite = [value for row in matrix for value in row if value == value]
@@ -175,6 +212,34 @@ def plot_evaluation(result: ProfileEvaluation, directory: Path) -> None:
                 vmax=scale,
             )
             fig.colorbar(image, ax=ax, label=label)
+            for i, driver in enumerate(drivers):
+                for j, event in enumerate(events):
+                    estimate = estimates.get((driver.driver_id, event.session_id))
+                    value = getattr(estimate, field) if estimate else None
+                    if estimate is None:
+                        text = "ausente"
+                    else:
+                        number = (
+                            f"{value:+.3f}" if value is not None else "insuficiente"
+                        )
+                        text = (
+                            number
+                            + f"\n{estimate.compared_laps}v/{estimate.contexts}c/"
+                            + ("1e" if estimate.contexts else "0e")
+                        )
+                    ax.text(
+                        j,
+                        i,
+                        text,
+                        ha="center",
+                        va="center",
+                        fontsize=7,
+                        color="white"
+                        if value is None
+                        or (field != "pace_delta_pct" and value < scale * 0.5)
+                        or (field == "pace_delta_pct" and abs(value) > scale * 0.7)
+                        else "black",
+                    )
         else:
             ax.text(0.5, 0.5, "Sem participantes", ha="center", transform=ax.transAxes)
         ax.set_yticks(range(len(drivers)), [names[r.driver_id] for r in drivers])
@@ -185,7 +250,7 @@ def plot_evaluation(result: ProfileEvaluation, directory: Path) -> None:
             ha="right",
         )
         ax.set_title(
-            f"{label} por evento — cinza escuro: ausente/indisponível\nD: desenvolvimento; V: validação; pontos descritivos de um evento"
+            f"{label} por evento — cinza escuro: ausente/indisponível\nD: desenvolvimento; V: validação · v: voltas; c: contextos; e: eventos\nUm evento não permite intervalo entre eventos; cores não classificam outliers"
         )
         save(fig, filename)
 
@@ -200,6 +265,7 @@ def publish_report(
     The folder name is unique; JSON content is deterministic for identical input.
     """
     from f1_simulator.domain.profile_evaluation import DriverStability
+    from f1_simulator.domain.profile_reliability import ProfileSupport
 
     root = root.resolve()
     if root.is_relative_to(ROOT / "data" / "raw"):
@@ -220,6 +286,11 @@ def publish_report(
             encoding="utf-8",
         )
         for filename, records, fields in (
+            (
+                "support.csv",
+                result.support,
+                tuple(field.name for field in dataclass_fields(ProfileSupport)),
+            ),
             (
                 "coverage.csv",
                 result.coverage,
@@ -255,6 +326,8 @@ def publish_report(
                     "compared_laps",
                     "pace_delta_pct",
                     "consistency_mad_pct",
+                    "contexts",
+                    "mixed_stint_contexts",
                 ),
             ),
         ):
@@ -300,7 +373,14 @@ def publish_report(
         lines += [
             "",
             "JSON contém proveniência e auditoria completa; CSVs resumem cobertura e estabilidade.",
-            "Não há aprovação automática de robustez, intervalo de confiança ou calibração preditiva.",
+            f"Análise: `{result.analysis_version}`; SHA-256: `{result.analysis_sha256}`.",
+            f"Variante: `{result.variant.name}`; separar stints: {result.variant.split_stints}.",
+            f"Bootstrap por evento: {result.bootstrap.replicates} réplicas, semente {result.bootstrap.seed}, nível {result.bootstrap.confidence:.0%}.",
+            "Intervalos marginais exploratórios condicionais aos eventos disponíveis; não são testes de outliers.",
+            f"Menos de {result.bootstrap.warn_below_events} eventos recebe aviso heurístico de poucos eventos; atingir o limiar não comprova robustez.",
+            "Um evento ou perfil indisponível não recebe intervalo. Voltas do mesmo evento não são amostras independentes.",
+            "support.csv registra voltas, contextos, eventos, mistura de stints, intervalos e motivos de indisponibilidade.",
+            "Não há aprovação automática de robustez nem calibração preditiva.",
         ]
         (directory / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
         if plots:
@@ -328,10 +408,23 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="gera JSON/CSV/Markdown sem Matplotlib",
     )
+    parser.add_argument("--bootstrap-replicates", type=int, default=2000)
+    parser.add_argument("--bootstrap-seed", type=int, default=42)
+    parser.add_argument("--confidence", type=float, default=0.95)
+    parser.add_argument("--warn-below-events", type=int, default=5)
     args = parser.parse_args(argv)
     try:
+        from f1_simulator.domain.profile_reliability import BootstrapConfig
+
         result = evaluate_profiles(
-            SQLiteHistoryRepository(args.database), load_plan(args.plan)
+            SQLiteHistoryRepository(args.database),
+            load_plan(args.plan),
+            bootstrap=BootstrapConfig(
+                args.bootstrap_replicates,
+                args.bootstrap_seed,
+                args.confidence,
+                args.warn_below_events,
+            ),
         )
         destination = publish_report(
             result, args.output_root, plots=not args.without_plots

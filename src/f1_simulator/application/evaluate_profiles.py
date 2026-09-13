@@ -5,9 +5,16 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from statistics import median
 
+from f1_simulator.domain.context_sensitivity import ContextVariant, separate_stints
+from f1_simulator.domain.driver_profile import estimate_profiles
+from f1_simulator.domain.profile_reliability import (
+    BootstrapConfig,
+    ProfileSupport,
+    profile_support,
+)
 from f1_simulator.application.ports.history import HistoryRepository
 from f1_simulator.application.profile_drivers import ProfileRun, profile_drivers
 from f1_simulator.domain.profile_evaluation import (
@@ -53,6 +60,8 @@ class DriverEventEstimate:
     compared_laps: int
     pace_delta_pct: float | None
     consistency_mad_pct: float | None
+    contexts: int
+    mixed_stint_contexts: int
 
 
 @dataclass(frozen=True)
@@ -69,10 +78,19 @@ class ProfileEvaluation:
     summary: StabilitySummary
     validation_after_development: bool
     warnings: tuple[str, ...]
+    variant: ContextVariant
+    bootstrap: BootstrapConfig
+    support: tuple[ProfileSupport, ...]
+    analysis_version: str
+    analysis_sha256: str
 
 
 def evaluate_profiles(
-    repository: HistoryRepository, plan: EvaluationPlan
+    repository: HistoryRepository,
+    plan: EvaluationPlan,
+    *,
+    variant: ContextVariant = ContextVariant(),
+    bootstrap: BootstrapConfig = BootstrapConfig(),
 ) -> ProfileEvaluation:
     """Evaluate disjoint races with identical, predeclared modeling parameters.
 
@@ -81,6 +99,8 @@ def evaluate_profiles(
     changes development references or config. No parameter fitting, baseline
     prediction or HTTP is introduced. Chronology is reported from catalog dates.
     """
+    if variant.lap_window is not None:
+        plan = replace(plan, config=replace(plan.config, lap_window=variant.lap_window))
     available = {r["source"].get("session_id") for r in repository.reports()}
     selected = plan.development_sessions + plan.validation_sessions
     if not set(selected) <= available:
@@ -112,6 +132,22 @@ def evaluate_profiles(
     validation = profile_drivers(
         repository, session_ids=plan.validation_sessions, config=plan.config
     )
+    if variant.split_stints:
+
+        def regroup(run):
+            profiles, audit = estimate_profiles(
+                separate_stints(run.laps),
+                tuple(p.driver_id for p in run.profiles),
+                plan.config,
+            )
+            return replace(
+                run,
+                profiles=profiles,
+                laps=audit,
+                method_version="contextual-pace-stint-v1",
+            )
+
+        development, validation = regroup(development), regroup(validation)
     comparisons, summary = compare_profiles(development.profiles, validation.profiles)
     coverage, event_estimates = [], []
     for partition, run in (("development", development), ("validation", validation)):
@@ -164,6 +200,8 @@ def evaluate_profiles(
                         median(c.consistency_mad_pct for c in contexts)
                         if contexts
                         else None,
+                        len(contexts),
+                        sum(c.stints > 1 for c in contexts),
                     )
                 )
     chronological = min(
@@ -172,7 +210,7 @@ def evaluate_profiles(
     warnings = [
         "descriptive_stability_not_prediction_error",
         "context_distributions_may_differ",
-        "uncertainty_not_estimated",
+        "conditional_event_bootstrap_exploratory_not_ranking_test",
         "no_automatic_robustness_threshold",
     ]
     if not chronological:
@@ -181,6 +219,18 @@ def evaluate_profiles(
         warnings.append("no_supported_driver_pairs")
     canonical_plan = json.dumps(
         asdict(plan), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
+    analysis_version = "context-reliability-v1"
+    analysis_json = json.dumps(
+        {
+            "version": analysis_version,
+            "plan": asdict(plan),
+            "variant": asdict(variant),
+            "bootstrap": asdict(bootstrap),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
     )
     return ProfileEvaluation(
         plan,
@@ -193,4 +243,13 @@ def evaluate_profiles(
         summary,
         chronological,
         tuple(warnings),
+        variant,
+        bootstrap,
+        tuple(
+            profile_support(p, role, bootstrap)
+            for role, run in (("development", development), ("validation", validation))
+            for p in run.profiles
+        ),
+        analysis_version,
+        hashlib.sha256(analysis_json.encode()).hexdigest(),
     )
