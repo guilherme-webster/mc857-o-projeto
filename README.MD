@@ -260,3 +260,9 @@ O [guia da modelagem inicial](docs/modelagem-pilotos-inicial.md) descreve o caso
 de uso Python `profile_drivers`, as métricas de ritmo/consistência, os filtros
 explícitos e a CLI com gráficos opcionais. Consome o histórico enriquecido sem
 HTTP. O método é exploratório e não representa calibração do motor.
+
+A [avaliação de perfis entre eventos](docs/avaliacao-perfis-entre-eventos.md)
+usa o protocolo em `configs/profile-evaluation-2024.json`. Execute
+`pipenv run python -B scripts/evaluate_profiles.py --database data/curated/history-profile-evaluation-2024.sqlite --plan configs/profile-evaluation-2024.json`.
+A saída é uma pasta nova com relatório, JSON, CSVs e gráficos; não exige
+redirecionar o JSON nem remover resultados anteriores.

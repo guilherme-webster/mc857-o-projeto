@@ -226,3 +226,10 @@ três corridas de 2024, 3.223 observações e 1.844 voltas comparáveis, além d
 avaliação de OpenF1, Vansh, AlexJR e Jolpica. Isso amplia a exploração, sem
 constituir validação fora da amostra. Os gráficos passam a exibir nomes do
 cadastro canônico, com IDs preservados no contrato e nos cálculos.
+
+## Avaliação entre eventos
+
+A [avaliação reproduzível entre eventos](avaliacao-perfis-entre-eventos.md)
+implementa a separação entre desenvolvimento/validação, cobertura e estabilidade
+com protocolo explícito e relatórios locais. Ela reutiliza as mesmas fórmulas;
+as mudanças entre perfis continuam descritivas, não erros de previsão.

@@ -115,3 +115,37 @@ Sugestões de commits desta fatia:
 testes) e `docs(modelagem): registre fontes e ampliação da amostra` (guia de
 fontes, atualização da modelagem e progresso). O espelho gerado só precisa de
 commit separado se a sincronização produzir diff.
+
+### Avaliação entre eventos — 13/09/2026 (-03:00)
+
+Issues #66/#67 na branch `40-modelagem-dos-dados`, base `0b39f2f`. #66 atribuída
+a @guilherme-webster; #67 sem responsável no backlog consultado. Implementados
+plano explícito/versionado, validação de sessões/eventos disjuntos, perfis
+separados com parâmetros comuns, cobertura e comparação descritiva em pp.
+A CLI publica uma pasta nova completa com JSON/CSV/Markdown e gráficos PNG/SVG.
+
+Protocolo definido antes da avaliação: Bahrein/Silverstone/São Paulo como
+desenvolvimento; Itália/Abu Dhabi como validação; configuração anterior mantida,
+com mínimo de dois eventos em cada grupo. Os dois eventos adicionais foram
+ingeridos em cópia da base, sem telemetria de alta frequência. Cronologia não
+estritamente futura registrada explicitamente. Nenhum parâmetro ajustado após
+examinar métricas de validação.
+
+Verificações: 134 testes sem falhas, 13 ignorados; Ruff aprovado. Testes incluem
+isolamento da validação, ausência/insuficiência de dados e falha de publicação
+sem apagar resultados anteriores. Duas execuções reais geraram JSON idêntico;
+15/24 pilotos com métricas nos dois grupos, mudança absoluta mediana de ritmo
+0,255540 pp e MAD 0,042532 pp. Isso não constitui erro de previsão ou aprovação
+automática de robustez. Artefatos em `data/curated/evaluations/`, fora do Git.
+
+Próximo passo: revisão dos relatórios e investigação de contexto/tráfego;
+qualquer ajuste posterior exige novos eventos reservados para avaliação
+confirmatória. Guia e reprodução: `docs/avaliacao-perfis-entre-eventos.md`.
+Sem commits, push, comentários ou fechamento de issues; registro local para
+posterior atualização da #67 quando o envio for autorizado.
+
+Sugestões de commits: `feat(modelagem): avalie perfis em eventos separados`
+(domínio, aplicação, CLI, testes e protocolo) e
+`docs(modelagem): documente a avaliação entre eventos`
+(guia, README, modelagem inicial e progresso). Espelho gerado em commit separado
+somente se houver diff após a sincronização.
