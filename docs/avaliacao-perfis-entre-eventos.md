@@ -72,8 +72,10 @@ Para cada piloto presente na união dos grupos:
 
 O resumo calcula a mediana dos módulos dessas mudanças entre os pilotos com
 suporte nos dois grupos, com peso igual por piloto. Não é MAE de previsão.
-Sem pares disponíveis, as medianas são `None`. A incerteza não é estimada e
-nenhuma regra declara o modelo aprovado/reprovado automaticamente.
+Sem pares disponíveis, as medianas são `None`. A extensão de
+[sensibilidade e incerteza](sensibilidade-contextos-pilotos.md) acrescenta
+intervalos exploratórios por evento para cada perfil, sem intervalo da mudança
+D/V. Nenhuma regra declara o modelo aprovado/reprovado automaticamente.
 
 Por evento, o relatório conserva participantes, voltas observadas/comparáveis,
 percentual de cobertura e motivos de exclusão. Motivos podem se sobrepor; sua
@@ -198,6 +200,7 @@ python3 -B -m unittest -q
 Próximos passos: investigar mudanças de contexto com os relatórios; planejar
 filtros de tráfego/OpenF1 sob o contrato e as condições da fonte já pesquisados;
 e definir uma regra preditiva e uma referência simples se o objetivo passar a
-ser erro de tempo de volta. Comparação com companheiros, intervalos de confiança
-e conversão em parâmetros do motor continuam decisões próprias. Esta entrega
+ser erro de tempo de volta. Comparação com companheiros e conversão em parâmetros do motor continuam
+decisões próprias. Intervalos marginais exploratórios e sensibilidade dos
+contextos estão implementados no [guia complementar](sensibilidade-contextos-pilotos.md). Esta entrega
 não muda os efeitos do motor nem incorpora OpenF1 ao ETL de produção.

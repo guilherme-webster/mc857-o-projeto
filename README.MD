@@ -266,3 +266,13 @@ usa o protocolo em `configs/profile-evaluation-2024.json`. Execute
 `pipenv run python -B scripts/evaluate_profiles.py --database data/curated/history-profile-evaluation-2024.sqlite --plan configs/profile-evaluation-2024.json`.
 A saída é uma pasta nova com relatório, JSON, CSVs e gráficos; não exige
 redirecionar o JSON nem remover resultados anteriores.
+
+A [análise de sensibilidade dos contextos](docs/sensibilidade-contextos-pilotos.md)
+compara agrupamento por stint e janela de voltas, mostrando cobertura e
+intervalos exploratórios por evento nos gráficos:
+
+```bash
+pipenv run python -B scripts/analyze_profile_contexts.py \
+  --database data/curated/history-profile-evaluation-2024.sqlite \
+  --plan configs/profile-evaluation-2024.json
+```

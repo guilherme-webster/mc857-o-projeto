@@ -149,3 +149,41 @@ Sugestões de commits: `feat(modelagem): avalie perfis em eventos separados`
 `docs(modelagem): documente a avaliação entre eventos`
 (guia, README, modelagem inicial e progresso). Espelho gerado em commit separado
 somente se houver diff após a sincronização.
+
+### Sensibilidade de contextos e incerteza — 13/09/2026 (-03:00)
+
+Issues #66/#67; branch `40-modelagem-dos-dados`, checkout
+`mc857-etl-enriquecimento`. Backlog sincronizado antes do trabalho, sem diff;
+#66 atribuída a @guilherme-webster, #67 aberta e sem responsável registrado.
+O pedido autorizou comparar contextos e explicitar confiabilidade; não houve
+mensagens ao GitHub, commits ou push. Levar este registro à #67 quando autorizado.
+
+Implementadas quatro variantes (original, número do stint, janela de cinco
+voltas e combinação), com mesmos filtros de qualidade e suporte recalculado.
+Intervalos percentis exploratórios reamostram eventos inteiros, com semente,
+réplicas, nível e limiar heurístico de aviso configuráveis. Gráficos mostram
+voltas/contextos/eventos, intervalos e indisponibilidade; não classificam outliers.
+
+Execução real: 5.266 observações; 3.096/2.898/2.317/2.194 voltas comparáveis nas
+quatro variantes. Pérez/Silverstone: original 8 voltas, MAD 1,386%; janela menor
+6 voltas, MAD 0,802%; combinação sem estimativa. Preservado o padrão original,
+pois restringir pode eliminar suporte e não demonstra uma correção causal.
+
+Artefatos completos com PNG/SVG em
+`data/curated/context-studies/sensitivity-6a4510c6d02d4d279126ced555f4a1c6/`.
+Duas execuções produziram os quatro JSONs e os três arquivos de resumo/auditoria
+idênticos. Métricas, cobertura e hash da referência coincidem com a avaliação
+anterior. Gráficos de estabilidade, mapa de MAD e sensibilidade inspecionados.
+
+Verificações: 144 testes sem falhas, 13 ignorados; 25 testes relevantes repetidos
+após ajustes finais; Ruff, whitespace e links locais passaram. Nenhuma dependência
+nova. Guia: `docs/sensibilidade-contextos-pilotos.md`.
+
+Limitação: com 2–3 eventos, intervalos são exploratórios, condicionais e discretos;
+não representam habilidade isolada nem validação confirmatória. Próximo passo:
+novos eventos reservados e investigação de alinhamento temporal/tráfego antes
+de promover outra regra padrão. ETL e motor permanecem fora desta alteração.
+
+Sugestão de commits: `feat(modelagem): compare contextos e estime incerteza por evento`
+(código, CLI e testes) e `docs(modelagem): registre sensibilidade e limites dos perfis`
+(guias, README e progresso).

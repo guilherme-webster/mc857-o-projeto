@@ -233,3 +233,11 @@ A [avaliação reproduzível entre eventos](avaliacao-perfis-entre-eventos.md)
 implementa a separação entre desenvolvimento/validação, cobertura e estabilidade
 com protocolo explícito e relatórios locais. Ela reutiliza as mesmas fórmulas;
 as mudanças entre perfis continuam descritivas, não erros de previsão.
+
+### Sensibilidade e suporte das estimativas
+
+A [análise dos contextos](sensibilidade-contextos-pilotos.md) compara separação
+por stint e janela menor sem mudar o método padrão. A avaliação acrescenta
+intervalos exploratórios por evento e contagens nos gráficos; o perfilador
+isolado continua sem calcular incerteza. Esses intervalos não convertem os
+perfis em rankings de habilidade nem aprovam sua robustez.
