@@ -12,6 +12,9 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 - [Guia de contribuicao](CONTRIBUTING.md)
 - [Registros de decisoes arquiteturais](docs/adr/README.md)
 - [Fluxo e responsabilidades do ETL](docs/fluxo-etl.md)
+- [ETL completo: Trotman e FastF1](docs/etl-enriquecimento.md)
+- [Proposta de planejamento da modelagem](docs/planejamento-modelagem.md)
+- [Dados e plano de perfilamento dos pilotos](docs/perfilamento-pilotos.md)
 
 O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
 experiencia de visualizacao do projeto
@@ -20,7 +23,9 @@ será o backend, e o motor de simulacao continuara independente dos dois
 frameworks. O
 [ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md)
 estabelece arquitetura hexagonal, integracao de dados com Adapter + Factory e a
-base Formula 1 Race Data, de James Trotman, como fonte inicial unica do MVP.
+base Formula 1 Race Data, de James Trotman, como fonte inicial. O
+[ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md) amplia o ETL para
+o historico completo e observacoes complementares do FastF1.
 
 ## 📦 Pré-requisitos e Dependências
 
@@ -61,6 +66,11 @@ Antes de iniciar a execução do projeto, certifique-se de possuir as ferramenta
 
 ## ETL da Base Trotman
 
+O fluxo abaixo importa uma corrida. Para os 14 CSVs completos, usar
+`python3 scripts/ingest_trotman.py --all-tables --output data/curated/history.sqlite`.
+O [guia de enriquecimento](docs/etl-enriquecimento.md) mostra aquisicao FastF1,
+contratos Python, relatorios internos e limites de cobertura.
+
 Baixe e verifique o arquivo bruto da versao 128:
 
 ```bash
@@ -87,15 +97,41 @@ O SQLite gerado contem `metadata`, `source_ids`, `circuits`, `drivers`, `teams`,
 milissegundos e ausencias permanecem `NULL`. O JSON de qualidade registra
 contagens, nulos, duplicatas, referencias orfas e pit stops anormalmente longos.
 
-### Geometrias mockadas das pistas
+### Geometrias das pistas derivadas do FastF1
+
+O termo historico "mock" identifica aqui uma aproximacao derivada de dados
+reais, nao coordenadas inventadas. O ponto de servico e representativo; os
+tracados nao fornecem limites oficiais, aderencia ou parametros de pilotos.
 
 A fixture `tests/fixtures/trotman_v128_tracks_2025/` contém as polilinhas das
 24 pistas do calendário de 2025 e seus pit lanes. Cada pit lane inclui um ponto
 de serviço representativo. Os dados foram derivados offline do FastF1; cache,
 telemetria bruta e scripts de geração não fazem parte do repositório. Consulte
 o ADR 0003 e os manifestos em `data/sources/` para proveniência, transformação
-e limitações de uso. O visualizador temporário usado para inspecionar os mocks
+e limitações de uso. O visualizador temporário usado para inspecionar as geometrias
 também não faz parte do repositório.
+
+Para incluir os tracos e pit lanes derivados da issue #51 no mesmo SQLite,
+acrescente `--geometry-dir` ao comando de ingestao:
+
+```bash
+python3 scripts/ingest_trotman.py \
+  --source tests/fixtures/trotman_v128_sample \
+  --race-id 1141 \
+  --geometry-dir tests/fixtures/trotman_v128_tracks_2025 \
+  --output data/curated/race-1141-geometry.sqlite \
+  --report data/curated/race-1141-geometry-quality.json
+```
+
+Esse exemplo usa a amostra pequena de corrida. Para processar os dados completos,
+omita `--source` depois de baixar o Trotman v128. O comando importa apenas a
+geometria do circuito da corrida, validando ambos os CSVs e seus manifestos.
+As geometrias das 24 pistas continuam disponiveis para outras corridas suportadas.
+
+X/Y sao normalizados e sem unidade; distancia acumulada da pista e em metros.
+As geometrias sao de 2025: seu uso com uma corrida de outro ano fica explicito no
+relatorio. Consulte o [contrato de consumo](docs/fluxo-etl.md#geometria-de-pista-e-pit-lane)
+para ler as novas tabelas com `SQLiteTrackGeometryRepository`.
 
 Execute os testes sem instalar dependencias adicionais:
 
@@ -178,7 +214,7 @@ Você pode executar a aplicação completa (comunicação Frontend + Backend) ou
 A `ParametersView` apresenta os dados historicos da corrida de referencia como
 somente leitura e permite alterar o numero de voltas. O botao de clima abre uma
 segunda `arcade.View`, na qual uma condicao pode ser aplicada a intervalos de
-voltas. O botao de inicio valida o formulario, mas a conexao com Django e com o
+voltas. O botao de inicio valida o formulario, mas a conexao com FastAPI e com o
 motor pertence a um incremento posterior.
 
 ### Tela de simulação da corrida
