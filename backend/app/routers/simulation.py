@@ -111,10 +111,6 @@ def race_details() -> RaceDetailsResponse:
     return RaceDetailsResponse(**summary)
 
 
-# Maps each RaceLoadError.reason to the HTTP status and a message aimed at the
-# client. "validation" is the shared-car case: the race exists in the catalog
-# but its result table breaks an invariant the engine requires, so we say so
-# plainly instead of surfacing the raw "duplicate key ..." string.
 _LOAD_ERROR_STATUS = {
     "validation": status.HTTP_422_UNPROCESSABLE_ENTITY,
     "source": status.HTTP_404_NOT_FOUND,

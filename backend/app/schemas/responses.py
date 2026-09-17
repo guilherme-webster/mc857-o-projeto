@@ -93,3 +93,17 @@ class RaceLoadErrorResponse(BaseModel):
     message: str
     race_id: int
     detail: str | None = None
+
+
+class HistoryBuildResponse(BaseModel):
+
+    schema_version: int
+    row_counts: dict[str, int]
+    canonical_sha256: str
+
+
+class HistoryBuildErrorResponse(BaseModel):
+
+    reason: str
+    message: str
+    detail: str | None = None

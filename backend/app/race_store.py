@@ -11,9 +11,6 @@ from app.config import (
 from fastapi import HTTPException, status
 
 
-# --- Reading the curated store ------------------------------------------------
-
-
 def get_db_connection() -> sqlite3.Connection:
 
     if not DEFAULT_RACE_DB.exists():
@@ -38,9 +35,6 @@ def validate_table_exists(conn: sqlite3.Connection, table_name: str) -> None:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tabela '{table_name}' não existe no banco de dados.",
         )
-
-
-# --- Rebuilding the curated store ---------------------------------------------
 
 
 class RaceLoadError(RuntimeError):
@@ -77,7 +71,7 @@ def load_race_into_current(race_id: int) -> dict[str, object]:
             overwrite=True,
         )
     except RaceDataValidationError as error:
-       raise RaceLoadError(str(error), reason="validation") from error
+        raise RaceLoadError(str(error), reason="validation") from error
     except TrotmanDatasetError as error:
         raise RaceLoadError(str(error), reason="source") from error
     except (OSError, sqlite3.Error) as error:

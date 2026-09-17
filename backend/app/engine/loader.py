@@ -1,5 +1,4 @@
 from __future__ import annotations
-from __future__ import annotations
 
 import sqlite3
 import statistics
@@ -29,7 +28,6 @@ def load_driver_parameters(
 
 
 def _read_entries(connection: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Return one row per participating car, ordered by starting grid slot."""
 
     return connection.execute(
         """
@@ -51,11 +49,6 @@ def _read_entries(connection: sqlite3.Connection) -> list[sqlite3.Row]:
 def _build_parameters(
     connection: sqlite3.Connection, entry: sqlite3.Row
 ) -> DriverParameters:
-    """Build parameters for one car; pace is ``None`` when it has no lap data.
-
-    A car without laps (e.g. a withdrawal) cannot get a data-derived pace, so
-    ``base_lap_time_ms`` stays ``None`` rather than receiving an invented value.
-    """
 
     driver_id = entry["driver_id"]
     lap_times = [
@@ -125,7 +118,6 @@ def _display_name(entry: sqlite3.Row) -> str:
     return full or entry["driver_id"]
 
 
-# Tables whose row counts summarize the size of a curated race.
 _COUNTED_TABLES = ("drivers", "teams", "race_entries", "laps", "pit_stops")
 
 

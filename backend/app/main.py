@@ -1,10 +1,3 @@
-"""FastAPI application entry point.
-
-Creates the app, configures CORS and wires the routers together. Endpoint logic
-lives in ``app.routers`` and response schemas in ``app.schemas``; this module
-intentionally holds no route handlers.
-"""
-
 from __future__ import annotations
 
 from app.routers import etl, health, history, simulation

@@ -4,7 +4,7 @@ from app.config import DEFAULT_RACE_DB
 from app.race_store import get_db_connection, validate_table_exists
 from fastapi import APIRouter, Query
 
-router = APIRouter(prefix="/api/etl", tags=["ETL Inspector"])
+router = APIRouter(prefix="/api/etl", tags=["Race Inspector (ETL A)"])
 
 
 @router.get("/tables")

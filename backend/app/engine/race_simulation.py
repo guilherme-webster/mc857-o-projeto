@@ -1,10 +1,3 @@
-"""Lap-by-lap race simulation orchestrator.
-
-``RaceSimulation`` owns the mutable :class:`CarState` list and advances it one
-lap at a time. It is seeded from immutable :class:`DriverParameters` (which the
-loader derives from the ETL) and knows nothing about SQLite or the ETL schema.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -14,12 +7,6 @@ from app.engine.models import CarState, DriverParameters
 
 @dataclass
 class RaceSimulation:
-    """Advance a field of cars over a fixed number of laps.
-
-    The physics here is intentionally simple and pluggable: each lap a car's
-    time is its base pace plus tire degradation, plus a pit loss on stop laps.
-    Positions are recomputed from cumulative race time after every lap.
-    """
 
     parameters: list[DriverParameters]
     total_laps: int
@@ -32,9 +19,6 @@ class RaceSimulation:
     def __post_init__(self) -> None:
         if self.total_laps <= 0:
             raise ValueError("total_laps must be positive")
-        # Only cars with a real, ETL-derived pace can be simulated. Drivers who
-        # did not race carry base_lap_time_ms=None and are excluded here, so the
-        # per-lap math never operates on a missing pace.
         runnable = [p for p in self.parameters if p.base_lap_time_ms is not None]
         self._params_by_id = {p.driver_id: p for p in runnable}
         self._cars = [CarState.from_parameters(p) for p in runnable]
