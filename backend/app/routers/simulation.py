@@ -13,6 +13,7 @@ from app.schemas.responses import (
     RaceCatalogEntry,
     RaceCatalogResponse,
     RaceDetailsResponse,
+    RaceLoadErrorResponse,
 )
 from fastapi import APIRouter, HTTPException, status
 
@@ -110,14 +111,60 @@ def race_details() -> RaceDetailsResponse:
     return RaceDetailsResponse(**summary)
 
 
-@router.post("/load", response_model=RaceDetailsResponse)
+# Maps each RaceLoadError.reason to the HTTP status and a message aimed at the
+# client. "validation" is the shared-car case: the race exists in the catalog
+# but its result table breaks an invariant the engine requires, so we say so
+# plainly instead of surfacing the raw "duplicate key ..." string.
+_LOAD_ERROR_STATUS = {
+    "validation": status.HTTP_422_UNPROCESSABLE_ENTITY,
+    "source": status.HTTP_404_NOT_FOUND,
+    "storage": status.HTTP_500_INTERNAL_SERVER_ERROR,
+}
+
+_LOAD_ERROR_MESSAGE = {
+    "validation": (
+        "O ETL rejeitou a corrida {race_id}: a tabela de resultados nao passou "
+        "na validacao de integridade"
+    ),
+    "source": (
+        "Nao foi possivel ler a corrida {race_id} da fonte bruta: dados "
+        "ausentes ou malformados no dataset."
+    ),
+    "storage": (
+        "Falha ao gravar a corrida {race_id} no armazenamento curado."
+    ),
+}
+
+
+@router.post(
+    "/load",
+    response_model=RaceDetailsResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"model": RaceLoadErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": RaceLoadErrorResponse},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": RaceLoadErrorResponse},
+    },
+)
 def load_race(request: LoadRaceRequest) -> RaceDetailsResponse:
 
     try:
         load_race_into_current(request.race_id)
     except RaceLoadError as error:
+        http_status = _LOAD_ERROR_STATUS.get(
+            error.reason, status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+        message = _LOAD_ERROR_MESSAGE.get(
+            error.reason,
+            "Nao foi possivel carregar a corrida {race_id}.",
+        ).format(race_id=request.race_id)
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+            status_code=http_status,
+            detail=RaceLoadErrorResponse(
+                reason=error.reason,
+                message=message,
+                race_id=request.race_id,
+                detail=str(error),
+            ).model_dump(),
         ) from error
 
     summary = load_race_summary(DEFAULT_RACE_DB)

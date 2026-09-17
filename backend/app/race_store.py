@@ -44,7 +44,10 @@ def validate_table_exists(conn: sqlite3.Connection, table_name: str) -> None:
 
 
 class RaceLoadError(RuntimeError):
-    """Raised when the ETL cannot produce a curated database for a race."""
+
+    def __init__(self, message: str, *, reason: str = "storage") -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 def load_race_into_current(race_id: int) -> dict[str, object]:
@@ -60,7 +63,7 @@ def load_race_into_current(race_id: int) -> dict[str, object]:
     from f1_simulator.factories.race_data_factory import RaceDataValidationError
 
     if not RAW_SOURCE.exists():
-        raise RaceLoadError(f"raw source not found: {RAW_SOURCE}")
+        raise RaceLoadError(f"raw source not found: {RAW_SOURCE}", reason="source")
 
     try:
         dataset = TrotmanDatasetAdapter(RAW_SOURCE)
@@ -73,12 +76,11 @@ def load_race_into_current(race_id: int) -> dict[str, object]:
             CURRENT_RACE_REPORT,
             overwrite=True,
         )
-    except (
-        TrotmanDatasetError,
-        RaceDataValidationError,
-        OSError,
-        sqlite3.Error,
-    ) as error:
-        raise RaceLoadError(str(error)) from error
+    except RaceDataValidationError as error:
+       raise RaceLoadError(str(error), reason="validation") from error
+    except TrotmanDatasetError as error:
+        raise RaceLoadError(str(error), reason="source") from error
+    except (OSError, sqlite3.Error) as error:
+        raise RaceLoadError(str(error), reason="storage") from error
 
     return report

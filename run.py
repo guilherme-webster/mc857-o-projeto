@@ -15,10 +15,31 @@ class Colors:
     CYAN = "\033[96m"
     RED = "\033[91m"
 
+def download_trotman_dataset():
+
+    print(
+        f"{Colors.BLUE}[1/5] Baixando dataset bruto do Trotman "
+        f"(formula-1-race-data-v128.zip)...{Colors.RESET}"
+    )
+    try:
+        subprocess.run(
+            [sys.executable, "scripts/download_trotman.py"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print(f"{Colors.GREEN}      Dataset bruto disponivel.{Colors.RESET}")
+    except subprocess.CalledProcessError:
+        print(
+            f"{Colors.YELLOW}      Nao foi possivel baixar o dataset bruto. "
+            f"O catalogo de corridas pode ficar vazio.{Colors.RESET}"
+        )
+
+
 def generate_race_catalog():
 
     print(
-        f"{Colors.BLUE}[1/4] Gerando catalogo de corridas (races-index.json)...{Colors.RESET}"
+        f"{Colors.BLUE}[2/5] Gerando catalogo de corridas (races-index.json)...{Colors.RESET}"
     )
     try:
         subprocess.run(
@@ -37,10 +58,11 @@ def generate_race_catalog():
 
 
 def start_system():
+    download_trotman_dataset()
     generate_race_catalog()
 
     print(
-        f"{Colors.BLUE}[2/4] Subindo containers Docker (Backend)...{Colors.RESET}")
+        f"{Colors.BLUE}[3/5] Subindo containers Docker (Backend)...{Colors.RESET}")
     try:
         subprocess.run(
             ["docker", "compose", "up", "-d", "--build"],
@@ -54,7 +76,7 @@ def start_system():
         )
         sys.exit(1)
 
-    print(f"{Colors.GREEN}[3/4] Backend inicializado.{Colors.RESET}")
+    print(f"{Colors.GREEN}[4/5] Backend inicializado.{Colors.RESET}")
     print(
         f"      Backend pronto: {Colors.CYAN}http://localhost:8000{Colors.RESET}")
     print(
@@ -65,7 +87,7 @@ def start_system():
 
     time.sleep(1)
 
-    print(f"{Colors.GREEN}[4/4] Iniciando o frontend Arcade...{Colors.RESET}")
+    print(f"{Colors.GREEN}[5/5] Iniciando o frontend Arcade...{Colors.RESET}")
     try:
         subprocess.run(
             ["uv", "run", "python", "-m", "frontend.arcade"],

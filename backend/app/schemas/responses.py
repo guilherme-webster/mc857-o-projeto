@@ -85,3 +85,11 @@ class RaceDetailsResponse(BaseModel):
 class LoadRaceRequest(BaseModel):
 
     race_id: int
+
+
+class RaceLoadErrorResponse(BaseModel):
+
+    reason: str
+    message: str
+    race_id: int
+    detail: str | None = None
