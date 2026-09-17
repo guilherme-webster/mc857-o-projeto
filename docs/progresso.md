@@ -36,3 +36,154 @@ expansão FastF1 da entrada de 11/09; a expansão foi autorizada e implementada.
 - Sem commits, push ou comentários enviados ao GitHub nesta entrega. O usuário
   solicitou os comandos para publicar; este registro precisa ser levado à #24
   quando houver autorização para enviar a atualização.
+
+## Modelagem inicial de pilotos — 2026-09-12T18:58-03:00
+
+Issues #61/#66/#67, na branch `40-modelagem-dos-dados`, worktree
+`mc857-etl-enriquecimento`, após os merges do ETL em `d8ae3d8`. #61/#66 estão
+atribuídas a @guilherme-webster; #67 permanece sem responsável no backlog
+consultado. A sincronização também confirmou #74 (enriquecimento) fechada.
+
+- Implementado `contextual-pace-v1`: perfil imutável, seleção conservadora de
+  voltas e comparação por contexto, ritmo relativo e MAD; caso de uso pela
+  porta `HistoryRepository`, CLI JSON e gráficos opcionais.
+- Preservados os contratos do ETL, banco de entrada, cadastro de piloto e
+  fronteiras Python; sem novo endpoint ou dependência no núcleo.
+- Verificações: 117 testes sem falhas, 13 ignorados por condições gráficas;
+  Ruff, whitespace e links locais passaram. Execução real em São Paulo/2024:
+  580 de 1.134 voltas comparáveis, 18 de 20 inscritos com estimativa, para os
+  limiares explícitos do guia. Gráficos PNG/SVG gerados e inspecionados.
+- Análise de sensibilidade: 240 a 694 voltas nas cinco configurações verificadas.
+  Não houve calibração preditiva ou validação em eventos reservados. Incerteza
+  não foi estimada; os resultados continuam descritivos de piloto/equipe.
+- Próximo passo #66/#67: ampliar eventos, reservar validação e definir métodos/
+  limiares; #43/#70/#71: compartilhar o caso de uso e acordar conversão explícita
+  em parâmetros do motor, evitando contar efeitos duas vezes.
+- Guia: `docs/modelagem-pilotos-inicial.md`. Artefatos locais ignorados pelo Git:
+  `data/curated/driver-profile-2024.json` e `driver-profile-v1-plots/`.
+- Nenhum commit, push, comentário ou mudança de estado enviado ao GitHub.
+  Registro local para posterior atualização da #67, pois o pedido autorizou
+  implementação, não envio de mensagens. Não declarar a issue inteira concluída
+  com base neste primeiro recorte experimental.
+
+Sugestão de commits: comportamento, aplicação, CLI e testes juntos em
+`feat(modelagem): estime ritmo e consistência por contexto`; documentação em
+`docs(modelagem): registre o contrato inicial de pilotos`; espelho gerado em
+`docs(backlog): atualize o espelho das issues`.
+
+### Recuperação da geração local de gráficos
+
+Matplotlib 3.11.2 instalado pelo Pipenv; `pip check` sem conflitos e 18 testes
+da modelagem passaram nesse ambiente. Como `data/curated` e o cache haviam
+sido removidos, o histórico Trotman completo e São Paulo/2024 R/Q foram
+reingeridos em modo estrito. Gráficos PNG/SVG e JSON gerados com sucesso em
+`data/curated/perfil-pilotos.S3ZHHn/`; JSON validado e gráfico inspecionado.
+O comando repetível usa uma pasta nova por execução; não é necessário excluir
+o banco nem criar o JSON de saída antecipadamente. Comandos de commits e
+execução em `docs/commits-modelagem-pilotos.md`. Nenhum commit foi executado.
+
+### Pesquisa de fontes, ampliação da amostra e nomes — 13/09/2026 (-03:00)
+
+Continuação das issues #61/#66/#67, na branch `40-modelagem-dos-dados`.
+Amostra ampliada via FastF1 existente para Bahrein, Silverstone e São Paulo/2024:
+3.223 observações, 1.844 voltas comparáveis; 20 de 23 pilotos com estimativa
+agregada ao exigir dois eventos. Banco anterior preservado; novo recorte sem
+telemetria de alta frequência, explicitamente registrada como não solicitada.
+
+Investigados OpenF1, Jolpica e as bases AlexJR/Vansh sugeridas pelo professor.
+Foram consultados metadados, adquirido e auditado o ZIP Vansh v1 (11 CSVs) e
+comparadas 57 voltas OpenF1/FastF1: 56 iguais e primeira volta com diferença de
+475 ms. Janela OpenF1 do carro 11 retornou 18 intervalos, candidatos para
+modelagem posterior de tráfego. Nenhuma fonte nova foi mesclada automaticamente
+com os fatos canônicos. Evidências e condições estão em
+`docs/fontes-e-amostra-pilotos.md`; downloads/manifestos fora do Git.
+
+Gráficos passam a usar nomes do cadastro canônico, conservando IDs estáveis,
+desambiguando homônimos e preservando fallback para ausência de nome. Gerados
+JSON, PNG e SVG em `data/curated/perfil-ampliado.aPAUuF/`; imagens inspecionadas.
+Verificações: 119 testes sem falhas, 13 ignorados por condições gráficas; Ruff,
+whitespace, links locais e sintaxe dos comandos passaram.
+
+Próximo passo: reservar eventos não usados para validação e especificar a
+adoção de intervalos OpenF1 (proveniência, condições de dados, mapeamento de
+sessão/piloto e alinhamento temporal), conforme o guia. Ampliar amostra ainda
+não comprova robustez preditiva. Sem commits, push ou mensagens ao GitHub;
+este registro deve ser levado à #67 quando o envio for autorizado.
+
+Sugestões de commits desta fatia:
+`fix(graficos): exiba nomes dos pilotos preservando os IDs` (aplicação, CLI e
+testes) e `docs(modelagem): registre fontes e ampliação da amostra` (guia de
+fontes, atualização da modelagem e progresso). O espelho gerado só precisa de
+commit separado se a sincronização produzir diff.
+
+### Avaliação entre eventos — 13/09/2026 (-03:00)
+
+Issues #66/#67 na branch `40-modelagem-dos-dados`, base `0b39f2f`. #66 atribuída
+a @guilherme-webster; #67 sem responsável no backlog consultado. Implementados
+plano explícito/versionado, validação de sessões/eventos disjuntos, perfis
+separados com parâmetros comuns, cobertura e comparação descritiva em pp.
+A CLI publica uma pasta nova completa com JSON/CSV/Markdown e gráficos PNG/SVG.
+
+Protocolo definido antes da avaliação: Bahrein/Silverstone/São Paulo como
+desenvolvimento; Itália/Abu Dhabi como validação; configuração anterior mantida,
+com mínimo de dois eventos em cada grupo. Os dois eventos adicionais foram
+ingeridos em cópia da base, sem telemetria de alta frequência. Cronologia não
+estritamente futura registrada explicitamente. Nenhum parâmetro ajustado após
+examinar métricas de validação.
+
+Verificações: 134 testes sem falhas, 13 ignorados; Ruff aprovado. Testes incluem
+isolamento da validação, ausência/insuficiência de dados e falha de publicação
+sem apagar resultados anteriores. Duas execuções reais geraram JSON idêntico;
+15/24 pilotos com métricas nos dois grupos, mudança absoluta mediana de ritmo
+0,255540 pp e MAD 0,042532 pp. Isso não constitui erro de previsão ou aprovação
+automática de robustez. Artefatos em `data/curated/evaluations/`, fora do Git.
+
+Próximo passo: revisão dos relatórios e investigação de contexto/tráfego;
+qualquer ajuste posterior exige novos eventos reservados para avaliação
+confirmatória. Guia e reprodução: `docs/avaliacao-perfis-entre-eventos.md`.
+Sem commits, push, comentários ou fechamento de issues; registro local para
+posterior atualização da #67 quando o envio for autorizado.
+
+Sugestões de commits: `feat(modelagem): avalie perfis em eventos separados`
+(domínio, aplicação, CLI, testes e protocolo) e
+`docs(modelagem): documente a avaliação entre eventos`
+(guia, README, modelagem inicial e progresso). Espelho gerado em commit separado
+somente se houver diff após a sincronização.
+
+### Sensibilidade de contextos e incerteza — 13/09/2026 (-03:00)
+
+Issues #66/#67; branch `40-modelagem-dos-dados`, checkout
+`mc857-etl-enriquecimento`. Backlog sincronizado antes do trabalho, sem diff;
+#66 atribuída a @guilherme-webster, #67 aberta e sem responsável registrado.
+O pedido autorizou comparar contextos e explicitar confiabilidade; não houve
+mensagens ao GitHub, commits ou push. Levar este registro à #67 quando autorizado.
+
+Implementadas quatro variantes (original, número do stint, janela de cinco
+voltas e combinação), com mesmos filtros de qualidade e suporte recalculado.
+Intervalos percentis exploratórios reamostram eventos inteiros, com semente,
+réplicas, nível e limiar heurístico de aviso configuráveis. Gráficos mostram
+voltas/contextos/eventos, intervalos e indisponibilidade; não classificam outliers.
+
+Execução real: 5.266 observações; 3.096/2.898/2.317/2.194 voltas comparáveis nas
+quatro variantes. Pérez/Silverstone: original 8 voltas, MAD 1,386%; janela menor
+6 voltas, MAD 0,802%; combinação sem estimativa. Preservado o padrão original,
+pois restringir pode eliminar suporte e não demonstra uma correção causal.
+
+Artefatos completos com PNG/SVG em
+`data/curated/context-studies/sensitivity-6a4510c6d02d4d279126ced555f4a1c6/`.
+Duas execuções produziram os quatro JSONs e os três arquivos de resumo/auditoria
+idênticos. Métricas, cobertura e hash da referência coincidem com a avaliação
+anterior. Gráficos de estabilidade, mapa de MAD e sensibilidade inspecionados.
+
+Verificações: 144 testes sem falhas, 13 ignorados; 25 testes relevantes repetidos
+após ajustes finais; Ruff, whitespace e links locais passaram. Nenhuma dependência
+nova. Guia: `docs/sensibilidade-contextos-pilotos.md`.
+
+Limitação: com 2–3 eventos, intervalos são exploratórios, condicionais e discretos;
+não representam habilidade isolada nem validação confirmatória. Próximo passo:
+novos eventos reservados e investigação de alinhamento temporal/tráfego antes
+de promover outra regra padrão. ETL e motor permanecem fora desta alteração.
+
+Sugestão de commits: `feat(modelagem): compare contextos e estime incerteza por evento`
+(código, CLI e testes) e `docs(modelagem): registre sensibilidade e limites dos perfis`
+(guias, README e progresso).
