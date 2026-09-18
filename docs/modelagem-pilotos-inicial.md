@@ -241,3 +241,11 @@ por stint e janela menor sem mudar o método padrão. A avaliação acrescenta
 intervalos exploratórios por evento e contagens nos gráficos; o perfilador
 isolado continua sem calcular incerteza. Esses intervalos não convertem os
 perfis em rankings de habilidade nem aprovam sua robustez.
+
+### Escopo do efeito e ampliação da amostra
+
+O [contrato para simulação](contrato-perfil-simulacao.md) define o que ritmo e
+variabilidade deverão controlar; MAD não vira automaticamente desvio padrão
+e efeito de piloto/equipe não pode ser contado duas vezes. A integração com
+o motor será posterior. O [protocolo ampliado de 2024](amostra-pilotos-2024-expandida.md)
+reserva seis corridas e move os cinco eventos já inspecionados para desenvolvimento.

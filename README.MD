@@ -276,3 +276,24 @@ pipenv run python -B scripts/analyze_profile_contexts.py \
   --database data/curated/history-profile-evaluation-2024.sqlite \
   --plan configs/profile-evaluation-2024.json
 ```
+
+O [contrato dos efeitos do perfil](docs/contrato-perfil-simulacao.md) especifica
+ritmo, variabilidade, unidades e critérios da futura integração com o motor.
+A [amostra expandida de 2024](docs/amostra-pilotos-2024-expandida.md) separa
+18 corridas de desenvolvimento e seis reservadas antes de consultar métricas
+novas; o guia contém os comandos de aquisição pelo ETL existente.
+
+A [avaliação da reserva de 2024](docs/avaliacao-reserva-pilotos-2024.md) registra
+os resultados dos seis eventos e a investigação de contexto, suporte e diferenças
+entre grupos. A reserva foi examinada em 18/09/2026; não reutilizá-la como inédita.
+
+A [comparação entre companheiros e referência determinística](docs/companheiros-e-referencia-deterministica.md)
+usa contextos compartilhados, apresenta suporte e intervalos e exporta referências
+de tempo específicas por circuito/sessão. Execute `scripts/analyze_teammates.py`
+conforme os comandos do guia; a integração ao motor permanece posterior.
+
+## Ranking de pilotos e adaptador para simulação
+
+O [guia de ranking e integração Python](docs/ranking-e-adaptador-pilotos.md)
+descreve a ordenação por ritmo observado, geração de gráficos e o contrato
+para executar o primeiro experimento determinístico de uma volta.
