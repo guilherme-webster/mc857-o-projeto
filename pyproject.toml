@@ -9,3 +9,7 @@ dependencies = [
 
 [project.scripts]
 simulador = "main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["TOBEDELETED"]
