@@ -1,5 +1,7 @@
 # Pneus em 2024: evolução por stint, início e cobertura
 
+> Investigação posterior: [janelas após retomadas e impacto nos ajustes](pneus-janelas-relargada.md).
+
 Estudo exploratório de 18/09/2026, issue #63, branch `63-modelagem-pneus`.
 **Conclusão principal:** os dados permitem estudar evolução líquida de tempo,
 mas ainda não justificam coeficientes universais de desgaste ou uma penalidade

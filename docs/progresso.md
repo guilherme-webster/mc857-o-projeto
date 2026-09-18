@@ -414,3 +414,26 @@ de calibrar o contrato de pneus para o core. Decisões de referência/idade
 continuam pendentes. Sugestão: `feat(pneus): explore evolução e cobertura por stint`
 (caso de uso, script e testes) e `docs(pneus): registre análise de evolução e aquecimento`
 (guias, README e andamento).
+
+## 18/09/2026 — sensibilidade de pneus após retomadas (#63)
+
+Adicionados caso de uso/CLI `analyze_tyre_restarts` e quatro testes. Detector
+operacional Aborted→Started encontra Japão, Mônaco e São Paulo; não cobre SC/VSC.
+Âncora por piloto antes dos filtros, lacunas preservadas, volta atravessando
+retomada marcada separadamente. Variantes 0/1/2/3/5 não alteram baseline.
+
+Janela 2 retira 33/17.069 voltas aprovadas e mantém 768 ajustes secos; janela 5
+retira 160 e perde um ajuste. Gasly/Japão S2 muda −1.075→+202 ms/volta e
+Ocon −807→+86; Bottas/Mônaco segue negativo. Medianas globais pouco alteradas;
+contrastes de início não sustentam penalidade universal de aquecimento.
+Recomendação: janela 2 candidata a filtro contextual, sem coeficientes para o
+core. Próximo passo: SC/VSC e comparação de estimadores com validação por evento.
+
+Guia `docs/pneus-janelas-relargada.md`; gráficos/JSON/CSV em
+`data/curated/tyre-restarts/restarts-e9b6fa63723c403fa21b3aa5b001a37a/`.
+Baseline igual ao estudo anterior e JSON/CSVs idênticos em duas execuções.
+177 testes sem falhas, 13 ignorados; Ruff/format/whitespace aprovados; gráfico
+de casos inspecionado. Backlog sincronizado. Sem commits, push ou comentários
+GitHub; publicar andamento na #63 quando autorizado. Sugestões:
+`feat(pneus): analise sensibilidade após retomadas de sessão` e
+`docs(pneus): registre efeitos das janelas após relargadas`.
