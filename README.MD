@@ -282,3 +282,7 @@ ritmo, variabilidade, unidades e critérios da futura integração com o motor.
 A [amostra expandida de 2024](docs/amostra-pilotos-2024-expandida.md) separa
 18 corridas de desenvolvimento e seis reservadas antes de consultar métricas
 novas; o guia contém os comandos de aquisição pelo ETL existente.
+
+A [avaliação da reserva de 2024](docs/avaliacao-reserva-pilotos-2024.md) registra
+os resultados dos seis eventos e a investigação de contexto, suporte e diferenças
+entre grupos. A reserva foi examinada em 18/09/2026; não reutilizá-la como inédita.

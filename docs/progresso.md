@@ -262,3 +262,34 @@ Não criados commits, push ou mensagens ao GitHub. Registro local para posterior
 publicação na #67 quando autorizada. Para o diff acumulado, agrupar contrato,
 plano e aquisição anteriores em `feat(modelagem): defina contrato e reserve amostra de 2024`;
 a exploração atual em `feat(modelagem): analise estabilidade no desenvolvimento`.
+
+### Avaliação da reserva — 18/09/2026 (-03:00)
+
+Issues #66/#67; branch `40-modelagem-dos-dados`, base `639a9af`. Backlog
+sincronizado sem diff. Executados os itens autorizados: avaliar as seis corridas
+reservadas com o método congelado e investigar divergências antes de ajustar.
+Hash do plano/configuração conferidos; bootstrap e variante carregados do registro
+de decisões. Nenhuma mudança de filtros, mínimos, dados, agrupamento ou motor.
+
+20/24 pilotos com estimativas nos dois grupos. Reserva: 3.237/6.342 voltas
+comparáveis (51,04%); desenvolvimento: 12.558/20.262 (61,98%). Mudança absoluta
+mediana: ritmo 0,129507 pp, MAD 0,030092 pp. Investigados composição de compostos,
+chuva, suporte, exclusões, equipes e valores por evento. Canadá concentra todos
+os contextos intermediários da reserva e tem cobertura 40,41%. Mesmas equipes
+nos 20 pares não isolam efeitos de carro/circuito/estratégia.
+
+Maiores mudanças de ritmo: Gasly +0,500 pp, Verstappen −0,405 pp, Norris −0,343 pp;
+Pérez muda +0,047 pp. Relatório distingue fatos e hipóteses, sem aprovação de
+robustez ou causalidade. A reserva agora é conhecida; ajustes posteriores
+precisarão de outra amostra independente para nova validação.
+
+Artefatos: `data/curated/reserved-evaluations/evaluation-7735cb823f9f44de9b10194ac339842d/`.
+JSON/quatro CSVs idênticos em duas execuções; desenvolvimento idêntico ao anterior.
+33 testes relevantes passaram; links, sintaxe e whitespace aprovados; gráfico de
+estabilidade inspecionado. Guia: `docs/avaliacao-reserva-pilotos-2024.md`.
+
+Próximo passo: comparações entre companheiros em contextos compartilhados e
+especificação de referência de tempo para experimento determinístico; não
+confundir essa evolução com a avaliação congelada concluída aqui.
+Sem commits, push ou mensagens ao GitHub. Registro para posterior publicação
+na #67 quando autorizada. Sugestão: `docs(modelagem): registre avaliação da reserva e divergências`.

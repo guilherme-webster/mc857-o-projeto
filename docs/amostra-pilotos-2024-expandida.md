@@ -1,5 +1,9 @@
 # Ampliação da amostra de pilotos de 2024
 
+> Atualização em 18/09/2026: a [reserva foi avaliada](avaliacao-reserva-pilotos-2024.md)
+> com os parâmetros congelados. O texto abaixo preserva o registro anterior;
+> esses eventos agora são conhecidos e não constituem uma reserva inédita.
+
 ## Protocolo registrado antes da aquisição
 
 Registro UTC: `2026-09-13T19:58:36.381195+00:00`.

@@ -1,5 +1,9 @@
 # Análise dos 18 eventos de desenvolvimento de 2024
 
+> Atualização em 18/09/2026: a [reserva foi avaliada](avaliacao-reserva-pilotos-2024.md)
+> com os parâmetros congelados. O texto abaixo preserva o registro anterior;
+> esses eventos agora são conhecidos e não constituem uma reserva inédita.
+
 Continuação de #66/#67 na branch `40-modelagem-dos-dados`. Consome somente o
 banco de desenvolvimento da [amostra expandida](amostra-pilotos-2024-expandida.md).
 A aplicação `analyze_development` recebe o plano completo, mas passa somente
