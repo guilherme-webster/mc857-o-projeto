@@ -331,3 +331,31 @@ na #67 quando autorizada. Sugestões: `feat(modelagem): compare companheiros em 
 Na verificação ampla de snippets, identificado comando Docker preexistente no
 README com link Markdown dentro de `curl`; não alterado por estar fora do escopo.
 A sintaxe do novo comando de análise foi verificada separadamente e passou.
+
+## 18/09/2026 — ranking e porta de parâmetros de pilotos (#67/#70)
+
+Implementados ranking crescente de ritmo agregado, empates 1/1/3 e ausência sem
+posição. CLI publica nomes, suporte, intervalos bootstrap por eventos, JSON/CSV,
+Markdown e PNG/SVG atomicamente. Nos 18 eventos de desenvolvimento: 23 pilotos
+classificados, Doohan indisponível; Norris, Verstappen e Sainz nos três primeiros
+lugares descritivos. Artefato local inspecionado:
+`data/curated/driver-rankings/ranking-41ca4dc9354b4b22a34ca20a856408e3/`.
+
+Adicionados DriverParametersProvider, ProfileParametersAdapter e contrato
+imutável DriverPaceParameters; simulate_profile_lap consome a porta no núcleo.
+Referência e efeito vêm do mesmo contexto, com equipe, seleção permitida,
+proveniência e suporte. Sem ruído, fallback zero ou efeito duplicado de equipe.
+Decimal e ROUND_HALF_UP na fronteira inteira do relógio. Exemplo real do guia
+executado: Norris/Bahrein, referência 97.175,5 ms → 96.776 ms no relógio.
+
+Verificações: sete testes novos; suíte completa 168 testes, sem falhas, 13
+ignorados; Ruff check/format; gráfico inspecionado e exemplo Python executado.
+Sincronizado backlog sem alterações. #67 aberta sem responsável; #70 aberta
+sem responsável, dependente da modelagem para consumo; #66 aberta atribuída a
+@guilherme-webster. Sem autorização para publicar comentários, registrar esta
+etapa posteriormente em #67/#70. Sem commits ou push.
+
+Próximo passo: compor o motor de corrida completo com referências ao longo das
+voltas e política explícita de ausência/extrapolação. O demonstrador backend
+mantém tempos fixos; esta entrega fornece a porta e consumidor de uma volta.
+Guia: `docs/ranking-e-adaptador-pilotos.md`.

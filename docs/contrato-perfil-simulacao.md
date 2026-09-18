@@ -1,8 +1,9 @@
 # O que o perfil de piloto deverá controlar na simulação
 
 Especificação `driver-profile-effects-v1`, de 13/09/2026, para #67.
-Esta entrega define o experimento e seus critérios de aceite; não conecta o
-perfilador ao motor. Segue os ADRs 0002/0004/0005 e a decomposição de tempo de
+A especificação original definiu o experimento e seus critérios de aceite.
+Em 18/09/2026, o [adaptador Python e consumidor de uma volta](ranking-e-adaptador-pilotos.md)
+implementam a primeira integração; a corrida completa permanece pendente. Segue os ADRs 0002/0004/0005 e a decomposição de tempo de
 volta do [plano do produto](../Desenvolvimento%20de%20Simulador%20F1.md).
 
 ## Objetivo e significado

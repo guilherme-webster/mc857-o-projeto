@@ -291,3 +291,9 @@ A [comparação entre companheiros e referência determinística](docs/companhei
 usa contextos compartilhados, apresenta suporte e intervalos e exporta referências
 de tempo específicas por circuito/sessão. Execute `scripts/analyze_teammates.py`
 conforme os comandos do guia; a integração ao motor permanece posterior.
+
+## Ranking de pilotos e adaptador para simulação
+
+O [guia de ranking e integração Python](docs/ranking-e-adaptador-pilotos.md)
+descreve a ordenação por ritmo observado, geração de gráficos e o contrato
+para executar o primeiro experimento determinístico de uma volta.
