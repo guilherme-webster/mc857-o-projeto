@@ -286,3 +286,8 @@ novas; o guia contém os comandos de aquisição pelo ETL existente.
 A [avaliação da reserva de 2024](docs/avaliacao-reserva-pilotos-2024.md) registra
 os resultados dos seis eventos e a investigação de contexto, suporte e diferenças
 entre grupos. A reserva foi examinada em 18/09/2026; não reutilizá-la como inédita.
+
+A [comparação entre companheiros e referência determinística](docs/companheiros-e-referencia-deterministica.md)
+usa contextos compartilhados, apresenta suporte e intervalos e exporta referências
+de tempo específicas por circuito/sessão. Execute `scripts/analyze_teammates.py`
+conforme os comandos do guia; a integração ao motor permanece posterior.

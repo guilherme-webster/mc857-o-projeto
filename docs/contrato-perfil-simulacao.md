@@ -121,8 +121,10 @@ motor como ruído. MAD e largura do intervalo não são intercambiáveis.
 
 ## Decisões ainda pendentes e motivo
 
-- **Referência em ms por circuito/contexto:** depende da definição do cenário e
-  da modelagem de pista/carro; não pode ser extraída do percentual agregado.
+- **Referência em ms:** a [especificação por contexto exato](companheiros-e-referencia-deterministica.md)
+  define o microexperimento determinístico. A seleção de referências para uma
+  corrida completa e sua transferência para outros eventos continuam pendentes;
+  não podem ser extraídas do percentual agregado entre circuitos.
 - **Separação piloto/equipe e transferência entre equipes:** requer comparações
   e hipóteses adicionais; o perfil atual não identifica esses efeitos.
 - **Ruído calibrado:** requer analisar resíduos e dependência temporal no

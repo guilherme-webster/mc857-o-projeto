@@ -293,3 +293,41 @@ especificação de referência de tempo para experimento determinístico; não
 confundir essa evolução com a avaliação congelada concluída aqui.
 Sem commits, push ou mensagens ao GitHub. Registro para posterior publicação
 na #67 quando autorizada. Sugestão: `docs(modelagem): registre avaliação da reserva e divergências`.
+
+### Companheiros e referência determinística — 18/09/2026 (-03:00)
+
+Issues #66/#67; branch `40-modelagem-dos-dados`. Backlog sincronizado sem diff;
+#66 atribuída a @guilherme-webster, #67 sem responsável registrado. Implementados
+domínio `teammates`, caso de uso `analyze_teammates` e CLI com JSON/CSV/PNG/SVG.
+Selecionados somente os 18 eventos de desenvolvimento; estudo exploratório,
+pois a reserva anterior já foi examinada. ETL e motor não foram alterados.
+
+Comparação usa mesmos contextos e equipe, medianas de tempos dos dois pilotos,
+gap percentual com denominador simétrico, agregação com peso igual por evento
+e bootstrap de eventos pareados. Mantidos mínimos e filtros do perfilador.
+Dos 15 pares/equipe, 12 têm ao menos dois eventos compartilhados. Pérez–Verstappen
++0,501%; Norris–Piastri −0,187%; Bottas–Zhou −0,163% com intervalo incluindo zero.
+Contagens de contextos/voltas e indisponibilidade acompanham as estimativas.
+
+Exportadas 444 referências em ms por contexto exato. O contrato do experimento
+usa mediana das medianas do pelotão, sem dupla contagem de efeitos ou ruído.
+Exemplo Bahrein: 97.175,5 ms, 18 pilotos/54 voltas; reconstruir medianas do mesmo
+contexto é teste estrutural, não previsão. Definidos escopo, ausência, unidade e
+arredondamento na futura fronteira do relógio; sem conectar o motor nesta fatia.
+
+Artefatos: `data/curated/teammate-studies/teammates-593cc2a0d9bf4ef9bd11a83888a9de55/`.
+JSON/dois CSVs idênticos em duas execuções e gráfico inspecionado. 161 testes
+sem falhas, 13 ignorados; Ruff, whitespace, links e sintaxe aprovados.
+Guia: `docs/companheiros-e-referencia-deterministica.md`.
+
+Próximo passo: integrar o microexperimento determinístico pelo contrato Python,
+escolhendo contexto e referência explícitos, antes de extrapolar a uma corrida
+inteira. Causalidade piloto/equipe, ruído e validação independente seguem pendentes.
+Sem commits, push ou mensagens ao GitHub; registro para posterior publicação
+na #67 quando autorizada. Sugestões: `feat(modelagem): compare companheiros em contextos compartilhados`
+(código/testes) e `docs(modelagem): especifique referência determinística por contexto`
+(guias/README/progresso).
+
+Na verificação ampla de snippets, identificado comando Docker preexistente no
+README com link Markdown dentro de `curl`; não alterado por estar fora do escopo.
+A sintaxe do novo comando de análise foi verificada separadamente e passou.
