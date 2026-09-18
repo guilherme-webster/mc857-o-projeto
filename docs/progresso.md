@@ -359,3 +359,29 @@ Próximo passo: compor o motor de corrida completo com referências ao longo das
 voltas e política explícita de ausência/extrapolação. O demonstrador backend
 mantém tempos fixos; esta entrega fornece a porta e consumidor de uma volta.
 Guia: `docs/ranking-e-adaptador-pilotos.md`.
+
+## 18/09/2026 — início do estudo de pneus (#63)
+
+Criada `63-modelagem-pneus` a partir de `3876dc1` (ranking/adaptador já
+commitados pelo usuário). Issue #63 aberta, atribuída a @guilherme-webster,
+filha de #40, sem descrição; futura integração #70. Fetch e espelho atualizados.
+Encontrado core remoto em `origin/43-criar-endpoints`, commit `50c0eed`:
+simulação por ritmo constante, sem consumo da degradação provisória do loader.
+Sem merge, alterações nesse core ou mensagens ao colega/GitHub.
+
+Documentado `docs/modelagem-pneus-inicial.md`: cobertura canônica de 18 sessões,
+20.262 observações/958 stints, sem nulos de composto/idade/stint/fresh_tyre;
+17.193 voltas após filtros de qualidade e 768 stints secos candidatos sob
+limiares exploratórios. Proposta de parâmetros/estado separados, evolução
+ancorada, ausência explícita e plano de exploração/calibração/integração.
+Identificados bloqueios de ancoragem por janela de idade, confundimento com
+volta/combustível, convenção temporal de TyreLife e precisão do core remoto.
+
+Verificação: snippet do estudo executado contra repository local e contagens
+reproduzidas; diff/links locais verificados. Somente documentação alterada,
+sem necessidade de repetir testes de código. Nenhuma curva calibrada ou novo
+ETL implementado. Próximo passo: gráficos por piloto/stint e auditoria de idade,
+depois alinhar o contrato com o responsável pelo core. Publicar este andamento
+na #63 quando autorizado. Sem commits/push. Sugestões:
+`docs(pneus): planeje evolução determinística e integração com o core`;
+separadamente `docs(backlog): atualize o espelho das issues`.

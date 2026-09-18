@@ -297,3 +297,8 @@ conforme os comandos do guia; a integração ao motor permanece posterior.
 O [guia de ranking e integração Python](docs/ranking-e-adaptador-pilotos.md)
 descreve a ordenação por ritmo observado, geração de gráficos e o contrato
 para executar o primeiro experimento determinístico de uma volta.
+
+## Planejamento da modelagem de pneus
+
+O [estudo inicial de pneus](docs/modelagem-pneus-inicial.md) registra a cobertura
+do ETL, o core publicado, a proposta de parâmetros e as decisões de integração.
