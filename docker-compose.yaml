@@ -9,6 +9,7 @@ services:
     volumes:
       - ./backend:/app
       - ./src:/app/src
+      - ./scripts:/app/scripts
       - ./data:/data
     environment:
       - PYTHONUNBUFFERED=1
