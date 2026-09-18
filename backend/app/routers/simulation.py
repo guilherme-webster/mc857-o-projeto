@@ -6,8 +6,11 @@ from app.config import DEFAULT_RACE_DB, RACE_JSON, RACES_INDEX
 from app.engine.loader import load_driver_parameters, load_race_summary
 from app.race_store import (
     RaceLoadError,
+    current_track_geometry,
+    list_available_tracks,
     load_race_into_current,
     simulate_current_race,
+    track_geometry_for,
 )
 from app.schemas.responses import (
     DriverParametersResponse,
@@ -73,6 +76,24 @@ def obter_dados_corrida() -> dict:
 def simular_corrida() -> dict:
 
     return simulate_current_race()
+
+
+@router.get("/tracks")
+def listar_pistas() -> dict:
+
+    return list_available_tracks()
+
+
+@router.get("/track")
+def obter_geometria_pista() -> dict:
+
+    return current_track_geometry()
+
+
+@router.get("/track/{circuit_id}")
+def obter_geometria_pista_por_circuito(circuit_id: str) -> dict:
+
+    return track_geometry_for(circuit_id)
 
 
 @router.get("/drivers", response_model=LoadedDriversResponse)
