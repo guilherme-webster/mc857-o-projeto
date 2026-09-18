@@ -10,8 +10,6 @@ CURRENT_RACE_REPORT = DATA_DIR / "current-race-quality.json"
 
 DEFAULT_RACE_DB = CURRENT_RACE_DB
 
-# Banco do ETL B (historico completo dos 14 CSVs do Trotman v128, ADR 0005).
-# Diferente do agregado executavel de corrida unica (DEFAULT_RACE_DB): guarda
-# todas as corridas e preserva casos ambiguos (carro compartilhado). O relatorio
-# de qualidade fica embutido no proprio SQLite, entao nao ha arquivo separado.
 HISTORY_DB = DATA_DIR / "history.sqlite"
+
+RACE_JSON = Path(__file__).resolve().parent.parent / "races" / "race.json"

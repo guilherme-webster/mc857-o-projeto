@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-from app.config import DEFAULT_RACE_DB, RACES_INDEX
+from app.config import DEFAULT_RACE_DB, RACE_JSON, RACES_INDEX
 from app.engine.loader import load_driver_parameters, load_race_summary
-from app.race_store import RaceLoadError, load_race_into_current
+from app.race_store import (
+    RaceLoadError,
+    load_race_into_current,
+    simulate_current_race,
+)
 from app.schemas.responses import (
     DriverParametersResponse,
     LoadRaceRequest,
@@ -47,21 +50,29 @@ def list_races() -> RaceCatalogResponse:
 @router.get("/race")
 def obter_dados_corrida() -> dict:
 
-    data_file_path = Path(__file__).resolve().parent / "../../races/race.json"
-    if not data_file_path.exists():
+    if not RACE_JSON.exists():
         raise HTTPException(
             status_code=404,
-            detail="Arquivo de telemetria da corrida não encontrado.",
+            detail=(
+                "Simulacao ainda nao gerada. Rode POST /simulation/simulate "
+                "para produzir as posicoes da corrida."
+            ),
         )
 
     try:
-        with open(data_file_path, "r", encoding="utf-8") as stream:
+        with open(RACE_JSON, "r", encoding="utf-8") as stream:
             return json.load(stream)
     except Exception as error:  # noqa: BLE001 - reporta erro de leitura ao cliente
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao processar dados da corrida: {error}",
         ) from error
+
+
+@router.post("/simulate")
+def simular_corrida() -> dict:
+
+    return simulate_current_race()
 
 
 @router.get("/drivers", response_model=LoadedDriversResponse)
