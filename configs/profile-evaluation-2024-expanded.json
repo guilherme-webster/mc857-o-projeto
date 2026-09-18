@@ -1,0 +1,41 @@
+{
+  "evaluation_id": "f1-2024-expanded-reserved-v1",
+  "evaluation_version": "profile-stability-v1",
+  "profile_method_version": "contextual-pace-v1",
+  "development_sessions": [
+    "session:1121:R",
+    "session:1122:R",
+    "session:1124:R",
+    "session:1125:R",
+    "session:1127:R",
+    "session:1128:R",
+    "session:1130:R",
+    "session:1131:R",
+    "session:1132:R",
+    "session:1133:R",
+    "session:1135:R",
+    "session:1136:R",
+    "session:1137:R",
+    "session:1139:R",
+    "session:1140:R",
+    "session:1141:R",
+    "session:1142:R",
+    "session:1144:R"
+  ],
+  "validation_sessions": [
+    "session:1123:R",
+    "session:1126:R",
+    "session:1129:R",
+    "session:1134:R",
+    "session:1138:R",
+    "session:1143:R"
+  ],
+  "config": {
+    "lap_window": 10,
+    "tyre_age_window": 5,
+    "weather_max_age_ms": 120000,
+    "min_laps_per_context": 3,
+    "min_drivers_per_context": 3,
+    "min_events": 2
+  }
+}

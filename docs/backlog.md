@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-12T00:06:02Z
+- **Ultima atividade registrada:** 2026-09-12T21:42:48Z
 - **Abertas:** 46
-- **Fechadas:** 8
+- **Fechadas:** 9
 
 ## Issues abertas
 
@@ -698,7 +698,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32), [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34), [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53)
+- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32), [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34), [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53), [#74 — Enriquecer ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/74)
 - **Criada:** 2026-08-30T06:22:43Z
 - **Atualizada:** 2026-09-02T19:25:05Z
 - **Fechada:** —
@@ -809,6 +809,7 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-12T21:41:03Z — sub-issue adicionada: #74 por @guilherme-webster
 - 2026-09-11T20:22:54Z — sub-issue adicionada: #53 por @guilherme-webster
 - 2026-09-02T19:19:09Z — sub-issue adicionada: #34 por @guilherme-webster
 - 2026-09-01T22:36:36Z — sub-issue adicionada: #32 por @guilherme-webster
@@ -2051,5 +2052,35 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-11T22:13:36Z — fechada por @guilherme-webster
 - 2026-09-11T20:22:54Z — label adicionada: História por @guilherme-webster
 - 2026-09-11T20:22:52Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#74 — Enriquecer ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/74)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-12T21:41:02Z
+- **Atualizada:** 2026-09-12T21:41:15Z
+- **Fechada:** 2026-09-12T21:41:15Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Trazer demais campos dos DF&#x27;s recomendados pelo professor de maneira a termos mais dados para modelagem posterior</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-12T21:41:15Z — fechada por @guilherme-webster
+- 2026-09-12T21:41:02Z — label adicionada: História por @guilherme-webster
+- 2026-09-12T21:41:02Z — atribuida: @guilherme-webster por @guilherme-webster
 
 </details>
