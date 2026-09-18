@@ -4,7 +4,7 @@ import sqlite3
 import statistics
 from pathlib import Path
 
-from app.engine.models import DriverParameters
+from app.models.models import DriverParameters
 
 
 def load_driver_parameters(

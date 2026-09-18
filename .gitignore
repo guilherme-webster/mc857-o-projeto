@@ -42,3 +42,5 @@ Pipfile.lock
 commands.txt
 
 /backend/races/race.json
+
+.kiro

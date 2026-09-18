@@ -9,7 +9,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Libera CORS para o frontend local.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

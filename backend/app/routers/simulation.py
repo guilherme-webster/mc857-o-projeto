@@ -3,15 +3,11 @@ from __future__ import annotations
 import json
 
 from app.config import DEFAULT_RACE_DB, RACE_JSON, RACES_INDEX
-from app.engine.loader import load_driver_parameters, load_race_summary
-from app.race_store import (
-    RaceLoadError,
-    current_track_geometry,
-    list_available_tracks,
-    load_race_into_current,
-    simulate_current_race,
-    track_geometry_for,
-)
+from app.loaders.loader import load_driver_parameters, load_race_summary
+from app.services.errors import ETLError, http_from
+from app.services.race_curation import load_race_into_current
+from app.services.race_simulation import simulate_current_race
+from app.services.track_geometry import list_available_tracks, track_geometry_for
 from app.schemas.responses import (
     DriverParametersResponse,
     LoadRaceRequest,
@@ -84,12 +80,6 @@ def listar_pistas() -> dict:
     return list_available_tracks()
 
 
-@router.get("/track")
-def obter_geometria_pista() -> dict:
-
-    return current_track_geometry()
-
-
 @router.get("/track/{circuit_id}")
 def obter_geometria_pista_por_circuito(circuit_id: str) -> dict:
 
@@ -99,20 +89,15 @@ def obter_geometria_pista_por_circuito(circuit_id: str) -> dict:
 @router.get("/drivers", response_model=LoadedDriversResponse)
 def list_loaded_drivers() -> LoadedDriversResponse:
 
-    db_path = DEFAULT_RACE_DB
     try:
-        parameters = load_driver_parameters(db_path)
+        parameters = load_driver_parameters(DEFAULT_RACE_DB)
     except FileNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
         ) from error
 
-    # Extrai o id do nome "race-<id>.sqlite"; usa 0 quando o padrao difere.
-    _, _, tail = db_path.stem.partition("race-")
-    resolved_race_id = int(tail) if tail.isdigit() else 0
-
     return LoadedDriversResponse(
-        race_id=resolved_race_id,
+        race_id=0,
         count=len(parameters),
         drivers=[
             DriverParametersResponse(
@@ -143,24 +128,16 @@ def race_details() -> RaceDetailsResponse:
     return RaceDetailsResponse(**summary)
 
 
-_LOAD_ERROR_STATUS = {
-    "validation": status.HTTP_422_UNPROCESSABLE_ENTITY,
-    "source": status.HTTP_404_NOT_FOUND,
-    "storage": status.HTTP_500_INTERNAL_SERVER_ERROR,
-}
-
 _LOAD_ERROR_MESSAGE = {
     "validation": (
         "O ETL rejeitou a corrida {race_id}: a tabela de resultados nao passou "
-        "na validacao de integridade"
+        "na validacao de integridade."
     ),
     "source": (
         "Nao foi possivel ler a corrida {race_id} da fonte bruta: dados "
         "ausentes ou malformados no dataset."
     ),
-    "storage": (
-        "Falha ao gravar a corrida {race_id} no armazenamento curado."
-    ),
+    "storage": "Falha ao gravar a corrida {race_id} no armazenamento curado.",
 }
 
 
@@ -177,23 +154,11 @@ def load_race(request: LoadRaceRequest) -> RaceDetailsResponse:
 
     try:
         load_race_into_current(request.race_id)
-    except RaceLoadError as error:
-        http_status = _LOAD_ERROR_STATUS.get(
-            error.reason, status.HTTP_422_UNPROCESSABLE_ENTITY
-        )
+    except ETLError as error:
         message = _LOAD_ERROR_MESSAGE.get(
-            error.reason,
-            "Nao foi possivel carregar a corrida {race_id}.",
+            error.reason, "Nao foi possivel carregar a corrida {race_id}."
         ).format(race_id=request.race_id)
-        raise HTTPException(
-            status_code=http_status,
-            detail=RaceLoadErrorResponse(
-                reason=error.reason,
-                message=message,
-                race_id=request.race_id,
-                detail=str(error),
-            ).model_dump(),
-        ) from error
+        raise http_from(error, message, {"race_id": request.race_id})
 
     summary = load_race_summary(DEFAULT_RACE_DB)
     return RaceDetailsResponse(**summary)
