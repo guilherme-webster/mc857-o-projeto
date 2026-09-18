@@ -111,6 +111,7 @@ def _classify(
             "driver_id": competitor.driver_id,
             "name": competitor.name,
             "total_time_ms": round(totals[competitor.driver_id], 1),
+            "lap_time_ms": competitor.lap_time_ms,
         }
         for index, competitor in enumerate(ordered, start=1)
     ]
