@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-18T20:08:24Z
+- **Ultima atividade registrada:** 2026-09-18T22:28:41Z
 - **Abertas:** 46
 - **Fechadas:** 9
 
@@ -417,13 +417,26 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:16:51Z
-- **Atualizada:** 2026-08-28T23:38:43Z
+- **Atualizada:** 2026-09-18T22:28:41Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>O usuário deve poder visualizar a pista selecionada</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-09-18T22:14:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736826058)
+
+<pre>Andamento: a branch `43-criar-endpoints` foi integrada por fast-forward na branch local `13-exibição-de-pista`, trazendo os endpoints do backend, incluindo `GET /simulation/tracks` e `GET /simulation/track/{circuit_id}`. Verificação executada: `uv run python -m unittest -v` — 164 testes aprovados e 13 ignorados (configurações de GUI Arcade). Próximo passo: consumir o endpoint de geometria na visualização da pista. A branch local ainda precisa ser publicada com push.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:28:41Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736949407)
+
+<pre>Implementação concluída localmente na branch `13-exibição-de-pista`: `GET /simulation/track/{circuit_id}` agora inclui `pit_lane_points` com `path_fraction` e `is_service_point`; a seção **Pista** da tela de configuração carrega a geometria em segundo plano e desenha traçado, pit lane e ponto de serviço com uma transformação conjunta que preserva alinhamento e proporção. Também há estados de carregamento/erro quando o backend não responde. Verificações: `uv run python -m unittest -v` — 168 testes aprovados, 14 testes Arcade ignorados por padrão; `ARCADE_GUI_TEST=True uv run python -m unittest -v tests.test_parameters_view` — 14 testes gráficos aprovados; `ruff check` e `git diff --check` aprovados. Foi feita revisão visual com a geometria real de Interlagos. Próximo passo: revisão humana, commit e push; nenhum commit foi criado pelo agente.</pre>
 
 </details>
 

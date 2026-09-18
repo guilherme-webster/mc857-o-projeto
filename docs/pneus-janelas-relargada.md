@@ -1,5 +1,7 @@
 # Pneus: sensibilidade às janelas após retomada de sessão
 
+> Continuação: [SC/VSC e comparação de estimadores por evento](pneus-sc-vsc-estimadores.md).
+
 18/09/2026 · #63 · `63-modelagem-pneus`.
 
 **Resultado:** excluir uma janela de duas voltas após retomadas corrige grandes

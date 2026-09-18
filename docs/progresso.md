@@ -437,3 +437,29 @@ de casos inspecionado. Backlog sincronizado. Sem commits, push ou comentários
 GitHub; publicar andamento na #63 quando autorizado. Sugestões:
 `feat(pneus): analise sensibilidade após retomadas de sessão` e
 `docs(pneus): registre efeitos das janelas após relargadas`.
+
+## 18/09/2026 — SC/VSC e comparação de estimadores (#63)
+
+Registrado protocolo em `docs/protocolo-pneus-sc-estimadores.md` antes dos
+resultados. Implementados `application/compare_tyre_estimators.py`, CLI homônimo
+e cinco testes. Detector 4/6/7→1 com vermelho cancelando, episódio aberto sem
+retomada inventada, sequence canônico auditado e união de janelas. Encontrados
+10 retornos em oito eventos; mensagens de direção preservadas para inspeção.
+
+Janela primária SC/VSC=2, sobre Aborted→Started=2, retira mais 238 voltas e
+reduz 768→764 ajustes. Mediana das inclinações entre pares menos sensível à
+retirada de uma volta em 524/749 stints pareados. Benchmark por evento deixado
+fora usa âncora nas primeiras cinco voltas e teste nas seguintes: 715 stints,
+11.852 voltas, 17 eventos. OLS e robusto vencem constante em 10/17 eventos;
+deltas medianos −14,33/−10,73 ms, intervalos exploratórios incluindo zero.
+Robusto não demonstrou superioridade preditiva universal. Não exportados
+coeficientes ao core. Próximo passo: recorte circuito/condições e ancoragem
+compatível; contrato experimental pode usar parâmetros assumidos identificados.
+
+Guia: `docs/pneus-sc-vsc-estimadores.md`. Artefatos:
+`data/curated/tyre-estimators/estimators-55890223ccfd456eae530045a1965760/`.
+Três gráficos inspecionados; JSON/três CSVs idênticos em duas execuções.
+182 testes sem falhas, 13 ignorados; Ruff/format/whitespace aprovados.
+Backlog regenerado com novos comentários da issue #13; separar esse diff
+em commit de espelho do backlog. Sem commits/push/comentários GitHub; publicar
+andamento na #63 quando autorizado. 
