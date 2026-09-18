@@ -1,5 +1,8 @@
 # Modelagem inicial de pneus: estudo e contrato proposto
 
+> Estudo executado: [gráficos, resultados e conclusões de 2024](analise-pneus-2024.md).
+> O levantamento abaixo preserva o planejamento inicial.
+
 18/09/2026 · branch `63-modelagem-pneus` · issue #63 (aberta, responsável
 @guilherme-webster, filha de #40, ainda sem descrição). Integração futura: #70.
 Este documento é uma proposta para discussão e exploração, não um contrato

@@ -302,3 +302,7 @@ para executar o primeiro experimento determinístico de uma volta.
 
 O [estudo inicial de pneus](docs/modelagem-pneus-inicial.md) registra a cobertura
 do ETL, o core publicado, a proposta de parâmetros e as decisões de integração.
+
+A [análise de pneus de 2024](docs/analise-pneus-2024.md) apresenta cobertura,
+tendências por stint, sensibilidade ao início e instruções para gerar o atlas
+de gráficos por piloto.

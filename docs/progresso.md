@@ -385,3 +385,32 @@ depois alinhar o contrato com o responsável pelo core. Publicar este andamento
 na #63 quando autorizado. Sem commits/push. Sugestões:
 `docs(pneus): planeje evolução determinística e integração com o core`;
 separadamente `docs(backlog): atualize o espelho das issues`.
+
+## 18/09/2026 — gráficos e exploração de pneus (#63)
+
+Implementados `application/analyze_tyres.py` e `scripts/analyze_tyres.py`, com
+cinco testes novos. Seleção exclusiva das 18 sessões de desenvolvimento,
+auditoria de idade/composto, OLS e inclinação robusta por stint, contraste de
+posições 2–3 versus 5–8 e cortes de início 1–3/1–5. Artefatos atômicos:
+JSON/CSVs, atlas PDF e 38 PNGs/2 SVGs com nomes canônicos, exclusões e suporte.
+
+Resultado: 958 stints, 17.069 voltas aprovadas (124 a menos que o levantamento
+inicial pela exigência adicional de chuva falsa em secos), 768 ajustes secos.
+Inclinações negativas em 28,3% SOFT, 33,7% MEDIUM e 45,9% HARD. Contrastes de
+pneus novos MEDIUM/HARD perto de zero na síntese por evento, com forte dispersão.
+Japão/Gasly S2 evidencia distorção do OLS por início lento após retomada;
+Mônaco domina alguns contrastes iniciais. Sem coeficientes causais exportados.
+
+Análise detalhada em `docs/analise-pneus-2024.md`. Saída final:
+`data/curated/tyre-studies/tyres-3009620bdf9c4e7995149a8d5fb255ec/`.
+JSON e CSVs idênticos em duas execuções; gráficos inspecionados por amostragem.
+173 testes sem falhas, 13 ignorados; Ruff/format/whitespace aprovados.
+Backlog sincronizado sem diff. Sem commits, push ou mensagens ao GitHub.
+Registro para posterior publicação na #63 quando autorizado.
+
+Próximo passo: auditar e marcar janelas após relargadas, comparar ajustes
+robustos e OLS e estudar diferenças de idade na mesma fase da corrida antes
+de calibrar o contrato de pneus para o core. Decisões de referência/idade
+continuam pendentes. Sugestão: `feat(pneus): explore evolução e cobertura por stint`
+(caso de uso, script e testes) e `docs(pneus): registre análise de evolução e aquecimento`
+(guias, README e andamento).
