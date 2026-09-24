@@ -69,9 +69,26 @@ def obter_dados_corrida() -> dict:
 
 
 @router.post("/simulate")
-def simular_corrida() -> dict:
+def simular_corrida(seed: int | None = None, stops: int = 2) -> dict:
+    """Execute a corrida carregada com o modelo calibrado.
 
-    return simulate_current_race()
+    ``seed`` torna o resultado reproduzivel: a mesma semente, os mesmos
+    parametros e os mesmos dados produzem exatamente a mesma corrida. Omitir a
+    semente usa a padrao do servico, e nao um valor aleatorio, para que duas
+    chamadas seguidas nao divirjam sem que o cliente tenha pedido.
+
+    ``stops`` e o plano de paradas do cenario; duas e o padrao historico
+    dominante da era calibrada.
+    """
+
+    if stops < 0 or stops > 4:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="stops deve estar entre 0 e 4",
+        )
+    if seed is None:
+        return simulate_current_race(stops=stops)
+    return simulate_current_race(seed=seed, stops=stops)
 
 
 @router.get("/tracks")

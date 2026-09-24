@@ -1,0 +1,327 @@
+{
+  "version": "trotman-v128-2022-2023",
+  "provenance": {
+    "source_name": "jtrotman/formula-1-race-data",
+    "source_version": 128,
+    "seasons": [
+      2022,
+      2023
+    ],
+    "races": 44,
+    "clean_laps": 39709,
+    "calibrated_at": "2026-09-24"
+  },
+  "fuel_penalty_ms_per_remaining_lap": 52.349,
+  "grid_penalty_ms_per_position": 782.4,
+  "reference_compound": "MEDIUM",
+  "compounds": [
+    {
+      "name": "SOFT",
+      "pace_offset_ms": -450.0,
+      "degradation_ms_per_lap": 49.345,
+      "degradation_ms_per_lap2": 0.0,
+      "typical_stint_laps": 14,
+      "origin": "assumed"
+    },
+    {
+      "name": "MEDIUM",
+      "pace_offset_ms": 0.0,
+      "degradation_ms_per_lap": 30.841,
+      "degradation_ms_per_lap2": 0.0,
+      "typical_stint_laps": 22,
+      "origin": "assumed"
+    },
+    {
+      "name": "HARD",
+      "pace_offset_ms": 450.0,
+      "degradation_ms_per_lap": 18.505,
+      "degradation_ms_per_lap2": 0.0,
+      "typical_stint_laps": 37,
+      "origin": "assumed"
+    }
+  ],
+  "tracks": [
+    {
+      "circuit_id": "circuit:11",
+      "name": "Hungaroring",
+      "pit_loss_ms": 23028.0,
+      "tyre_severity": 1.465,
+      "overtaking_difficulty": 0.497,
+      "origin": "calibrated",
+      "observed_stops": 78
+    },
+    {
+      "circuit_id": "circuit:13",
+      "name": "Circuit de Spa-Francorchamps",
+      "pit_loss_ms": 18901,
+      "tyre_severity": 2.5,
+      "overtaking_difficulty": 0.316,
+      "origin": "calibrated",
+      "observed_stops": 73
+    },
+    {
+      "circuit_id": "circuit:14",
+      "name": "Autodromo Nazionale di Monza",
+      "pit_loss_ms": 25675,
+      "tyre_severity": 1.344,
+      "overtaking_difficulty": 0.437,
+      "origin": "calibrated",
+      "observed_stops": 45
+    },
+    {
+      "circuit_id": "circuit:18",
+      "name": "Autódromo José Carlos Pace",
+      "pit_loss_ms": 22346.5,
+      "tyre_severity": 1.356,
+      "overtaking_difficulty": 0.503,
+      "origin": "calibrated",
+      "observed_stops": 74
+    },
+    {
+      "circuit_id": "circuit:21",
+      "name": "Autodromo Enzo e Dino Ferrari",
+      "pit_loss_ms": 51124,
+      "tyre_severity": 0.797,
+      "overtaking_difficulty": 0.95,
+      "origin": "calibrated",
+      "observed_stops": 23
+    },
+    {
+      "circuit_id": "circuit:22",
+      "name": "Suzuka Circuit",
+      "pit_loss_ms": 24006.0,
+      "tyre_severity": 2.461,
+      "overtaking_difficulty": 0.412,
+      "origin": "calibrated",
+      "observed_stops": 53
+    },
+    {
+      "circuit_id": "circuit:24",
+      "name": "Yas Marina Circuit",
+      "pit_loss_ms": 23357.0,
+      "tyre_severity": 1.576,
+      "overtaking_difficulty": 0.364,
+      "origin": "calibrated",
+      "observed_stops": 68
+    },
+    {
+      "circuit_id": "circuit:3",
+      "name": "Bahrain International Circuit",
+      "pit_loss_ms": 25412.0,
+      "tyre_severity": 2.5,
+      "overtaking_difficulty": 0.382,
+      "origin": "calibrated",
+      "observed_stops": 99
+    },
+    {
+      "circuit_id": "circuit:32",
+      "name": "Autódromo Hermanos Rodríguez",
+      "pit_loss_ms": 23261.0,
+      "tyre_severity": 1.038,
+      "overtaking_difficulty": 0.712,
+      "origin": "calibrated",
+      "observed_stops": 40
+    },
+    {
+      "circuit_id": "circuit:39",
+      "name": "Circuit Park Zandvoort",
+      "pit_loss_ms": 25270.0,
+      "tyre_severity": 0.3,
+      "overtaking_difficulty": 0.455,
+      "origin": "calibrated",
+      "observed_stops": 87
+    },
+    {
+      "circuit_id": "circuit:4",
+      "name": "Circuit de Barcelona-Catalunya",
+      "pit_loss_ms": 23397.0,
+      "tyre_severity": 2.113,
+      "overtaking_difficulty": 0.388,
+      "origin": "calibrated",
+      "observed_stops": 95
+    },
+    {
+      "circuit_id": "circuit:6",
+      "name": "Circuit de Monaco",
+      "pit_loss_ms": 41924,
+      "tyre_severity": 1.207,
+      "overtaking_difficulty": 0.95,
+      "origin": "calibrated",
+      "observed_stops": 47
+    },
+    {
+      "circuit_id": "circuit:69",
+      "name": "Circuit of the Americas",
+      "pit_loss_ms": 21127,
+      "tyre_severity": 1.493,
+      "overtaking_difficulty": 0.377,
+      "origin": "calibrated",
+      "observed_stops": 61
+    },
+    {
+      "circuit_id": "circuit:7",
+      "name": "Circuit Gilles Villeneuve",
+      "pit_loss_ms": 21225.0,
+      "tyre_severity": 0.89,
+      "overtaking_difficulty": 0.839,
+      "origin": "calibrated",
+      "observed_stops": 46
+    },
+    {
+      "circuit_id": "circuit:70",
+      "name": "Red Bull Ring",
+      "pit_loss_ms": 22227.5,
+      "tyre_severity": 1.491,
+      "overtaking_difficulty": 0.459,
+      "origin": "calibrated",
+      "observed_stops": 82
+    },
+    {
+      "circuit_id": "circuit:73",
+      "name": "Baku City Circuit",
+      "pit_loss_ms": 26094.0,
+      "tyre_severity": 0.844,
+      "overtaking_difficulty": 0.652,
+      "origin": "calibrated",
+      "observed_stops": 34
+    },
+    {
+      "circuit_id": "circuit:77",
+      "name": "Jeddah Corniche Circuit",
+      "pit_loss_ms": 25674,
+      "tyre_severity": 0.483,
+      "overtaking_difficulty": 0.635,
+      "origin": "calibrated",
+      "observed_stops": 21
+    },
+    {
+      "circuit_id": "circuit:78",
+      "name": "Losail International Circuit",
+      "pit_loss_ms": 29520,
+      "tyre_severity": 0.954,
+      "overtaking_difficulty": 0.305,
+      "origin": "calibrated",
+      "observed_stops": 49
+    },
+    {
+      "circuit_id": "circuit:79",
+      "name": "Miami International Autodrome",
+      "pit_loss_ms": 21452.0,
+      "tyre_severity": 0.631,
+      "overtaking_difficulty": 0.509,
+      "origin": "calibrated",
+      "observed_stops": 39
+    },
+    {
+      "circuit_id": "circuit:9",
+      "name": "Silverstone Circuit",
+      "pit_loss_ms": 22779,
+      "tyre_severity": 0.798,
+      "overtaking_difficulty": 0.552,
+      "origin": "calibrated",
+      "observed_stops": 33
+    }
+  ],
+  "fallback_track": {
+    "circuit_id": "__fallback__",
+    "name": "mediana do campo",
+    "pit_loss_ms": 23377.0,
+    "tyre_severity": 1.0,
+    "overtaking_difficulty": 0.5,
+    "origin": "assumed",
+    "observed_stops": 0
+  },
+  "team_reliability": [
+    {
+      "team_id": "team:1",
+      "name": "McLaren",
+      "hazard_factor": 0.694,
+      "observed_entries": 86,
+      "retirements": 7,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:117",
+      "name": "Aston Martin",
+      "hazard_factor": 0.997,
+      "observed_entries": 87,
+      "retirements": 12,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:131",
+      "name": "Mercedes",
+      "hazard_factor": 0.637,
+      "observed_entries": 85,
+      "retirements": 6,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:210",
+      "name": "Haas F1 Team",
+      "hazard_factor": 1.014,
+      "observed_entries": 85,
+      "retirements": 12,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:213",
+      "name": "AlphaTauri",
+      "hazard_factor": 0.951,
+      "observed_entries": 85,
+      "retirements": 11,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:214",
+      "name": "Alpine F1 Team",
+      "hazard_factor": 1.355,
+      "observed_entries": 88,
+      "retirements": 18,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:3",
+      "name": "Williams",
+      "hazard_factor": 1.391,
+      "observed_entries": 85,
+      "retirements": 18,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:51",
+      "name": "Alfa Romeo",
+      "hazard_factor": 1.244,
+      "observed_entries": 87,
+      "retirements": 16,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:6",
+      "name": "Ferrari",
+      "hazard_factor": 1.032,
+      "observed_entries": 83,
+      "retirements": 12,
+      "origin": "calibrated"
+    },
+    {
+      "team_id": "team:9",
+      "name": "Red Bull",
+      "hazard_factor": 0.682,
+      "observed_entries": 88,
+      "retirements": 7,
+      "origin": "calibrated"
+    }
+  ],
+  "lap_noise_ms": 253.7,
+  "lap_noise_skew": 0.0,
+  "dnf_hazard_per_lap": 0.002583,
+  "traffic_penalty_ms": 400.0,
+  "traffic_threshold_ms": 1500.0,
+  "pit_window_spread_laps": 6.16,
+  "qualifying_to_race_ratio": 1.0542,
+  "overtake_advantage_scale_ms": 1400.0,
+  "minimum_gap_ms": 700.0,
+  "collision_probability_per_dispute": 0.0035,
+  "contact_dnf_share": 0.412
+}

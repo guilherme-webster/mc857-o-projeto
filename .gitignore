@@ -44,3 +44,5 @@ commands.txt
 /backend/races/race.json
 
 .kiro
+# Saidas geradas por backtest_model.py e race_report.py
+/data/reports/

@@ -7,6 +7,23 @@ from pathlib import Path
 from app.models.models import DriverParameters
 
 
+def _load_model_parameters():
+    """Leia os parametros calibrados, ou devolva ``None`` se ainda nao existirem.
+
+    A ausencia nao e fatal para esta consulta: o cadastro de pilotos continua
+    util sem os coeficientes do modelo. Quem exige os parametros e a simulacao,
+    que falha explicitamente em ``services/race_simulation.py``.
+    """
+
+    from app.config import MODEL_PARAMETERS
+    from f1_simulator.adapters.model_parameters_json import read_parameters
+
+    try:
+        return read_parameters(Path(MODEL_PARAMETERS))
+    except (FileNotFoundError, KeyError, ValueError):
+        return None
+
+
 def load_driver_parameters(
     db_path: Path, *, limit: int | None = None
 ) -> list[DriverParameters]:
@@ -14,11 +31,19 @@ def load_driver_parameters(
     if not db_path.exists():
         raise FileNotFoundError(f"curated race database not found: {db_path}")
 
+    model = _load_model_parameters()
+
     connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     try:
+        circuit = connection.execute(
+            "SELECT circuit_id FROM races LIMIT 1"
+        ).fetchone()
+        track = model.track(circuit["circuit_id"]) if model and circuit else None
         entries = _read_entries(connection)
-        parameters = [_build_parameters(connection, entry) for entry in entries]
+        parameters = [
+            _build_parameters(connection, entry, model, track) for entry in entries
+        ]
     finally:
         connection.close()
 
@@ -47,8 +72,25 @@ def _read_entries(connection: sqlite3.Connection) -> list[sqlite3.Row]:
 
 
 def _build_parameters(
-    connection: sqlite3.Connection, entry: sqlite3.Row
+    connection: sqlite3.Connection,
+    entry: sqlite3.Row,
+    model=None,
+    track=None,
 ) -> DriverParameters:
+    """Monte os parametros expostos pela API para um participante.
+
+    Divisao de responsabilidades, corrigida em relacao a versao anterior:
+
+    - ``base_lap_time_ms`` e **por piloto**, estimado das voltas daquele carro;
+    - degradacao, perda de boxes e risco de abandono sao **parametros do
+      modelo**, iguais para todos os carros, vindos da calibracao versionada.
+
+    Antes, os tres ultimos eram estimados por piloto dentro desta funcao e
+    estavam errados: a degradacao regredia a corrida inteira (o que mistura
+    combustivel e pneu, dois efeitos de sinais opostos) e a perda de boxes usava
+    a media de ``duration_ms``, inflada varias vezes pelas paradas sob bandeira
+    vermelha. Separar piloto de modelo resolve as duas coisas.
+    """
 
     driver_id = entry["driver_id"]
     lap_times = [
@@ -60,54 +102,41 @@ def _build_parameters(
     ]
     base_lap_time_ms = _estimate_base_pace(lap_times) if lap_times else None
 
+    degradation = 0.0
+    pit_loss = 0.0
+    retirement = 0.0
+    if model is not None and track is not None:
+        compound = model.compound(model.reference_compound)
+        degradation = compound.degradation_ms_per_lap * track.tyre_severity
+        pit_loss = track.pit_loss_ms
+        retirement = model.dnf_hazard_per_lap
+
     return DriverParameters(
         driver_id=driver_id,
         name=_display_name(entry),
         team_id=entry["team_id"],
         grid_position=entry["grid_position"],
         base_lap_time_ms=base_lap_time_ms,
-        degradation_ms_per_lap=_estimate_degradation(lap_times), # TODO
-        pit_loss_ms=_estimate_pit_loss(connection, driver_id), # TODO
+        degradation_ms_per_lap=degradation,
+        pit_loss_ms=pit_loss,
+        retirement_per_lap=retirement,
     )
 
 
 def _estimate_base_pace(lap_times: list[int]) -> float:
+    """Mediana do quartil mais rapido: a volta limpa de referencia do piloto.
+
+    As voltas mais rapidas de uma corrida sao tipicamente as de pneu novo,
+    combustivel baixo e ar livre -- exatamente a condicao que o modelo assume
+    para a referencia, o que permite somar as penalidades sem contar duas vezes
+    o mesmo efeito. A mesma definicao e usada pelo backtest em
+    ``adapters/persistence/sqlite_race_scenario.py``, de modo que as metricas
+    publicadas descrevem o modelo que a aplicacao realmente executa.
+    """
 
     ordered = sorted(lap_times)
     quartile = max(1, len(ordered) // 4)
     return float(statistics.median(ordered[:quartile]))
-
-
-def _estimate_degradation(lap_times: list[int]) -> float:
-
-    count = len(lap_times)
-    if count < 3:
-        return 0.0
-
-    indices = range(count)
-    mean_x = (count - 1) / 2
-    mean_y = statistics.fmean(lap_times)
-    numerator = sum((x - mean_x) * (y - mean_y) for x, y in zip(indices, lap_times))
-    denominator = sum((x - mean_x) ** 2 for x in indices)
-    if denominator == 0:
-        return 0.0
-    slope = numerator / denominator
-    return max(0.0, slope)
-
-
-def _estimate_pit_loss(connection: sqlite3.Connection, driver_id: str) -> float:
-
-    durations = [
-        row["duration_ms"]
-        for row in connection.execute(
-            "SELECT duration_ms FROM pit_stops "
-            "WHERE driver_id = ? AND duration_ms IS NOT NULL",
-            (driver_id,),
-        )
-    ]
-    if not durations:
-        return 0.0
-    return float(statistics.fmean(durations))
 
 
 def _display_name(entry: sqlite3.Row) -> str:

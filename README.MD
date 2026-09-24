@@ -14,6 +14,7 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 - [Fluxo e responsabilidades do ETL](docs/fluxo-etl.md)
 - [ETL completo: Trotman e FastF1](docs/etl-enriquecimento.md)
 - [Proposta de planejamento da modelagem](docs/planejamento-modelagem.md)
+- [Modelagem calibrada da corrida e validacao](docs/modelagem-corrida-calibrada.md)
 - [Dados e plano de perfilamento dos pilotos](docs/perfilamento-pilotos.md)
 
 O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
@@ -291,6 +292,62 @@ A [comparação entre companheiros e referência determinística](docs/companhei
 usa contextos compartilhados, apresenta suporte e intervalos e exporta referências
 de tempo específicas por circuito/sessão. Execute `scripts/analyze_teammates.py`
 conforme os comandos do guia; a integração ao motor permanece posterior.
+
+## Modelo de corrida calibrado
+
+O núcleo da simulação deixou de usar ritmo constante por carro. O tempo de
+volta agora é decomposto em referência, combustível, pneu, tráfego, perda de
+boxes e ruído, com abandono sorteado por volta. Os coeficientes são estimados
+do histórico Trotman e gravados versionados em `data/parameters/`.
+
+```bash
+python3 scripts/ingest_trotman.py --all-tables --output data/curated/history.sqlite
+python3 scripts/calibrate_model.py --database data/curated/history.sqlite \n  --seasons 2022 2023 --output data/parameters/model-v1.json
+```
+
+Valide contra corridas que não entraram na calibração. O script recusa
+validar sobre uma temporada calibrada sem `--allow-calibrated-seasons`:
+
+```bash
+python3 scripts/backtest_model.py --database data/curated/history.sqlite \n  --parameters data/parameters/model-v1.json --seasons 2024 --repeats 10
+```
+
+Cada corrida é comparada com duas linhas de base (ordem de largada e o modelo
+antigo de ritmo constante); o modelo só se justifica se vencer as duas. O
+[relatório da modelagem](docs/modelagem-corrida-calibrada.md) traz método,
+coeficientes, resultados de 2024 e limitações.
+
+`POST /simulation/simulate` aceita `?seed=` e `?stops=`; a mesma semente, os
+mesmos parâmetros e os mesmos dados reproduzem exatamente a mesma corrida.
+
+## Ver uma corrida sem frontend
+
+`scripts/race_report.py` roda uma corrida e explica o resultado usando só a
+biblioteca padrão do Python: sem instalação, sem ambiente virtual, sem
+container. Liste as corridas de uma temporada e depois rode uma delas:
+
+```bash
+python3 scripts/race_report.py --season 2024
+```
+
+```bash
+python3 scripts/race_report.py --race-id 1141 --driver Verstappen
+```
+
+O relatório traz a classificação comparada com o resultado oficial, a
+evolução das posições, as paradas e a decomposição do tempo de volta
+(referência, combustível, pneu, tráfego, boxes e ruído) volta a volta.
+
+Com `--html` o mesmo comando grava um visualizador autocontido, que abre no
+navegador com duplo clique e anima a corrida sobre a geometria real do
+circuito, com torre de tempos e gráfico de voltas:
+
+```bash
+python3 scripts/race_report.py --race-id 1141 --html data/reports/corrida.html
+```
+
+O modelo da página fica em `tools/race_viewer_template.html`; os dados são
+embutidos no arquivo gerado porque navegadores bloqueiam `fetch` de `file://`.
 
 ## Ranking de pilotos e adaptador para simulação
 
