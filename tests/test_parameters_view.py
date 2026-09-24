@@ -132,6 +132,47 @@ class ParametersViewTest(unittest.TestCase):
         self.assertFalse(view.start_lap_input.visible)
         self.assertFalse(view.end_lap_input.visible)
 
+    def test_track_configuration_draws_track_pit_lane_and_service_point(self) -> None:
+        parent = ParametersView()
+        view = WeatherConfigurationView(parent, WeatherSchedule.dry(69))
+        view.active_topic = "Pista"
+        view._track_results.put(
+            (
+                "success",
+                {
+                    "lap_length_m": 4309.0,
+                    "track_points": [
+                        {"sequence": 0, "x": 0, "y": 0},
+                        {"sequence": 1, "x": 2, "y": 0},
+                        {"sequence": 2, "x": 2, "y": 1},
+                        {"sequence": 3, "x": 0, "y": 1},
+                    ],
+                    "pit_lane_points": [
+                        {
+                            "sequence": 0,
+                            "x": 0.5,
+                            "y": 0.2,
+                            "is_service_point": False,
+                        },
+                        {
+                            "sequence": 1,
+                            "x": 1.5,
+                            "y": 0.2,
+                            "is_service_point": True,
+                        },
+                    ],
+                },
+            )
+        )
+
+        view.on_update(0)
+        self.window.show_view(view)
+        self.window.clear()
+        view._draw_track_preview()
+
+        self.assertIsNotNone(view._track_preview)
+        self.assertEqual(view.status_message, "Geometria da pista carregada.")
+
     def test_weather_view_applies_an_interval_and_saves_it_in_parent(self) -> None:
         parent = ParametersView()
         view = WeatherConfigurationView(parent, WeatherSchedule.dry(69))

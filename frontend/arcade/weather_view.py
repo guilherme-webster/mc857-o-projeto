@@ -5,7 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
+from math import hypot
 from pathlib import Path
+from queue import Empty, SimpleQueue
+from threading import Thread
 from typing import TYPE_CHECKING
 
 import arcade
@@ -17,6 +20,8 @@ from frontend.arcade.configuration_state import (
     WeatherRange,
     WeatherSchedule,
 )
+from frontend.arcade.track_client import fetch_track
+from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 from frontend.arcade.theme import (
     ACCENT_COLOR,
     BACKGROUND_COLOR,
@@ -41,6 +46,8 @@ TIMELINE_RIGHT = TIMELINE_LEFT + TIMELINE_WIDTH
 SUMMARY_PAGE_SIZE = 8
 SUMMARY_PREVIOUS_BOUNDS = (1100, 238, 28, 24)
 SUMMARY_NEXT_BOUNDS = (1192, 238, 28, 24)
+TRACK_PREVIEW_BOUNDS = (520, 150, 660, 360)
+TRACK_GEOMETRY_BOUNDS = (540, 190, 620, 300)
 NAVIGATION_BOUNDS = {
     "Sessão": (0, 570, SIDEBAR_WIDTH, 42),
     "Pista": (0, 528, SIDEBAR_WIDTH, 42),
@@ -51,7 +58,7 @@ NAVIGATION_BOUNDS = {
 }
 TOPIC_DESCRIPTIONS = {
     "Sessão": "Os parâmetros gerais da sessão serão configurados aqui.",
-    "Pista": "Autódromo José Carlos Pace • São Paulo, Brasil",
+    "Pista": "Traçado, pit lane e ponto de serviço.",
     "Assistências": "As assistências de pilotagem ainda não fazem parte do MVP.",
     "Regras": "As regras configuráveis serão adicionadas em um próximo incremento.",
     "Carros": "A seleção e os ajustes dos carros dependem da integração com o ETL.",
@@ -111,10 +118,23 @@ class TrackConfigurationView(UIView):
     available for precise keyboard editing and the existing save flow.
     """
 
-    def __init__(self, parent: ParametersView, schedule: WeatherSchedule) -> None:
+    def __init__(
+        self,
+        parent: ParametersView,
+        schedule: WeatherSchedule,
+        *,
+        circuit_id: int | str = 18,
+        track_loader: Callable[[int | str], dict] = fetch_track,
+    ) -> None:
         super().__init__()
         self.parent = parent
         self.schedule = schedule
+        self.circuit_id = circuit_id
+        self._track_loader = track_loader
+        self._track_results: SimpleQueue[tuple[str, object]] = SimpleQueue()
+        self._track_loading = False
+        self._track_preview: TrackPreviewGeometry | None = None
+        self._track_error: str | None = None
         self.active_topic = "Clima"
         self.selected_weather = WEATHER_OPTIONS[0]
         self._drag_start_lap: int | None = None
@@ -365,6 +385,8 @@ class TrackConfigurationView(UIView):
             )
         else:
             self._set_status(TOPIC_DESCRIPTIONS[topic], SECONDARY_TEXT_COLOR)
+        if topic == "Pista":
+            self._start_track_loading()
 
     def _handle_summary_navigation(self, x: int, y: int) -> bool:
         """Change summary pages when one of the compact controls is clicked."""
@@ -431,6 +453,61 @@ class TrackConfigurationView(UIView):
 
         super().on_show_view()
         arcade.set_background_color(BACKGROUND_COLOR)
+        if self.active_topic == "Pista":
+            self._start_track_loading()
+
+    def on_update(self, delta_time: float) -> None:
+        """Consume completed HTTP work on the UI thread without blocking it."""
+
+        del delta_time
+        try:
+            outcome, value = self._track_results.get_nowait()
+        except Empty:
+            return
+
+        self._track_loading = False
+        if outcome == "error":
+            self._track_error = str(value)
+            if self.active_topic == "Pista":
+                self._set_status(self._track_error, ERROR_COLOR)
+            return
+
+        try:
+            self._track_preview = fit_track_preview(value, TRACK_GEOMETRY_BOUNDS)
+        except ValueError as error:
+            self._track_error = f"Geometria de pista inválida: {error}."
+            if self.active_topic == "Pista":
+                self._set_status(self._track_error, ERROR_COLOR)
+            return
+
+        self._track_error = None
+        if self.active_topic == "Pista":
+            self._set_status("Geometria da pista carregada.", SUCCESS_COLOR)
+
+    def _start_track_loading(self) -> None:
+        """Fetch geometry in a daemon worker so Arcade remains responsive."""
+
+        if self._track_preview is not None or self._track_loading:
+            return
+        self._track_loading = True
+        self._track_error = None
+        self._set_status("Carregando geometria da pista...", SECONDARY_TEXT_COLOR)
+
+        def load() -> None:
+            try:
+                payload = self._track_loader(self.circuit_id)
+            except Exception as error:  # noqa: BLE001 - external HTTP boundary
+                self._track_results.put(
+                    (
+                        "error",
+                        "Não foi possível carregar a pista. "
+                        f"Verifique o backend ({type(error).__name__}).",
+                    )
+                )
+                return
+            self._track_results.put(("success", payload))
+
+        Thread(target=load, name="track-preview-loader", daemon=True).start()
 
     def on_draw_before_ui(self) -> None:
         """Draw the dashboard shell, controls, timeline and summary cards."""
@@ -564,12 +641,245 @@ class TrackConfigurationView(UIView):
                 14,
             ).draw()
             arcade.Text(
-                f"{self.schedule.total_laps} voltas • dados canônicos do dataset Trotman v128",
+                f"{self.schedule.total_laps} voltas",
                 230,
                 400,
                 SECONDARY_TEXT_COLOR,
                 11,
             ).draw()
+            arcade.Text(
+                "ID canônico: Trotman v128",
+                230,
+                376,
+                SECONDARY_TEXT_COLOR,
+                10,
+            ).draw()
+            arcade.Text(
+                "Geometria reduzida: FastF1 2025",
+                230,
+                354,
+                SECONDARY_TEXT_COLOR,
+                10,
+            ).draw()
+            if self._track_preview is not None:
+                lap_km = self._track_preview.lap_length_m / 1000
+                arcade.Text(
+                    f"Distância da amostra: {lap_km:.3f} km".replace(".", ","),
+                    230,
+                    332,
+                    SECONDARY_TEXT_COLOR,
+                    10,
+                ).draw()
+                arcade.Text(
+                    f"{len(self._track_preview.track_points)} pontos de pista • "
+                    f"{len(self._track_preview.pit_lane_points)} de pit lane",
+                    230,
+                    310,
+                    SECONDARY_TEXT_COLOR,
+                    9,
+                ).draw()
+            self._draw_track_preview()
+
+    def _draw_track_preview(self) -> None:
+        """Draw the complete track aggregate or its current loading state."""
+
+        left, bottom, width, height = TRACK_PREVIEW_BOUNDS
+        self._draw_rounded_panel(
+            left,
+            bottom,
+            width,
+            height,
+            8,
+            (7, 17, 14),
+            MUTED_BORDER_COLOR,
+        )
+        if self._track_preview is None:
+            if self._track_error:
+                message = self._track_error
+            elif self._track_loading:
+                message = "Carregando geometria..."
+            else:
+                message = "Selecione Pista para carregar a geometria."
+            arcade.Text(
+                message,
+                left + width / 2,
+                bottom + height / 2,
+                ERROR_COLOR if self._track_error else SECONDARY_TEXT_COLOR,
+                10,
+                anchor_x="center",
+                anchor_y="center",
+                width=width - 80,
+                multiline=True,
+                align="center",
+            ).draw()
+            return
+
+        track = self._track_preview.track_points
+        pit_lane = self._track_preview.pit_lane_points
+        # The payload contains centerlines, not measured widths. Layered strokes
+        # make those paths legible while remaining visibly schematic.
+        arcade.draw_line_strip(track, (24, 27, 32), 18)
+        arcade.draw_line_strip(track, (225, 229, 235), 14)
+        arcade.draw_line_strip(track, (92, 98, 106), 10)
+        arcade.draw_line_strip(pit_lane, (25, 29, 34), 8)
+        arcade.draw_line_strip(pit_lane, (244, 183, 64), 4)
+
+        self._draw_direction_markers(track)
+        self._draw_start_finish_line(track)
+
+        pit_in_x, pit_in_y = pit_lane[0]
+        pit_out_x, pit_out_y = pit_lane[-1]
+        arcade.draw_circle_filled(pit_in_x, pit_in_y, 5, (70, 211, 142))
+        arcade.draw_circle_outline(pit_in_x, pit_in_y, 5, PRIMARY_TEXT_COLOR, 1)
+        arcade.draw_circle_filled(pit_out_x, pit_out_y, 5, (75, 142, 214))
+        arcade.draw_circle_outline(pit_out_x, pit_out_y, 5, PRIMARY_TEXT_COLOR, 1)
+        service_x, service_y = self._track_preview.service_point
+        arcade.draw_circle_filled(service_x, service_y, 7, (255, 176, 0))
+        arcade.draw_circle_outline(service_x, service_y, 7, PRIMARY_TEXT_COLOR, 1)
+
+        arcade.draw_line(
+            left + 18,
+            bottom + 23,
+            left + 48,
+            bottom + 23,
+            (112, 118, 126),
+            6,
+        )
+        arcade.Text(
+            "Pista",
+            left + 58,
+            bottom + 18,
+            SECONDARY_TEXT_COLOR,
+            9,
+        ).draw()
+        arcade.draw_line(
+            left + 108,
+            bottom + 23,
+            left + 138,
+            bottom + 23,
+            (244, 183, 64),
+            4,
+        )
+        arcade.Text(
+            "Pit lane",
+            left + 148,
+            bottom + 18,
+            SECONDARY_TEXT_COLOR,
+            9,
+        ).draw()
+        arcade.draw_circle_filled(left + 222, bottom + 23, 5, (255, 176, 0))
+        arcade.Text(
+            "Serviço", left + 234, bottom + 18, SECONDARY_TEXT_COLOR, 9
+        ).draw()
+        self._draw_legend_start_finish(left + 305, bottom + 23)
+        arcade.Text(
+            "Largada/chegada",
+            left + 321,
+            bottom + 18,
+            SECONDARY_TEXT_COLOR,
+            9,
+        ).draw()
+        arcade.draw_circle_filled(left + 438, bottom + 23, 4, (70, 211, 142))
+        arcade.Text(
+            "Entrada",
+            left + 448,
+            bottom + 18,
+            SECONDARY_TEXT_COLOR,
+            9,
+        ).draw()
+        arcade.draw_circle_filled(left + 507, bottom + 23, 4, (75, 142, 214))
+        arcade.Text(
+            "Saída", left + 517, bottom + 18, SECONDARY_TEXT_COLOR, 9
+        ).draw()
+
+    @staticmethod
+    def _draw_direction_markers(
+        track: tuple[tuple[float, float], ...],
+    ) -> None:
+        """Place subtle chevrons using only the ordering of track samples."""
+
+        for index in (len(track) // 5, 2 * len(track) // 5, 3 * len(track) // 5):
+            tangent = TrackConfigurationView._unit_tangent(track, index)
+            if tangent is None:
+                continue
+            tangent_x, tangent_y = tangent
+            normal_x, normal_y = -tangent_y, tangent_x
+            center_x, center_y = track[index]
+            tip_x = center_x + tangent_x * 6
+            tip_y = center_y + tangent_y * 6
+            back_x = center_x - tangent_x * 5
+            back_y = center_y - tangent_y * 5
+            color = (235, 238, 242, 175)
+            arcade.draw_line(
+                back_x + normal_x * 4,
+                back_y + normal_y * 4,
+                tip_x,
+                tip_y,
+                color,
+                1.5,
+            )
+            arcade.draw_line(
+                back_x - normal_x * 4,
+                back_y - normal_y * 4,
+                tip_x,
+                tip_y,
+                color,
+                1.5,
+            )
+
+    @staticmethod
+    def _draw_start_finish_line(track: tuple[tuple[float, float], ...]) -> None:
+        """Draw a checkered line perpendicular to the first track sample."""
+
+        tangent = TrackConfigurationView._unit_tangent(track, 0)
+        if tangent is None:
+            return
+        normal_x, normal_y = -tangent[1], tangent[0]
+        center_x, center_y = track[0]
+        half_width = 7
+        block_length = 2 * half_width / 6
+        for block in range(6):
+            start = -half_width + block * block_length
+            end = start + block_length
+            color = PRIMARY_TEXT_COLOR if block % 2 else (18, 22, 27)
+            arcade.draw_line(
+                center_x + normal_x * start,
+                center_y + normal_y * start,
+                center_x + normal_x * end,
+                center_y + normal_y * end,
+                color,
+                3,
+            )
+
+    @staticmethod
+    def _draw_legend_start_finish(center_x: float, center_y: float) -> None:
+        """Draw the compact checkered symbol used by the legend."""
+
+        for block in range(4):
+            color = PRIMARY_TEXT_COLOR if block % 2 else (45, 51, 59)
+            arcade.draw_line(
+                center_x,
+                center_y - 6 + block * 3,
+                center_x + 10,
+                center_y - 6 + block * 3,
+                color,
+                2,
+            )
+
+    @staticmethod
+    def _unit_tangent(
+        points: tuple[tuple[float, float], ...], index: int
+    ) -> tuple[float, float] | None:
+        """Return a stable unit direction around one ordered sample."""
+
+        before = points[max(0, index - 2)]
+        after = points[min(len(points) - 1, index + 2)]
+        delta_x = after[0] - before[0]
+        delta_y = after[1] - before[1]
+        length = hypot(delta_x, delta_y)
+        if length == 0:
+            return None
+        return delta_x / length, delta_y / length
 
     def _draw_weather_palette(self) -> None:
         """Draw condition buttons; each full button area is clickable."""

@@ -34,6 +34,7 @@ from frontend.arcade.theme import (
 TRACK_CARD_BOUNDS = (104, 230, 1072, 300)
 CONFIGURE_TRACK_BOUNDS = (880, 270, 240, 52)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
+MVP_CIRCUIT_ID = 18
 
 
 class ParametersView(UIView):
@@ -220,6 +221,7 @@ class ParametersView(UIView):
             TrackConfigurationView(
                 parent=self,
                 schedule=self.configuration.weather_schedule,
+                circuit_id=MVP_CIRCUIT_ID,
             )
         )
 
