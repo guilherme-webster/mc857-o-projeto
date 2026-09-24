@@ -128,6 +128,12 @@ omita `--source` depois de baixar o Trotman v128. O comando importa apenas a
 geometria do circuito da corrida, validando ambos os CSVs e seus manifestos.
 As geometrias das 24 pistas continuam disponiveis para outras corridas suportadas.
 
+Na interface Arcade, a tela inicial consulta `GET /simulation/tracks`. Use as
+setas no cartao para percorrer as 24 pistas e clique em **Configurar pista**;
+o topico **Pista** mostra o tracado e o pit lane do circuito selecionado via
+`GET /simulation/track/{circuit_id}`. A selecao de geometria nao amplia, por si
+so, o suporte da simulacao a corridas em varios circuitos.
+
 X/Y sao normalizados e sem unidade; distancia acumulada da pista e em metros.
 As geometrias sao de 2025: seu uso com uma corrida de outro ano fica explicito no
 relatorio. Consulte o [contrato de consumo](docs/fluxo-etl.md#geometria-de-pista-e-pit-lane)

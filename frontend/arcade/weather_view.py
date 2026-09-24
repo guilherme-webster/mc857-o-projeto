@@ -124,12 +124,14 @@ class TrackConfigurationView(UIView):
         schedule: WeatherSchedule,
         *,
         circuit_id: int | str = 18,
+        track_name: str = "Autódromo José Carlos Pace",
         track_loader: Callable[[int | str], dict] = fetch_track,
     ) -> None:
         super().__init__()
         self.parent = parent
         self.schedule = schedule
         self.circuit_id = circuit_id
+        self.track_name = track_name
         self._track_loader = track_loader
         self._track_results: SimpleQueue[tuple[str, object]] = SimpleQueue()
         self._track_loading = False
@@ -634,7 +636,7 @@ class TrackConfigurationView(UIView):
         ).draw()
         if self.active_topic == "Pista":
             arcade.Text(
-                "São Paulo Grand Prix 2024",
+                self.track_name,
                 230,
                 430,
                 PRIMARY_TEXT_COLOR,
@@ -1159,7 +1161,7 @@ class TrackConfigurationView(UIView):
             arcade.Text("Regras", 38, 408, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Carros", 38, 366, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Configuração da pista", 198, 614, PRIMARY_TEXT_COLOR, 26, bold=True),
-            arcade.Text("Autódromo José Carlos Pace • São Paulo, Brasil", 198, 590, SECONDARY_TEXT_COLOR, 11),
+            arcade.Text(self.track_name, 198, 590, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Intervalo de voltas", 214, 548, PRIMARY_TEXT_COLOR, 12, bold=True),
             arcade.Text("Volta inicial", 276, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"),
             arcade.Text("Volta final", 420, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"),

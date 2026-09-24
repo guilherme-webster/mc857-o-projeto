@@ -13,6 +13,7 @@ try:
     )
     from frontend.arcade.parameters_view import (
         CONFIGURE_TRACK_BOUNDS,
+        NEXT_TRACK_BOUNDS,
         ParametersView,
     )
     from frontend.arcade.weather_view import (
@@ -43,6 +44,22 @@ ARCADE_GUI_TEST = ParametersView is not None and bool(os.environ.get("ARCADE_GUI
     "requires Arcade with ARCADE_GUI_TEST=True",
 )
 class ParametersViewTest(unittest.TestCase):
+    CATALOG = {
+        "count": 2,
+        "tracks": [
+            {"circuit_id": "circuit:18", "name": "Interlagos", "lap_length_m": 4232.0},
+            {"circuit_id": "circuit:6", "name": "Monaco", "lap_length_m": 3337.0},
+        ],
+    }
+
+    def ready_view(self) -> ParametersView:
+        """Provide a catalog response without an HTTP server or waiting."""
+
+        view = ParametersView(track_catalog_loader=lambda: self.CATALOG)
+        view._catalog_results.put(("success", self.CATALOG))
+        view.on_update(0)
+        return view
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.window = arcade.Window(1280, 720, visible=False)
@@ -93,7 +110,7 @@ class ParametersViewTest(unittest.TestCase):
         )
 
     def test_opens_the_weather_view_with_the_current_lap_count(self) -> None:
-        view = ParametersView()
+        view = self.ready_view()
         self.window.show_view(view)
         view.laps_input.text = "71"
 
@@ -103,7 +120,7 @@ class ParametersViewTest(unittest.TestCase):
         self.assertEqual(self.window.current_view.schedule.total_laps, 71)
 
     def test_initial_screen_opens_the_selected_track_configuration(self) -> None:
-        view = ParametersView()
+        view = self.ready_view()
         self.window.show_view(view)
         left, bottom, width, height = CONFIGURE_TRACK_BOUNDS
         x = int(left + width / 2)
@@ -115,6 +132,48 @@ class ParametersViewTest(unittest.TestCase):
         self.assertIsInstance(self.window.current_view, WeatherConfigurationView)
         self.assertFalse(view.preset_dropdown.visible)
         self.assertFalse(view.laps_input.visible)
+
+    def test_selects_another_backend_track_and_preserves_it_after_return(self) -> None:
+        view = self.ready_view()
+        self.window.show_view(view)
+        left, bottom, width, height = NEXT_TRACK_BOUNDS
+
+        view.on_mouse_release(left + width // 2, bottom + height // 2, arcade.MOUSE_BUTTON_LEFT, 0)
+        self.assertEqual(view.selected_track["circuit_id"], "circuit:6")
+
+        view.open_track_configuration()
+        configured = self.window.current_view
+        self.assertEqual(configured.circuit_id, "circuit:6")
+        self.assertEqual(configured.track_name, "Monaco")
+        configured.cancel()
+        self.assertIs(self.window.current_view, view)
+        self.assertEqual(view.selected_track["circuit_id"], "circuit:6")
+
+    def test_does_not_open_a_track_before_catalog_loads(self) -> None:
+        view = ParametersView(track_catalog_loader=lambda: self.CATALOG)
+        self.window.show_view(view)
+        view.open_track_configuration()
+
+        self.assertIs(self.window.current_view, view)
+        self.assertIn("catálogo", view.status_message)
+
+    def test_catalog_failure_keeps_selection_unavailable(self) -> None:
+        view = ParametersView(track_catalog_loader=lambda: self.CATALOG)
+        view._catalog_results.put(("error", "URLError"))
+        view.on_update(0)
+
+        self.assertIsNone(view.selected_track)
+        self.assertIn("URLError", view.status_message)
+        view.open_track_configuration()
+        self.assertIsNone(view.selected_track)
+
+    def test_navigation_wraps_through_all_catalog_entries(self) -> None:
+        view = self.ready_view()
+        view._selected_track_index = len(view._tracks) - 1
+
+        view._change_track(1)
+
+        self.assertEqual(view.selected_track["circuit_id"], "circuit:18")
 
     def test_track_configuration_uses_the_sidebar_to_change_topics(self) -> None:
         parent = ParametersView()

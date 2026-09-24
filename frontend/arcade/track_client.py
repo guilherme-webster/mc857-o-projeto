@@ -21,5 +21,11 @@ def fetch_track(circuit_id: int | str, base_url: str = BASE_URL) -> dict:
     return _get(f"/simulation/track/{circuit_id}", base_url)
 
 
+def fetch_tracks(base_url: str = BASE_URL) -> dict:
+    """Return the backend catalog of circuits with available geometry."""
+
+    return _get("/simulation/tracks", base_url)
+
+
 def fetch_race(base_url: str = BASE_URL) -> dict:
     return _get("/simulation/race", base_url)

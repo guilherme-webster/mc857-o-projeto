@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-18T22:48:13Z
-- **Abertas:** 46
-- **Fechadas:** 9
+- **Ultima atividade registrada:** 2026-09-24T22:12:58Z
+- **Abertas:** 45
+- **Fechadas:** 10
 
 ## Issues abertas
 
@@ -417,7 +417,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:16:51Z
-- **Atualizada:** 2026-09-18T22:48:13Z
+- **Atualizada:** 2026-09-24T22:12:58Z
 - **Fechada:** —
 
 <details>
@@ -428,7 +428,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 </details>
 
 <details>
-<summary>Comentarios (7)</summary>
+<summary>Comentarios (8)</summary>
 
 #### [@Jmvjr em 2026-09-18T22:14:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736826058)
 
@@ -457,6 +457,10 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 #### [@Jmvjr em 2026-09-18T22:48:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737099621)
 
 <pre>Ajuste visual após revisão: as camadas da pista foram afinadas (contorno total 23→18 px), a pit lane foi reduzida (11→8 px), o risco interno do asfalto foi removido e a linha de largada acompanhou a nova largura. Isso aumenta a separação visual na reta dos boxes sem alterar coordenadas. Nova captura revisada; 14/14 testes Arcade, testes de transformação, Ruff e diff check aprovados.</pre>
+
+#### [@Jmvjr em 2026-09-24T22:12:58Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5823094639)
+
+<pre>Implementação local da seleção de pistas: a tela inicial consulta GET /simulation/tracks, permite percorrer o catálogo e abre a configuração com o circuito escolhido; o tópico Pista carrega sua geometria via GET /simulation/track/{circuit_id}. Tratados carregamento e erro da API. Verificações: 175 testes unitários passaram (18 testes de GUI omitidos por padrão); 18 testes de GUI passaram com ARCADE_GUI_TEST=True; Ruff e git diff --check passaram; integração manual com backend confirmou 24 pistas e prévia de Monaco. Próximo passo: revisão/commit pelo responsável e integração da branch. Limitação: a seleção de geometria não amplia o suporte do motor de simulação a todos os circuitos.</pre>
 
 </details>
 
@@ -1090,34 +1094,6 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 - 2026-09-05T19:56:27Z — sub-issue adicionada: #47 por @Gustavo-Jun-Tsuji
 - 2026-09-05T16:38:00Z — sub-issue adicionada: #43 por @Gustavo-Jun-Tsuji
 - 2026-09-04T23:02:57Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
-- **Sub-issues:** —
-- **Criada:** 2026-09-05T16:37:59Z
-- **Atualizada:** 2026-09-05T16:38:09Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-05T16:38:09Z — label adicionada: História por @Gustavo-Jun-Tsuji
 
 </details>
 
@@ -2055,6 +2031,35 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-11T22:14:03Z — fechada por @guilherme-webster
 - 2026-09-02T19:30:12Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-09-02T19:19:47Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+- **Sub-issues:** —
+- **Criada:** 2026-09-05T16:37:59Z
+- **Atualizada:** 2026-09-24T18:52:46Z
+- **Fechada:** 2026-09-24T18:52:46Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-24T18:52:46Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-05T16:38:09Z — label adicionada: História por @Gustavo-Jun-Tsuji
 
 </details>
 
