@@ -2,6 +2,7 @@ name: Enforce develop to main PR
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     branches:
       - main
 
