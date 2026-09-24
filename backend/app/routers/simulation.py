@@ -16,6 +16,7 @@ from app.schemas.responses import (
     RaceCatalogResponse,
     RaceDetailsResponse,
     RaceLoadErrorResponse,
+    SeriesSimulationRequest,
 )
 from fastapi import APIRouter, HTTPException, status
 
@@ -72,6 +73,47 @@ def obter_dados_corrida() -> dict:
 def simular_corrida() -> dict:
 
     return simulate_current_race()
+
+
+@router.post("/series/simulate")
+def simular_sequencia(request: SeriesSimulationRequest) -> dict:
+    """Simule corridas livres nas pistas escolhidas, sem carregar uma corrida.
+
+    Os comprimentos e nomes vêm do catálogo publicado pelo backend, nunca de
+    valores arbitrários enviados pelo cliente. A ordem enviada é preservada.
+    """
+
+    from f1_simulator.domain.race_series import (
+        SeriesCompetitor,
+        SeriesTrack,
+        simulate_series,
+    )
+
+    catalog = {
+        track["circuit_id"]: track for track in list_available_tracks()["tracks"]
+    }
+    unknown = [
+        track.circuit_id for track in request.tracks if track.circuit_id not in catalog
+    ]
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Pistas indisponíveis: {unknown}")
+    tracks = tuple(
+        SeriesTrack(
+            circuit_id=item.circuit_id,
+            name=catalog[item.circuit_id]["name"],
+            lap_length_m=catalog[item.circuit_id]["lap_length_m"],
+            total_laps=item.total_laps,
+        )
+        for item in request.tracks
+    )
+    competitors = tuple(
+        SeriesCompetitor(item.driver_id, item.name, item.pace_ms_per_km)
+        for item in request.competitors
+    )
+    try:
+        return simulate_series(tracks, competitors)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @router.get("/tracks")

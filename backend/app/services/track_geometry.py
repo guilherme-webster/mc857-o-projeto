@@ -37,7 +37,12 @@ def geometry_dataset():
 
 
 def _geometry_payload(geometry) -> dict:
-    """Serialize uma TrackGeometry no formato JSON consumido pelo frontend."""
+    """Serialize os dois caminhos validados no sistema de coordenadas comum.
+
+    Pista e pit lane pertencem ao mesmo agregado e foram normalizadas pela
+    mesma transformacao. Mantê-las na mesma resposta impede que um cliente
+    redimensione cada caminho isoladamente e destaque o pit fora da pista.
+    """
 
     return {
         "circuit_id": geometry.circuit_id,
@@ -50,6 +55,16 @@ def _geometry_payload(geometry) -> dict:
                 "cumulative_distance_m": p.cumulative_distance_m,
             }
             for p in geometry.track_points
+        ],
+        "pit_lane_points": [
+            {
+                "sequence": p.sequence,
+                "x": p.x_normalized,
+                "y": p.y_normalized,
+                "path_fraction": p.path_fraction,
+                "is_service_point": p.is_service_point,
+            }
+            for p in geometry.pit_lane_points
         ],
     }
 
