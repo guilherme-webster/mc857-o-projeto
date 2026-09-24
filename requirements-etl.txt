@@ -1,0 +1,2 @@
+# Offline acquisition only; domain, Trotman ingestion and repositories use stdlib.
+fastf1==3.8.3

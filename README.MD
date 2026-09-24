@@ -12,6 +12,9 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 - [Guia de contribuicao](CONTRIBUTING.md)
 - [Registros de decisoes arquiteturais](docs/adr/README.md)
 - [Fluxo e responsabilidades do ETL](docs/fluxo-etl.md)
+- [ETL completo: Trotman e FastF1](docs/etl-enriquecimento.md)
+- [Proposta de planejamento da modelagem](docs/planejamento-modelagem.md)
+- [Dados e plano de perfilamento dos pilotos](docs/perfilamento-pilotos.md)
 
 O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
 experiencia de visualizacao do projeto
@@ -20,7 +23,9 @@ será o backend, e o motor de simulacao continuara independente dos dois
 frameworks. O
 [ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md)
 estabelece arquitetura hexagonal, integracao de dados com Adapter + Factory e a
-base Formula 1 Race Data, de James Trotman, como fonte inicial unica do MVP.
+base Formula 1 Race Data, de James Trotman, como fonte inicial. O
+[ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md) amplia o ETL para
+o historico completo e observacoes complementares do FastF1.
 
 ## 📦 Pré-requisitos e Dependências
 
@@ -61,6 +66,11 @@ Antes de iniciar a execução do projeto, certifique-se de possuir as ferramenta
 
 ## ETL da Base Trotman
 
+O fluxo abaixo importa uma corrida. Para os 14 CSVs completos, usar
+`python3 scripts/ingest_trotman.py --all-tables --output data/curated/history.sqlite`.
+O [guia de enriquecimento](docs/etl-enriquecimento.md) mostra aquisicao FastF1,
+contratos Python, relatorios internos e limites de cobertura.
+
 Baixe e verifique o arquivo bruto da versao 128:
 
 ```bash
@@ -87,17 +97,21 @@ O SQLite gerado contem `metadata`, `source_ids`, `circuits`, `drivers`, `teams`,
 milissegundos e ausencias permanecem `NULL`. O JSON de qualidade registra
 contagens, nulos, duplicatas, referencias orfas e pit stops anormalmente longos.
 
-### Geometrias mockadas das pistas
+### Geometrias das pistas derivadas do FastF1
+
+O termo historico "mock" identifica aqui uma aproximacao derivada de dados
+reais, nao coordenadas inventadas. O ponto de servico e representativo; os
+tracados nao fornecem limites oficiais, aderencia ou parametros de pilotos.
 
 A fixture `tests/fixtures/trotman_v128_tracks_2025/` contém as polilinhas das
 24 pistas do calendário de 2025 e seus pit lanes. Cada pit lane inclui um ponto
 de serviço representativo. Os dados foram derivados offline do FastF1; cache,
 telemetria bruta e scripts de geração não fazem parte do repositório. Consulte
 o ADR 0003 e os manifestos em `data/sources/` para proveniência, transformação
-e limitações de uso. O visualizador temporário usado para inspecionar os mocks
+e limitações de uso. O visualizador temporário usado para inspecionar as geometrias
 também não faz parte do repositório.
 
-Para incluir os tracos e pit lanes mockados da issue #51 no mesmo SQLite,
+Para incluir os tracos e pit lanes derivados da issue #51 no mesmo SQLite,
 acrescente `--geometry-dir` ao comando de ingestao:
 
 ```bash
@@ -112,10 +126,10 @@ python3 scripts/ingest_trotman.py \
 Esse exemplo usa a amostra pequena de corrida. Para processar os dados completos,
 omita `--source` depois de baixar o Trotman v128. O comando importa apenas a
 geometria do circuito da corrida, validando ambos os CSVs e seus manifestos.
-Os mocks das 24 pistas continuam disponiveis para outras corridas suportadas.
+As geometrias das 24 pistas continuam disponiveis para outras corridas suportadas.
 
 X/Y sao normalizados e sem unidade; distancia acumulada da pista e em metros.
-Os mocks sao de 2025: seu uso com uma corrida de outro ano fica explicito no
+As geometrias sao de 2025: seu uso com uma corrida de outro ano fica explicito no
 relatorio. Consulte o [contrato de consumo](docs/fluxo-etl.md#geometria-de-pista-e-pit-lane)
 para ler as novas tabelas com `SQLiteTrackGeometryRepository`.
 
@@ -200,7 +214,7 @@ Você pode executar a aplicação completa (comunicação Frontend + Backend) ou
 A `ParametersView` apresenta os dados historicos da corrida de referencia como
 somente leitura e permite alterar o numero de voltas. O botao de clima abre uma
 segunda `arcade.View`, na qual uma condicao pode ser aplicada a intervalos de
-voltas. O botao de inicio valida o formulario, mas a conexao com Django e com o
+voltas. O botao de inicio valida o formulario, mas a conexao com FastAPI e com o
 motor pertence a um incremento posterior.
 
 ### Tela de simulação da corrida
@@ -239,3 +253,47 @@ gh workflow run sync-backlog.yml
 ### Regras de pull request
 
 Por exemplo, apenas a develop pode ser mergeada na main
+
+## Modelagem inicial de pilotos
+
+O [guia da modelagem inicial](docs/modelagem-pilotos-inicial.md) descreve o caso
+de uso Python `profile_drivers`, as métricas de ritmo/consistência, os filtros
+explícitos e a CLI com gráficos opcionais. Consome o histórico enriquecido sem
+HTTP. O método é exploratório e não representa calibração do motor.
+
+A [avaliação de perfis entre eventos](docs/avaliacao-perfis-entre-eventos.md)
+usa o protocolo em `configs/profile-evaluation-2024.json`. Execute
+`pipenv run python -B scripts/evaluate_profiles.py --database data/curated/history-profile-evaluation-2024.sqlite --plan configs/profile-evaluation-2024.json`.
+A saída é uma pasta nova com relatório, JSON, CSVs e gráficos; não exige
+redirecionar o JSON nem remover resultados anteriores.
+
+A [análise de sensibilidade dos contextos](docs/sensibilidade-contextos-pilotos.md)
+compara agrupamento por stint e janela de voltas, mostrando cobertura e
+intervalos exploratórios por evento nos gráficos:
+
+```bash
+pipenv run python -B scripts/analyze_profile_contexts.py \
+  --database data/curated/history-profile-evaluation-2024.sqlite \
+  --plan configs/profile-evaluation-2024.json
+```
+
+O [contrato dos efeitos do perfil](docs/contrato-perfil-simulacao.md) especifica
+ritmo, variabilidade, unidades e critérios da futura integração com o motor.
+A [amostra expandida de 2024](docs/amostra-pilotos-2024-expandida.md) separa
+18 corridas de desenvolvimento e seis reservadas antes de consultar métricas
+novas; o guia contém os comandos de aquisição pelo ETL existente.
+
+A [avaliação da reserva de 2024](docs/avaliacao-reserva-pilotos-2024.md) registra
+os resultados dos seis eventos e a investigação de contexto, suporte e diferenças
+entre grupos. A reserva foi examinada em 18/09/2026; não reutilizá-la como inédita.
+
+A [comparação entre companheiros e referência determinística](docs/companheiros-e-referencia-deterministica.md)
+usa contextos compartilhados, apresenta suporte e intervalos e exporta referências
+de tempo específicas por circuito/sessão. Execute `scripts/analyze_teammates.py`
+conforme os comandos do guia; a integração ao motor permanece posterior.
+
+## Ranking de pilotos e adaptador para simulação
+
+O [guia de ranking e integração Python](docs/ranking-e-adaptador-pilotos.md)
+descreve a ordenação por ritmo observado, geração de gráficos e o contrato
+para executar o primeiro experimento determinístico de uma volta.
