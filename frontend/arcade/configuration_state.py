@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
-PRESET_OPTIONS = ("GP de São Paulo 2024",)
+PRESET_OPTIONS = ("Corrida livre", "GP de São Paulo 2024")
 WEATHER_OPTIONS = ("Seco", "Chuva leve", "Chuva intensa")
 MIN_LAPS = 1
 MAX_LAPS = 200
@@ -75,9 +74,7 @@ class WeatherSchedule:
                 "a volta inicial não pode ser maior que a volta final"
             )
         updated = list(self.by_lap)
-        updated[start_lap - 1 : end_lap] = (weather,) * (
-            end_lap - start_lap + 1
-        )
+        updated[start_lap - 1 : end_lap] = (weather,) * (end_lap - start_lap + 1)
         return WeatherSchedule(tuple(updated))
 
     def apply_text(
@@ -138,6 +135,81 @@ def _validate_laps(laps: int) -> None:
 
 DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(69)
 
+SCORING_OPTIONS = ("F1 oficial", "Sem pontuação")
+WEATHER_MODE_OPTIONS = ("Configuração por corrida", "Seco em todas")
+TIEBREAK_OPTIONS = ("Melhor posição média", "Mais vitórias")
+
+
+@dataclass(frozen=True, slots=True)
+class TournamentRules:
+    """Regras gerais da sequência, independentes dos widgets Arcade."""
+
+    name: str = "Temporada personalizada"
+    total_stages: int = 1
+    scoring: str = SCORING_OPTIONS[0]
+    generation_mode: str = "Manual"
+    weather_mode: str = WEATHER_MODE_OPTIONS[0]
+    allow_repeats: bool = False
+    tiebreak: str = TIEBREAK_OPTIONS[0]
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ConfigurationFormError("informe um nome para o torneio")
+        if not 1 <= self.total_stages <= 24:
+            raise ConfigurationFormError("o torneio deve ter entre 1 e 24 etapas")
+        if self.scoring not in SCORING_OPTIONS:
+            raise ConfigurationFormError("sistema de pontuação desconhecido")
+        if self.generation_mode not in ("Manual", "Automática"):
+            raise ConfigurationFormError("modo de geração desconhecido")
+        if self.weather_mode not in WEATHER_MODE_OPTIONS:
+            raise ConfigurationFormError("modo de clima desconhecido")
+        if self.tiebreak not in TIEBREAK_OPTIONS:
+            raise ConfigurationFormError("critério de desempate desconhecido")
+
+
+@dataclass(frozen=True, slots=True)
+class SessionConfiguration:
+    """Options of one tournament stage; these do not alter historical facts."""
+
+    first_lap: int
+    last_lap: int
+    start_mode: str = "Parada"
+
+    def __post_init__(self) -> None:
+        if not 1 <= self.first_lap <= self.last_lap <= MAX_LAPS:
+            raise ConfigurationFormError("intervalo de voltas da sessão inválido")
+        if self.start_mode not in ("Parada", "Lançada"):
+            raise ConfigurationFormError("modo de largada desconhecido")
+
+
+@dataclass(frozen=True, slots=True)
+class PlannedRace:
+    """Configuração de uma etapa, independente de corridas históricas."""
+
+    circuit_id: str
+    name: str
+    configuration: ConfigurationFormData
+    session: SessionConfiguration | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SimulationPlan:
+    """Sequência ordenada de etapas configuradas pelo usuário."""
+
+    races: tuple[PlannedRace, ...]
+    rules: TournamentRules = TournamentRules()
+
+    def __post_init__(self) -> None:
+        """Não permita sequência vazia nem a mesma pista duas vezes."""
+
+        if not self.races:
+            raise ConfigurationFormError("selecione pelo menos uma pista")
+        ids = [race.circuit_id for race in self.races]
+        if any(not race.circuit_id or not race.name for race in self.races):
+            raise ConfigurationFormError("pista sem identificação")
+        if not self.rules.allow_repeats and len(ids) != len(set(ids)):
+            raise ConfigurationFormError("pistas duplicadas na sequência")
+
 
 @dataclass(frozen=True, slots=True)
 class ConfigurationFormData:
@@ -181,6 +253,7 @@ class ConfigurationFormData:
             laps=parsed_laps,
             weather_schedule=schedule.resize(parsed_laps),
         )
+
 
 def _format_weather_range(weather_range: WeatherRange) -> str:
     """Format one inclusive interval without hiding single-lap ranges."""

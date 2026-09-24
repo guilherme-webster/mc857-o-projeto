@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import unittest
 
-from frontend.arcade.configuration_layout import Bounds, build_initial_configuration_layout
+from frontend.arcade.configuration_layout import (
+    Bounds,
+    build_initial_configuration_layout,
+)
 
 
 class InitialConfigurationLayoutTest(unittest.TestCase):
@@ -15,12 +18,14 @@ class InitialConfigurationLayoutTest(unittest.TestCase):
         for control in layout.controls:
             self.assertTrue(layout.screen.contains(control.bounds))
 
-    def test_exposes_reference_data_and_only_scenario_parameters_as_editable(self) -> None:
+    def test_exposes_reference_data_and_only_scenario_parameters_as_editable(
+        self,
+    ) -> None:
         layout = build_initial_configuration_layout()
         controls = {control.identifier: control for control in layout.controls}
 
-        self.assertEqual(controls["reference_race"].value, "São Paulo Grand Prix 2024")
-        self.assertEqual(controls["reference_circuit"].value, "Autódromo José Carlos Pace")
+        self.assertEqual(controls["reference_race"].value, "Opcional")
+        self.assertEqual(controls["reference_circuit"].value, "Escolhida no catálogo")
         self.assertFalse(controls["reference_race"].editable)
         self.assertFalse(controls["reference_circuit"].editable)
         self.assertTrue(controls["laps"].editable)

@@ -1,6 +1,28 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class SeriesTrackRequest(BaseModel):
+    """Uma pista da sequência, identificada pelo catálogo de geometria."""
+
+    circuit_id: str = Field(min_length=1)
+    total_laps: int = Field(ge=1, le=200)
+
+
+class SeriesCompetitorRequest(BaseModel):
+    """Participante livre; ritmo-base explícito em milissegundos por km."""
+
+    driver_id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    pace_ms_per_km: float = Field(gt=0, allow_inf_nan=False)
+
+
+class SeriesSimulationRequest(BaseModel):
+    """Sequência ordenada e pilotos informados pelo usuário, sem race_id."""
+
+    tracks: list[SeriesTrackRequest] = Field(min_length=1, max_length=24)
+    competitors: list[SeriesCompetitorRequest] = Field(min_length=1, max_length=40)
 
 
 class DriverParametersResponse(BaseModel):

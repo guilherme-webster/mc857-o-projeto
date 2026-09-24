@@ -5,12 +5,24 @@ import unittest
 from frontend.arcade.configuration_state import (
     ConfigurationFormData,
     ConfigurationFormError,
+    PlannedRace,
+    SimulationPlan,
     WeatherRange,
     WeatherSchedule,
 )
 
 
 class ConfigurationFormDataTest(unittest.TestCase):
+    def test_free_race_is_default_without_historical_preset(self) -> None:
+        self.assertEqual(ConfigurationFormData().preset, "Corrida livre")
+
+    def test_series_plan_requires_unique_circuits(self) -> None:
+        race = PlannedRace("circuit:18", "Interlagos", ConfigurationFormData())
+        with self.assertRaisesRegex(ConfigurationFormError, "pelo menos uma pista"):
+            SimulationPlan(())
+        with self.assertRaisesRegex(ConfigurationFormError, "duplicadas"):
+            SimulationPlan((race, race))
+
     def test_parses_valid_widget_text(self) -> None:
         result = ConfigurationFormData.from_text(
             preset="GP de São Paulo 2024",

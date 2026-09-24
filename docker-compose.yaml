@@ -7,10 +7,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
-      - ./src:/app/src
-      - ./scripts:/app/scripts
-      - ./data:/data
+      # ``Z`` gives private SELinux labels to bind mounts on Fedora/RHEL while
+      # remaining accepted by Docker Compose on hosts without SELinux.
+      - ./backend:/app:Z
+      - ./src:/app/src:Z
+      - ./scripts:/app/scripts:Z
+      - ./data:/data:Z
+      - ./tests/fixtures/trotman_v128_tracks_2025:/data/geometry:ro,Z
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
