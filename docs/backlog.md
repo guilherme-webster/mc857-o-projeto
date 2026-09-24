@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-24T22:12:58Z
+- **Ultima atividade registrada:** 2026-09-24T23:05:46Z
 - **Abertas:** 45
 - **Fechadas:** 10
 
@@ -23,7 +23,7 @@
 - **Issue-pai:** —
 - **Sub-issues:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2), [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3), [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4), [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Criada:** 2026-08-28T22:59:38Z
-- **Atualizada:** 2026-08-28T23:29:11Z
+- **Atualizada:** 2026-09-24T22:22:48Z
 - **Fechada:** —
 
 <details>
@@ -35,6 +35,15 @@
 * Visualizar parâmetros
 * Enviar dados para o servidor
 * Padronizar os dados</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-09-24T22:22:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/1#issuecomment-5823204724)
+
+<pre>Mudança de escopo autorizada pelo usuário: a tela inicial agora permite adicionar/remover várias pistas do catálogo em ordem, configurar voltas e clima por etapa e confirmar um SimulationPlan; Corrida livre é o padrão. O ADR 0006 registra a substituição do recorte original de circuito único. Implementado POST /simulation/series/simulate: recebe pistas e participantes/ritmo em ms/km, valida IDs pelo catálogo e executa cada etapa no núcleo sem carregar uma corrida histórica. Verificações: 186 testes passaram (22 GUI pulados no padrão), 22 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff/Black/diff check passaram; POST real com Interlagos e Mônaco retornou duas corridas na ordem. Próximo passo: editor de participantes e integração da confirmação do Arcade com a rota/tela de acompanhamento; clima, pit stops e pontuação acumulada ainda não afetam o motor atual. Nenhum commit foi criado pelo agente.</pre>
 
 </details>
 
@@ -60,13 +69,26 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14), [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26), [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29)
 - **Criada:** 2026-08-28T23:03:16Z
-- **Atualizada:** 2026-08-28T23:31:22Z
+- **Atualizada:** 2026-09-24T23:05:46Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>Nessa tela o usuário poderá visualizar dados e poder alterá-los</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-09-24T22:57:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823587802)
+
+<pre>Etapa da interface: tela inicial de torneio ampliada para 1672x900, com texto renderizado em resolução nativa; segunda tela de configuração por corrida criada conforme referência, com aba Sessão funcional, resumo de pista/clima, navegação para o editor de Clima existente e sem Assistências. Pista, Regras e Carros permanecem placeholders por pedido do usuário. Sessão e clima são incluídos no plano salvo. Verificações: 192 testes passaram na suíte padrão (28 GUI pulados), 28 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff e git diff --check passaram. Próximos passos: implementar as abas adiadas e integrar confirmação do Arcade à execução/acompanhamento da simulação. Limitação atual: configurações de etapas com pista repetida ainda são compartilhadas por ID de circuito. Nenhum commit criado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-24T23:05:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823695300)
+
+<pre>Correção do fluxo da segunda tela: a aba Clima agora edita a programação por volta dentro da própria RaceConfigurationView, sem abrir WeatherConfigurationView nem redimensionar a janela. Preservados seleção de condição, pintura inclusiva por arraste, campos de intervalo, aplicação e resumo paginado; salvar/avançar persiste o clima e cancelar descarta alterações não salvas. README atualizado. Verificações: suíte geral 194 testes OK (30 GUI pulados), 31 testes GUI OK, Ruff/Black/diff check OK; captura da aba em 1672x900 inspecionada. Próximo passo: abas Pista/Regras/Carros e integração da confirmação com a simulação. Nenhum commit criado pelo agente.</pre>
 
 </details>
 

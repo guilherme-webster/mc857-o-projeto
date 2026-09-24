@@ -25,6 +25,11 @@ O usuário deverá conseguir:
 
 O primeiro incremento demonstrável será deliberadamente estreito:
 
+> Atualização (ADR 0006): o recorte de circuito único abaixo documenta o MVP
+> original. A configuração atual aceita uma sequência de pistas e uma rota de
+> corridas livres sem corrida histórica obrigatória. Isso não implica que a
+> interface de acompanhamento ou todos os fenômenos físicos já estejam prontos.
+
 - usar **Trotman v128 e enriquecimento offline FastF1**, conforme o [ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md), com proveniência registrada;
 - suportar **um único circuito** previamente escolhido pelo grupo;
 - implementar o ETL necessário para esse dataset;

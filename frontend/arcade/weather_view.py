@@ -52,14 +52,12 @@ NAVIGATION_BOUNDS = {
     "Sessão": (0, 570, SIDEBAR_WIDTH, 42),
     "Pista": (0, 528, SIDEBAR_WIDTH, 42),
     "Clima": (0, 476, SIDEBAR_WIDTH, 42),
-    "Assistências": (0, 434, SIDEBAR_WIDTH, 42),
-    "Regras": (0, 392, SIDEBAR_WIDTH, 42),
-    "Carros": (0, 350, SIDEBAR_WIDTH, 42),
+    "Regras": (0, 434, SIDEBAR_WIDTH, 42),
+    "Carros": (0, 392, SIDEBAR_WIDTH, 42),
 }
 TOPIC_DESCRIPTIONS = {
     "Sessão": "Os parâmetros gerais da sessão serão configurados aqui.",
     "Pista": "Traçado, pit lane e ponto de serviço.",
-    "Assistências": "As assistências de pilotagem ainda não fazem parte do MVP.",
     "Regras": "As regras configuráveis serão adicionadas em um próximo incremento.",
     "Carros": "A seleção e os ajustes dos carros dependem da integração com o ETL.",
 }
@@ -148,9 +146,7 @@ class TrackConfigurationView(UIView):
         self._status_color = SECONDARY_TEXT_COLOR
 
         self.start_lap_input = self._add_input(214, 492, "1")
-        self.end_lap_input = self._add_input(
-            358, 492, str(self.schedule.total_laps)
-        )
+        self.end_lap_input = self._add_input(358, 492, str(self.schedule.total_laps))
         # This hidden bridge preserves the precise interval API while the
         # visible control is the faster color palette from the new design.
         self.weather_dropdown = UIDropdown(
@@ -222,9 +218,7 @@ class TrackConfigurationView(UIView):
         """Center a numeric value in Pyglet's document-backed input layout."""
 
         if widget.text:
-            widget.doc.set_paragraph_style(
-                0, len(widget.text), {"align": "center"}
-            )
+            widget.doc.set_paragraph_style(0, len(widget.text), {"align": "center"})
         widget.layout.content_valign = "center"
 
     def apply_weather_range(self) -> None:
@@ -288,16 +282,12 @@ class TrackConfigurationView(UIView):
         self._drag_current_lap = self._lap_at_timeline_x(x)
         self._sync_inputs_with_drag()
 
-    def on_mouse_motion(
-        self, x: int, y: int, dx: int, dy: int
-    ) -> None:
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int) -> None:
         """Track the action button under the pointer for hover feedback."""
 
         self._hovered_button = self._button_at_position(x, y)
 
-    def on_mouse_release(
-        self, x: int, y: int, button: int, modifiers: int
-    ) -> None:
+    def on_mouse_release(self, x: int, y: int, button: int, modifiers: int) -> None:
         """Commit the inclusive preview when the left button is released."""
 
         if button != arcade.MOUSE_BUTTON_LEFT:
@@ -311,12 +301,8 @@ class TrackConfigurationView(UIView):
         if self._drag_start_lap is None:
             return
         self._drag_current_lap = self._lap_at_timeline_x(x)
-        start_lap, end_lap = sorted(
-            (self._drag_start_lap, self._drag_current_lap)
-        )
-        self.schedule = self.schedule.apply(
-            start_lap, end_lap, self.selected_weather
-        )
+        start_lap, end_lap = sorted((self._drag_start_lap, self._drag_current_lap))
+        self.schedule = self.schedule.apply(start_lap, end_lap, self.selected_weather)
         self._update_interval_inputs(start_lap, end_lap)
         self._drag_start_lap = None
         self._drag_current_lap = None
@@ -406,9 +392,7 @@ class TrackConfigurationView(UIView):
         return False
 
     @staticmethod
-    def _position_in_bounds(
-        x: int, y: int, bounds: tuple[int, int, int, int]
-    ) -> bool:
+    def _position_in_bounds(x: int, y: int, bounds: tuple[int, int, int, int]) -> bool:
         """Return whether a point lies in a left-bottom-width-height tuple."""
 
         left, bottom, width, height = bounds
@@ -543,9 +527,11 @@ class TrackConfigurationView(UIView):
                 topic,
                 38,
                 bottom + height / 2,
-                PRIMARY_TEXT_COLOR
-                if topic == self.active_topic
-                else SECONDARY_TEXT_COLOR,
+                (
+                    PRIMARY_TEXT_COLOR
+                    if topic == self.active_topic
+                    else SECONDARY_TEXT_COLOR
+                ),
                 11,
                 anchor_y="center",
             ).draw()
@@ -561,10 +547,12 @@ class TrackConfigurationView(UIView):
         self._draw_rounded_panel(
             174, 72, 1082, 574, 8, SURFACE_COLOR, MUTED_BORDER_COLOR
         )
-        for bounds in ((198, 464, 1038, 112), (198, 282, 1038, 170), (198, 110, 1038, 160)):
-            self._draw_rounded_panel(
-                *bounds, 6, CARD_COLOR, MUTED_BORDER_COLOR
-            )
+        for bounds in (
+            (198, 464, 1038, 112),
+            (198, 282, 1038, 170),
+            (198, 110, 1038, 160),
+        ):
+            self._draw_rounded_panel(*bounds, 6, CARD_COLOR, MUTED_BORDER_COLOR)
         self._draw_rounded_panel(
             214, 492, 124, 34, 5, CARD_COLOR_LIGHT, MUTED_BORDER_COLOR
         )
@@ -589,11 +577,27 @@ class TrackConfigurationView(UIView):
             hovered = button is self._hovered_button
             pressed = button is self._pressed_button
             if button.primary:
-                fill = (161, 22, 31) if pressed else (232, 43, 53) if hovered else (204, 31, 42)
-                border = (128, 15, 23) if pressed else (255, 103, 109) if hovered else (238, 55, 64)
+                fill = (
+                    (161, 22, 31)
+                    if pressed
+                    else (232, 43, 53) if hovered else (204, 31, 42)
+                )
+                border = (
+                    (128, 15, 23)
+                    if pressed
+                    else (255, 103, 109) if hovered else (238, 55, 64)
+                )
             else:
-                fill = (9, 16, 25) if pressed else (27, 40, 56) if hovered else CARD_COLOR_LIGHT
-                border = ACCENT_COLOR if pressed else (88, 106, 128) if hovered else (49, 65, 83)
+                fill = (
+                    (9, 16, 25)
+                    if pressed
+                    else (27, 40, 56) if hovered else CARD_COLOR_LIGHT
+                )
+                border = (
+                    ACCENT_COLOR
+                    if pressed
+                    else (88, 106, 128) if hovered else (49, 65, 83)
+                )
             self._draw_rounded_panel(
                 button.left,
                 button.bottom,
@@ -616,9 +620,7 @@ class TrackConfigurationView(UIView):
     def _draw_topic_placeholder(self) -> None:
         """Present the selected topic without inventing unsupported settings."""
 
-        self._draw_rounded_panel(
-            198, 110, 1038, 466, 6, CARD_COLOR, MUTED_BORDER_COLOR
-        )
+        self._draw_rounded_panel(198, 110, 1038, 466, 6, CARD_COLOR, MUTED_BORDER_COLOR)
         arcade.Text(
             self.active_topic,
             230,
@@ -770,9 +772,7 @@ class TrackConfigurationView(UIView):
             9,
         ).draw()
         arcade.draw_circle_filled(left + 222, bottom + 23, 5, (255, 176, 0))
-        arcade.Text(
-            "Serviço", left + 234, bottom + 18, SECONDARY_TEXT_COLOR, 9
-        ).draw()
+        arcade.Text("Serviço", left + 234, bottom + 18, SECONDARY_TEXT_COLOR, 9).draw()
         self._draw_legend_start_finish(left + 305, bottom + 23)
         arcade.Text(
             "Largada/chegada",
@@ -790,9 +790,7 @@ class TrackConfigurationView(UIView):
             9,
         ).draw()
         arcade.draw_circle_filled(left + 507, bottom + 23, 4, (75, 142, 214))
-        arcade.Text(
-            "Saída", left + 517, bottom + 18, SECONDARY_TEXT_COLOR, 9
-        ).draw()
+        arcade.Text("Saída", left + 517, bottom + 18, SECONDARY_TEXT_COLOR, 9).draw()
 
     @staticmethod
     def _draw_direction_markers(
@@ -912,8 +910,11 @@ class TrackConfigurationView(UIView):
                 arcade.LBWH(left + 9, bottom + 9, 24, 24),
             )
             arcade.Text(
-                weather, left + 39, bottom + 14,
-                PRIMARY_TEXT_COLOR if selected else SECONDARY_TEXT_COLOR, 10,
+                weather,
+                left + 39,
+                bottom + 14,
+                PRIMARY_TEXT_COLOR if selected else SECONDARY_TEXT_COLOR,
+                10,
             ).draw()
 
     def _draw_weather_legend(self) -> None:
@@ -961,8 +962,11 @@ class TrackConfigurationView(UIView):
             1,
         )
         for weather_range in self.schedule.ranges()[1:]:
-            x = TIMELINE_LEFT + 2 + (TIMELINE_WIDTH - 4) * (
-                (weather_range.start_lap - 1) / self.schedule.total_laps
+            x = (
+                TIMELINE_LEFT
+                + 2
+                + (TIMELINE_WIDTH - 4)
+                * ((weather_range.start_lap - 1) / self.schedule.total_laps)
             )
             arcade.draw_lbwh_rectangle_filled(x - 5, 344, 10, 36, (9, 15, 23))
             arcade.draw_lbwh_rectangle_outline(x - 5, 344, 10, 36, (91, 106, 124), 1)
@@ -1131,12 +1135,27 @@ class TrackConfigurationView(UIView):
         title_y = bottom + height - 26 if compact else bottom + 66
         weather_y = bottom + 13 if compact else bottom + 40
         details_y = bottom + 5 if compact else bottom + 15
-        arcade.Text(f"Voltas {weather_range.start_lap} – {weather_range.end_lap}", x + 10, title_y, color, 9 if compact else 10, bold=True).draw()
+        arcade.Text(
+            f"Voltas {weather_range.start_lap} – {weather_range.end_lap}",
+            x + 10,
+            title_y,
+            color,
+            9 if compact else 10,
+            bold=True,
+        ).draw()
         arcade.draw_texture_rect(
             self._weather_icons[weather_range.weather],
-            arcade.LBWH(x + 10, weather_y - 2, 16 if compact else 18, 16 if compact else 18),
+            arcade.LBWH(
+                x + 10, weather_y - 2, 16 if compact else 18, 16 if compact else 18
+            ),
         )
-        arcade.Text(weather_range.weather, x + 32, weather_y + 4, PRIMARY_TEXT_COLOR, 9 if compact else 10).draw()
+        arcade.Text(
+            weather_range.weather,
+            x + 32,
+            weather_y + 4,
+            PRIMARY_TEXT_COLOR,
+            9 if compact else 10,
+        ).draw()
         details_x = x + width - 10 if compact else x + 10
         arcade.Text(
             f"{laps} voltas ({percentage:.1f}%)".replace(".", ","),
@@ -1151,28 +1170,70 @@ class TrackConfigurationView(UIView):
         """Create cached labels for the shell and the current screen."""
 
         labels = [
-            arcade.Text("SIMULADOR DE CORRIDA", 70, 690, SECONDARY_TEXT_COLOR, 10, bold=True),
+            arcade.Text(
+                "SIMULADOR DE CORRIDA", 70, 690, SECONDARY_TEXT_COLOR, 10, bold=True
+            ),
             arcade.Text("Ajuda", 1101, 689, SECONDARY_TEXT_COLOR, 10),
             arcade.Text("CONFIGURAÇÕES DA CORRIDA", 8, 630, SECONDARY_TEXT_COLOR, 8),
             arcade.Text("Sessão", 38, 590, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Pista", 38, 548, SECONDARY_TEXT_COLOR, 11),
             arcade.Text("Clima", 38, 492, PRIMARY_TEXT_COLOR, 11),
-            arcade.Text("Assistências", 38, 450, SECONDARY_TEXT_COLOR, 11),
-            arcade.Text("Regras", 38, 408, SECONDARY_TEXT_COLOR, 11),
-            arcade.Text("Carros", 38, 366, SECONDARY_TEXT_COLOR, 11),
-            arcade.Text("Configuração da pista", 198, 614, PRIMARY_TEXT_COLOR, 26, bold=True),
+            arcade.Text("", 38, 450, SECONDARY_TEXT_COLOR, 11),
+            arcade.Text("Regras", 38, 450, SECONDARY_TEXT_COLOR, 11),
+            arcade.Text("Carros", 38, 408, SECONDARY_TEXT_COLOR, 11),
+            arcade.Text(
+                "Configuração da pista", 198, 614, PRIMARY_TEXT_COLOR, 26, bold=True
+            ),
             arcade.Text(self.track_name, 198, 590, SECONDARY_TEXT_COLOR, 11),
-            arcade.Text("Intervalo de voltas", 214, 548, PRIMARY_TEXT_COLOR, 12, bold=True),
-            arcade.Text("Volta inicial", 276, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"),
-            arcade.Text("Volta final", 420, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"),
-            arcade.Text("Condição climática", 522, 548, PRIMARY_TEXT_COLOR, 10, bold=True),
-            arcade.Text("Timeline da pista", 214, 424, PRIMARY_TEXT_COLOR, 12, bold=True),
-            arcade.Text("Clique e arraste para pintar um período da corrida.", 214, 407, SECONDARY_TEXT_COLOR, 9),
+            arcade.Text(
+                "Intervalo de voltas", 214, 548, PRIMARY_TEXT_COLOR, 12, bold=True
+            ),
+            arcade.Text(
+                "Volta inicial", 276, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"
+            ),
+            arcade.Text(
+                "Volta final", 420, 530, SECONDARY_TEXT_COLOR, 9, anchor_x="center"
+            ),
+            arcade.Text(
+                "Condição climática", 522, 548, PRIMARY_TEXT_COLOR, 10, bold=True
+            ),
+            arcade.Text(
+                "Timeline da pista", 214, 424, PRIMARY_TEXT_COLOR, 12, bold=True
+            ),
+            arcade.Text(
+                "Clique e arraste para pintar um período da corrida.",
+                214,
+                407,
+                SECONDARY_TEXT_COLOR,
+                9,
+            ),
             arcade.Text("1", TIMELINE_LEFT, 383, SECONDARY_TEXT_COLOR, 9),
-            arcade.Text(str(self.schedule.total_laps), TIMELINE_RIGHT, 383, SECONDARY_TEXT_COLOR, 9, anchor_x="right"),
-            arcade.Text("Arraste sobre a barra para ajustar os intervalos", TIMELINE_LEFT + TIMELINE_WIDTH / 2, 329, SECONDARY_TEXT_COLOR, 8, anchor_x="center"),
-            arcade.Text("Resumo por intervalo", 214, 246, PRIMARY_TEXT_COLOR, 12, bold=True),
-            arcade.Text("Info: as condições climáticas impactam o desgaste dos pneus e o desempenho do carro.", 214, 91, SECONDARY_TEXT_COLOR, 9),
+            arcade.Text(
+                str(self.schedule.total_laps),
+                TIMELINE_RIGHT,
+                383,
+                SECONDARY_TEXT_COLOR,
+                9,
+                anchor_x="right",
+            ),
+            arcade.Text(
+                "Arraste sobre a barra para ajustar os intervalos",
+                TIMELINE_LEFT + TIMELINE_WIDTH / 2,
+                329,
+                SECONDARY_TEXT_COLOR,
+                8,
+                anchor_x="center",
+            ),
+            arcade.Text(
+                "Resumo por intervalo", 214, 246, PRIMARY_TEXT_COLOR, 12, bold=True
+            ),
+            arcade.Text(
+                "Info: as condições climáticas impactam o desgaste dos pneus e o desempenho do carro.",
+                214,
+                91,
+                SECONDARY_TEXT_COLOR,
+                9,
+            ),
             arcade.Text("←  Voltar ao menu", 34, 30, SECONDARY_TEXT_COLOR, 10),
         ]
         return tuple(labels)
@@ -1213,9 +1274,7 @@ class TrackConfigurationView(UIView):
     ) -> None:
         """Draw a rounded fill and a consistent border without texture assets."""
 
-        cls._draw_rounded_rectangle(
-            left, bottom, width, height, radius, border_color
-        )
+        cls._draw_rounded_rectangle(left, bottom, width, height, radius, border_color)
         inset = border_width
         cls._draw_rounded_rectangle(
             left + inset,
