@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class SeriesTrackRequest(BaseModel):
@@ -19,10 +19,48 @@ class SeriesCompetitorRequest(BaseModel):
 
 
 class SeriesSimulationRequest(BaseModel):
-    """Sequência ordenada e pilotos informados pelo usuário, sem race_id."""
+    """Sequência ordenada e pilotos informados pelo usuário, sem race_id.
+
+    Os três campos opcionais ativam o cenário não determinístico (PRD
+    ``nao-determinismo-pneus-assumidos``); sem eles a resposta é a de sempre.
+    Todos os parâmetros por trás deles são HIPÓTESES assumidas, não calibração.
+
+    * ``tyres``: composto de cada piloto (um por corrida, sem pit stop); deve
+      cobrir todos os participantes. Compostos aceitos são os do catálogo de
+      pneus do domínio; um composto desconhecido gera 422 na simulação.
+    * ``variability``: liga o ruído por volta.
+    * ``seed``: semente do ruído. Só faz sentido com ``variability``; se esta
+      estiver ligada e a semente ausente, o backend sorteia uma e a devolve.
+      Limitada a 53 bits para não perder precisão em clientes JSON com ``double``.
+    """
 
     tracks: list[SeriesTrackRequest] = Field(min_length=1, max_length=24)
     competitors: list[SeriesCompetitorRequest] = Field(min_length=1, max_length=40)
+    tyres: dict[str, str] | None = None
+    variability: bool = False
+    seed: int | None = Field(default=None, ge=0, le=2**53 - 1)
+
+    @model_validator(mode="after")
+    def _validate_scenario(self) -> "SeriesSimulationRequest":
+        if self.seed is not None and not self.variability:
+            raise ValueError(
+                "seed só pode ser informada com variability=true: "
+                "sem ruído ela seria ignorada em silêncio"
+            )
+        if self.tyres is not None:
+            driver_ids = {item.driver_id for item in self.competitors}
+            planned = set(self.tyres)
+            unknown = sorted(planned - driver_ids)
+            missing = sorted(driver_ids - planned)
+            if unknown:
+                raise ValueError(f"tyres com driver_id desconhecido: {unknown}")
+            if missing:
+                raise ValueError(
+                    f"tyres deve cobrir todos os participantes; faltam: {missing}"
+                )
+            if any(not compound.strip() for compound in self.tyres.values()):
+                raise ValueError("tyres contém composto vazio")
+        return self
 
 
 class DriverParametersResponse(BaseModel):

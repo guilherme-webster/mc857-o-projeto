@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 
 from app.config import DEFAULT_RACE_DB, RACE_JSON, RACES_INDEX
 from app.loaders.loader import load_driver_parameters, load_race_summary
@@ -75,12 +76,31 @@ def simular_corrida() -> dict:
     return simulate_current_race()
 
 
+def _new_seed() -> int:
+    """Sorteie uma semente com a entropia do sistema (único ponto do sorteio).
+
+    A semente cabe em 53 bits para sobreviver, sem arredondamento, a qualquer
+    cliente JSON que trate números como ``double`` (como o JavaScript): um
+    arredondamento silencioso impediria reproduzir a corrida.
+
+    Fica na borda de propósito: o domínio nunca escolhe semente, para que toda
+    corrida "aleatória" possa ser repetida a partir da semente devolvida. É uma
+    função à parte para os testes poderem substituí-la.
+    """
+
+    return secrets.randbelow(2**53)
+
+
 @router.post("/series/simulate")
 def simular_sequencia(request: SeriesSimulationRequest) -> dict:
     """Simule corridas livres nas pistas escolhidas, sem carregar uma corrida.
 
     Os comprimentos e nomes vêm do catálogo publicado pelo backend, nunca de
     valores arbitrários enviados pelo cliente. A ordem enviada é preservada.
+
+    Com ``variability`` ligada e sem ``seed``, a semente é sorteada aqui e
+    devolvida na resposta (campo ``seed``); reenviá-la reproduz a série
+    exatamente. As hipóteses usadas voltam em ``assumptions``.
     """
 
     from f1_simulator.domain.race_series import (
@@ -88,6 +108,7 @@ def simular_sequencia(request: SeriesSimulationRequest) -> dict:
         SeriesTrack,
         simulate_series,
     )
+    from f1_simulator.domain.race_simulation import ASSUMED_LAP_VARIABILITY
 
     catalog = {
         track["circuit_id"]: track for track in list_available_tracks()["tracks"]
@@ -110,8 +131,18 @@ def simular_sequencia(request: SeriesSimulationRequest) -> dict:
         SeriesCompetitor(item.driver_id, item.name, item.pace_ms_per_km)
         for item in request.competitors
     )
+    variability = ASSUMED_LAP_VARIABILITY if request.variability else None
+    seed = None
+    if variability is not None:
+        seed = request.seed if request.seed is not None else _new_seed()
     try:
-        return simulate_series(tracks, competitors)
+        return simulate_series(
+            tracks,
+            competitors,
+            tyre_plan=request.tyres,
+            variability=variability,
+            seed=seed,
+        )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
