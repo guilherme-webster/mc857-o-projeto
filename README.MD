@@ -91,11 +91,25 @@ contagens, nulos, duplicatas, referencias orfas e pit stops anormalmente longos.
 
 A fixture `tests/fixtures/trotman_v128_tracks_2025/` contém as polilinhas das
 24 pistas do calendário de 2025 e seus pit lanes. Cada pit lane inclui um ponto
-de serviço representativo. Os dados foram derivados offline do FastF1; cache,
-telemetria bruta e scripts de geração não fazem parte do repositório. Consulte
-o ADR 0003 e os manifestos em `data/sources/` para proveniência, transformação
-e limitações de uso. O visualizador temporário usado para inspecionar os mocks
-também não faz parte do repositório.
+de serviço representativo. Os dados foram derivados offline do FastF1; cache e
+telemetria bruta não fazem parte do repositório. O gerador reconstruído está em
+`scripts/rebuild_fastf1_geometry.py`; o código original nunca foi versionado.
+Consulte o ADR 0003 e os manifestos em `data/sources/` para proveniência,
+transformação e limitações de uso. O visualizador temporário usado para
+inspecionar os mocks também não faz parte do repositório.
+
+Para reconstruir uma etapa sem alterar os CSVs atuais:
+
+```bash
+uv run --with fastf1==3.8.3 python scripts/rebuild_fastf1_geometry.py \
+  --round 21 \
+  --output-dir data/curated/geometry-round-21
+```
+
+Sem `--round`, o script processa as 24 etapas de 2025. A saída deve ser um
+diretório novo; inclui os dois CSVs e `generation_report.json` com checksums.
+O cache é temporário por padrão (`--cache-dir` permite retenção local). A
+reconstrução não garante igualdade byte a byte com as fixtures existentes.
 
 Execute os testes sem instalar dependencias adicionais:
 
