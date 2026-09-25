@@ -128,6 +128,41 @@ omita `--source` depois de baixar o Trotman v128. O comando importa apenas a
 geometria do circuito da corrida, validando ambos os CSVs e seus manifestos.
 As geometrias das 24 pistas continuam disponiveis para outras corridas suportadas.
 
+Na interface Arcade, a primeira tela (1672 × 900) configura as regras do
+torneio e consulta `GET /simulation/tracks`. Use as setas para percorrer as
+pistas, **Adicionar à sequência** para inclui-las na ordem desejada e arraste
+as linhas da lista para reordenar. Tambem e possivel gerar uma sequencia
+automatica reproduzivel a partir do nome do torneio. Clique na previa da
+pista para abrir a segunda tela, de configuracao da corrida. Nela, a aba
+**Clima** edita os intervalos na propria tela, por campos ou pintando a timeline;
+**Pista**, **Regras** e
+**Carros** permanecem apenas como areas futuras. A geometria da previa vem de
+`GET /simulation/track/{circuit_id}`. A configuracao padrao e **Corrida livre**:
+nao exige escolher um GP historico. **Confirmar torneio** produz um plano
+validado; a interface ainda nao contem o editor de participantes nem a tela
+de reproducao dessa sequencia.
+
+Para executar a sequencia pela API, envie as pistas em ordem a
+`POST /simulation/series/simulate` com `circuit_id`, `total_laps` (1 a 200) e
+participantes com `driver_id`, `name` e `pace_ms_per_km` (ritmo em ms/km). Exemplo:
+
+```json
+{
+  "tracks": [
+    {"circuit_id": "circuit:18", "total_laps": 69},
+    {"circuit_id": "circuit:6", "total_laps": 78}
+  ],
+  "competitors": [
+    {"driver_id": "piloto-1", "name": "Piloto 1", "pace_ms_per_km": 21000}
+  ]
+}
+```
+
+A resposta inclui cada corrida, seu historico volta a volta e classificacao
+final independente. A API usa o comprimento das pistas do catalogo, sem
+consultar `race_id` nem exigir `POST /simulation/load`. O motor atual usa ritmo
+constante; clima, pit stops e pontuacao acumulada ainda nao alteram o resultado.
+
 X/Y sao normalizados e sem unidade; distancia acumulada da pista e em metros.
 As geometrias sao de 2025: seu uso com uma corrida de outro ano fica explicito no
 relatorio. Consulte o [contrato de consumo](docs/fluxo-etl.md#geometria-de-pista-e-pit-lane)
@@ -211,11 +246,11 @@ Você pode executar a aplicação completa (comunicação Frontend + Backend) ou
 
 ### Tela inicial
 
-A `ParametersView` apresenta os dados historicos da corrida de referencia como
-somente leitura e permite alterar o numero de voltas. O botao de clima abre uma
-segunda `arcade.View`, na qual uma condicao pode ser aplicada a intervalos de
-voltas. O botao de inicio valida o formulario, mas a conexao com FastAPI e com o
-motor pertence a um incremento posterior.
+A `ParametersView` monta o torneio a partir do catálogo de pistas. A
+`RaceConfigurationView` permite ajustar sessão e clima para cada etapa; a aba
+Clima pinta intervalos de voltas na timeline sem sair dessa tela. A confirmação
+valida o plano, mas o início da simulação pela interface pertence a um
+incremento posterior.
 
 ### Tela de simulação da corrida
 

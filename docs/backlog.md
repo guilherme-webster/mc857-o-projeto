@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-18T22:28:41Z
-- **Abertas:** 46
-- **Fechadas:** 9
+- **Ultima atividade registrada:** 2026-09-24T23:05:46Z
+- **Abertas:** 45
+- **Fechadas:** 10
 
 ## Issues abertas
 
@@ -23,7 +23,7 @@
 - **Issue-pai:** —
 - **Sub-issues:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2), [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3), [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4), [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Criada:** 2026-08-28T22:59:38Z
-- **Atualizada:** 2026-08-28T23:29:11Z
+- **Atualizada:** 2026-09-24T22:22:48Z
 - **Fechada:** —
 
 <details>
@@ -35,6 +35,15 @@
 * Visualizar parâmetros
 * Enviar dados para o servidor
 * Padronizar os dados</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-09-24T22:22:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/1#issuecomment-5823204724)
+
+<pre>Mudança de escopo autorizada pelo usuário: a tela inicial agora permite adicionar/remover várias pistas do catálogo em ordem, configurar voltas e clima por etapa e confirmar um SimulationPlan; Corrida livre é o padrão. O ADR 0006 registra a substituição do recorte original de circuito único. Implementado POST /simulation/series/simulate: recebe pistas e participantes/ritmo em ms/km, valida IDs pelo catálogo e executa cada etapa no núcleo sem carregar uma corrida histórica. Verificações: 186 testes passaram (22 GUI pulados no padrão), 22 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff/Black/diff check passaram; POST real com Interlagos e Mônaco retornou duas corridas na ordem. Próximo passo: editor de participantes e integração da confirmação do Arcade com a rota/tela de acompanhamento; clima, pit stops e pontuação acumulada ainda não afetam o motor atual. Nenhum commit foi criado pelo agente.</pre>
 
 </details>
 
@@ -60,13 +69,26 @@
 - **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
 - **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14), [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26), [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29)
 - **Criada:** 2026-08-28T23:03:16Z
-- **Atualizada:** 2026-08-28T23:31:22Z
+- **Atualizada:** 2026-09-24T23:05:46Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>Nessa tela o usuário poderá visualizar dados e poder alterá-los</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-09-24T22:57:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823587802)
+
+<pre>Etapa da interface: tela inicial de torneio ampliada para 1672x900, com texto renderizado em resolução nativa; segunda tela de configuração por corrida criada conforme referência, com aba Sessão funcional, resumo de pista/clima, navegação para o editor de Clima existente e sem Assistências. Pista, Regras e Carros permanecem placeholders por pedido do usuário. Sessão e clima são incluídos no plano salvo. Verificações: 192 testes passaram na suíte padrão (28 GUI pulados), 28 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff e git diff --check passaram. Próximos passos: implementar as abas adiadas e integrar confirmação do Arcade à execução/acompanhamento da simulação. Limitação atual: configurações de etapas com pista repetida ainda são compartilhadas por ID de circuito. Nenhum commit criado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-24T23:05:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823695300)
+
+<pre>Correção do fluxo da segunda tela: a aba Clima agora edita a programação por volta dentro da própria RaceConfigurationView, sem abrir WeatherConfigurationView nem redimensionar a janela. Preservados seleção de condição, pintura inclusiva por arraste, campos de intervalo, aplicação e resumo paginado; salvar/avançar persiste o clima e cancelar descarta alterações não salvas. README atualizado. Verificações: suíte geral 194 testes OK (30 GUI pulados), 31 testes GUI OK, Ruff/Black/diff check OK; captura da aba em 1672x900 inspecionada. Próximo passo: abas Pista/Regras/Carros e integração da confirmação com a simulação. Nenhum commit criado pelo agente.</pre>
 
 </details>
 
@@ -417,7 +439,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 - **Sub-issues:** —
 - **Criada:** 2026-08-28T23:16:51Z
-- **Atualizada:** 2026-09-18T22:28:41Z
+- **Atualizada:** 2026-09-24T22:12:58Z
 - **Fechada:** —
 
 <details>
@@ -428,7 +450,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 </details>
 
 <details>
-<summary>Comentarios (2)</summary>
+<summary>Comentarios (8)</summary>
 
 #### [@Jmvjr em 2026-09-18T22:14:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736826058)
 
@@ -437,6 +459,30 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 #### [@Jmvjr em 2026-09-18T22:28:41Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736949407)
 
 <pre>Implementação concluída localmente na branch `13-exibição-de-pista`: `GET /simulation/track/{circuit_id}` agora inclui `pit_lane_points` com `path_fraction` e `is_service_point`; a seção **Pista** da tela de configuração carrega a geometria em segundo plano e desenha traçado, pit lane e ponto de serviço com uma transformação conjunta que preserva alinhamento e proporção. Também há estados de carregamento/erro quando o backend não responde. Verificações: `uv run python -m unittest -v` — 168 testes aprovados, 14 testes Arcade ignorados por padrão; `ARCADE_GUI_TEST=True uv run python -m unittest -v tests.test_parameters_view` — 14 testes gráficos aprovados; `ruff check` e `git diff --check` aprovados. Foi feita revisão visual com a geometria real de Interlagos. Próximo passo: revisão humana, commit e push; nenhum commit foi criado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:33:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736988506)
+
+<pre>Correção adicional de execução no Fedora: os bind mounts do `docker-compose.yaml` receberam rótulo SELinux `:Z`, eliminando `cannot open /app/entrypoint.sh: Permission denied`. A fixture versionada de geometria foi montada como `/data/geometry:ro,Z`, pois o backend procurava esse diretório mas apenas `./data` estava montado. Validação real em container: `/` respondeu `online`; `GET /simulation/track/18` retornou `circuit:18`, 240 pontos de pista, 80 pontos de pit lane e 1 ponto de serviço. O container foi deixado ativo para uso pelo frontend.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:35:43Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737007587)
+
+<pre>Corrigida a corrida de inicialização mostrada na tela: `run.py` não usa mais `sleep(1)`; agora consulta `http://localhost:8000/` e só abre o Arcade depois de receber HTTP 200, com timeout e encerramento limpo em caso de falha. Foram adicionados testes para retry e esgotamento das tentativas. Verificações: suíte completa com 170 testes aprovados (14 gráficos ignorados por padrão), Ruff/Black/diff check aprovados e validação real após `docker compose up`: a espera confirmou o backend pronto e `/simulation/track/18` retornou 240 pontos de pista e 80 de pit lane.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:38:28Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737028569)
+
+<pre>Diagnóstico final da falha exibida no Arcade: após criar a janela, o `urllib.request.urlopen` inicializava seu opener e um contexto HTTPS dentro da thread de carregamento, causando `ssl.SSLError` no ambiente Fedora/Pyglet mesmo para `http://localhost`. `frontend/arcade/track_client.py` agora constrói o opener na thread principal; a mensagem de erro também informa a classe da exceção. Validação ponta a ponta: backend Docker ativo + janela Arcade invisível + carregamento assíncrono real resultaram em `Geometria da pista carregada`, sem erro. Suíte: 170 testes aprovados; 14/14 testes gráficos aprovados; Ruff, Black e diff check aprovados. É necessário reiniciar o processo Arcade para carregar o cliente corrigido.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:45:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737077983)
+
+<pre>Visualizador enriquecido apenas com dados existentes, sem nova aquisição: pista em camadas (sombra/borda/asfalto), setas derivadas da ordem dos pontos, linha de largada/chegada perpendicular ao primeiro segmento, entrada e saída derivadas dos extremos do pit lane, ponto de serviço, legenda completa, distância da amostra e contagem de pontos. A interface distingue ID canônico Trotman v128 de geometria reduzida FastF1 2025 e não apresenta a distância observada como extensão oficial. Zebras, largura variável e áreas de escape não foram inferidas. Revisão visual feita com Interlagos real. Verificações: 171 testes aprovados (14 gráficos ignorados por padrão), 14/14 testes Arcade aprovados, Ruff/Black/diff check aprovados.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:48:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737099621)
+
+<pre>Ajuste visual após revisão: as camadas da pista foram afinadas (contorno total 23→18 px), a pit lane foi reduzida (11→8 px), o risco interno do asfalto foi removido e a linha de largada acompanhou a nova largura. Isso aumenta a separação visual na reta dos boxes sem alterar coordenadas. Nova captura revisada; 14/14 testes Arcade, testes de transformação, Ruff e diff check aprovados.</pre>
+
+#### [@Jmvjr em 2026-09-24T22:12:58Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5823094639)
+
+<pre>Implementação local da seleção de pistas: a tela inicial consulta GET /simulation/tracks, permite percorrer o catálogo e abre a configuração com o circuito escolhido; o tópico Pista carrega sua geometria via GET /simulation/track/{circuit_id}. Tratados carregamento e erro da API. Verificações: 175 testes unitários passaram (18 testes de GUI omitidos por padrão); 18 testes de GUI passaram com ARCADE_GUI_TEST=True; Ruff e git diff --check passaram; integração manual com backend confirmou 24 pistas e prévia de Monaco. Próximo passo: revisão/commit pelo responsável e integração da branch. Limitação: a seleção de geometria não amplia o suporte do motor de simulação a todos os circuitos.</pre>
 
 </details>
 
@@ -1070,34 +1116,6 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 - 2026-09-05T19:56:27Z — sub-issue adicionada: #47 por @Gustavo-Jun-Tsuji
 - 2026-09-05T16:38:00Z — sub-issue adicionada: #43 por @Gustavo-Jun-Tsuji
 - 2026-09-04T23:02:57Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
-- **Sub-issues:** —
-- **Criada:** 2026-09-05T16:37:59Z
-- **Atualizada:** 2026-09-05T16:38:09Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-05T16:38:09Z — label adicionada: História por @Gustavo-Jun-Tsuji
 
 </details>
 
@@ -2035,6 +2053,35 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-11T22:14:03Z — fechada por @guilherme-webster
 - 2026-09-02T19:30:12Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-09-02T19:19:47Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+- **Sub-issues:** —
+- **Criada:** 2026-09-05T16:37:59Z
+- **Atualizada:** 2026-09-24T18:52:46Z
+- **Fechada:** 2026-09-24T18:52:46Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-24T18:52:46Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-05T16:38:09Z — label adicionada: História por @Gustavo-Jun-Tsuji
 
 </details>
 

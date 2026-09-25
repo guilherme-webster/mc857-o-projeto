@@ -110,9 +110,8 @@ class ConfigurationScreenLayout:
 def build_initial_configuration_layout() -> ConfigurationScreenLayout:
     """Build the first 1280×720 configuration-screen wireframe.
 
-    The historical values mirror the versioned test sample for race 1141. The
-    lap count and weather schedule are scenario parameters; they do not rewrite
-    canonical ETL data.
+    The legacy widget layout stays available for compatibility. Its default
+    configuration is a free race; historical data remain optional reference.
     """
 
     layout = ConfigurationScreenLayout(
@@ -128,7 +127,7 @@ def build_initial_configuration_layout() -> ConfigurationScreenLayout:
             Control(
                 "preset",
                 "Simulação pré-definida",
-                "GP de São Paulo 2024",
+                "Corrida livre",
                 "select",
                 True,
                 Bounds(48, 592, 1184, 56),
@@ -136,7 +135,7 @@ def build_initial_configuration_layout() -> ConfigurationScreenLayout:
             Control(
                 "reference_race",
                 "Corrida histórica",
-                "São Paulo Grand Prix 2024",
+                "Opcional",
                 "read_only",
                 False,
                 Bounds(72, 460, 304, 44),
@@ -144,7 +143,7 @@ def build_initial_configuration_layout() -> ConfigurationScreenLayout:
             Control(
                 "reference_circuit",
                 "Circuito",
-                "Autódromo José Carlos Pace",
+                "Escolhida no catálogo",
                 "read_only",
                 False,
                 Bounds(72, 392, 304, 44),
@@ -152,7 +151,7 @@ def build_initial_configuration_layout() -> ConfigurationScreenLayout:
             Control(
                 "reference_entries",
                 "Pilotos disponíveis",
-                "Dados do ETL",
+                "Informados pelo usuário",
                 "read_only",
                 False,
                 Bounds(72, 324, 304, 44),
