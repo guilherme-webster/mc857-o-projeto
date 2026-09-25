@@ -6,7 +6,7 @@
 
 > Atualizacao em 2026-09-24: a pedido do usuario, um gerador offline foi
 > reconstruido em `scripts/rebuild_fastf1_geometry.py` e voltou a ser
-> versionado. O codigo original de geracao nunca esteve no historico Git; o
+> versionado. O
 > script novo implementa as transformacoes documentadas, mas nao promete
 > reproduzir byte a byte os CSVs de 2025. Os artefatos originais permanecem
 > imutaveis: a saida exige um diretorio novo, fora das fixtures versionadas.

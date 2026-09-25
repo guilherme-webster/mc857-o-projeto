@@ -2,11 +2,13 @@ name: Enforce develop to main PR
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     branches:
       - main
 
 jobs:
   check-source-branch:
+    if: github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - name: Verify head branch is develop

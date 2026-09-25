@@ -35,7 +35,7 @@ Durante a corrida, a simulação levará em conta múltiplos fatores dinâmicos,
 
 ## 3\. Arquitetura do Sistema
 
-**Backend:** Django exporá o contrato HTTP/JSON para configurar, iniciar e
+**Backend:** FastAPI exporá o contrato HTTP/JSON para configurar, iniciar e
 consultar a corrida. O motor Python independente dos frameworks calculará tempos
 de volta, perda de rendimento, paradas e imprevistos conforme o escopo de cada
 incremento. O backend disponibilizará snapshots; a interface não recalculará a

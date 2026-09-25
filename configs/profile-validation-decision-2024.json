@@ -1,0 +1,38 @@
+{
+  "decision_id": "f1-2024-descriptive-validation-v1",
+  "recorded_at_utc": "2026-09-13T20:21:40.465115+00:00",
+  "evaluation_plan": "profile-evaluation-2024-expanded.json",
+  "evaluation_plan_sha256": "c28b469f24beab166b6386dced4fead51d0610864d6c23925e1f6ed8010cbb03",
+  "development_analysis_sha256": "04b0e2c9900d5beef76e4adbca0b64afeef138f7dc02293175c8afc5181c9bfb",
+  "selected_variant": {
+    "name": "baseline",
+    "lap_window": null,
+    "split_stints": false
+  },
+  "profile_config": {
+    "lap_window": 10,
+    "tyre_age_window": 5,
+    "weather_max_age_ms": 120000,
+    "min_laps_per_context": 3,
+    "min_drivers_per_context": 3,
+    "min_events": 2
+  },
+  "bootstrap_config": {
+    "replicates": 2000,
+    "seed": 42,
+    "confidence": 0.95,
+    "warn_below_events": 5
+  },
+  "scope": "descriptive_stability_not_prediction",
+  "metrics": [
+    "coverage_by_event",
+    "paired_drivers",
+    "pace_shift_pp",
+    "consistency_shift_pp",
+    "median_absolute_pace_shift_pp",
+    "median_absolute_consistency_shift_pp"
+  ],
+  "missing_policy": "None_with_reasons_no_imputation",
+  "automatic_pass_fail": false,
+  "reserved_metrics_examined": false
+}

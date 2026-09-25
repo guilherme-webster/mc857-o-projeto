@@ -6,9 +6,11 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-25T19:55:09Z
-- **Abertas:** 44
-- **Fechadas:** 11
+
+- **Ultima atividade registrada:** 2026-09-24T23:05:46Z
+- **Abertas:** 45
+- **Fechadas:** 10
+
 
 ## Issues abertas
 

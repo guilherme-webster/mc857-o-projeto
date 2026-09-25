@@ -4,6 +4,10 @@
 - Data: 2026-08-28
 - Responsaveis: grupo do projeto
 
+> Atualizacao em 2026-09-11: o [ADR 0004](0004-backend-fastapi-e-contratos-python.md)
+> substitui a escolha de Django por FastAPI. As demais decisoes permanecem
+> vigentes; o texto abaixo preserva o contexto original.
+
 ## Contexto
 
 O MVP precisa oferecer as etapas de configuracao, acompanhamento da corrida em

@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, time
 
+from f1_simulator.domain.track_geometry import TrackGeometry
+
 
 @dataclass(frozen=True, slots=True)
 class Circuit:
-    """Canonical circuit identity and geographic coordinates."""
+    """Circuit identity and geographic location, not its ordered track outline."""
 
     circuit_id: str
     name: str
@@ -99,7 +101,11 @@ class SourceId:
 
 @dataclass(frozen=True, slots=True)
 class RaceData:
-    """Validated aggregate exchanged by ingestion, persistence and consumers."""
+    """Validated race with optional geometry carrying its own source and year.
+
+    Absence of geometry does not invalidate historical race data. Consumers
+    must not infer an outline from the circuit's single geographic location.
+    """
 
     source_name: str
     source_version: int
@@ -112,3 +118,4 @@ class RaceData:
     laps: tuple[Lap, ...]
     pit_stops: tuple[PitStop, ...]
     source_ids: tuple[SourceId, ...]
+    geometry: TrackGeometry | None = None

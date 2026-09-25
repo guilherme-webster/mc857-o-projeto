@@ -181,6 +181,32 @@ class TrotmanDatasetAdapter:
             ),
         )
 
+    def list_races(self) -> list[dict[str, object]]:
+        """Return a lightweight catalog of every race in the source.
+
+        Reads only ``races.csv`` and emits ``{"race_id", "name", "year", "round",
+        "date"}`` per race, sorted by year then round so the season order is
+        preserved. ``date`` stays an ISO ``YYYY-MM-DD`` string for JSON transport.
+        This is intentionally cheap: it does not join drivers, laps or pit stops,
+        so a caller can build a race index without paying the cost of a full
+        ingestion. Malformed identifiers, names or dates raise
+        ``TrotmanDatasetError`` just like ``load_race``.
+        """
+
+        rows = self._read_rows("races.csv", lambda _row: True)
+        races = [
+            {
+                "race_id": self._required_int(row, "raceId", "races.csv"),
+                "name": self._required_text(row, "name", "races.csv"),
+                "year": self._required_int(row, "year", "races.csv"),
+                "round": self._required_int(row, "round", "races.csv"),
+                "date": self._required_date(row, "date", "races.csv").isoformat(),
+            }
+            for row in rows
+        ]
+        races.sort(key=lambda race: (race["year"], race["round"]))
+        return races
+
     def _read_rows(
         self, filename: str, predicate: Callable[[dict[str, str]], bool]
     ) -> list[dict[str, str]]:
