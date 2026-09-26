@@ -42,7 +42,7 @@ from frontend.arcade.theme import (
     SUCCESS_COLOR,
 )
 
-RULES_PANEL_BOUNDS = (28, 76, 544, 500)
+RULES_PANEL_BOUNDS = (28, 230, 544, 346)
 TRACK_CARD_BOUNDS = (586, 76, 666, 500)
 SCHEDULER_BOUNDS = (600, 91, 638, 418)
 TRACK_PREVIEW_BOUNDS = (614, 115, 320, 188)
@@ -56,15 +56,14 @@ CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
 CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 36)
 SAVE_RULES_BOUNDS = (916, 13, 138, 36)
 BACK_BOUNDS = (28, 13, 134, 36)
-MANUAL_MODE_BOUNDS = (232, 344, 156, 34)
-AUTO_MODE_BOUNDS = (396, 344, 156, 34)
 SCORING_BOUNDS = (232, 420, 320, 34)
 STAGES_DECREASE_BOUNDS = (232, 383, 28, 34)
 STAGES_INCREASE_BOUNDS = (326, 383, 28, 34)
-WEATHER_BOUNDS = (232, 307, 320, 34)
-REPEATS_BOUNDS = (232, 269, 44, 25)
-TIEBREAK_BOUNDS = (232, 231, 320, 34)
+WEATHER_BOUNDS = (232, 344, 320, 34)
+REPEATS_BOUNDS = (232, 306, 44, 25)
+TIEBREAK_BOUNDS = (232, 268, 320, 34)
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
+SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
 TOURNAMENT_WINDOW_SIZE = (1672, 900)
 CONFIGURATION_WINDOW_SIZE = (1280, 720)
@@ -109,7 +108,7 @@ class ParametersView(UIView):
         self._track_configurations: dict[str, ConfigurationFormData] = {}
         self._session_configurations: dict[str, SessionConfiguration] = {}
         self.rules = TournamentRules()
-        self._sequence_page = 0
+        self._sequence_scroll_index = 0
         self._catalog_error: str | None = None
         self._status_message = (
             "Adicione as pistas na ordem desejada e configure cada etapa."
@@ -356,7 +355,7 @@ class ParametersView(UIView):
             f"{track['name']} adicionada como etapa {len(self._selected_track_ids)}.",
             SUCCESS_COLOR,
         )
-        self._sequence_page = max(0, (len(self._selected_track_ids) - 1) // 3)
+        self._sequence_scroll_index = self._max_sequence_scroll()
 
     def remove_selected_track(self) -> None:
         """Remove the last occurrence of the highlighted circuit."""
@@ -371,8 +370,8 @@ class ParametersView(UIView):
             - self._selected_track_ids[::-1].index(track["circuit_id"])
         )
         self._selected_track_ids.pop(index)
-        self._sequence_page = min(
-            self._sequence_page, max(0, (len(self._selected_track_ids) - 1) // 3)
+        self._sequence_scroll_index = min(
+            self._sequence_scroll_index, self._max_sequence_scroll()
         )
         self._set_status(
             f"{track['name']} removida da sequência.", SECONDARY_TEXT_COLOR
@@ -399,7 +398,7 @@ class ParametersView(UIView):
             self._selected_track_ids = chooser.sample(ids, self.rules.total_stages)
         for circuit_id in self._selected_track_ids:
             self._track_configurations.setdefault(circuit_id, ConfigurationFormData())
-        self._sequence_page = 0
+        self._sequence_scroll_index = 0
         self._set_status("Sequência automática gerada.", SUCCESS_COLOR)
 
     def _update_rules(self, **changes: object) -> bool:
@@ -810,12 +809,6 @@ class ParametersView(UIView):
         if self._contains(STAGES_INCREASE_BOUNDS, x, y):
             self._update_rules(total_stages=min(24, self.rules.total_stages + 1))
             return
-        if self._contains(MANUAL_MODE_BOUNDS, x, y):
-            self._update_rules(generation_mode="Manual")
-            return
-        if self._contains(AUTO_MODE_BOUNDS, x, y):
-            self._update_rules(generation_mode="Automática")
-            return
         if self._contains(REPEATS_BOUNDS, x, y):
             self._update_rules(allow_repeats=not self.rules.allow_repeats)
             return
@@ -857,14 +850,19 @@ class ParametersView(UIView):
             self.open_track_configuration()
 
     def on_mouse_scroll(self, x: int, y: int, scroll_x: int, scroll_y: int) -> None:
-        """Page through a long sequence without hiding selected circuits."""
+        """Scroll the sequence one stage at a time within its visible area."""
 
         x, y = self._logical_pointer(x, y)
-        if 956 <= x <= 1224 and 346 <= y <= 477:
-            maximum = max(0, (len(self._selected_track_ids) - 1) // 3)
-            self._sequence_page = min(
-                maximum, max(0, self._sequence_page - int(scroll_y))
+        if 956 <= x <= 1232 and 346 <= y <= 477:
+            self._sequence_scroll_index = min(
+                self._max_sequence_scroll(),
+                max(0, self._sequence_scroll_index - int(scroll_y)),
             )
+
+    def _max_sequence_scroll(self) -> int:
+        """Keep the last stage visible without exposing empty row slots."""
+
+        return max(0, len(self._selected_track_ids) - len(SEQUENCE_ROW_BOUNDS))
 
     def on_text(self, text: str) -> None:
         """Edit the tournament name with the same data field used by validation."""
@@ -882,7 +880,7 @@ class ParametersView(UIView):
 
     def _sequence_index_at(self, x: int, y: int) -> int | None:
         for slot, bounds in enumerate(SEQUENCE_ROW_BOUNDS):
-            index = self._sequence_page * 3 + slot
+            index = self._sequence_scroll_index + slot
             if index < len(self._selected_track_ids) and self._contains(bounds, x, y):
                 return index
         return None
@@ -1023,10 +1021,9 @@ class ParametersView(UIView):
             ("Nome do torneio", 467),
             ("Sistema de pontuação", 429),
             ("Total de etapas", 392),
-            ("Geração da sequência", 354),
-            ("Clima", 316),
-            ("Permitir repetição de pista", 278),
-            ("Critério de desempate", 240),
+            ("Clima", 354),
+            ("Permitir repetição de pista", 315),
+            ("Critério de desempate", 277),
         )
         for label, y in labels:
             self._native_text(
@@ -1088,30 +1085,6 @@ class ParametersView(UIView):
             anchor_x="center",
             anchor_y="center",
         ).draw()
-        for bounds, mode in (
-            (MANUAL_MODE_BOUNDS, "Manual"),
-            (AUTO_MODE_BOUNDS, "Automática"),
-        ):
-            left, bottom, width, height = bounds
-            selected = self.rules.generation_mode == mode
-            self._draw_rounded_panel(
-                left,
-                bottom,
-                width,
-                height,
-                7,
-                (193, 29, 42) if selected else (27, 38, 51),
-                (238, 55, 64) if selected else PANEL_BORDER_COLOR,
-            )
-            self._native_text(
-                mode,
-                left + width / 2,
-                bottom + height / 2,
-                PRIMARY_TEXT_COLOR,
-                11,
-                anchor_x="center",
-                anchor_y="center",
-            ).draw()
         left, bottom, width, height = REPEATS_BOUNDS
         self._draw_rounded_panel(
             left,
@@ -1131,20 +1104,10 @@ class ParametersView(UIView):
         self._native_text(
             "Ativado" if self.rules.allow_repeats else "Desativado",
             290,
-            278,
+            315,
             SECONDARY_TEXT_COLOR,
             11,
         ).draw()
-        self._draw_rounded_panel(42, 91, 516, 100, 7, (20, 29, 40), PANEL_BORDER_COLOR)
-        self._native_text("Resumo do torneio", 58, 169, PRIMARY_TEXT_COLOR, 14).draw()
-        unique = len(set(self._selected_track_ids))
-        for x, number, label in (
-            (63, str(len(self._selected_track_ids)), "etapa(s)"),
-            (222, str(unique), "pista(s) única(s)"),
-            (380, "Clima", "Por etapa"),
-        ):
-            self._native_text(number, x, 136, PRIMARY_TEXT_COLOR, 16).draw()
-            self._native_text(label, x, 114, SECONDARY_TEXT_COLOR, 10).draw()
 
     def _draw_preview(self) -> None:
         """Render a schematic of the selected track from backend geometry."""
@@ -1224,7 +1187,7 @@ class ParametersView(UIView):
             ("CATÁLOGO DE PISTAS", 622, 481, ACCENT_COLOR, 10),
             (name, 622, 448, PRIMARY_TEXT_COLOR, 18),
             (
-                f"Geometria disponível • {length}" if track else "",
+                f"Extensão da pista: {length}" if track else "",
                 622,
                 428,
                 SECONDARY_TEXT_COLOR,
@@ -1237,9 +1200,7 @@ class ParametersView(UIView):
                 SECONDARY_TEXT_COLOR,
                 10,
             ),
-            ("ID canônico: Trotman v128", 622, 354, SECONDARY_TEXT_COLOR, 10),
-            ("Geometria reduzida: FastF1 2025", 622, 335, SECONDARY_TEXT_COLOR, 10),
-            ("Clique na prévia para configurar", 622, 314, SECONDARY_TEXT_COLOR, 9),
+            ("Clique na prévia para configurar", 622, 354, SECONDARY_TEXT_COLOR, 9),
             (
                 f"SEQUÊNCIA • {len(self._selected_track_ids)} pista(s)",
                 956,
@@ -1253,7 +1214,7 @@ class ParametersView(UIView):
             ).draw()
         names = {item["circuit_id"]: item["name"] for item in self._tracks}
         for slot, bounds in enumerate(SEQUENCE_ROW_BOUNDS):
-            index = self._sequence_page * 3 + slot
+            index = self._sequence_scroll_index + slot
             left, bottom, width, height = bounds
             selected = (
                 index < len(self._selected_track_ids)
@@ -1283,15 +1244,20 @@ class ParametersView(UIView):
             self._native_text(
                 "||", left + width - 20, bottom + 12, SECONDARY_TEXT_COLOR, 10
             ).draw()
-        if len(self._selected_track_ids) > 3:
-            pages = (len(self._selected_track_ids) + 2) // 3
+        if len(self._selected_track_ids) > len(SEQUENCE_ROW_BOUNDS):
+            visible_start = self._sequence_scroll_index + 1
+            visible_end = min(
+                len(self._selected_track_ids),
+                self._sequence_scroll_index + len(SEQUENCE_ROW_BOUNDS),
+            )
             self._native_text(
-                f"Role para ver etapas • {self._sequence_page + 1}/{pages}",
+                f"Role para ver etapas {visible_start}–{visible_end} de {len(self._selected_track_ids)}",
                 956,
                 345,
                 SECONDARY_TEXT_COLOR,
                 9,
             ).draw()
+            self._draw_sequence_scrollbar()
         self._draw_rounded_panel(1175, 681, 78, 29, 6, (26, 36, 48), PANEL_BORDER_COLOR)
         self._native_text(
             "Ajuda",
@@ -1302,6 +1268,24 @@ class ParametersView(UIView):
             anchor_x="center",
             anchor_y="center",
         ).draw()
+
+    def _draw_sequence_scrollbar(self) -> None:
+        """Show the visible fraction of the sequence beside its fixed row slots."""
+
+        left, bottom, width, height = SEQUENCE_SCROLL_BOUNDS
+        total = len(self._selected_track_ids)
+        visible = len(SEQUENCE_ROW_BOUNDS)
+        thumb_height = max(18, height * visible / total)
+        available_travel = height - thumb_height
+        thumb_bottom = bottom + available_travel * (
+            1 - self._sequence_scroll_index / self._max_sequence_scroll()
+        )
+        arcade.draw_lbwh_rectangle_filled(
+            left, bottom, width, height, PANEL_BORDER_COLOR
+        )
+        arcade.draw_lbwh_rectangle_filled(
+            left, thumb_bottom, width, thumb_height, ACCENT_COLOR
+        )
 
     @staticmethod
     def _contains(bounds: tuple[int, int, int, int], x: int, y: int) -> bool:
