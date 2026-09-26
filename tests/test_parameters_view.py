@@ -23,6 +23,8 @@ try:
     )
     from frontend.arcade.race_configuration_view import (
         RaceConfigurationView,
+        SESSION_FIELD_BOUNDS,
+        SESSION_STEPPER_BOUNDS,
         SIDEBAR_ITEMS,
         WEATHER_APPLY_BOUNDS,
         WEATHER_END_BOUNDS,
@@ -178,8 +180,15 @@ class ParametersViewTest(unittest.TestCase):
         view.toggle_selected_track()
         view.open_track_configuration()
         race_view = self.window.current_view
-        race_view.on_mouse_release(1550, 515, arcade.MOUSE_BUTTON_LEFT, 0)
-        self.assertEqual(race_view.session.start_mode, "Lançada")
+        left, bottom, width, height = SESSION_STEPPER_BOUNDS["first_lap"][1]
+        race_view.on_mouse_release(
+            left + width // 2,
+            bottom + height // 2,
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
+        )
+        self.assertEqual(race_view.session.first_lap, 2)
+        self.assertEqual(race_view.session.start_mode, "Parada")
         race_view.on_mouse_release(100, 500, arcade.MOUSE_BUTTON_LEFT, 0)
         palette = RACE_WEATHER_PALETTE_BOUNDS["Chuva leve"]
         race_view.on_mouse_release(
@@ -202,12 +211,60 @@ class ParametersViewTest(unittest.TestCase):
         self.assertEqual(race_view.schedule.by_lap[2], "Chuva leve")
         race_view.save_and_return()
         self.assertEqual(view.configuration.weather_schedule.by_lap[1], "Chuva leve")
-        self.assertEqual(
-            view._session_configurations["circuit:18"].start_mode, "Lançada"
+        self.assertEqual(view._session_configurations["circuit:18"].first_lap, 2)
+        self.assertEqual(view.build_simulation_plan().races[0].session.first_lap, 2)
+
+    def test_session_stepper_buttons_stay_inside_fields_and_preserve_start_mode(
+        self,
+    ) -> None:
+        parent = self.ready_view()
+        self.window.show_view(parent)
+        parent.open_track_configuration()
+        race_view = self.window.current_view
+
+        for field, buttons in SESSION_STEPPER_BOUNDS.items():
+            field_left, field_bottom, field_width, field_height = SESSION_FIELD_BOUNDS[
+                field
+            ]
+            for left, bottom, width, height in buttons:
+                self.assertGreaterEqual(left, field_left)
+                self.assertGreaterEqual(bottom, field_bottom)
+                self.assertLessEqual(left + width, field_left + field_width)
+                self.assertLessEqual(bottom + height, field_bottom + field_height)
+
+        left, bottom, width, height = SESSION_STEPPER_BOUNDS["last_lap"][0]
+        race_view.on_mouse_release(
+            left + width // 2,
+            bottom + height // 2,
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
-        self.assertEqual(
-            view.build_simulation_plan().races[0].session.start_mode, "Lançada"
+        self.assertEqual(race_view.session.last_lap, 68)
+        self.assertEqual(race_view.session.start_mode, "Parada")
+
+        left, bottom, width, height = SESSION_FIELD_BOUNDS["last_lap"]
+        race_view.on_mouse_release(
+            left + 20, bottom + height // 2, arcade.MOUSE_BUTTON_LEFT, 0
         )
+        self.assertEqual(race_view.session.last_lap, 68)
+
+    def test_race_configuration_hides_source_metadata_on_session_and_climate(
+        self,
+    ) -> None:
+        parent = self.ready_view()
+        self.window.show_view(parent)
+        parent.open_track_configuration()
+        race_view = self.window.current_view
+        for topic in ("Sessão", "Clima"):
+            race_view.active_topic = topic
+            with patch.object(RaceConfigurationView, "_text") as draw_text:
+                race_view.on_draw()
+            labels = [call.args[0] for call in draw_text.call_args_list]
+            self.assertFalse(any("ID canônico" in label for label in labels))
+            self.assertFalse(any("Geometria reduzida" in label for label in labels))
+            self.assertFalse(any("pontos de pista" in label for label in labels))
+            if topic == "Sessão":
+                self.assertNotIn("Largada", labels)
 
     def test_inline_weather_numeric_interval_validates_and_paints(self) -> None:
         parent = self.ready_view()
@@ -385,6 +442,44 @@ class ParametersViewTest(unittest.TestCase):
         view.on_mouse_press(965, 455, arcade.MOUSE_BUTTON_LEFT, 0)
         view.on_mouse_release(965, 418, arcade.MOUSE_BUTTON_LEFT, 0)
         self.assertEqual(view.selected_track_ids, ("circuit:6", "circuit:18"))
+
+    def test_sequence_scrolls_one_stage_at_a_time_and_clamps_after_removal(
+        self,
+    ) -> None:
+        view = self.ready_view()
+        view.rules = TournamentRules(total_stages=6, allow_repeats=True)
+        self.window.show_view(view)
+        for _ in range(6):
+            view.toggle_selected_track()
+
+        self.assertEqual(view._sequence_scroll_index, 3)
+        width, height = self.window.get_size()
+        scroll_x = int(1000 * width / 1280)
+        scroll_y = int(420 * height / 720)
+        view.on_mouse_scroll(scroll_x, scroll_y, 0, 1)
+        self.assertEqual(view._sequence_scroll_index, 2)
+        self.assertEqual(view._sequence_index_at(965, 455), 2)
+        view.on_mouse_scroll(scroll_x, scroll_y, 0, 10)
+        self.assertEqual(view._sequence_scroll_index, 0)
+        view.on_mouse_scroll(scroll_x, scroll_y, 0, -10)
+        self.assertEqual(view._sequence_scroll_index, 3)
+
+        view.remove_selected_track()
+
+        self.assertEqual(view._sequence_scroll_index, 2)
+        self.assertEqual(view._sequence_index_at(965, 381), 4)
+
+    def test_tournament_screen_omits_source_generation_mode_and_summary(self) -> None:
+        view = self.ready_view()
+        self.window.show_view(view)
+        view.on_draw()
+
+        labels = {label.text for label in view._native_labels}
+        self.assertIn("Extensão da pista: 4,232 km", labels)
+        self.assertNotIn("Geração da sequência", labels)
+        self.assertNotIn("Resumo do torneio", labels)
+        self.assertFalse(any("Trotman" in label for label in labels))
+        self.assertFalse(any("Geometria reduzida" in label for label in labels))
 
     def test_visible_controls_add_track_and_confirm_sequence(self) -> None:
         received: list[SimulationPlan] = []
