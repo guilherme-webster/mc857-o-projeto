@@ -6,9 +6,11 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
+
 - **Ultima atividade registrada:** 2026-09-24T23:05:46Z
 - **Abertas:** 45
 - **Fechadas:** 10
+
 
 ## Issues abertas
 
@@ -425,72 +427,6 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 
 - 2026-08-28T23:38:49Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-08-28T23:15:25Z — label adicionada: Task por @Jmvjr
-
-</details>
-
-### [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** @Jmvjr
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:16:51Z
-- **Atualizada:** 2026-09-24T22:12:58Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve poder visualizar a pista selecionada</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (8)</summary>
-
-#### [@Jmvjr em 2026-09-18T22:14:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736826058)
-
-<pre>Andamento: a branch `43-criar-endpoints` foi integrada por fast-forward na branch local `13-exibição-de-pista`, trazendo os endpoints do backend, incluindo `GET /simulation/tracks` e `GET /simulation/track/{circuit_id}`. Verificação executada: `uv run python -m unittest -v` — 164 testes aprovados e 13 ignorados (configurações de GUI Arcade). Próximo passo: consumir o endpoint de geometria na visualização da pista. A branch local ainda precisa ser publicada com push.</pre>
-
-#### [@Jmvjr em 2026-09-18T22:28:41Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736949407)
-
-<pre>Implementação concluída localmente na branch `13-exibição-de-pista`: `GET /simulation/track/{circuit_id}` agora inclui `pit_lane_points` com `path_fraction` e `is_service_point`; a seção **Pista** da tela de configuração carrega a geometria em segundo plano e desenha traçado, pit lane e ponto de serviço com uma transformação conjunta que preserva alinhamento e proporção. Também há estados de carregamento/erro quando o backend não responde. Verificações: `uv run python -m unittest -v` — 168 testes aprovados, 14 testes Arcade ignorados por padrão; `ARCADE_GUI_TEST=True uv run python -m unittest -v tests.test_parameters_view` — 14 testes gráficos aprovados; `ruff check` e `git diff --check` aprovados. Foi feita revisão visual com a geometria real de Interlagos. Próximo passo: revisão humana, commit e push; nenhum commit foi criado pelo agente.</pre>
-
-#### [@Jmvjr em 2026-09-18T22:33:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736988506)
-
-<pre>Correção adicional de execução no Fedora: os bind mounts do `docker-compose.yaml` receberam rótulo SELinux `:Z`, eliminando `cannot open /app/entrypoint.sh: Permission denied`. A fixture versionada de geometria foi montada como `/data/geometry:ro,Z`, pois o backend procurava esse diretório mas apenas `./data` estava montado. Validação real em container: `/` respondeu `online`; `GET /simulation/track/18` retornou `circuit:18`, 240 pontos de pista, 80 pontos de pit lane e 1 ponto de serviço. O container foi deixado ativo para uso pelo frontend.</pre>
-
-#### [@Jmvjr em 2026-09-18T22:35:43Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737007587)
-
-<pre>Corrigida a corrida de inicialização mostrada na tela: `run.py` não usa mais `sleep(1)`; agora consulta `http://localhost:8000/` e só abre o Arcade depois de receber HTTP 200, com timeout e encerramento limpo em caso de falha. Foram adicionados testes para retry e esgotamento das tentativas. Verificações: suíte completa com 170 testes aprovados (14 gráficos ignorados por padrão), Ruff/Black/diff check aprovados e validação real após `docker compose up`: a espera confirmou o backend pronto e `/simulation/track/18` retornou 240 pontos de pista e 80 de pit lane.</pre>
-
-#### [@Jmvjr em 2026-09-18T22:38:28Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737028569)
-
-<pre>Diagnóstico final da falha exibida no Arcade: após criar a janela, o `urllib.request.urlopen` inicializava seu opener e um contexto HTTPS dentro da thread de carregamento, causando `ssl.SSLError` no ambiente Fedora/Pyglet mesmo para `http://localhost`. `frontend/arcade/track_client.py` agora constrói o opener na thread principal; a mensagem de erro também informa a classe da exceção. Validação ponta a ponta: backend Docker ativo + janela Arcade invisível + carregamento assíncrono real resultaram em `Geometria da pista carregada`, sem erro. Suíte: 170 testes aprovados; 14/14 testes gráficos aprovados; Ruff, Black e diff check aprovados. É necessário reiniciar o processo Arcade para carregar o cliente corrigido.</pre>
-
-#### [@Jmvjr em 2026-09-18T22:45:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737077983)
-
-<pre>Visualizador enriquecido apenas com dados existentes, sem nova aquisição: pista em camadas (sombra/borda/asfalto), setas derivadas da ordem dos pontos, linha de largada/chegada perpendicular ao primeiro segmento, entrada e saída derivadas dos extremos do pit lane, ponto de serviço, legenda completa, distância da amostra e contagem de pontos. A interface distingue ID canônico Trotman v128 de geometria reduzida FastF1 2025 e não apresenta a distância observada como extensão oficial. Zebras, largura variável e áreas de escape não foram inferidas. Revisão visual feita com Interlagos real. Verificações: 171 testes aprovados (14 gráficos ignorados por padrão), 14/14 testes Arcade aprovados, Ruff/Black/diff check aprovados.</pre>
-
-#### [@Jmvjr em 2026-09-18T22:48:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737099621)
-
-<pre>Ajuste visual após revisão: as camadas da pista foram afinadas (contorno total 23→18 px), a pit lane foi reduzida (11→8 px), o risco interno do asfalto foi removido e a linha de largada acompanhou a nova largura. Isso aumenta a separação visual na reta dos boxes sem alterar coordenadas. Nova captura revisada; 14/14 testes Arcade, testes de transformação, Ruff e diff check aprovados.</pre>
-
-#### [@Jmvjr em 2026-09-24T22:12:58Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5823094639)
-
-<pre>Implementação local da seleção de pistas: a tela inicial consulta GET /simulation/tracks, permite percorrer o catálogo e abre a configuração com o circuito escolhido; o tópico Pista carrega sua geometria via GET /simulation/track/{circuit_id}. Tratados carregamento e erro da API. Verificações: 175 testes unitários passaram (18 testes de GUI omitidos por padrão); 18 testes de GUI passaram com ARCADE_GUI_TEST=True; Ruff e git diff --check passaram; integração manual com backend confirmou 24 pistas e prévia de Monaco. Próximo passo: revisão/commit pelo responsável e integração da branch. Limitação: a seleção de geometria não amplia o suporte do motor de simulação a todos os circuitos.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:38:43Z — atribuida: @Jmvjr por @Jmvjr
-- 2026-08-28T23:16:53Z — label adicionada: Task por @Jmvjr
 
 </details>
 
@@ -1158,7 +1094,7 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 - **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
 - **Sub-issues:** —
 - **Criada:** 2026-09-08T22:18:07Z
-- **Atualizada:** 2026-09-11T22:35:07Z
+- **Atualizada:** 2026-09-24T23:41:38Z
 - **Fechada:** —
 
 <details>
@@ -1169,7 +1105,7 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 </details>
 
 <details>
-<summary>Comentarios (11)</summary>
+<summary>Comentarios (12)</summary>
 
 #### [@Jmvjr em 2026-09-08T22:25:28Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592701537)
 
@@ -1221,11 +1157,17 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 <pre>Tornar possível uma construção de partes da pista como objetos os quais são compostos de maneira a gerar uma pista final. Ademais, fazer com que seja viável saber o atrito na parte da pista, se é curva ou retam, etc para outras partes do simulador</pre>
 
+#### [@Jmvjr em 2026-09-24T23:36:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5824054131)
+
+<pre>Atendendo ao pedido posterior do usuário, foi reconstruído um gerador offline versionável para as geometrias das 24 pistas de 2025: scripts/rebuild_fastf1_geometry.py. O código original não consta no histórico Git, então a reconstrução segue os eventos/proveniência dos manifestos e não promete checksums idênticos; por padrão usa cache temporário e exige diretório novo, sem alterar fixtures versionadas. ADR 0003, README e README da fixture foram atualizados; testes determinísticos cobrem resampling, escala compartilhada, serviço e proteção contra sobrescrita. Verificações: 201 testes OK (31 GUI pulados), Ruff/Black/diff check OK. Execução real da etapa 21 com FastF1 3.8.3 produziu 240 pontos de pista e 80 de pit lane; os 240 pontos de pista coincidiram linha a linha com a fixture, enquanto o pit lane diferiu levemente e o ponto de serviço ficou um índice adiante. Saída de verificação preservada em data/curated/geometry-rebuild-check-20260924 (ignorada pelo Git); CSVs versionados mantêm seus checksums. Próximo passo: revisar a diferença no pit lane antes de usar o gerador para substituir qualquer fixture. Issue mantida aberta; nenhum commit criado pelo agente.</pre>
+
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-09-24T23:41:38Z — reaberta por @Jmvjr
+- 2026-09-24T23:41:19Z — fechada por @Jmvjr
 - 2026-09-11T22:17:46Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-09-11T22:17:46Z — responsavel removido: @Jmvjr por @Jmvjr
 - 2026-09-11T22:16:30Z — reaberta por @guilherme-webster
@@ -1639,6 +1581,73 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 </details>
 
 ## Issues fechadas
+
+### [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:16:51Z
+- **Atualizada:** 2026-09-24T23:42:03Z
+- **Fechada:** 2026-09-24T23:42:03Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve poder visualizar a pista selecionada</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (8)</summary>
+
+#### [@Jmvjr em 2026-09-18T22:14:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736826058)
+
+<pre>Andamento: a branch `43-criar-endpoints` foi integrada por fast-forward na branch local `13-exibição-de-pista`, trazendo os endpoints do backend, incluindo `GET /simulation/tracks` e `GET /simulation/track/{circuit_id}`. Verificação executada: `uv run python -m unittest -v` — 164 testes aprovados e 13 ignorados (configurações de GUI Arcade). Próximo passo: consumir o endpoint de geometria na visualização da pista. A branch local ainda precisa ser publicada com push.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:28:41Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736949407)
+
+<pre>Implementação concluída localmente na branch `13-exibição-de-pista`: `GET /simulation/track/{circuit_id}` agora inclui `pit_lane_points` com `path_fraction` e `is_service_point`; a seção **Pista** da tela de configuração carrega a geometria em segundo plano e desenha traçado, pit lane e ponto de serviço com uma transformação conjunta que preserva alinhamento e proporção. Também há estados de carregamento/erro quando o backend não responde. Verificações: `uv run python -m unittest -v` — 168 testes aprovados, 14 testes Arcade ignorados por padrão; `ARCADE_GUI_TEST=True uv run python -m unittest -v tests.test_parameters_view` — 14 testes gráficos aprovados; `ruff check` e `git diff --check` aprovados. Foi feita revisão visual com a geometria real de Interlagos. Próximo passo: revisão humana, commit e push; nenhum commit foi criado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:33:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5736988506)
+
+<pre>Correção adicional de execução no Fedora: os bind mounts do `docker-compose.yaml` receberam rótulo SELinux `:Z`, eliminando `cannot open /app/entrypoint.sh: Permission denied`. A fixture versionada de geometria foi montada como `/data/geometry:ro,Z`, pois o backend procurava esse diretório mas apenas `./data` estava montado. Validação real em container: `/` respondeu `online`; `GET /simulation/track/18` retornou `circuit:18`, 240 pontos de pista, 80 pontos de pit lane e 1 ponto de serviço. O container foi deixado ativo para uso pelo frontend.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:35:43Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737007587)
+
+<pre>Corrigida a corrida de inicialização mostrada na tela: `run.py` não usa mais `sleep(1)`; agora consulta `http://localhost:8000/` e só abre o Arcade depois de receber HTTP 200, com timeout e encerramento limpo em caso de falha. Foram adicionados testes para retry e esgotamento das tentativas. Verificações: suíte completa com 170 testes aprovados (14 gráficos ignorados por padrão), Ruff/Black/diff check aprovados e validação real após `docker compose up`: a espera confirmou o backend pronto e `/simulation/track/18` retornou 240 pontos de pista e 80 de pit lane.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:38:28Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737028569)
+
+<pre>Diagnóstico final da falha exibida no Arcade: após criar a janela, o `urllib.request.urlopen` inicializava seu opener e um contexto HTTPS dentro da thread de carregamento, causando `ssl.SSLError` no ambiente Fedora/Pyglet mesmo para `http://localhost`. `frontend/arcade/track_client.py` agora constrói o opener na thread principal; a mensagem de erro também informa a classe da exceção. Validação ponta a ponta: backend Docker ativo + janela Arcade invisível + carregamento assíncrono real resultaram em `Geometria da pista carregada`, sem erro. Suíte: 170 testes aprovados; 14/14 testes gráficos aprovados; Ruff, Black e diff check aprovados. É necessário reiniciar o processo Arcade para carregar o cliente corrigido.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:45:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737077983)
+
+<pre>Visualizador enriquecido apenas com dados existentes, sem nova aquisição: pista em camadas (sombra/borda/asfalto), setas derivadas da ordem dos pontos, linha de largada/chegada perpendicular ao primeiro segmento, entrada e saída derivadas dos extremos do pit lane, ponto de serviço, legenda completa, distância da amostra e contagem de pontos. A interface distingue ID canônico Trotman v128 de geometria reduzida FastF1 2025 e não apresenta a distância observada como extensão oficial. Zebras, largura variável e áreas de escape não foram inferidas. Revisão visual feita com Interlagos real. Verificações: 171 testes aprovados (14 gráficos ignorados por padrão), 14/14 testes Arcade aprovados, Ruff/Black/diff check aprovados.</pre>
+
+#### [@Jmvjr em 2026-09-18T22:48:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5737099621)
+
+<pre>Ajuste visual após revisão: as camadas da pista foram afinadas (contorno total 23→18 px), a pit lane foi reduzida (11→8 px), o risco interno do asfalto foi removido e a linha de largada acompanhou a nova largura. Isso aumenta a separação visual na reta dos boxes sem alterar coordenadas. Nova captura revisada; 14/14 testes Arcade, testes de transformação, Ruff e diff check aprovados.</pre>
+
+#### [@Jmvjr em 2026-09-24T22:12:58Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/13#issuecomment-5823094639)
+
+<pre>Implementação local da seleção de pistas: a tela inicial consulta GET /simulation/tracks, permite percorrer o catálogo e abre a configuração com o circuito escolhido; o tópico Pista carrega sua geometria via GET /simulation/track/{circuit_id}. Tratados carregamento e erro da API. Verificações: 175 testes unitários passaram (18 testes de GUI omitidos por padrão); 18 testes de GUI passaram com ARCADE_GUI_TEST=True; Ruff e git diff --check passaram; integração manual com backend confirmou 24 pistas e prévia de Monaco. Próximo passo: revisão/commit pelo responsável e integração da branch. Limitação: a seleção de geometria não amplia o suporte do motor de simulação a todos os circuitos.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-24T23:42:03Z — fechada por @Jmvjr
+- 2026-08-28T23:38:43Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-08-28T23:16:53Z — label adicionada: Task por @Jmvjr
+
+</details>
 
 ### [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16)
 

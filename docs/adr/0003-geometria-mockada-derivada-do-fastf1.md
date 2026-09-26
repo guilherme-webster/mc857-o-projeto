@@ -4,14 +4,12 @@
 - Data: 2026-09-08
 - Responsaveis: grupo do projeto
 
-> Esclarecimento de terminologia em 2026-09-11: "mock" designa neste registro
-> uma geometria reduzida derivada de observacoes reais, com aproximacoes; nao
-> significa dados inventados. Preserva-se o texto historico e o escopo aceito.
-> A reducao dos dados nao altera por si so as condicoes de uso da fonte.
-
-> Atualizacao em 2026-09-12: o [ADR 0005](0005-historico-completo-e-enriquecimento-fastf1.md)
-> autoriza historico completo e enriquecimento offline com FastF1. As restricoes
-> de fonte anteriores permanecem abaixo apenas como contexto historico.
+> Atualizacao em 2026-09-24: a pedido do usuario, um gerador offline foi
+> reconstruido em `scripts/rebuild_fastf1_geometry.py` e voltou a ser
+> versionado. O
+> script novo implementa as transformacoes documentadas, mas nao promete
+> reproduzir byte a byte os CSVs de 2025. Os artefatos originais permanecem
+> imutaveis: a saida exige um diretorio novo, fora das fixtures versionadas.
 
 ## Contexto
 
@@ -58,11 +56,13 @@ Esta decisao introduz uma excecao explicita e restrita a regra de fonte unica
 do ADR 0002; ela nao autoriza usar FastF1 para ritmo, clima, pneus ou qualquer
 outro dado do simulador.
 
-O cache do FastF1 foi criado em diretorio temporario exclusivo da execucao e
-apagado automaticamente. Apenas as polilinhas reduzidas e os manifestos com
-fonte, versao, data, transformacao e checksum sao versionados. Os scripts e o
-codigo auxiliar de geracao foram removidos depois da validacao. A geometria e
-um mock educacional derivado, nao uma fonte oficial nem telemetria redistribuida.
+Na geracao original, o cache do FastF1 foi criado em diretorio temporario
+exclusivo da execucao e apagado automaticamente. Aquele codigo auxiliar nao
+foi versionado. As polilinhas reduzidas e os manifestos com fonte, versao,
+data, transformacao e checksum foram preservados. O gerador reconstruido agora
+versionado tambem usa cache temporario por padrao e publica somente arquivos
+reduzidos em uma saida separada. A geometria e um mock educacional derivado,
+nao uma fonte oficial nem telemetria redistribuida.
 
 ## Consequencias
 
@@ -73,7 +73,7 @@ um mock educacional derivado, nao uma fonte oficial nem telemetria redistribuida
   aos IDs de circuito ja existentes no Trotman v128.
 - Cada pista tem ainda um caminho de pit lane e um ponto de servico mockado;
   posicoes individuais dos boxes continuam fora do escopo.
-- Regenerar ou acrescentar pistas exigira reintroduzir uma ferramenta offline,
-  revisar a transformacao e produzir novos manifestos sem versionar telemetria
-  bruta.
+- Regenerar ou acrescentar pistas usa a ferramenta offline reconstruida, mas
+  exige revisar a transformacao, conferir divergencias e produzir novos
+  manifestos sem versionar telemetria bruta.
 - A visualizacao da pista permanece fora desta decisao e da issue de geracao.
