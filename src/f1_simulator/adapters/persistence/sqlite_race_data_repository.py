@@ -173,7 +173,7 @@ class SQLiteRaceDataRepository:
             JOIN race_entries AS e ON e.driver_id = d.driver_id
             WHERE e.race_id = ?
             ORDER BY CAST(SUBSTR(d.driver_id, INSTR(d.driver_id, ':') + 1) AS INTEGER)
-            "
+            """,
             (race_id,),
         )
         return tuple(

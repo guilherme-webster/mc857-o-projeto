@@ -1,4 +1,4 @@
-# Geometria mockada das pistas de 2025
+# Geometrias das pistas de 2025 derivadas do FastF1
 
 `track_points.csv` complementa os IDs de circuito do Trotman v128 com uma
 polilinha 2D reduzida para cada uma das 24 etapas da temporada de 2025. Cada
