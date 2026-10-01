@@ -1,6 +1,6 @@
 """Carregamento de dados do banco curado do ETL.
 
-Le o current-race.sqlite e transforma os dados brutos da corrida nos modelos
-de simulacao (app.models). Tambem produz o resumo da corrida para exibicao. E a
-camada de leitura entre o ETL e a simulacao.
+Le o current-race.sqlite pelo repository do nucleo e expoe os parametros
+canonicos de simulacao e o resumo da corrida. E a camada de leitura entre o ETL
+e a simulacao, sem SQL proprio.
 """
