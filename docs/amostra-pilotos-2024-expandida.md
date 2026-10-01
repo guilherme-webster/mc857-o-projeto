@@ -87,8 +87,8 @@ existentes. Ruff, links locais e sintaxe dos comandos passaram.
 
 ## Reprodução da aquisição
 
-Usar Python com `requirements-etl.txt` instalado (FastF1 3.8.3). O ambiente
-Pipenv dos gráficos não inclui necessariamente FastF1. Nesta sessão foi usado
+Usar Python com o ambiente sincronizado por `uv sync` (inclui FastF1 3.8.3). O
+ambiente Pipenv dos gráficos não inclui necessariamente FastF1. Nesta sessão foi usado
 `/tmp/mc857-evaluation-venv/bin/python`, um ambiente de aquisição já existente;
 na reprodução, substituir `python` pelo interpretador do ambiente do ETL.
 
