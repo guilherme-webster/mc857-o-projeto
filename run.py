@@ -215,10 +215,17 @@ def start_system() -> None:
     else:
         ok("[1/4] Frontend local; backend em container.")
 
-    info("[2/4] Construindo imagem e subindo o backend...")
+    info("[2/4] Construindo imagem do backend...")
+    try:
+        compose(["build", "backend"], env, check=True)
+    except subprocess.CalledProcessError:
+        fail("Falha ao construir a imagem do backend.")
+        sys.exit(1)
+
+    info("      Subindo o backend...")
     try:
         compose(
-            ["up", "-d", "--build", "backend"],
+            ["up", "-d", "backend"],
             env,
             check=True,
             stdout=subprocess.DEVNULL,
