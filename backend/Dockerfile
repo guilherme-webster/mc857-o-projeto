@@ -1,19 +1,23 @@
+FROM ghcr.io/astral-sh/uv:0.8.22 AS uv
+
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+COPY --from=uv /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-COPY backend/requirements.txt requirements.txt
-COPY requirements-etl.txt requirements-etl.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-etl.txt
+COPY pyproject.toml uv.lock ./
+RUN uv sync --no-dev --no-install-project
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src
 
 COPY src/ /app/src/
-ENV PYTHONPATH=/app/src
-
 COPY scripts/ /app/scripts/
 COPY backend/ /app/
 

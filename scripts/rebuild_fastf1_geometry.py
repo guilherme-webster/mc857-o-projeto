@@ -176,7 +176,7 @@ def _load_session(round_number: int, cache_dir: Path):
         import fastf1
     except ImportError as error:
         raise RuntimeError(
-            "install requirements-etl.txt in an isolated environment"
+            "FastF1 nao instalado; rode uv sync"
         ) from error
     if fastf1.__version__ != VERSION:
         raise RuntimeError(f"expected FastF1 {VERSION}, got {fastf1.__version__}")
