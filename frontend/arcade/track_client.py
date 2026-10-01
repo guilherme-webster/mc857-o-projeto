@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import urllib.request
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = os.environ.get("F1_API_BASE_URL", "http://localhost:8000").rstrip("/")
 
 # Build urllib's handlers on the Arcade/UI thread. Lazily constructing the
 # default opener inside a worker also initializes an unused HTTPS context and

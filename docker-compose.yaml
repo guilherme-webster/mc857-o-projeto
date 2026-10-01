@@ -1,3 +1,19 @@
+x-frontend-environment: &frontend-environment
+  F1_API_BASE_URL: http://backend:8000
+  PYTHONUNBUFFERED: "1"
+
+x-frontend-common: &frontend-common
+  image: f1-sim-frontend:local
+  build:
+    context: .
+    dockerfile: frontend/Dockerfile
+  depends_on:
+    backend:
+      condition: service_healthy
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
 services:
   backend:
     build:
@@ -17,3 +33,38 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app/src
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=2)
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+
+  frontend-linux:
+    <<: *frontend-common
+    profiles:
+      - linux
+    user: ${LOCAL_UID:-1000}:${LOCAL_GID:-1000}
+    environment:
+      <<: *frontend-environment
+      DISPLAY: ${DISPLAY:-:0}
+      XAUTHORITY: /tmp/f1-sim-docker.xauth
+      LIBGL_ALWAYS_SOFTWARE: ${LIBGL_ALWAYS_SOFTWARE:-1}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${F1_XAUTHORITY:-/tmp/f1-sim-docker.xauth}:/tmp/f1-sim-docker.xauth:ro,Z
+
+  frontend-wslg:
+    <<: *frontend-common
+    profiles:
+      - wslg
+    environment:
+      <<: *frontend-environment
+      DISPLAY: ${DISPLAY:-:0}
+      LIBGL_ALWAYS_SOFTWARE: ${LIBGL_ALWAYS_SOFTWARE:-1}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
