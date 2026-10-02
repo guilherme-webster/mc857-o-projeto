@@ -32,6 +32,13 @@ from dataclasses import dataclass
 from math import isfinite
 from typing import Literal
 
+from f1_simulator.domain.attribute_effects import (
+    adjusted_reference_ms,
+    adjusted_tyre_effect_ms,
+    attributes_assumption,
+    consistency_scale,
+)
+from f1_simulator.domain.driver_attributes import DriverAttributes
 from f1_simulator.domain.random_source import (
     RandomSource,
     truncated_standard_normal,
@@ -45,24 +52,20 @@ from f1_simulator.domain.tyres import (
 )
 
 
+NOMINAL_LAP_TIME_MS = 90_000.0
+"""Assumed nominal lap reference, in ms, modulated by driver attributes."""
+
+
 @dataclass(frozen=True, slots=True)
 class Competitor:
-    """Um participante e seu unico atributo nesta fatia: o ritmo constante.
-
-    ``lap_time_ms`` e o tempo de volta constante do carro, em milissegundos.
-    Deve ser estritamente positivo; pilotos sem ritmo derivavel do ETL nao
-    entram na simulacao e devem ser filtrados antes de chegar aqui.
-
-    Quando um modelo de pneu esta ativo (``tyre_plan``), ``lap_time_ms`` passa a
-    significar o tempo de volta NO PONTO DE ANCORAGEM do pneu (efeito de pneu
-    zero). O efeito de idade e somado por cima; se o ritmo informado ja embutisse
-    o desgaste, ele seria contado duas vezes, por isso o contrato exige que o
-    chamador informe o ritmo de referencia.
-    """
-
     driver_id: str
     name: str
-    lap_time_ms: float
+    lap_time_ms: float | None = None
+    attributes: DriverAttributes | None = None
+
+    @property
+    def reference_lap_time_ms(self) -> float:
+        return self.lap_time_ms if self.lap_time_ms is not None else NOMINAL_LAP_TIME_MS
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,12 +221,12 @@ def simulate_race(
 
     seen: set[str] = set()
     for competitor in competitors:
-        if competitor.lap_time_ms <= 0:
+        if competitor.reference_lap_time_ms <= 0:
             raise ValueError(
-                f"lap_time_ms deve ser positivo para {competitor.driver_id}"
+                f"reference lap time must be positive for {competitor.driver_id}"
             )
         if competitor.driver_id in seen:
-            raise ValueError(f"driver_id duplicado: {competitor.driver_id}")
+            raise ValueError(f"duplicate driver_id: {competitor.driver_id}")
         seen.add(competitor.driver_id)
 
     if variability is not None and rng is None:
@@ -236,7 +239,10 @@ def simulate_race(
     tyre_parameters = _resolve_tyre_parameters(
         competitors, tyre_plan, tyre_catalogue, total_laps
     )
-    model_active = tyre_plan is not None or variability is not None
+    has_attributes = any(c.attributes is not None for c in competitors)
+    model_active = (
+        tyre_plan is not None or variability is not None or has_attributes
+    )
 
     totals: dict[str, float] = {c.driver_id: 0.0 for c in competitors}
 
@@ -264,7 +270,7 @@ def simulate_race(
                     )
                 breakdowns[competitor.driver_id] = breakdown
             else:
-                lap_time = competitor.lap_time_ms
+                lap_time = competitor.reference_lap_time_ms
             lap_times[competitor.driver_id] = lap_time
             totals[competitor.driver_id] += lap_time
         history.append(
@@ -283,7 +289,9 @@ def simulate_race(
         "classification": classification,
     }
     if model_active:
-        result["assumptions"] = _assumptions(tyre_parameters, variability)
+        result["assumptions"] = _assumptions(
+            tyre_parameters, variability, competitors
+        )
     return result
 
 
@@ -337,10 +345,15 @@ def _lap_breakdown(
 ) -> LapTimeBreakdown:
     """Componha o tempo de uma volta; o que nao e modelado permanece ``None``."""
 
+    attributes = competitor.attributes
+    reference = adjusted_reference_ms(competitor.reference_lap_time_ms, attributes)
+
     tyre_effect: float | None = None
     if tyre_parameters is not None:
         state = TyreState(tyre_parameters.compound, lap - 1)
-        tyre_effect = tyre_effect_ms(tyre_parameters, state)
+        tyre_effect = adjusted_tyre_effect_ms(
+            tyre_effect_ms(tyre_parameters, state), attributes
+        )
 
     noise: float | None = None
     if variability is not None and rng is not None:
@@ -351,16 +364,18 @@ def _lap_breakdown(
         )
         noise = (
             variability.sigma_pct_of_reference / 100.0
-            * competitor.lap_time_ms
+            * reference
+            * consistency_scale(attributes)
             * z
         )
 
-    return LapTimeBreakdown(competitor.lap_time_ms, tyre_effect, noise)
+    return LapTimeBreakdown(reference, tyre_effect, noise)
 
 
 def _assumptions(
     tyre_parameters: Mapping[str, TyreModelParameters],
     variability: LapVariabilityAssumption | None,
+    competitors: tuple[Competitor, ...] | list[Competitor],
 ) -> list[dict]:
     """Liste, em ordem deterministica, os parametros assumidos realmente usados."""
 
@@ -392,6 +407,9 @@ def _assumptions(
                 "truncation_sigmas": variability.truncation_sigmas,
             }
         )
+    for competitor in sorted(competitors, key=lambda c: c.driver_id):
+        if competitor.attributes is not None:
+            items.append(attributes_assumption(competitor.attributes))
     return items
 
 

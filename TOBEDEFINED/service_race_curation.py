@@ -43,7 +43,7 @@ def load_race_into_current(race_id: int) -> dict[str, object]:
         try:
             report = _run(geometry_dataset())
         except (MockTrackDatasetError, TrackGeometryValidationError):
-            # Circuito sem geometria mapeada: repete sem geometria.
+            # Circuit without mapped geometry: retry without geometry.
             report = _run(None)
     except RaceDataValidationError as error:
         raise RaceLoadError(str(error), reason="validation") from error

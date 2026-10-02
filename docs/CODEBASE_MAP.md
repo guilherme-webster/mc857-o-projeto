@@ -199,8 +199,8 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `services/track_geometry.py` | Catálogo de pistas (manifesto) e geometria. Independe do ETL carregado. |
 | `services/race_curation.py` | `POST /load`: ETL da corrida; se a geometria falhar, repete **sem** geometria. |
 | `services/race_simulation.py` | Simula a corrida corrente e grava `backend/races/race.json`. |
-| `loaders/loader.py` | SQL direto no SQLite (`mode=ro`), **fora dos ports**. `base_lap_time_ms` = mediana do quartil mais rápido. |
-| `models/models.py` | `DriverParameters` do backend (**diferente** de `domain.DriverPaceParameters`). |
+| `loaders/loader.py` | Lê via `SQLiteRaceDataRepository` (`list_race_ids` + `get_race`); **sem SQL próprio**. Retorna os `SimulationParameters` canônicos do núcleo. |
+| `services/inspection.py` | Borda HTTP sobre `SQLiteDatabaseInspector` (núcleo); traduz erros de inspeção em `HTTPException`. **Sem SQL.** |
 | `services/errors.py` | `ETLError` com `reason` → status (validation 422, source 404, storage 500). |
 
 **Rotas:**
@@ -323,7 +323,7 @@ com `race_entries` como tabela real) usado pelo backend.
 **Comportamento não óbvio**
 
 - **Dois caminhos de parâmetros** que não se conversam: série livre (ms/km, request) e corrida histórica (`loader.py`). Nenhum usa ainda `DriverParametersProvider` nem os perfis.
-- **Backend fora dos ports:** `loader.py` e `services/` acessam SQLite direto, sem `RaceDataRepository`.
+- **Backend sem SQL próprio:** `loader.py` usa `SQLiteRaceDataRepository`; a inspeção de banco passa pelo `SQLiteDatabaseInspector` (porta `DatabaseInspectionPort`); `history.list_reports` usa `SQLiteHistoryRepository.reports()`. SQLite fica atrás dos adaptadores do núcleo.
 - **`GET /simulation/drivers`** devolve `race_id=0` fixo. `POST /simulation/load` com erro devolve `{"detail": {...}}`, não exatamente o `RaceLoadErrorResponse` declarado.
 - **Manifesto com `circuit_name` ou `lap_length_m` nulos:** nome vazio dá 422, mas `isfinite(None)` provoca `TypeError` (500).
 - **Geometria vem de fixture de teste:** o compose monta `tests/fixtures/trotman_v128_tracks_2025` sobre `/data/geometry` (gitignored). Geometria 2025 não é layout verificado de outra temporada. Selecionar geometria não amplia o suporte do motor a todos os circuitos.

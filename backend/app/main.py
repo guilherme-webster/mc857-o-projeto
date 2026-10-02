@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.routers import etl, health, history, simulation
+from app.routers import catalog, etl, health, history, simulation
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,3 +21,4 @@ app.include_router(health.router)
 app.include_router(etl.router)
 app.include_router(history.router)
 app.include_router(simulation.router)
+app.include_router(catalog.router)

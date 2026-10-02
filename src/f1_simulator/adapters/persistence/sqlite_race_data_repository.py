@@ -38,6 +38,30 @@ class SQLiteRaceDataRepository:
 
         self._source = source.resolve()
 
+    def list_race_ids(self) -> tuple[str, ...]:
+        """Return the canonical race identifiers stored in the database.
+
+        Lets callers discover the race in a single-race curated database without
+        issuing SQL themselves. Returns an empty tuple when no race is present.
+        """
+
+        if not self._source.is_file():
+            raise RaceDataRepositoryError(
+                f"canonical race database does not exist: {self._source}"
+            )
+        database_uri = f"{self._source.as_uri()}?mode=ro"
+        try:
+            with closing(sqlite3.connect(database_uri, uri=True)) as connection:
+                connection.row_factory = sqlite3.Row
+                rows = connection.execute(
+                    "SELECT race_id FROM races ORDER BY race_id"
+                ).fetchall()
+        except sqlite3.Error as error:
+            raise RaceDataRepositoryError(
+                f"cannot read canonical race database {self._source}: {error}"
+            ) from error
+        return tuple(self._text(row, "race_id") for row in rows)
+
     def get_race(self, race_id: str) -> RaceData:
         """Load one race by canonical ID and reject incomplete persistence.
 

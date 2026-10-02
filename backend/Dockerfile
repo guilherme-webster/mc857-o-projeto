@@ -1,24 +1,19 @@
-FROM ghcr.io/astral-sh/uv:0.8.22 AS uv
-
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
-
-COPY --from=uv /uv /usr/local/bin/uv
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/opt/f1/src \
+    F1_SCRIPTS_DIR=/opt/f1/scripts
 
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --no-dev --no-install-project
 
-ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONPATH=/app/src
-
-COPY src/ /app/src/
-COPY scripts/ /app/scripts/
+COPY src/ /opt/f1/src/
+COPY scripts/ /opt/f1/scripts/
 COPY backend/ /app/
 
 EXPOSE 8000
