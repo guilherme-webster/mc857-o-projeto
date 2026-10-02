@@ -14,6 +14,7 @@ arquivo: o estado oficial continua no GitHub.
 | Issue | Responsavel | Atualizado em | Etapa em que ficou | Evidencias | Proximo passo ou bloqueio |
 | --- | --- | --- | --- | --- | --- |
 | #40, #61, #66 e #67 | #40: @DaviGabrielBC; #61/#66: @guilherme-webster; #67: sem responsavel atribuido | 2026-09-11 21:40 -03:00 | Revisao documental em `40-planejamento-modelagem`: FastAPI confirmado no ADR 0004; planejamento geral e pesquisa de perfilamento. `67-modelagem-pilotos` criada em worktree separado, sem implementacao. | Diff sem erros de whitespace; links locais conferidos; auditoria de contagens do ZIP Trotman/2024; fontes oficiais consultadas; uma consulta limitada OpenF1; leitura da branch #43 em `0f6255d`. Nenhum teste de execucao ou calibracao realizado. | Revisar e commitar documentos, integrar as decisoes na branch #67, coordenar o calculo com #43 e definir recorte/contrato Python. Expansao de FastF1 alem da geometria permanece proposta. Registro local para posterior publicacao nas issues: esta solicitacao autorizou documentacao e branches, sem envio de comentarios ao GitHub. |
+| #69 | @Jmvjr, @guilherme-webster | 2026-10-02 19:25 -03:00 | Modelo climático por volta implementado no domínio: umidade relativa e índice de água superficial, sem integração com API, Arcade, pneus ou tempo de volta. | 255 testes passaram, 35 ignorados; Ruff e `git diff --check` passaram. `pytest` não está instalado no ambiente `uv`; a suíte foi executada por `unittest` com `PYTHONPATH=src:.`. | Revisar hipóteses e parâmetros ilustrativos; na próxima etapa, mapear rótulos da UI e ligar resultados ao motor. Atualizar a issue #69 no GitHub após autorização para comentário. |
 
 ## ETL enriquecido — 2026-09-12 (-03:00)
 
@@ -359,3 +360,107 @@ Próximo passo: compor o motor de corrida completo com referências ao longo das
 voltas e política explícita de ausência/extrapolação. O demonstrador backend
 mantém tempos fixos; esta entrega fornece a porta e consumidor de uma volta.
 Guia: `docs/ranking-e-adaptador-pilotos.md`.
+
+## 18/09/2026 — início do estudo de pneus (#63)
+
+Criada `63-modelagem-pneus` a partir de `3876dc1` (ranking/adaptador já
+commitados pelo usuário). Issue #63 aberta, atribuída a @guilherme-webster,
+filha de #40, sem descrição; futura integração #70. Fetch e espelho atualizados.
+Encontrado core remoto em `origin/43-criar-endpoints`, commit `50c0eed`:
+simulação por ritmo constante, sem consumo da degradação provisória do loader.
+Sem merge, alterações nesse core ou mensagens ao colega/GitHub.
+
+Documentado `docs/modelagem-pneus-inicial.md`: cobertura canônica de 18 sessões,
+20.262 observações/958 stints, sem nulos de composto/idade/stint/fresh_tyre;
+17.193 voltas após filtros de qualidade e 768 stints secos candidatos sob
+limiares exploratórios. Proposta de parâmetros/estado separados, evolução
+ancorada, ausência explícita e plano de exploração/calibração/integração.
+Identificados bloqueios de ancoragem por janela de idade, confundimento com
+volta/combustível, convenção temporal de TyreLife e precisão do core remoto.
+
+Verificação: snippet do estudo executado contra repository local e contagens
+reproduzidas; diff/links locais verificados. Somente documentação alterada,
+sem necessidade de repetir testes de código. Nenhuma curva calibrada ou novo
+ETL implementado. Próximo passo: gráficos por piloto/stint e auditoria de idade,
+depois alinhar o contrato com o responsável pelo core. Publicar este andamento
+na #63 quando autorizado. Sem commits/push. Sugestões:
+`docs(pneus): planeje evolução determinística e integração com o core`;
+separadamente `docs(backlog): atualize o espelho das issues`.
+
+## 18/09/2026 — gráficos e exploração de pneus (#63)
+
+Implementados `application/analyze_tyres.py` e `scripts/analyze_tyres.py`, com
+cinco testes novos. Seleção exclusiva das 18 sessões de desenvolvimento,
+auditoria de idade/composto, OLS e inclinação robusta por stint, contraste de
+posições 2–3 versus 5–8 e cortes de início 1–3/1–5. Artefatos atômicos:
+JSON/CSVs, atlas PDF e 38 PNGs/2 SVGs com nomes canônicos, exclusões e suporte.
+
+Resultado: 958 stints, 17.069 voltas aprovadas (124 a menos que o levantamento
+inicial pela exigência adicional de chuva falsa em secos), 768 ajustes secos.
+Inclinações negativas em 28,3% SOFT, 33,7% MEDIUM e 45,9% HARD. Contrastes de
+pneus novos MEDIUM/HARD perto de zero na síntese por evento, com forte dispersão.
+Japão/Gasly S2 evidencia distorção do OLS por início lento após retomada;
+Mônaco domina alguns contrastes iniciais. Sem coeficientes causais exportados.
+
+Análise detalhada em `docs/analise-pneus-2024.md`. Saída final:
+`data/curated/tyre-studies/tyres-3009620bdf9c4e7995149a8d5fb255ec/`.
+JSON e CSVs idênticos em duas execuções; gráficos inspecionados por amostragem.
+173 testes sem falhas, 13 ignorados; Ruff/format/whitespace aprovados.
+Backlog sincronizado sem diff. Sem commits, push ou mensagens ao GitHub.
+Registro para posterior publicação na #63 quando autorizado.
+
+Próximo passo: auditar e marcar janelas após relargadas, comparar ajustes
+robustos e OLS e estudar diferenças de idade na mesma fase da corrida antes
+de calibrar o contrato de pneus para o core. Decisões de referência/idade
+continuam pendentes. Sugestão: `feat(pneus): explore evolução e cobertura por stint`
+(caso de uso, script e testes) e `docs(pneus): registre análise de evolução e aquecimento`
+(guias, README e andamento).
+
+## 18/09/2026 — sensibilidade de pneus após retomadas (#63)
+
+Adicionados caso de uso/CLI `analyze_tyre_restarts` e quatro testes. Detector
+operacional Aborted→Started encontra Japão, Mônaco e São Paulo; não cobre SC/VSC.
+Âncora por piloto antes dos filtros, lacunas preservadas, volta atravessando
+retomada marcada separadamente. Variantes 0/1/2/3/5 não alteram baseline.
+
+Janela 2 retira 33/17.069 voltas aprovadas e mantém 768 ajustes secos; janela 5
+retira 160 e perde um ajuste. Gasly/Japão S2 muda −1.075→+202 ms/volta e
+Ocon −807→+86; Bottas/Mônaco segue negativo. Medianas globais pouco alteradas;
+contrastes de início não sustentam penalidade universal de aquecimento.
+Recomendação: janela 2 candidata a filtro contextual, sem coeficientes para o
+core. Próximo passo: SC/VSC e comparação de estimadores com validação por evento.
+
+Guia `docs/pneus-janelas-relargada.md`; gráficos/JSON/CSV em
+`data/curated/tyre-restarts/restarts-e9b6fa63723c403fa21b3aa5b001a37a/`.
+Baseline igual ao estudo anterior e JSON/CSVs idênticos em duas execuções.
+177 testes sem falhas, 13 ignorados; Ruff/format/whitespace aprovados; gráfico
+de casos inspecionado. Backlog sincronizado. Sem commits, push ou comentários
+GitHub; publicar andamento na #63 quando autorizado. Sugestões:
+`feat(pneus): analise sensibilidade após retomadas de sessão` e
+`docs(pneus): registre efeitos das janelas após relargadas`.
+
+## 18/09/2026 — SC/VSC e comparação de estimadores (#63)
+
+Registrado protocolo em `docs/protocolo-pneus-sc-estimadores.md` antes dos
+resultados. Implementados `application/compare_tyre_estimators.py`, CLI homônimo
+e cinco testes. Detector 4/6/7→1 com vermelho cancelando, episódio aberto sem
+retomada inventada, sequence canônico auditado e união de janelas. Encontrados
+10 retornos em oito eventos; mensagens de direção preservadas para inspeção.
+
+Janela primária SC/VSC=2, sobre Aborted→Started=2, retira mais 238 voltas e
+reduz 768→764 ajustes. Mediana das inclinações entre pares menos sensível à
+retirada de uma volta em 524/749 stints pareados. Benchmark por evento deixado
+fora usa âncora nas primeiras cinco voltas e teste nas seguintes: 715 stints,
+11.852 voltas, 17 eventos. OLS e robusto vencem constante em 10/17 eventos;
+deltas medianos −14,33/−10,73 ms, intervalos exploratórios incluindo zero.
+Robusto não demonstrou superioridade preditiva universal. Não exportados
+coeficientes ao core. Próximo passo: recorte circuito/condições e ancoragem
+compatível; contrato experimental pode usar parâmetros assumidos identificados.
+
+Guia: `docs/pneus-sc-vsc-estimadores.md`. Artefatos:
+`data/curated/tyre-estimators/estimators-55890223ccfd456eae530045a1965760/`.
+Três gráficos inspecionados; JSON/três CSVs idênticos em duas execuções.
+182 testes sem falhas, 13 ignorados; Ruff/format/whitespace aprovados.
+Backlog regenerado com novos comentários da issue #13; separar esse diff
+em commit de espelho do backlog. Sem commits/push/comentários GitHub; publicar
+andamento na #63 quando autorizado. 

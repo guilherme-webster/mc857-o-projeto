@@ -40,9 +40,15 @@ SIDEBAR_ITEMS = {
 }
 TRACK_MAP_BOUNDS = (784, 264, 673, 173)
 SESSION_FIELD_BOUNDS = {
-    "first_lap": (805, 498, 246, 38),
-    "last_lap": (1084, 498, 246, 38),
-    "start_mode": (1362, 498, 256, 38),
+    "first_lap": (805, 498, 385, 38),
+    "last_lap": (1220, 498, 398, 38),
+}
+SESSION_STEPPER_BOUNDS = {
+    field: (
+        (left + width - 74, bottom + 2, 34, height - 4),
+        (left + width - 38, bottom + 2, 34, height - 4),
+    )
+    for field, (left, bottom, width, height) in SESSION_FIELD_BOUNDS.items()
 }
 BACK_BOUNDS = (50, 56, 367, 53)
 CANCEL_BOUNDS = (1100, 8, 152, 42)
@@ -237,14 +243,6 @@ class RaceConfigurationView(arcade.View):
             14,
             SECONDARY_TEXT_COLOR,
         )
-        self._text(
-            "ID canônico: Trotman v128",
-            1620,
-            705,
-            12,
-            SECONDARY_TEXT_COLOR,
-            anchor_x="right",
-        )
         if self._preview:
             length = f"{self._preview.lap_length_m / 1000:.3f}".replace(".", ",")
             self._text(
@@ -269,8 +267,7 @@ class RaceConfigurationView(arcade.View):
         labels = (
             ("Tipo de sessão", 475),
             ("Volta inicial", 805),
-            ("Volta final", 1084),
-            ("Largada", 1362),
+            ("Volta final", 1220),
         )
         for label, x in labels:
             self._text(label, x, 544, 14, SECONDARY_TEXT_COLOR)
@@ -279,20 +276,29 @@ class RaceConfigurationView(arcade.View):
         for key, value in (
             ("first_lap", str(self.session.first_lap)),
             ("last_lap", str(self.session.last_lap)),
-            ("start_mode", self.session.start_mode),
         ):
             bounds = SESSION_FIELD_BOUNDS[key]
             self._panel(bounds)
             self._text(
                 value,
-                bounds[0] + bounds[2] / 2,
+                bounds[0] + (bounds[2] - 74) / 2,
                 bounds[1] + 19,
                 15,
                 anchor_x="center",
                 anchor_y="center",
             )
-        self._text("−    +", 1012, 518, 15, SECONDARY_TEXT_COLOR, anchor_y="center")
-        self._text("−    +", 1292, 518, 15, SECONDARY_TEXT_COLOR, anchor_y="center")
+            for button_bounds, symbol in zip(
+                SESSION_STEPPER_BOUNDS[key], ("−", "+"), strict=True
+            ):
+                self._panel(button_bounds, (26, 37, 50))
+                self._text(
+                    symbol,
+                    button_bounds[0] + button_bounds[2] / 2,
+                    button_bounds[1] + button_bounds[3] / 2,
+                    17,
+                    anchor_x="center",
+                    anchor_y="center",
+                )
         self._text(
             "Estas opções afetam apenas a corrida selecionada.",
             475,
@@ -313,18 +319,6 @@ class RaceConfigurationView(arcade.View):
         self._text(
             f"{self.schedule.total_laps} voltas", 475, 338, 15, SECONDARY_TEXT_COLOR
         )
-        self._text(
-            "Geometria reduzida: FastF1 2025", 475, 312, 14, SECONDARY_TEXT_COLOR
-        )
-        if self._preview:
-            self._text(
-                f"{len(self._preview.track_points)} pontos de pista · "
-                f"{len(self._preview.pit_lane_points)} de pit lane",
-                475,
-                286,
-                13,
-                SECONDARY_TEXT_COLOR,
-            )
         self._panel(TRACK_MAP_BOUNDS, (8, 19, 16))
         if self._preview is None:
             message = self._track_error or "Carregando geometria..."
@@ -611,28 +605,26 @@ class RaceConfigurationView(arcade.View):
             return
         if self.active_topic != "Sessão":
             return
-        if self._contains(SESSION_FIELD_BOUNDS["start_mode"], x, y):
-            new_mode = "Lançada" if self.session.start_mode == "Parada" else "Parada"
-            self.session = SessionConfiguration(
-                self.session.first_lap, self.session.last_lap, new_mode
-            )
-        elif self._contains(SESSION_FIELD_BOUNDS["first_lap"], x, y):
-            delta = -1 if x < 928 else 1
-            new_start = min(
-                self.session.last_lap, max(1, self.session.first_lap + delta)
-            )
-            self.session = SessionConfiguration(
-                new_start, self.session.last_lap, self.session.start_mode
-            )
-        elif self._contains(SESSION_FIELD_BOUNDS["last_lap"], x, y):
-            delta = -1 if x < 1207 else 1
-            new_end = min(
-                self.schedule.total_laps,
-                max(self.session.first_lap, self.session.last_lap + delta),
-            )
-            self.session = SessionConfiguration(
-                self.session.first_lap, new_end, self.session.start_mode
-            )
+        for field, buttons in SESSION_STEPPER_BOUNDS.items():
+            for delta, bounds in zip((-1, 1), buttons, strict=True):
+                if not self._contains(bounds, x, y):
+                    continue
+                if field == "first_lap":
+                    first_lap = min(
+                        self.session.last_lap,
+                        max(1, self.session.first_lap + delta),
+                    )
+                    last_lap = self.session.last_lap
+                else:
+                    first_lap = self.session.first_lap
+                    last_lap = min(
+                        self.schedule.total_laps,
+                        max(first_lap, self.session.last_lap + delta),
+                    )
+                self.session = SessionConfiguration(
+                    first_lap, last_lap, self.session.start_mode
+                )
+                return
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> None:
         """Start an inclusive weather interval without leaving this view."""

@@ -19,6 +19,7 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | [0004](0004-backend-fastapi-e-contratos-python.md) | aceita | FastAPI substitui Django; integracao interna por contratos Python. |
 | [0005](0005-historico-completo-e-enriquecimento-fastf1.md) | aceita | Historico Trotman completo e observacoes complementares FastF1 offline. |
 | [0006](0006-sequencia-de-corridas-livres.md) | aceita | Sequencia de corridas livres em varias pistas, sem evento historico obrigatorio. |
+| [0007](0007-nao-determinismo-controlado-com-parametros-assumidos.md) | proposta | Variancia reproduzivel por semente, com pneus e ruido assumidos e rotulados. |
 
 ## Modelo
 

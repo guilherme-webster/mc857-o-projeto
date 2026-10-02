@@ -16,3 +16,8 @@ um único local representativo de parada. Ele foi inferido do centro do trecho
 de menor velocidade de uma parada observada e não representa a garagem exata
 de cada equipe. Sua proveniência está em
 `data/sources/fastf1-pit-lanes-2025.json`.
+
+O script offline `scripts/rebuild_fastf1_geometry.py` reconstrói esse processo
+a partir dos eventos registrados nos manifestos. O gerador original não foi
+versionado, portanto novos arquivos devem ser produzidos em um diretório
+separado e comparados antes de substituir esta fixture.

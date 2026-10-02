@@ -1,120 +1,104 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
 
 
-class SeriesTrackRequest(BaseModel):
-    """Uma pista da sequência, identificada pelo catálogo de geometria."""
-
-    circuit_id: str = Field(min_length=1)
-    total_laps: int = Field(ge=1, le=200)
-
-
-class SeriesCompetitorRequest(BaseModel):
-    """Participante livre; ritmo-base explícito em milissegundos por km."""
-
-    driver_id: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-    pace_ms_per_km: float = Field(gt=0, allow_inf_nan=False)
-
-
-class SeriesSimulationRequest(BaseModel):
-    """Sequência ordenada e pilotos informados pelo usuário, sem race_id."""
-
-    tracks: list[SeriesTrackRequest] = Field(min_length=1, max_length=24)
-    competitors: list[SeriesCompetitorRequest] = Field(min_length=1, max_length=40)
-
-
-class DriverParametersResponse(BaseModel):
+class CatalogEntryResponse(BaseModel):
 
     driver_id: str
-    name: str
-    team_id: str | None
-    grid_position: int
-    base_lap_time_ms: float | None
-    degradation_ms_per_lap: float
-    pit_loss_ms: float
-    retirement_per_lap: float
+    driver_name: str
+    driver_code: str | None
+    team_id: str
+    team_name: str
 
 
-class LoadedDriversResponse(BaseModel):
-
-    race_id: int
-    count: int
-    drivers: list[DriverParametersResponse]
-
-
-class RaceCatalogEntry(BaseModel):
-
-    race_id: int
-    name: str
-    year: int
-    round: int
-    date: str
-
-
-class RaceCatalogResponse(BaseModel):
+class CatalogResponse(BaseModel):
 
     count: int
-    races: list[RaceCatalogEntry]
+    entries: list[CatalogEntryResponse]
 
 
-class RaceSourceInfo(BaseModel):
+class BuildGridRequest(BaseModel):
 
-    name: str | None
-    version: str | None
-    sha256: str | None
+    size: int = Field(ge=1, le=40)
+    mode: Literal["manual", "random"]
+    pair_ids: list[str] = Field(default_factory=list)
+    seed: int | None = Field(default=None, ge=0, le=2**53 - 1)
+
+    @model_validator(mode="after")
+    def _validate_scenario(self) -> "BuildGridRequest":
+        if self.mode == "random" and self.pair_ids:
+            raise ValueError("pair_ids are not accepted in random mode")
+        return self
 
 
-class RaceInfo(BaseModel):
+class DriverAttributesResponse(BaseModel):
+
+    archetype: Literal["aggressive", "balanced", "conservative"]
+    pace_offset_pct: float
+    consistency_factor: float
+    tyre_management_factor: float
+    sources: dict[str, Literal["generated", "manual"]]
+
+
+class GridEntryResponse(BaseModel):
+
+    driver_id: str
+    driver_name: str
+    team_id: str
+    team_name: str
+    attributes: DriverAttributesResponse
+
+
+class BuildGridResponse(BaseModel):
+
+    size: int
+    seed: int
+    grid: list[GridEntryResponse]
+
+
+class AttributeOverride(BaseModel):
+
+    driver_id: str
+    pace_offset_pct: float | None = None
+    consistency_factor: float | None = Field(default=None, gt=0)
+    tyre_management_factor: float | None = Field(default=None, gt=0)
+
+
+class EditGridAttributesRequest(BaseModel):
+
+    overrides: list[AttributeOverride] = Field(min_length=1, max_length=40)
+
+
+class RaceSetupRequest(BaseModel):
+
+    total_laps: int = Field(ge=1, le=200)
+    track_id: str | None = None
+    weather: str | None = None
+
+
+class RunGridRequest(BaseModel):
+
+    setup: RaceSetupRequest
+
+
+class HistoryRaceResponse(BaseModel):
 
     race_id: str
     name: str
     season: int
     round_number: int
+    circuit_id: str
     race_date: str
     start_time_utc: str | None
 
 
-class CircuitInfo(BaseModel):
+class HistoryRacesResponse(BaseModel):
 
-    circuit_id: str
-    name: str
-    location: str
-    country: str
-    latitude_deg: float
-    longitude_deg: float
-    altitude_m: int | None
-
-
-class RaceCounts(BaseModel):
-
-    drivers: int
-    teams: int
-    race_entries: int
-    laps: int
-    pit_stops: int
-
-
-class RaceDetailsResponse(BaseModel):
-
-    source: RaceSourceInfo
-    race: RaceInfo
-    circuit: CircuitInfo
-    counts: RaceCounts
-
-
-class LoadRaceRequest(BaseModel):
-
-    race_id: int
-
-
-class RaceLoadErrorResponse(BaseModel):
-
-    reason: str
-    message: str
-    race_id: int
-    detail: str | None = None
+    count: int
+    races: list[HistoryRaceResponse]
 
 
 class HistoryBuildResponse(BaseModel):

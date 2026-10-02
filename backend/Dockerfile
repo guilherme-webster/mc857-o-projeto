@@ -1,20 +1,19 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/opt/f1/src \
+    F1_SCRIPTS_DIR=/opt/f1/scripts
 
 WORKDIR /app
 
-COPY backend/requirements.txt requirements.txt
-COPY requirements-etl.txt requirements-etl.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements-etl.txt
+COPY pyproject.toml uv.lock ./
+RUN uv sync --no-dev --no-install-project
 
-COPY src/ /app/src/
-ENV PYTHONPATH=/app/src
-
-COPY scripts/ /app/scripts/
+COPY src/ /opt/f1/src/
+COPY scripts/ /opt/f1/scripts/
 COPY backend/ /app/
 
 EXPOSE 8000

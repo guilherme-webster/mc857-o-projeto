@@ -87,7 +87,7 @@ critério do perfil agregado nem preenche pontos ausentes.
 ## Executar localmente
 
 O banco com os cinco eventos foi gerado como uma cópia enriquecida da amostra
-anterior. Para reproduzir a aquisição, usar ambiente com `requirements-etl.txt`:
+anterior. Para reproduzir a aquisição, sincronize o ambiente com `uv sync`:
 
 ```bash
 python3 -B scripts/ingest_fastf1.py \

@@ -1,15 +1,16 @@
 [project]
-name = "f1-sim_-frontend"
+name = "f1-simulator"
 version = "0.1.0"
-description = "Frontend Arcade para o simulador de F1"
-requires-python = ">=3.12"
+description = "Simulador de F1: frontend Arcade, backend FastAPI e motor Python"
+requires-python = "==3.12.*"
 dependencies = [
     "arcade>=3.3.3",
     "matplotlib>=3.11.2",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.8.0",
+    "fastf1==3.8.3",
 ]
-
-[project.scripts]
-simulador = "main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

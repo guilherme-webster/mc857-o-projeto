@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import json
 import sqlite3
-from contextlib import closing
+
+from fastapi import HTTPException, status
 
 from app.config import HISTORY_DB, RAW_SOURCE
-from app.services import sqlite_inspection
 from app.services.errors import HistoryBuildError
+from app.services.inspection import inspector
 
 _NOT_FOUND = (
-    f"Banco historico ({HISTORY_DB.name}) ainda nao foi gerado. "
-    "Rode POST /api/history/build para importar o historico completo."
+    f"history database ({HISTORY_DB.name}) has not been built yet; "
+    "run POST /api/history/build to import the full history"
 )
 
 
@@ -39,35 +39,56 @@ def build_history() -> dict[str, object]:
         raise HistoryBuildError(str(error), reason="storage") from error
 
 
-def _connect():
-    return closing(sqlite_inspection.connect_readonly(HISTORY_DB, _NOT_FOUND))
+def _inspector():
+    return inspector(HISTORY_DB, _NOT_FOUND)
 
 
 def list_tables() -> dict:
-    with _connect() as conn:
-        tables = sqlite_inspection.list_tables(conn, with_counts=True)
+    tables = _inspector().list_tables(with_counts=True)
     return {"tables": tables, "count": len(tables)}
 
 
 def table_schema(table_name: str) -> dict:
-    with _connect() as conn:
-        return {
-            "table": table_name,
-            "columns": sqlite_inspection.table_schema(conn, table_name),
-        }
+    return {
+        "table": table_name,
+        "columns": _inspector().table_schema(table_name),
+    }
 
 
 def preview_table(table_name: str, limit: int) -> dict:
-    with _connect() as conn:
-        rows = sqlite_inspection.preview_table(conn, table_name, limit)
+    rows = _inspector().preview_table(table_name, limit)
     return {"table": table_name, "count": len(rows), "data": rows}
 
 
 def list_reports() -> dict:
-    with _connect() as conn:
-        sqlite_inspection.validate_table(conn, "imports")
-        reports = [
-            json.loads(row[0])
-            for row in conn.execute("SELECT report_json FROM imports ORDER BY import_key")
-        ]
+    from f1_simulator.adapters.persistence.sqlite_history import (
+        SQLiteHistoryRepository,
+    )
+
+    if not HISTORY_DB.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_NOT_FOUND
+        )
+    try:
+        reports = SQLiteHistoryRepository(HISTORY_DB).reports()
+    except (OSError, sqlite3.Error) as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
     return {"count": len(reports), "reports": reports}
+
+
+def list_races():
+    from f1_simulator.adapters.persistence.sqlite_history import (
+        SQLiteHistoryRepository,
+    )
+    from f1_simulator.application.catalog import list_races as core_list_races
+
+    if not HISTORY_DB.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_NOT_FOUND)
+    try:
+        return core_list_races(SQLiteHistoryRepository(HISTORY_DB))
+    except (OSError, sqlite3.Error) as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error

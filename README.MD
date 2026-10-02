@@ -105,11 +105,25 @@ tracados nao fornecem limites oficiais, aderencia ou parametros de pilotos.
 
 A fixture `tests/fixtures/trotman_v128_tracks_2025/` contém as polilinhas das
 24 pistas do calendário de 2025 e seus pit lanes. Cada pit lane inclui um ponto
-de serviço representativo. Os dados foram derivados offline do FastF1; cache,
-telemetria bruta e scripts de geração não fazem parte do repositório. Consulte
-o ADR 0003 e os manifestos em `data/sources/` para proveniência, transformação
-e limitações de uso. O visualizador temporário usado para inspecionar as geometrias
-também não faz parte do repositório.
+de serviço representativo. Os dados foram derivados offline do FastF1; cache e
+telemetria bruta não fazem parte do repositório. O gerador reconstruído está em
+`scripts/rebuild_fastf1_geometry.py`;
+Consulte o ADR 0003 e os manifestos em `data/sources/` para proveniência,
+transformação e limitações de uso. O visualizador temporário usado para
+inspecionar os mocks também não faz parte do repositório.
+
+Para reconstruir uma etapa sem alterar os CSVs atuais:
+
+```bash
+uv run --with fastf1==3.8.3 python scripts/rebuild_fastf1_geometry.py \
+  --round 21 \
+  --output-dir data/curated/geometry-round-21
+```
+
+Sem `--round`, o script processa as 24 etapas de 2025. A saída deve ser um
+diretório novo; inclui os dois CSVs e `generation_report.json` com checksums.
+O cache é temporário por padrão (`--cache-dir` permite retenção local). A
+reconstrução não garante igualdade byte a byte com as fixtures existentes.
 
 Para incluir os tracos e pit lanes derivados da issue #51 no mesmo SQLite,
 acrescente `--geometry-dir` ao comando de ingestao:
@@ -185,62 +199,89 @@ PYTHONPATH=src python3 -c "from f1_simulator.domain.race_data import RaceData"
 
 ## Como Executar a Aplicação
 
-Você pode executar a aplicação completa (comunicação Frontend + Backend) ou rodar as camadas isoladamente dependendo da etapa de desenvolvimento.
+O backend FastAPI roda em Docker. O frontend Arcade roda em container ou no
+host, conforme o ambiente gráfico. Em todos os casos, o Arcade permanece cliente
+HTTP do backend.
 
----
+### Caminho recomendado: `python run.py`
 
-### Opção 1: Aplicação Completa (Frontend + Backend)
+Depois de clonar o repositório, basta:
 
-1. **Sincronize o ambiente local:**
-   ```powershell
-   uv sync
-   ```
+```bash
+python run.py
+```
 
-2. **Execute o inicializador:**
-   ```powershell
-   uv run python run.py
-   ```
-   * O backend estará acessível em: `http://localhost:8000`
-   * Documentação da API (Swagger): `http://localhost:8000/docs`
-   * A janela da interface Arcade abrirá automaticamente assim que os serviços estiverem prontos.
+O inicializador detecta o ambiente, sobe o backend, aguarda o healthcheck e abre
+o frontend. O comportamento depende do host:
 
----
+- **Linux com X11/XWayland:** backend e frontend em container (perfil `linux`),
+  com um cookie `xauth` dedicado.
+- **Windows ou WSL com WSLg (Docker Desktop):** backend e frontend em container
+  (perfil `wslg`).
+- **Windows nativo ou WSL sem WSLg:** backend em container e **frontend local**,
+  porque a janela Arcade não tem servidor gráfico compatível no host. Nesse
+  caso o `run.py` usa `uv`; se o `uv` não estiver instalado, ele mostra a
+  instrução de instalação e encerra.
 
-### Opção 2: Somente o Frontend (Telas e Simulação Visual)
+### Execução manual por perfil
 
-1. **Sincronize o ambiente local:**
-   ```powershell
-   uv sync
-   ```
+Em Linux e WSL/WSLg também é possível subir os serviços diretamente:
 
-2. **Execute a tela desejada:**
-   * **Tela principal de parâmetros:**
-     ```powershell
-     uv run python -m frontend.arcade
-     ```
-   * **Visualização da corrida (Renderização de Pista):**
-     ```powershell
-     uv run python -m frontend.arcade.race_view
-     ```
+```bash
+# Linux com X11/XWayland
+docker compose --profile linux up --build
 
----
+# Windows com Docker Desktop e WSLg
+docker compose --profile wslg up --build
+```
 
-### Opção 3: Somente o Backend (FastAPI e Banco de Dados)
+No Windows nativo, rode o backend em container e o frontend localmente:
 
-* **Subir em primeiro plano (com logs interativos):**
+```powershell
+docker compose up -d --build backend
+uv run python -m frontend.arcade
+```
+
+Os requisitos de display, autorização e diagnóstico estão no guia
+[Frontend Arcade em Docker](docs/containerizacao-frontend.md). Sem um perfil,
+`docker compose up` continua iniciando somente o backend.
+
+### Somente o frontend no host
+
+Depois de `uv sync`, execute a tela desejada:
+
+- Tela principal de parâmetros:
+
   ```bash
-  docker compose up --build
+  uv run python -m frontend.arcade
   ```
 
-* **Subir em segundo plano (detached mode):**
+- Protótipo de visualização de pista:
+
   ```bash
-  docker compose up -d
+  uv run python -m frontend.arcade.track_view
   ```
 
-* **Parar o backend:**
-  ```bash
-  docker compose down
-  ```
+Por padrão, o frontend no host consulta `http://localhost:8000`. Para outro
+endpoint, defina `F1_API_BASE_URL` antes de iniciar o processo.
+
+### Somente o backend
+
+```bash
+docker compose up --build backend
+```
+
+Em segundo plano:
+
+```bash
+docker compose up -d backend
+```
+
+Para encerrar os serviços:
+
+```bash
+docker compose down
+```
 
 ## Telas implementadas com Arcade
 
@@ -332,3 +373,15 @@ conforme os comandos do guia; a integração ao motor permanece posterior.
 O [guia de ranking e integração Python](docs/ranking-e-adaptador-pilotos.md)
 descreve a ordenação por ritmo observado, geração de gráficos e o contrato
 para executar o primeiro experimento determinístico de uma volta.
+
+## Planejamento da modelagem de pneus
+
+O [estudo inicial de pneus](docs/modelagem-pneus-inicial.md) registra a cobertura
+do ETL, o core publicado, a proposta de parâmetros e as decisões de integração.
+
+A [análise de pneus de 2024](docs/analise-pneus-2024.md) apresenta cobertura,
+tendências por stint, sensibilidade ao início e instruções para gerar o atlas
+de gráficos por piloto.
+
+A [comparação após SC/VSC](docs/pneus-sc-vsc-estimadores.md) inclui cobertura,
+robustez à retirada de voltas e avaliação de transferência de tendência por evento.

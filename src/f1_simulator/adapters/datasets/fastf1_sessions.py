@@ -39,7 +39,7 @@ def load_session(
         import fastf1
     except ImportError as error:
         raise FastF1DatasetError(
-            "install requirements-etl.txt in an isolated environment"
+            "FastF1 nao instalado; rode uv sync"
         ) from error
     if fastf1.__version__ != FASTF1_VERSION:
         raise FastF1DatasetError(

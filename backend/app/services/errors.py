@@ -10,8 +10,6 @@ _REASON_STATUS = {
 
 
 class ETLError(RuntimeError):
-    """Falha de ETL classificada por ``reason`` (validation/source/storage)."""
-
     def __init__(self, message: str, *, reason: str = "storage") -> None:
         super().__init__(message)
         self.reason = reason
@@ -26,8 +24,6 @@ class HistoryBuildError(ETLError):
 
 
 def http_from(error: ETLError, message: str, extra: dict | None = None) -> HTTPException:
-    """Traduza um ETLError em HTTPException com corpo estruturado."""
-
     detail = {"reason": error.reason, "message": message, "detail": str(error)}
     if extra:
         detail.update(extra)
