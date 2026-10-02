@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-09-26T00:39:16Z
-- **Abertas:** 45
-- **Fechadas:** 11
+- **Ultima atividade registrada:** 2026-10-02T22:13:51Z
+- **Abertas:** 44
+- **Fechadas:** 12
 
 ## Issues abertas
 
@@ -1499,13 +1499,13 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
+- **Responsaveis:** @Jmvjr, @guilherme-webster
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
 - **Sub-issues:** —
 - **Criada:** 2026-09-11T22:31:25Z
-- **Atualizada:** 2026-09-11T22:33:46Z
+- **Atualizada:** 2026-10-02T22:13:51Z
 - **Fechada:** —
 
 <details>
@@ -1518,6 +1518,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-10-02T22:13:51Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-09-11T22:33:46Z — label adicionada: Task por @guilherme-webster
 - 2026-09-11T22:33:42Z — atribuida: @guilherme-webster por @guilherme-webster
 
@@ -1576,48 +1577,6 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <summary>Historico de estado</summary>
 
 - 2026-09-11T23:54:52Z — label adicionada: História por @guilherme-webster
-
-</details>
-
-### [#86 — Otimização de UI\\UX](https://github.com/guilherme-webster/mc857-o-projeto/issues/86)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** @Jmvjr
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
-- **Sub-issues:** —
-- **Criada:** 2026-09-26T00:29:20Z
-- **Atualizada:** 2026-09-26T00:39:16Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Limpeza da UI e UX</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (2)</summary>
-
-#### [@Jmvjr em 2026-09-26T00:36:36Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/86#issuecomment-5841574785)
-
-<pre>Tela de torneio: sequência agora rola uma etapa por vez com indicador de posição; retirados do painel esquerdo o seletor de geração e o resumo, e da apresentação da pista os textos de proveniência/“geometria reduzida”. O botão de geração automática do scheduler foi preservado. Verificações locais: 33 testes gráficos de parameters_view passaram; suíte geral 308 testes OK (32 GUI pulados no padrão); Ruff, Black e git diff --check OK. Próximo passo: revisão visual pelo responsável e commit/PR; nenhuma alteração foi commitada pelo agente.</pre>
-
-#### [@Jmvjr em 2026-09-26T00:39:16Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/86#issuecomment-5841596247)
-
-<pre>Ajustes adicionais na configuração de corrida: controles −/+ das voltas redesenhados como botões internos aos campos, com cliques individuais; opção visual de largada removida sem alterar o contrato SessionConfiguration; ID canônico removido do cabeçalho compartilhado por Sessão/Clima; textos de geometria reduzida e quantidade de pontos removidos do resumo da pista. Testes atualizados. Verificações: 35 testes GUI de parameters_view passaram, suíte geral 311 testes OK (35 GUI pulados no padrão), Ruff/Black/diff check OK. Próximo passo: revisão visual do layout pelo responsável e commit/PR; nenhum commit criado pelo agente.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-26T00:29:35Z — atribuida: @Jmvjr por @Jmvjr
-- 2026-09-26T00:29:33Z — label adicionada: Task por @Jmvjr
 
 </details>
 
@@ -2192,5 +2151,48 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-12T21:41:15Z — fechada por @guilherme-webster
 - 2026-09-12T21:41:02Z — label adicionada: História por @guilherme-webster
 - 2026-09-12T21:41:02Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#86 — Otimização de UI\\UX](https://github.com/guilherme-webster/mc857-o-projeto/issues/86)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-09-26T00:29:20Z
+- **Atualizada:** 2026-09-26T00:40:20Z
+- **Fechada:** 2026-09-26T00:40:20Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Limpeza da UI e UX</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-09-26T00:36:36Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/86#issuecomment-5841574785)
+
+<pre>Tela de torneio: sequência agora rola uma etapa por vez com indicador de posição; retirados do painel esquerdo o seletor de geração e o resumo, e da apresentação da pista os textos de proveniência/“geometria reduzida”. O botão de geração automática do scheduler foi preservado. Verificações locais: 33 testes gráficos de parameters_view passaram; suíte geral 308 testes OK (32 GUI pulados no padrão); Ruff, Black e git diff --check OK. Próximo passo: revisão visual pelo responsável e commit/PR; nenhuma alteração foi commitada pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-26T00:39:16Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/86#issuecomment-5841596247)
+
+<pre>Ajustes adicionais na configuração de corrida: controles −/+ das voltas redesenhados como botões internos aos campos, com cliques individuais; opção visual de largada removida sem alterar o contrato SessionConfiguration; ID canônico removido do cabeçalho compartilhado por Sessão/Clima; textos de geometria reduzida e quantidade de pontos removidos do resumo da pista. Testes atualizados. Verificações: 35 testes GUI de parameters_view passaram, suíte geral 311 testes OK (35 GUI pulados no padrão), Ruff/Black/diff check OK. Próximo passo: revisão visual do layout pelo responsável e commit/PR; nenhum commit criado pelo agente.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-09-26T00:40:21Z — fechada por @Jmvjr
+- 2026-09-26T00:29:35Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-09-26T00:29:33Z — label adicionada: Task por @Jmvjr
 
 </details>
