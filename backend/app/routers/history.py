@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from app.schemas.responses import HistoryBuildErrorResponse, HistoryBuildResponse
+from app.schemas.responses import (
+    HistoryBuildErrorResponse,
+    HistoryBuildResponse,
+    HistoryRaceResponse,
+    HistoryRacesResponse,
+)
 from app.services import history
 from app.services.errors import ETLError, http_from
 from fastapi import APIRouter, Query, status
@@ -66,3 +71,23 @@ def preview_history_table(
 @router.get("/reports")
 def list_history_reports() -> dict:
     return history.list_reports()
+
+
+@router.get("/races", response_model=HistoryRacesResponse)
+def list_history_races() -> HistoryRacesResponse:
+    races = history.list_races()
+    return HistoryRacesResponse(
+        count=len(races),
+        races=[
+            HistoryRaceResponse(
+                race_id=race.race_id,
+                name=race.name,
+                season=race.season,
+                round_number=race.round_number,
+                circuit_id=race.circuit_id,
+                race_date=race.race_date,
+                start_time_utc=race.start_time_utc,
+            )
+            for race in races
+        ],
+    )

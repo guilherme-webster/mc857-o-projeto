@@ -14,6 +14,17 @@ class CatalogEntry:
     team_name: str
 
 
+@dataclass(frozen=True, slots=True)
+class RaceEntry:
+    race_id: str
+    name: str
+    season: int
+    round_number: int
+    circuit_id: str
+    race_date: str
+    start_time_utc: str | None
+
+
 def _full_name(given: object, family: object) -> str:
     parts = [str(part).strip() for part in (given, family) if part is not None]
     return " ".join(part for part in parts if part)
@@ -46,3 +57,20 @@ def list_entries(repository: HistoryRepository) -> tuple[CatalogEntry, ...]:
     ]
     entries.sort(key=lambda entry: (entry.driver_id, entry.team_id))
     return tuple(entries)
+
+
+def list_races(repository: HistoryRepository) -> tuple[RaceEntry, ...]:
+    races = [
+        RaceEntry(
+            race_id=record["race_id"],
+            name=record["name"],
+            season=record["season"],
+            round_number=record["round_number"],
+            circuit_id=record["circuit_id"],
+            race_date=record["race_date"],
+            start_time_utc=record["start_time_utc"],
+        )
+        for record in repository.records("races")
+    ]
+    races.sort(key=lambda race: (race.season, race.round_number))
+    return tuple(races)

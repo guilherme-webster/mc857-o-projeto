@@ -25,18 +25,6 @@ def _load_race_data(db_path: Path):
         raise ValueError(str(error)) from error
 
 
-def load_driver_parameters(db_path: Path, *, limit: int | None = None) -> list:
-    from f1_simulator.application.derive_race_parameters import derive_parameters
-
-    parameters = derive_parameters(_load_race_data(db_path))
-    return parameters[:limit] if limit is not None else parameters
-
-
-def load_total_laps(db_path: Path) -> int:
-    race_data = _load_race_data(db_path)
-    return max((lap.lap_number for lap in race_data.laps), default=1)
-
-
 def load_race_summary(db_path: Path) -> dict[str, object]:
     race_data = _load_race_data(db_path)
     race = race_data.race

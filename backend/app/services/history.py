@@ -76,3 +76,19 @@ def list_reports() -> dict:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
     return {"count": len(reports), "reports": reports}
+
+
+def list_races():
+    from f1_simulator.adapters.persistence.sqlite_history import (
+        SQLiteHistoryRepository,
+    )
+    from f1_simulator.application.catalog import list_races as core_list_races
+
+    if not HISTORY_DB.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_NOT_FOUND)
+    try:
+        return core_list_races(SQLiteHistoryRepository(HISTORY_DB))
+    except (OSError, sqlite3.Error) as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error

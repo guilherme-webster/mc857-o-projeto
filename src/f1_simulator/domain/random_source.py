@@ -163,3 +163,22 @@ def uniform_index(
         "sorteio de indice uniforme excedeu o numero maximo de tentativas "
         f"({MAX_UNIFORM_INDEX_ATTEMPTS})"
     )
+
+
+def uniform_float(
+    source: RandomSource,
+    label: str,
+    low: float,
+    high: float,
+) -> float:
+    for name, value in (("low", low), ("high", high)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value):
+            raise ValueError(f"{name} must be a finite number")
+    if low > high:
+        raise ValueError("low must not exceed high")
+    if not isinstance(label, str):
+        raise ValueError("label must be str")
+
+    z = source.standard_normal(label)
+    unit = 0.5 * (1.0 + erf(z / sqrt(2.0)))
+    return low + unit * (high - low)
