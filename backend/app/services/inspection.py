@@ -1,10 +1,3 @@
-"""Borda HTTP para a inspecao de banco: traduz erros do nucleo em HTTP.
-
-Nenhum SQL vive aqui. O adaptador ``SQLiteDatabaseInspector`` do nucleo faz as
-consultas read-only; este modulo apenas injeta o caminho e converte os erros de
-inspecao em ``HTTPException`` com o status adequado.
-"""
-
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -23,8 +16,6 @@ from f1_simulator.adapters.persistence.sqlite_inspection import (
 
 
 class _HTTPInspector:
-    """Encapsula o inspetor do nucleo mapeando falhas para status HTTP."""
-
     def __init__(self, db_path: Path, not_found_detail: str) -> None:
         if not db_path.exists():
             raise HTTPException(
@@ -71,5 +62,5 @@ class _HTTPInspector:
 
 
 def inspector(db_path: Path, not_found_detail: str | None = None) -> _HTTPInspector:
-    detail = not_found_detail or f"Arquivo {db_path} nao encontrado no volume."
+    detail = not_found_detail or f"file not found: {db_path}"
     return _HTTPInspector(db_path, detail)

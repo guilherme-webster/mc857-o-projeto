@@ -4,8 +4,6 @@ from pathlib import Path
 
 
 def _load_race_data(db_path: Path):
-    """Le a corrida curada pelo repository do nucleo (sem SQL de negocio)."""
-
     from f1_simulator.adapters.persistence.sqlite_race_data_repository import (
         SQLiteRaceDataRepository,
     )
@@ -28,12 +26,6 @@ def _load_race_data(db_path: Path):
 
 
 def load_driver_parameters(db_path: Path, *, limit: int | None = None) -> list:
-    """Deriva os parametros por piloto via caso de uso do nucleo.
-
-    Retorna os ``SimulationParameters`` canonicos; o backend nao mantem um
-    espelho desse contrato.
-    """
-
     from f1_simulator.application.derive_race_parameters import derive_parameters
 
     parameters = derive_parameters(_load_race_data(db_path))

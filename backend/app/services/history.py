@@ -9,8 +9,8 @@ from app.services.errors import HistoryBuildError
 from app.services.inspection import inspector
 
 _NOT_FOUND = (
-    f"Banco historico ({HISTORY_DB.name}) ainda nao foi gerado. "
-    "Rode POST /api/history/build para importar o historico completo."
+    f"history database ({HISTORY_DB.name}) has not been built yet; "
+    "run POST /api/history/build to import the full history"
 )
 
 

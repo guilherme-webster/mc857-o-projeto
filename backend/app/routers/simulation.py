@@ -55,18 +55,18 @@ def obter_dados_corrida() -> dict:
         raise HTTPException(
             status_code=404,
             detail=(
-                "Simulacao ainda nao gerada. Rode POST /simulation/simulate "
-                "para produzir as posicoes da corrida."
+                "simulation not generated yet; run POST /simulation/simulate "
+                "to produce race positions"
             ),
         )
 
     try:
         with open(RACE_JSON, "r", encoding="utf-8") as stream:
             return json.load(stream)
-    except Exception as error:  # noqa: BLE001 - reporta erro de leitura ao cliente
+    except Exception as error:  # noqa: BLE001
         raise HTTPException(
             status_code=500,
-            detail=f"Erro ao processar dados da corrida: {error}",
+            detail=f"error reading race data: {error}",
         ) from error
 
 
@@ -77,32 +77,13 @@ def simular_corrida() -> dict:
 
 
 def _new_seed() -> int:
-    """Sorteie uma semente com a entropia do sistema (único ponto do sorteio).
-
-    A semente cabe em 53 bits para sobreviver, sem arredondamento, a qualquer
-    cliente JSON que trate números como ``double`` (como o JavaScript): um
-    arredondamento silencioso impediria reproduzir a corrida.
-
-    Fica na borda de propósito: o domínio nunca escolhe semente, para que toda
-    corrida "aleatória" possa ser repetida a partir da semente devolvida. É uma
-    função à parte para os testes poderem substituí-la.
-    """
-
+    # 53 bits fit a JSON client's double without rounding, so the returned seed
+    # reproduces the race. Separate function so tests can replace it.
     return secrets.randbelow(2**53)
 
 
 @router.post("/series/simulate")
 def simular_sequencia(request: SeriesSimulationRequest) -> dict:
-    """Simule corridas livres nas pistas escolhidas, sem carregar uma corrida.
-
-    Os comprimentos e nomes vêm do catálogo publicado pelo backend, nunca de
-    valores arbitrários enviados pelo cliente. A ordem enviada é preservada.
-
-    Com ``variability`` ligada e sem ``seed``, a semente é sorteada aqui e
-    devolvida na resposta (campo ``seed``); reenviá-la reproduz a série
-    exatamente. As hipóteses usadas voltam em ``assumptions``.
-    """
-
     from f1_simulator.domain.race_series import (
         SeriesCompetitor,
         SeriesTrack,
@@ -117,7 +98,7 @@ def simular_sequencia(request: SeriesSimulationRequest) -> dict:
         track.circuit_id for track in request.tracks if track.circuit_id not in catalog
     ]
     if unknown:
-        raise HTTPException(status_code=422, detail=f"Pistas indisponíveis: {unknown}")
+        raise HTTPException(status_code=422, detail=f"unavailable tracks: {unknown}")
     tracks = tuple(
         SeriesTrack(
             circuit_id=item.circuit_id,
@@ -203,14 +184,14 @@ def race_details() -> RaceDetailsResponse:
 
 _LOAD_ERROR_MESSAGE = {
     "validation": (
-        "O ETL rejeitou a corrida {race_id}: a tabela de resultados nao passou "
-        "na validacao de integridade."
+        "ETL rejected race {race_id}: the results table failed the integrity "
+        "validation"
     ),
     "source": (
-        "Nao foi possivel ler a corrida {race_id} da fonte bruta: dados "
-        "ausentes ou malformados no dataset."
+        "could not read race {race_id} from the raw source: missing or "
+        "malformed data in the dataset"
     ),
-    "storage": "Falha ao gravar a corrida {race_id} no armazenamento curado.",
+    "storage": "failed to write race {race_id} to curated storage",
 }
 
 
@@ -229,7 +210,7 @@ def load_race(request: LoadRaceRequest) -> RaceDetailsResponse:
         load_race_into_current(request.race_id)
     except ETLError as error:
         message = _LOAD_ERROR_MESSAGE.get(
-            error.reason, "Nao foi possivel carregar a corrida {race_id}."
+            error.reason, "could not load race {race_id}"
         ).format(race_id=request.race_id)
         raise http_from(error, message, {"race_id": request.race_id})
 

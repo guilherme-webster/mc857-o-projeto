@@ -6,14 +6,12 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class SeriesTrackRequest(BaseModel):
-    """Uma pista da sequência, identificada pelo catálogo de geometria."""
 
     circuit_id: str = Field(min_length=1)
     total_laps: int = Field(ge=1, le=200)
 
 
 class SeriesCompetitorRequest(BaseModel):
-    """Participante livre; ritmo-base explícito em milissegundos por km."""
 
     driver_id: str = Field(min_length=1)
     name: str = Field(min_length=1)
@@ -21,20 +19,6 @@ class SeriesCompetitorRequest(BaseModel):
 
 
 class SeriesSimulationRequest(BaseModel):
-    """Sequência ordenada e pilotos informados pelo usuário, sem race_id.
-
-    Os três campos opcionais ativam o cenário não determinístico (PRD
-    ``nao-determinismo-pneus-assumidos``); sem eles a resposta é a de sempre.
-    Todos os parâmetros por trás deles são HIPÓTESES assumidas, não calibração.
-
-    * ``tyres``: composto de cada piloto (um por corrida, sem pit stop); deve
-      cobrir todos os participantes. Compostos aceitos são os do catálogo de
-      pneus do domínio; um composto desconhecido gera 422 na simulação.
-    * ``variability``: liga o ruído por volta.
-    * ``seed``: semente do ruído. Só faz sentido com ``variability``; se esta
-      estiver ligada e a semente ausente, o backend sorteia uma e a devolve.
-      Limitada a 53 bits para não perder precisão em clientes JSON com ``double``.
-    """
 
     tracks: list[SeriesTrackRequest] = Field(min_length=1, max_length=24)
     competitors: list[SeriesCompetitorRequest] = Field(min_length=1, max_length=40)
@@ -46,8 +30,8 @@ class SeriesSimulationRequest(BaseModel):
     def _validate_scenario(self) -> "SeriesSimulationRequest":
         if self.seed is not None and not self.variability:
             raise ValueError(
-                "seed só pode ser informada com variability=true: "
-                "sem ruído ela seria ignorada em silêncio"
+                "seed may only be provided with variability=true: "
+                "without noise it would be silently ignored"
             )
         if self.tyres is not None:
             driver_ids = {item.driver_id for item in self.competitors}
@@ -55,13 +39,13 @@ class SeriesSimulationRequest(BaseModel):
             unknown = sorted(planned - driver_ids)
             missing = sorted(driver_ids - planned)
             if unknown:
-                raise ValueError(f"tyres com driver_id desconhecido: {unknown}")
+                raise ValueError(f"tyres with unknown driver_id: {unknown}")
             if missing:
                 raise ValueError(
-                    f"tyres deve cobrir todos os participantes; faltam: {missing}"
+                    f"tyres must cover all competitors; missing: {missing}"
                 )
             if any(not compound.strip() for compound in self.tyres.values()):
-                raise ValueError("tyres contém composto vazio")
+                raise ValueError("tyres contains an empty compound")
         return self
 
 
@@ -183,9 +167,9 @@ class BuildGridRequest(BaseModel):
     def _validate_scenario(self) -> "BuildGridRequest":
         is_random = self.mode == "random"
         if self.seed is not None and not is_random:
-            raise ValueError("seed so pode ser informada no modo aleatorio")
+            raise ValueError("seed may only be provided in random mode")
         if is_random and self.pair_ids:
-            raise ValueError("pair_ids nao sao aceitos no modo aleatorio")
+            raise ValueError("pair_ids are not accepted in random mode")
         return self
 
 

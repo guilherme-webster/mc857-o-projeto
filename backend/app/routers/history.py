@@ -9,14 +9,14 @@ router = APIRouter(prefix="/api/history", tags=["Historical Archive (ETL B)"])
 
 _BUILD_ERROR_MESSAGE = {
     "validation": (
-        "O ETL historico rejeitou a importacao: alguma linha violou o contrato "
-        "do esquema historico durante a validacao."
+        "history ETL rejected the import: a row violated the history schema "
+        "contract during validation"
     ),
     "source": (
-        "Nao foi possivel ler o dataset bruto do Trotman: arquivo ausente ou "
-        "malformado. Gere-o com scripts/download_trotman.py."
+        "could not read the raw Trotman dataset: file missing or malformed; "
+        "generate it with scripts/download_trotman.py"
     ),
-    "storage": "Falha ao gravar o banco historico no armazenamento curado.",
+    "storage": "failed to write the history database to curated storage",
 }
 
 
@@ -34,7 +34,7 @@ def build_history_database() -> HistoryBuildResponse:
         report = history.build_history()
     except ETLError as error:
         message = _BUILD_ERROR_MESSAGE.get(
-            error.reason, "Nao foi possivel gerar o banco historico."
+            error.reason, "could not build the history database"
         )
         raise http_from(error, message)
 

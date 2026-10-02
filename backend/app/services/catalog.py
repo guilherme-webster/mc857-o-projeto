@@ -8,8 +8,8 @@ from app.config import HISTORY_DB
 from f1_simulator.application import catalog as core_catalog
 
 _NOT_FOUND = (
-    f"Banco historico ({HISTORY_DB.name}) ainda nao foi gerado. "
-    "Rode POST /api/history/build para importar o historico completo."
+    f"history database ({HISTORY_DB.name}) has not been built yet; "
+    "run POST /api/history/build to import the full history"
 )
 
 
@@ -72,5 +72,5 @@ def build_grid(
 def _new_seed() -> int:
     import secrets
 
-    # 53 bits: cabe num double de cliente JSON sem perder a reprodutibilidade.
+    # 53 bits fit a JSON client's double without losing reproducibility.
     return secrets.randbelow(2**53)

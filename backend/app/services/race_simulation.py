@@ -17,8 +17,8 @@ def simulate_current_race() -> dict:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
-                f"Banco curado ({DEFAULT_RACE_DB.name}) nao encontrado. "
-                "Rode POST /simulation/load antes de simular."
+                f"curated database ({DEFAULT_RACE_DB.name}) not found; "
+                "run POST /simulation/load before simulating"
             ),
         )
 
