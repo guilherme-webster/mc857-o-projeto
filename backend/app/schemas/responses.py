@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -153,6 +155,53 @@ class RaceLoadErrorResponse(BaseModel):
     message: str
     race_id: int
     detail: str | None = None
+
+
+class CatalogEntryResponse(BaseModel):
+
+    driver_id: str
+    driver_name: str
+    driver_code: str | None
+    team_id: str
+    team_name: str
+
+
+class CatalogResponse(BaseModel):
+
+    count: int
+    entries: list[CatalogEntryResponse]
+
+
+class BuildGridRequest(BaseModel):
+
+    size: int = Field(ge=1, le=40)
+    mode: Literal["manual", "random"]
+    pair_ids: list[str] = Field(default_factory=list)
+    seed: int | None = Field(default=None, ge=0, le=2**53 - 1)
+
+    @model_validator(mode="after")
+    def _validate_scenario(self) -> "BuildGridRequest":
+        is_random = self.mode == "random"
+        if self.seed is not None and not is_random:
+            raise ValueError("seed so pode ser informada no modo aleatorio")
+        if is_random and self.pair_ids:
+            raise ValueError("pair_ids nao sao aceitos no modo aleatorio")
+        return self
+
+
+class GridEntryResponse(BaseModel):
+
+    driver_id: str
+    driver_name: str
+    team_id: str
+    team_name: str
+
+
+class BuildGridResponse(BaseModel):
+
+    size: int
+    seed: int | None = None
+    grid: list[GridEntryResponse]
 
 
 class HistoryBuildResponse(BaseModel):
