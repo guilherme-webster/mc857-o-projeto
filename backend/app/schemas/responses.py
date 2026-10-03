@@ -40,7 +40,9 @@ class DriverAttributesResponse(BaseModel):
     pace_offset_pct: float
     consistency_factor: float
     tyre_management_factor: float
-    sources: dict[str, Literal["generated", "manual"]]
+    aggression: float
+    composure: float
+    sources: dict[str, Literal["generated", "preset", "manual"]]
 
 
 class GridEntryResponse(BaseModel):
@@ -65,6 +67,8 @@ class AttributeOverride(BaseModel):
     pace_offset_pct: float | None = None
     consistency_factor: float | None = Field(default=None, gt=0)
     tyre_management_factor: float | None = Field(default=None, gt=0)
+    aggression: float | None = Field(default=None, gt=0)
+    composure: float | None = Field(default=None, gt=0)
 
 
 class EditGridAttributesRequest(BaseModel):
@@ -77,6 +81,7 @@ class RaceSetupRequest(BaseModel):
     total_laps: int = Field(ge=1, le=200)
     track_id: str | None = None
     weather: str | None = None
+    engine: Literal["detailed", "simple"] = "detailed"
 
 
 class RunGridRequest(BaseModel):

@@ -4,10 +4,17 @@ import json
 import os
 import sqlite3
 import tempfile
+from pathlib import Path
 
 from fastapi import HTTPException, status
 
-from app.config import CURRENT_GRID_JSON, CURRENT_RACE_JSON, HISTORY_DB
+from app.config import (
+    CURRENT_GRID_JSON,
+    CURRENT_RACE_JSON,
+    HISTORY_DB,
+    MODEL_PARAMETERS,
+    REFERENCE_LAPS,
+)
 from f1_simulator.application import catalog as core_catalog
 
 _HISTORY_NOT_FOUND = (
@@ -15,6 +22,20 @@ _HISTORY_NOT_FOUND = (
     "run POST /api/history/build to import the full history"
 )
 _GRID_NOT_FOUND = "no current grid; run POST /catalog/grid to build one"
+
+# O caminho fica nesta composition root porque ``backend/app/config.py`` nao
+# pertence a esta fatia. O default atende execucao local a partir do checkout;
+# ``F1_DRIVER_PRESETS_JSON`` permite que empacotamentos montem o mesmo arquivo
+# em outro lugar sem acoplar o nucleo ao sistema de arquivos.
+_REPOSITORY_DRIVER_PRESETS = (
+    Path(__file__).resolve().parents[3]
+    / "configs"
+    / "drivers"
+    / "perfis-ficticios.json"
+)
+DRIVER_PRESETS_JSON = Path(
+    os.environ.get("F1_DRIVER_PRESETS_JSON", _REPOSITORY_DRIVER_PRESETS)
+)
 
 
 def _repository():
@@ -54,11 +75,28 @@ def _select_pairs(pool, size, mode, manual_pair_ids, seed):
 
 
 def _generate(driver_ids, seed):
-    from f1_simulator.application.generate_attributes import generate_attributes
+    from f1_simulator.application.generate_attributes import (
+        apply_presets,
+        generate_attributes,
+    )
     from f1_simulator.domain.random_source import SeededRandomSource
 
     source = SeededRandomSource(seed).spawn("attributes")
     attributes = generate_attributes(driver_ids, source)
+    if DRIVER_PRESETS_JSON.exists():
+        from f1_simulator.adapters.driver_presets_json import (
+            DriverPresetError,
+            load_driver_presets,
+        )
+
+        try:
+            presets = load_driver_presets(DRIVER_PRESETS_JSON)
+            attributes = apply_presets(attributes, presets, source)
+        except DriverPresetError as error:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(error),
+            ) from error
     return {item.driver_id: item for item in attributes}
 
 
@@ -93,6 +131,8 @@ def edit_current_grid(overrides):
                 ("pace_offset_pct", item.pace_offset_pct),
                 ("consistency_factor", item.consistency_factor),
                 ("tyre_management_factor", item.tyre_management_factor),
+                ("aggression", item.aggression),
+                ("composure", item.composure),
             )
             if value is not None
         }
@@ -109,18 +149,97 @@ def edit_current_grid(overrides):
     return pairs, attributes, seed
 
 
-def run_grid(*, total_laps, track_id, weather):
+def _track_reference(track_id):
+    """Valide o ID no catalogo de geometria e devolva ID canonico e extensao."""
+
+    if track_id is None:
+        return None, None
+    from app.services.track_geometry import list_available_tracks
+
+    canonical = track_id if track_id.startswith("circuit:") else f"circuit:{track_id}"
+    tracks = {
+        item["circuit_id"]: item for item in list_available_tracks()["tracks"]
+    }
+    if canonical not in tracks:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"track_id desconhecido no catalogo: {track_id}",
+        )
+    return canonical, tracks[canonical]["lap_length_m"]
+
+
+def _model_parameters():
+    """Carregue o artefato do modelo ou sinalize indisponibilidade da API."""
+
+    from f1_simulator.adapters.model_parameters_json import read_parameters
+
+    try:
+        return read_parameters(MODEL_PARAMETERS)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"parametros do modelo indisponiveis: {error}",
+        ) from error
+
+
+def _reference_lap(track_id):
+    """Entrada da tabela historica para a pista, ou ``None`` se nao houver.
+
+    Arquivo ausente ou circuito sem entrada nao sao erro: o caso de uso cai na
+    hipotese de ritmo por km e declara isso nas ``assumptions``. Um arquivo
+    presente porem invalido e erro de implantacao e vira 503.
+    """
+
+    if track_id is None:
+        return None
+    from f1_simulator.adapters.reference_laps_json import (
+        ReferenceLapsError,
+        read_reference_laps,
+    )
+
+    try:
+        table = read_reference_laps(REFERENCE_LAPS)
+    except FileNotFoundError:
+        return None
+    except (OSError, ReferenceLapsError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"tabela de voltas de referencia invalida: {error}",
+        ) from error
+    return table.get(track_id)
+
+
+def run_grid(*, total_laps, track_id, weather, engine="detailed"):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
+        run_detailed_grid_simulation,
         run_grid_simulation,
     )
     from f1_simulator.domain.random_source import SeededRandomSource
 
     pairs, attributes, seed = read_current_grid()
-    setup = RaceSetup(total_laps=total_laps, track_id=track_id, weather=weather)
+    canonical_track_id, lap_length_m = _track_reference(track_id)
+    setup = RaceSetup(
+        total_laps=total_laps,
+        track_id=canonical_track_id,
+        weather=weather,
+    )
     rng = SeededRandomSource(seed).spawn("race")
     try:
-        result = run_grid_simulation(pairs, attributes, setup, rng=rng)
+        if engine == "detailed":
+            result = run_detailed_grid_simulation(
+                pairs,
+                attributes,
+                setup,
+                parameters=_model_parameters(),
+                lap_length_m=lap_length_m,
+                rng=rng,
+                reference_lap=_reference_lap(canonical_track_id),
+            )
+        elif engine == "simple":
+            result = run_grid_simulation(pairs, attributes, setup, rng=rng)
+        else:
+            raise ValueError("engine deve ser 'detailed' ou 'simple'")
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
@@ -146,6 +265,8 @@ def _serialize_grid(pairs, attributes, seed) -> dict:
                     "tyre_management_factor": attributes[
                         entry.driver_id
                     ].tyre_management_factor,
+                    "aggression": attributes[entry.driver_id].aggression,
+                    "composure": attributes[entry.driver_id].composure,
                     "sources": dict(attributes[entry.driver_id].sources),
                 },
             }
@@ -170,12 +291,27 @@ def _deserialize_grid(state: dict):
             )
         )
         attribute = row["attributes"]
+        missing_v2_fields = {
+            "aggression",
+            "composure",
+        }.difference(attribute)
+        if missing_v2_fields:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "current grid uses the driver-attributes v1 schema and "
+                    "cannot run with the detailed engine; rebuild it with "
+                    "POST /catalog/grid"
+                ),
+            )
         attributes[row["driver_id"]] = DriverAttributes(
             driver_id=row["driver_id"],
             archetype=attribute["archetype"],
             pace_offset_pct=attribute["pace_offset_pct"],
             consistency_factor=attribute["consistency_factor"],
             tyre_management_factor=attribute["tyre_management_factor"],
+            aggression=attribute["aggression"],
+            composure=attribute["composure"],
             sources=attribute["sources"],
         )
     return tuple(pairs), attributes, state["seed"]

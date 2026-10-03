@@ -40,6 +40,8 @@ def _attributes_response(item) -> DriverAttributesResponse:
         pace_offset_pct=item.pace_offset_pct,
         consistency_factor=item.consistency_factor,
         tyre_management_factor=item.tyre_management_factor,
+        aggression=item.aggression,
+        composure=item.composure,
         sources=dict(item.sources),
     )
 
@@ -90,4 +92,5 @@ def run_grid(request: RunGridRequest) -> dict:
         total_laps=request.setup.total_laps,
         track_id=request.setup.track_id,
         weather=request.setup.weather,
+        engine=request.setup.engine,
     )

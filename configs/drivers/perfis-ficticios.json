@@ -1,0 +1,177 @@
+{
+  "source_kind": "heuristic",
+  "parameter_version": "fictional-driver-presets-v1",
+  "rationale": "Perfis narrativos assumidos para demonstrar estilos distintos no simulador; nao foram estimados de resultados, telemetria ou comportamento real.",
+  "fictional_profiles": true,
+  "disclaimer": "Caracterizacoes inteiramente ficticias para fins de simulacao; nao sao afirmacoes, avaliacoes ou medicoes sobre as pessoas reais nomeadas.",
+  "drivers": [
+    {
+      "driver_id": "driver:1",
+      "driver_name": "Lewis Hamilton",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, combina ritmo de referencia alto com defesa equilibrada.",
+      "attributes": {"pace_offset_pct": -0.12, "composure": 1.08}
+    },
+    {
+      "driver_id": "driver:4",
+      "driver_name": "Fernando Alonso",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, procura oportunidades com pressao ofensiva elevada.",
+      "attributes": {"pace_offset_pct": -0.4, "aggression": 1.4}
+    },
+    {
+      "driver_id": "driver:807",
+      "driver_name": "Nico Hulkenberg",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, mantem fatores proximos do ponto neutro.",
+      "attributes": {"pace_offset_pct": -0.08, "composure": 1.04}
+    },
+    {
+      "driver_id": "driver:815",
+      "driver_name": "Sergio Perez",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, alterna ataque e resistencia sem extremos.",
+      "attributes": {"pace_offset_pct": -0.1, "aggression": 1.07}
+    },
+    {
+      "driver_id": "driver:817",
+      "driver_name": "Daniel Ricciardo",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, usa um estilo versatil em disputas proximas.",
+      "attributes": {"pace_offset_pct": 0.05, "aggression": 1.06}
+    },
+    {
+      "driver_id": "driver:822",
+      "driver_name": "Valtteri Bottas",
+      "archetype": "conservative",
+      "characterization": "No cenario ficticio, privilegia firmeza e preservacao ao longo da prova.",
+      "attributes": {"pace_offset_pct": 0.14, "composure": 1.22}
+    },
+    {
+      "driver_id": "driver:825",
+      "driver_name": "Kevin Magnussen",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, aplica pressao alta quando surge uma disputa.",
+      "attributes": {"pace_offset_pct": -0.23, "aggression": 1.43}
+    },
+    {
+      "driver_id": "driver:830",
+      "driver_name": "Max Verstappen",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, combina ritmo alto com pressao ofensiva intensa.",
+      "attributes": {"pace_offset_pct": -0.58, "aggression": 1.48, "composure": 0.9}
+    },
+    {
+      "driver_id": "driver:832",
+      "driver_name": "Carlos Sainz",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, distribui ritmo, ataque e defesa de forma uniforme.",
+      "attributes": {"pace_offset_pct": -0.14, "composure": 1.05}
+    },
+    {
+      "driver_id": "driver:839",
+      "driver_name": "Esteban Ocon",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, sustenta ritmo ofensivo em pelotoes compactos.",
+      "attributes": {"pace_offset_pct": -0.25, "aggression": 1.31}
+    },
+    {
+      "driver_id": "driver:840",
+      "driver_name": "Lance Stroll",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, reage a disputas com fatores moderados.",
+      "attributes": {"pace_offset_pct": 0.1, "composure": 1.02}
+    },
+    {
+      "driver_id": "driver:842",
+      "driver_name": "Pierre Gasly",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, equilibra consistencia e iniciativa de ataque.",
+      "attributes": {"pace_offset_pct": 0.0, "aggression": 1.03}
+    },
+    {
+      "driver_id": "driver:844",
+      "driver_name": "Charles Leclerc",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, converte ritmo alto em pressao nas disputas.",
+      "attributes": {"pace_offset_pct": -0.42, "aggression": 1.35}
+    },
+    {
+      "driver_id": "driver:846",
+      "driver_name": "Lando Norris",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, alia referencia rapida a ataques frequentes.",
+      "attributes": {"pace_offset_pct": -0.5, "aggression": 1.38}
+    },
+    {
+      "driver_id": "driver:847",
+      "driver_name": "George Russell",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, busca avancar com pressao acima do neutro.",
+      "attributes": {"pace_offset_pct": -0.35, "aggression": 1.3}
+    },
+    {
+      "driver_id": "driver:848",
+      "driver_name": "Alexander Albon",
+      "archetype": "conservative",
+      "characterization": "No cenario ficticio, favorece resistencia defensiva e regularidade.",
+      "attributes": {"pace_offset_pct": 0.12, "composure": 1.2}
+    },
+    {
+      "driver_id": "driver:852",
+      "driver_name": "Yuki Tsunoda",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, responde a janelas curtas com iniciativa elevada.",
+      "attributes": {"pace_offset_pct": -0.28, "aggression": 1.34}
+    },
+    {
+      "driver_id": "driver:855",
+      "driver_name": "Guanyu Zhou",
+      "archetype": "conservative",
+      "characterization": "No cenario ficticio, prioriza compostura e progressao gradual.",
+      "attributes": {"pace_offset_pct": 0.34, "composure": 1.18}
+    },
+    {
+      "driver_id": "driver:857",
+      "driver_name": "Oscar Piastri",
+      "archetype": "conservative",
+      "characterization": "No cenario ficticio, combina firmeza sob pressao e escolhas medidas.",
+      "attributes": {"pace_offset_pct": 0.12, "composure": 1.16}
+    },
+    {
+      "driver_id": "driver:858",
+      "driver_name": "Logan Sargeant",
+      "archetype": "conservative",
+      "characterization": "No cenario ficticio, adota uma progressao cautelosa durante a corrida.",
+      "attributes": {"pace_offset_pct": 0.35, "composure": 1.08}
+    },
+    {
+      "driver_id": "driver:859",
+      "driver_name": "Liam Lawson",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, explora oportunidades com ataque assertivo.",
+      "attributes": {"pace_offset_pct": -0.2, "aggression": 1.32}
+    },
+    {
+      "driver_id": "driver:860",
+      "driver_name": "Oliver Bearman",
+      "archetype": "balanced",
+      "characterization": "No cenario ficticio, mantem comportamento proximo do neutro.",
+      "attributes": {"pace_offset_pct": 0.02, "aggression": 1.02}
+    },
+    {
+      "driver_id": "driver:861",
+      "driver_name": "Franco Colapinto",
+      "archetype": "aggressive",
+      "characterization": "No cenario ficticio, procura ganhar posicoes com ritmo ofensivo.",
+      "attributes": {"pace_offset_pct": -0.22, "aggression": 1.32}
+    },
+    {
+      "driver_id": "driver:862",
+      "driver_name": "Jack Doohan",
+      "archetype": "conservative",
+      "characterization": "No cenario ficticio, valoriza compostura e desenvolvimento gradual.",
+      "attributes": {"pace_offset_pct": 0.25, "composure": 1.15}
+    }
+  ]
+}

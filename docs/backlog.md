@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-10-02T22:13:51Z
-- **Abertas:** 44
-- **Fechadas:** 12
+- **Ultima atividade registrada:** 2026-10-03T20:35:50Z
+- **Abertas:** 43
+- **Fechadas:** 13
 
 ## Issues abertas
 
@@ -1290,7 +1290,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** [#68 — Consumir backend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68), [#69 — Modelagem clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/69)
+- **Sub-issues:** [#68 — Consumir backend e frontend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68), [#69 — Modelagem clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/69)
 - **Criada:** 2026-09-11T22:21:34Z
 - **Atualizada:** 2026-09-11T22:39:11Z
 - **Fechada:** —
@@ -1448,7 +1448,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - **Issue-pai:** [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61)
 - **Sub-issues:** —
 - **Criada:** 2026-09-11T22:30:19Z
-- **Atualizada:** 2026-09-11T22:33:16Z
+- **Atualizada:** 2026-10-03T20:35:50Z
 - **Fechada:** —
 
 <details>
@@ -1459,24 +1459,64 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 </details>
 
 <details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-10-03T20:35:31Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/67#issuecomment-5973245886)
+
+<pre>## Andamento — modelagem heurística de pilotos e corrida (2026-10-03)
+
+**Etapa:** implementação concluída na branch `67-modelagem-pilotos` (12 commits sobre a `develop`, ainda **não publicados** — o merge será feito pelo responsável). Plano em `docs/prds/modelagem-pilotos-heuristica.md`, decisão no ADR 0008 e valores atuais de todas as heurísticas em **`docs/modelagem-heuristica.md`**.
+
+**Contexto:** por orientação do professor e decisão do grupo, perfis de pilotos, disputas, safety car/VSC/bandeiras e paradas passam a ser **heurísticos** (escolhidos e rotulados, não medidos). Os perfis nomeados são caracterizações fictícias, não afirmações sobre pessoas reais.
+
+### O que foi feito
+- **Integração** do motor calibrado da #40 (`40-modelagem-corrida-calibrada`, que não havia chegado à `develop`), com 7 conflitos resolvidos. Sem os recursos novos, o motor reproduz exatamente os resultados da branch original (verificado por hashes).
+- **Atributos de piloto:** `aggression` e `composure` acrescentados aos arquétipos; 24 perfis fictícios nomeados do grid de 2024 em `configs/drivers/perfis-ficticios.json`.
+- **Disputa** conforme os slides da #40: `p(passar) = P/(P+R)`, contato que retira um dos dois e bandeira azul.
+- **Controle de prova:** SC, VSC, amarela, vermelha, relargada e acidente individual.
+- **Paradas heurísticas:** decisão econômica, parada oportunista sob SC/VSC, regra de dois compostos.
+- **`POST /catalog/grid/run`** passa a usar o motor detalhado (o motor simples continua com `engine=&quot;simple&quot;`).
+- **Ajustes de realismo:** gestão de pneus amortecida no motor detalhado e volta de referência por circuito a partir do histórico (ex.: Mônaco 77,2 s em vez de 56 s).
+
+### Verificações
+- Suíte completa passando (eram 255 testes na `develop`; agora 490, 35 ignorados de GUI).
+- Neutralidade do motor calibrado fixada por teste.
+- Fluxo `POST /catalog/grid` → `POST /catalog/grid/run` testado pela API real: perfis aplicados, eventos de controle de prova e reprodutibilidade por semente.
+- Frequência medida em 3 sementes × 200 corridas: 0,60–0,70 SC+VSC e 0,09–0,10 vermelha por corrida (referência de 2024: ~0,6 e ~1 a cada 6).
+- Implementação das fatias 1 a 5 por agentes Codex, com revisão. Na revisão foram corrigidos um defeito da bandeira azul e um ajuste de frequência que valia para uma única semente.
+
+### Próximos passos
+- Merge da branch na `develop`. O colega da #40 deve revisar o merge da integração (commit `53c071e`), porque resolvi conflitos no código dele.
+- Revisar ou substituir o ADR 0007, cujo contexto ficou desatualizado com a calibração da #40.
+- Ajuste opcional: a pole ainda vence com frequência alta.
+
+### Bloqueios e dependências
+- A interface Arcade ainda não dispara nem reproduz a corrida volta a volta. O `track_view.py` anima em velocidade constante e não mostra ultrapassagens. O `scripts/race_report.py --html` da #40 pode servir de base para a tela.
+- O clima (#68/#69) ainda não afeta o tempo de volta nem os incidentes.
+- O modo `random` do grid sorteia pilotos de toda a história, então os perfis de 2024 só aparecem num grid `manual`.
+</pre>
+
+</details>
+
+<details>
 <summary>Historico de estado</summary>
 
 - 2026-09-11T22:33:16Z — label adicionada: Task por @guilherme-webster
 
 </details>
 
-### [#68 — Consumir backend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68)
+### [#68 — Consumir backend e frontend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
+- **Responsaveis:** @Jmvjr, @guilherme-webster
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
 - **Sub-issues:** —
 - **Criada:** 2026-09-11T22:31:03Z
-- **Atualizada:** 2026-09-11T22:31:03Z
+- **Atualizada:** 2026-10-02T22:38:41Z
 - **Fechada:** —
 
 <details>
@@ -1489,38 +1529,10 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-10-02T22:38:41Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-10-02T22:38:33Z — renomeada: “Consumir backend para modelar clima” → “Consumir backend e frontend para modelar clima” por @Jmvjr
 - 2026-09-11T22:31:05Z — label adicionada: Task por @guilherme-webster
 - 2026-09-11T22:31:04Z — atribuida: @guilherme-webster por @guilherme-webster
-
-</details>
-
-### [#69 — Modelagem clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/69)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @Jmvjr, @guilherme-webster
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T22:31:25Z
-- **Atualizada:** 2026-10-02T22:13:51Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>modelagem posterior para os clima</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-02T22:13:51Z — atribuida: @Jmvjr por @Jmvjr
-- 2026-09-11T22:33:46Z — label adicionada: Task por @guilherme-webster
-- 2026-09-11T22:33:42Z — atribuida: @guilherme-webster por @guilherme-webster
 
 </details>
 
@@ -2121,6 +2133,37 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-11T22:13:36Z — fechada por @guilherme-webster
 - 2026-09-11T20:22:54Z — label adicionada: História por @guilherme-webster
 - 2026-09-11T20:22:52Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#69 — Modelagem clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/69)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @Jmvjr, @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T22:31:25Z
+- **Atualizada:** 2026-10-02T22:36:38Z
+- **Fechada:** 2026-10-02T22:36:38Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>modelagem posterior para os clima</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-02T22:36:39Z — fechada por @Jmvjr
+- 2026-10-02T22:13:51Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-09-11T22:33:46Z — label adicionada: Task por @guilherme-webster
+- 2026-09-11T22:33:42Z — atribuida: @guilherme-webster por @guilherme-webster
 
 </details>
 

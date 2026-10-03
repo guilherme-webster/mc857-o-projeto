@@ -14,6 +14,7 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 - [Fluxo e responsabilidades do ETL](docs/fluxo-etl.md)
 - [ETL completo: Trotman e FastF1](docs/etl-enriquecimento.md)
 - [Proposta de planejamento da modelagem](docs/planejamento-modelagem.md)
+- [Modelagem calibrada da corrida e validacao](docs/modelagem-corrida-calibrada.md)
 - [Dados e plano de perfilamento dos pilotos](docs/perfilamento-pilotos.md)
 
 O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
@@ -156,26 +157,27 @@ nao exige escolher um GP historico. **Confirmar torneio** produz um plano
 validado; a interface ainda nao contem o editor de participantes nem a tela
 de reproducao dessa sequencia.
 
-Para executar a sequencia pela API, envie as pistas em ordem a
-`POST /simulation/series/simulate` com `circuit_id`, `total_laps` (1 a 200) e
-participantes com `driver_id`, `name` e `pace_ms_per_km` (ritmo em ms/km). Exemplo:
+Para rodar uma corrida pela API, monte o grid e depois execute-o:
 
-```json
-{
-  "tracks": [
-    {"circuit_id": "circuit:18", "total_laps": 69},
-    {"circuit_id": "circuit:6", "total_laps": 78}
-  ],
-  "competitors": [
-    {"driver_id": "piloto-1", "name": "Piloto 1", "pace_ms_per_km": 21000}
-  ]
-}
+```bash
+curl -X POST localhost:8000/catalog/grid -H 'Content-Type: application/json' \
+  -d '{"size": 20, "mode": "random", "seed": 7}'
+curl -X POST localhost:8000/catalog/grid/run -H 'Content-Type: application/json' \
+  -d '{"setup": {"total_laps": 44, "track_id": "circuit:13"}}'
 ```
 
-A resposta inclui cada corrida, seu historico volta a volta e classificacao
-final independente. A API usa o comprimento das pistas do catalogo, sem
-consultar `race_id` nem exigir `POST /simulation/load`. O motor atual usa ritmo
-constante; clima, pit stops e pontuacao acumulada ainda nao alteram o resultado.
+`POST /catalog/grid` sorteia os pares piloto/equipe do historico e seus
+atributos; perfis ficticios nomeados de `configs/drivers/perfis-ficticios.json`
+sao aplicados por cima, e `PATCH /catalog/grid` edita atributos a mao.
+O modo `random` sorteia pilotos de toda a historia (desde 1950), entao os
+perfis nomeados, que sao do grid de 2024, so aparecem de fato num grid `manual`
+com `pair_ids` (`driver_id@team_id`, listados em `GET /catalog`).
+`POST /catalog/grid/run` roda o motor detalhado (combustivel, pneus, paradas,
+disputas, abandonos, safety car e bandeiras) e devolve o historico volta a volta,
+a classificacao, os eventos do controle de prova e, em `assumptions`, todos os
+parametros heuristicos usados. A mesma semente reproduz a mesma corrida;
+`"engine": "simple"` no `setup` usa o motor antigo de ritmo constante.
+Detalhes em [Modelagem heuristica da corrida](#modelagem-heurística-da-corrida).
 
 X/Y sao normalizados e sem unidade; distancia acumulada da pista e em metros.
 As geometrias sao de 2025: seu uso com uma corrida de outro ano fica explicito no
@@ -367,6 +369,86 @@ A [comparação entre companheiros e referência determinística](docs/companhei
 usa contextos compartilhados, apresenta suporte e intervalos e exporta referências
 de tempo específicas por circuito/sessão. Execute `scripts/analyze_teammates.py`
 conforme os comandos do guia; a integração ao motor permanece posterior.
+
+## Modelo de corrida calibrado
+
+O núcleo da simulação deixou de usar ritmo constante por carro. O tempo de
+volta agora é decomposto em referência, combustível, pneu, tráfego, perda de
+boxes e ruído, com abandono sorteado por volta. Os coeficientes são estimados
+do histórico Trotman e gravados versionados em `data/parameters/`.
+
+```bash
+python3 scripts/ingest_trotman.py --all-tables --output data/curated/history.sqlite
+python3 scripts/calibrate_model.py --database data/curated/history.sqlite \n  --seasons 2022 2023 --output data/parameters/model-v1.json
+```
+
+Valide contra corridas que não entraram na calibração. O script recusa
+validar sobre uma temporada calibrada sem `--allow-calibrated-seasons`:
+
+```bash
+python3 scripts/backtest_model.py --database data/curated/history.sqlite \n  --parameters data/parameters/model-v1.json --seasons 2024 --repeats 10
+```
+
+Cada corrida é comparada com duas linhas de base (ordem de largada e o modelo
+antigo de ritmo constante); o modelo só se justifica se vencer as duas. O
+[relatório da modelagem](docs/modelagem-corrida-calibrada.md) traz método,
+coeficientes, resultados de 2024 e limitações.
+
+Esse motor calibrado é o que `POST /catalog/grid/run` executa, com as
+heurísticas da seção seguinte por cima; a mesma semente, os mesmos parâmetros e
+os mesmos dados reproduzem exatamente a mesma corrida.
+
+## Modelagem heurística da corrida
+
+Por orientação do professor e decisão do grupo, perfis de pilotos, disputas de
+posição, safety car, VSC, bandeiras e paradas são **heurísticos**: escolhidos e
+rotulados, não medidos. Os perfis nomeados são caracterizações fictícias, não
+afirmações sobre pessoas reais. A física de base (combustível, pneu, tráfego,
+perda de boxes, dificuldade por circuito) continua vindo do modelo calibrado.
+
+- [Referência das heurísticas](docs/modelagem-heuristica.md): valores atuais,
+  onde ficam no código e como reajustar.
+- [ADR 0008](docs/adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md):
+  a decisão e suas consequências.
+- [Plano e histórico](docs/prds/modelagem-pilotos-heuristica.md).
+
+Para medir a frequência de SC/VSC, vermelhas, paradas e abandonos em muitas
+corridas, e para regerar a tabela de voltas de referência por circuito:
+
+```bash
+python3 scripts/race_control_frequency.py --races 200 --seed 1
+python3 scripts/build_reference_laps.py --database data/curated/history.sqlite \
+  --seasons 2022 2023 2024
+```
+
+## Ver uma corrida sem frontend
+
+`scripts/race_report.py` roda uma corrida e explica o resultado usando só a
+biblioteca padrão do Python: sem instalação, sem ambiente virtual, sem
+container. Liste as corridas de uma temporada e depois rode uma delas:
+
+```bash
+python3 scripts/race_report.py --season 2024
+```
+
+```bash
+python3 scripts/race_report.py --race-id 1141 --driver Verstappen
+```
+
+O relatório traz a classificação comparada com o resultado oficial, a
+evolução das posições, as paradas e a decomposição do tempo de volta
+(referência, combustível, pneu, tráfego, boxes e ruído) volta a volta.
+
+Com `--html` o mesmo comando grava um visualizador autocontido, que abre no
+navegador com duplo clique e anima a corrida sobre a geometria real do
+circuito, com torre de tempos e gráfico de voltas:
+
+```bash
+python3 scripts/race_report.py --race-id 1141 --html data/reports/corrida.html
+```
+
+O modelo da página fica em `tools/race_viewer_template.html`; os dados são
+embutidos no arquivo gerado porque navegadores bloqueiam `fetch` de `file://`.
 
 ## Ranking de pilotos e adaptador para simulação
 

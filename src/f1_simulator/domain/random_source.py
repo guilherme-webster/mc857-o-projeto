@@ -3,6 +3,14 @@
 O modulo encapsula todo estado pseudoaleatorio em instancias explicitamente
 semeadas. Assim, consumidores podem injetar a dependencia, repetir uma
 simulacao e testar rejeicoes sem recorrer ao estado global de :mod:`random`.
+
+Este modulo une duas versoes desenvolvidas em paralelo: a da ``develop``
+(rotulos, ``spawn`` e registro de sorteios) e a do motor calibrado da issue #40
+(``uniform01`` e ``FrozenRandomSource``). As duas usam ``random.Random(seed)``
+por baixo, com ``standard_normal`` igual a ``gauss(0, 1)`` e ``uniform01`` igual
+a ``random()``; por isso a mesma semente reproduz exatamente as sequencias que
+cada versao produzia. O rotulo e opcional para que as chamadas do motor
+calibrado, feitas sem rotulo, continuem validas.
 """
 
 from __future__ import annotations
@@ -22,15 +30,20 @@ MAX_UNIFORM_INDEX_ATTEMPTS = 10_000
 
 
 class RandomSource(Protocol):
-    """Contrato minimo para consumir uma variavel normal padrao.
+    """Contrato minimo de aleatoriedade consumido pelo dominio.
 
     ``label`` identifica a finalidade do sorteio para fontes que mantenham
     auditoria. Ele nao altera a distribuicao nem substitui a ordem determinista
     que deve ser definida pelo consumidor.
     """
 
-    def standard_normal(self, label: str) -> float:
+    def standard_normal(self, label: str = "") -> float:
         """Retorne um sorteio de uma normal com media zero e desvio padrao um."""
+
+        ...
+
+    def uniform01(self, label: str = "") -> float:
+        """Retorne um sorteio uniforme em [0, 1)."""
 
         ...
 
@@ -74,13 +87,28 @@ class SeededRandomSource:
 
         return tuple(self._draws)
 
-    def standard_normal(self, label: str) -> float:
+    def standard_normal(self, label: str = "") -> float:
         """Sorteie uma normal padrao e, se habilitado, registre-a em ordem."""
 
         if not isinstance(label, str):
             raise ValueError("label deve ser str")
 
         value = self._rng.gauss(0.0, 1.0)
+        if self._record_draws:
+            self._draws.append(RandomDraw(label=label, value=value))
+        return value
+
+    def uniform01(self, label: str = "") -> float:
+        """Sorteie um uniforme em [0, 1) e, se habilitado, registre-o em ordem.
+
+        Consome o mesmo gerador que ``standard_normal``: alternar os dois tipos
+        de sorteio faz parte da sequencia reproduzida pela semente.
+        """
+
+        if not isinstance(label, str):
+            raise ValueError("label deve ser str")
+
+        value = self._rng.random()
         if self._record_draws:
             self._draws.append(RandomDraw(label=label, value=value))
         return value
@@ -182,3 +210,22 @@ def uniform_float(
     z = source.standard_normal(label)
     unit = 0.5 * (1.0 + erf(z / sqrt(2.0)))
     return low + unit * (high - low)
+
+
+class FrozenRandomSource:
+    """Fonte degenerada que nunca perturba nada (motor calibrado, issue #40).
+
+    ``uniform01`` devolve 1.0 -- estritamente acima de qualquer probabilidade de
+    risco em [0, 1), portanto nenhum evento raro dispara -- e ``standard_normal``
+    devolve 0.0, anulando o ruido. Serve para isolar as regras deterministicas
+    nos testes e para o modo sem variabilidade descrito em
+    ``docs/contrato-perfil-simulacao.md``.
+    """
+
+    __slots__ = ()
+
+    def uniform01(self, label: str = "") -> float:
+        return 1.0
+
+    def standard_normal(self, label: str = "") -> float:
+        return 0.0
