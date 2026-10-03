@@ -81,6 +81,7 @@ class RaceSetupRequest(BaseModel):
     total_laps: int = Field(ge=1, le=200)
     track_id: str | None = None
     weather: str | None = None
+    engine: Literal["detailed", "simple"] = "detailed"
 
 
 class RunGridRequest(BaseModel):

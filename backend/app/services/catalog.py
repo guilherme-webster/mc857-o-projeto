@@ -8,7 +8,12 @@ from pathlib import Path
 
 from fastapi import HTTPException, status
 
-from app.config import CURRENT_GRID_JSON, CURRENT_RACE_JSON, HISTORY_DB
+from app.config import (
+    CURRENT_GRID_JSON,
+    CURRENT_RACE_JSON,
+    HISTORY_DB,
+    MODEL_PARAMETERS,
+)
 from f1_simulator.application import catalog as core_catalog
 
 _HISTORY_NOT_FOUND = (
@@ -143,18 +148,69 @@ def edit_current_grid(overrides):
     return pairs, attributes, seed
 
 
-def run_grid(*, total_laps, track_id, weather):
+def _track_reference(track_id):
+    """Valide o ID no catalogo de geometria e devolva ID canonico e extensao."""
+
+    if track_id is None:
+        return None, None
+    from app.services.track_geometry import list_available_tracks
+
+    canonical = track_id if track_id.startswith("circuit:") else f"circuit:{track_id}"
+    tracks = {
+        item["circuit_id"]: item for item in list_available_tracks()["tracks"]
+    }
+    if canonical not in tracks:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"track_id desconhecido no catalogo: {track_id}",
+        )
+    return canonical, tracks[canonical]["lap_length_m"]
+
+
+def _model_parameters():
+    """Carregue o artefato do modelo ou sinalize indisponibilidade da API."""
+
+    from f1_simulator.adapters.model_parameters_json import read_parameters
+
+    try:
+        return read_parameters(MODEL_PARAMETERS)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"parametros do modelo indisponiveis: {error}",
+        ) from error
+
+
+def run_grid(*, total_laps, track_id, weather, engine="detailed"):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
+        run_detailed_grid_simulation,
         run_grid_simulation,
     )
     from f1_simulator.domain.random_source import SeededRandomSource
 
     pairs, attributes, seed = read_current_grid()
-    setup = RaceSetup(total_laps=total_laps, track_id=track_id, weather=weather)
+    canonical_track_id, lap_length_m = _track_reference(track_id)
+    setup = RaceSetup(
+        total_laps=total_laps,
+        track_id=canonical_track_id,
+        weather=weather,
+    )
     rng = SeededRandomSource(seed).spawn("race")
     try:
-        result = run_grid_simulation(pairs, attributes, setup, rng=rng)
+        if engine == "detailed":
+            result = run_detailed_grid_simulation(
+                pairs,
+                attributes,
+                setup,
+                parameters=_model_parameters(),
+                lap_length_m=lap_length_m,
+                rng=rng,
+            )
+        elif engine == "simple":
+            result = run_grid_simulation(pairs, attributes, setup, rng=rng)
+        else:
+            raise ValueError("engine deve ser 'detailed' ou 'simple'")
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
@@ -206,6 +262,19 @@ def _deserialize_grid(state: dict):
             )
         )
         attribute = row["attributes"]
+        missing_v2_fields = {
+            "aggression",
+            "composure",
+        }.difference(attribute)
+        if missing_v2_fields:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "current grid uses the driver-attributes v1 schema and "
+                    "cannot run with the detailed engine; rebuild it with "
+                    "POST /catalog/grid"
+                ),
+            )
         attributes[row["driver_id"]] = DriverAttributes(
             driver_id=row["driver_id"],
             archetype=attribute["archetype"],

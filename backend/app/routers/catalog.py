@@ -92,4 +92,5 @@ def run_grid(request: RunGridRequest) -> dict:
         total_laps=request.setup.total_laps,
         track_id=request.setup.track_id,
         weather=request.setup.weather,
+        engine=request.setup.engine,
     )

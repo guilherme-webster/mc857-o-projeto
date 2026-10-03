@@ -13,6 +13,8 @@ services:
       - ./src:/opt/f1/src:Z
       - ./scripts:/opt/f1/scripts:Z
       - ./data:/data:Z
+      # Presets ficticios ficam em /configs, que e o default calculado pelo servico.
+      - ./configs:/configs:ro,Z
       - ./tests/fixtures/trotman_v128_tracks_2025:/data/geometry:ro,Z
     environment:
       - PYTHONUNBUFFERED=1
