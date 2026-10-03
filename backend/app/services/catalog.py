@@ -13,6 +13,7 @@ from app.config import (
     CURRENT_RACE_JSON,
     HISTORY_DB,
     MODEL_PARAMETERS,
+    REFERENCE_LAPS,
 )
 from f1_simulator.application import catalog as core_catalog
 
@@ -181,6 +182,33 @@ def _model_parameters():
         ) from error
 
 
+def _reference_lap(track_id):
+    """Entrada da tabela historica para a pista, ou ``None`` se nao houver.
+
+    Arquivo ausente ou circuito sem entrada nao sao erro: o caso de uso cai na
+    hipotese de ritmo por km e declara isso nas ``assumptions``. Um arquivo
+    presente porem invalido e erro de implantacao e vira 503.
+    """
+
+    if track_id is None:
+        return None
+    from f1_simulator.adapters.reference_laps_json import (
+        ReferenceLapsError,
+        read_reference_laps,
+    )
+
+    try:
+        table = read_reference_laps(REFERENCE_LAPS)
+    except FileNotFoundError:
+        return None
+    except (OSError, ReferenceLapsError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"tabela de voltas de referencia invalida: {error}",
+        ) from error
+    return table.get(track_id)
+
+
 def run_grid(*, total_laps, track_id, weather, engine="detailed"):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
@@ -206,6 +234,7 @@ def run_grid(*, total_laps, track_id, weather, engine="detailed"):
                 parameters=_model_parameters(),
                 lap_length_m=lap_length_m,
                 rng=rng,
+                reference_lap=_reference_lap(canonical_track_id),
             )
         elif engine == "simple":
             result = run_grid_simulation(pairs, attributes, setup, rng=rng)

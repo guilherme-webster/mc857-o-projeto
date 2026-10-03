@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "method_version": "historical-median-fastest-laps-v1",
+  "origin": "historical-median",
+  "source": "jtrotman/formula-1-race-data v128 (race_results.fastest_lap_time_ms)",
+  "seasons": [
+    2022,
+    2023,
+    2024
+  ],
+  "rationale": "Por corrida, mediana das voltas mais rapidas de cada piloto; por circuito, mediana entre as corridas. Usada como volta de referencia ideal do motor detalhado; nao descreve pilotos.",
+  "circuits": [
+    {
+      "circuit_id": "circuit:1",
+      "reference_lap_time_ms": 81183.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:11",
+      "reference_lap_time_ms": 82933.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:13",
+      "reference_lap_time_ms": 110515.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:14",
+      "reference_lap_time_ms": 85894.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:15",
+      "reference_lap_time_ms": 98091.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:17",
+      "reference_lap_time_ms": 99938.0,
+      "races": 1,
+      "seasons": [
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:18",
+      "reference_lap_time_ms": 75172.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:21",
+      "reference_lap_time_ms": 80995.5,
+      "races": 2,
+      "seasons": [
+        2022,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:22",
+      "reference_lap_time_ms": 97525.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:24",
+      "reference_lap_time_ms": 88471.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:3",
+      "reference_lap_time_ms": 96581.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:32",
+      "reference_lap_time_ms": 82734.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:39",
+      "reference_lap_time_ms": 74806.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:4",
+      "reference_lap_time_ms": 78690.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:6",
+      "reference_lap_time_ms": 77150.0,
+      "races": 2,
+      "seasons": [
+        2022,
+        2023
+      ]
+    },
+    {
+      "circuit_id": "circuit:69",
+      "reference_lap_time_ms": 100034.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:7",
+      "reference_lap_time_ms": 77012.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:70",
+      "reference_lap_time_ms": 69592.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:73",
+      "reference_lap_time_ms": 107151.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:77",
+      "reference_lap_time_ms": 93285.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:78",
+      "reference_lap_time_ms": 85107.2,
+      "races": 2,
+      "seasons": [
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:79",
+      "reference_lap_time_ms": 91704.5,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:80",
+      "reference_lap_time_ms": 96665.0,
+      "races": 2,
+      "seasons": [
+        2023,
+        2024
+      ]
+    },
+    {
+      "circuit_id": "circuit:9",
+      "reference_lap_time_ms": 91437.0,
+      "races": 3,
+      "seasons": [
+        2022,
+        2023,
+        2024
+      ]
+    }
+  ]
+}

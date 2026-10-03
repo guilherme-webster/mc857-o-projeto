@@ -33,3 +33,18 @@ MODEL_PARAMETERS = (
     if _CONTAINER_PARAMETERS.exists()
     else _REPOSITORY_PARAMETERS
 )
+
+# Volta de referencia por circuito (mediana historica), gerada por
+# scripts/build_reference_laps.py. Mesma regra de busca do MODEL_PARAMETERS.
+_CONTAINER_REFERENCE_LAPS = DATA_DIR.parent / "parameters" / "reference-laps-v1.json"
+_REPOSITORY_REFERENCE_LAPS = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "parameters"
+    / "reference-laps-v1.json"
+)
+REFERENCE_LAPS = (
+    _CONTAINER_REFERENCE_LAPS
+    if _CONTAINER_REFERENCE_LAPS.exists()
+    else _REPOSITORY_REFERENCE_LAPS
+)

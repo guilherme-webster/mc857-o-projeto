@@ -6,6 +6,8 @@ from math import isfinite
 from typing import Literal
 
 from f1_simulator.application.build_grid import GridEntry
+from f1_simulator.application.reference_laps import METHOD_VERSION as REFERENCE_LAPS_METHOD_VERSION
+from f1_simulator.application.reference_laps import ReferenceLap
 from f1_simulator.domain.attribute_effects import detailed_degradation_factor
 from f1_simulator.domain.driver_attributes import DriverAttributes
 from f1_simulator.domain.model_parameters import ModelParameters
@@ -123,6 +125,7 @@ def run_detailed_grid_simulation(
     reference_pace_ms_per_km: float = ASSUMED_REFERENCE_PACE_MS_PER_KM,
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
     dispute_model: Literal["legacy", "pressure"] = "pressure",
+    reference_lap: ReferenceLap | None = None,
 ) -> dict:
     """Execute o grid no motor detalhado sem conhecer arquivo, HTTP ou banco.
 
@@ -132,9 +135,16 @@ def run_detailed_grid_simulation(
     ``parameters.fallback_track``, cuja origem ``assumed`` torna a substituicao
     auditavel em ``track_reference``.
 
-    ``lap_length_m`` converte a hipotese em ms/km para uma volta de referencia.
-    Sem pista, o caso de uso reutiliza ``NOMINAL_LAP_TIME_MS`` do nucleo simples
-    e declara o fallback na resposta, em vez de transformar ausencia em zero.
+    A volta de referencia vem, em ordem de preferencia:
+
+    1. de ``reference_lap``, a tabela historica por circuito
+       (``application/reference_laps.py``), quando o circuito tem entrada;
+    2. de ``lap_length_m`` vezes a hipotese em ms/km, quando ha pista mas nao
+       ha entrada na tabela;
+    3. de ``NOMINAL_LAP_TIME_MS`` do nucleo simples, quando nao ha pista.
+
+    A origem efetivamente usada e declarada em ``assumptions``, em vez de
+    transformar ausencia em zero ou esconder qual valor entrou na corrida.
 
     Cada piloto recebe um fluxo derivado exclusivamente para o offset inteiro
     da estrategia. O motor recebe outro fluxo, ``detailed-race``; assim mudar a
@@ -165,11 +175,20 @@ def run_detailed_grid_simulation(
         if setup.track_id is not None and setup.track_id in known_track_ids
         else parameters.fallback_track
     )
-    reference_lap_time_ms = (
-        lap_length_m / 1_000.0 * reference_pace_ms_per_km
-        if lap_length_m is not None
-        else NOMINAL_LAP_TIME_MS
-    )
+    if reference_lap is not None and reference_lap.circuit_id != setup.track_id:
+        raise ValueError(
+            f"reference_lap de {reference_lap.circuit_id} nao corresponde a "
+            f"pista {setup.track_id}"
+        )
+    if reference_lap is not None:
+        reference_lap_time_ms = reference_lap.reference_lap_time_ms
+        reference_source = "historical_median"
+    elif lap_length_m is not None:
+        reference_lap_time_ms = lap_length_m / 1_000.0 * reference_pace_ms_per_km
+        reference_source = "assumed_pace_per_km"
+    else:
+        reference_lap_time_ms = NOMINAL_LAP_TIME_MS
+        reference_source = "nominal_lap_time"
 
     missing_attributes = [
         entry.driver_id for entry in grid if entry.driver_id not in attributes
@@ -258,14 +277,27 @@ def run_detailed_grid_simulation(
         *result.get("assumptions", []),
         {
             "kind": "reference_pace",
+            "reference_source": reference_source,
+            "reference_lap_time_ms": reference_lap_time_ms,
+            "historical_reference": (
+                {
+                    "method_version": REFERENCE_LAPS_METHOD_VERSION,
+                    "races": reference_lap.races,
+                    "seasons": list(reference_lap.seasons),
+                }
+                if reference_lap is not None
+                else None
+            ),
             **asdict(
                 ReferencePaceParameters(
                     pace_ms_per_km=float(reference_pace_ms_per_km)
                 )
             ),
-            "used_nominal_lap_time_fallback": lap_length_m is None,
+            "used_nominal_lap_time_fallback": reference_source == "nominal_lap_time",
             "nominal_lap_time_ms": (
-                NOMINAL_LAP_TIME_MS if lap_length_m is None else None
+                NOMINAL_LAP_TIME_MS
+                if reference_source == "nominal_lap_time"
+                else None
             ),
         },
         {
