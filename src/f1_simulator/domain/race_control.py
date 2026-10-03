@@ -128,13 +128,13 @@ class RaceControlParameters:
     de integracao ajuste frequencias sem esconder numeros em condicionais.
     """
 
-    crash_red_probability: float = 0.075
-    crash_sc_probability: float = 0.55
-    crash_vsc_probability: float = 0.25
-    crash_yellow_probability: float = 0.20
-    mechanical_no_intervention_probability: float = 0.60
+    crash_red_probability: float = 0.10
+    crash_sc_probability: float = 0.33
+    crash_vsc_probability: float = 0.17
+    crash_yellow_probability: float = 0.50
+    mechanical_no_intervention_probability: float = 0.65
     mechanical_yellow_probability: float = 0.25
-    mechanical_vsc_probability: float = 0.15
+    mechanical_vsc_probability: float = 0.10
     yellow_duration_laps: int = 1
     vsc_min_duration_laps: int = 1
     vsc_max_duration_laps: int = 3
@@ -149,17 +149,24 @@ class RaceControlParameters:
     restart_contact_factor: float = 1.50
     sc_pit_loss_factor: float = 0.50
     vsc_pit_loss_factor: float = 0.70
-    solo_crash_probability_per_car_lap: float = 0.00025
+    solo_crash_probability_per_car_lap: float = 0.00005
     first_lap_solo_crash_multiplier: float = 3.0
     restart_solo_crash_multiplier: float = 2.0
     neutralized_solo_crash_multiplier: float = 0.25
     origin: Literal["heuristic"] = "heuristic"
-    parameter_version: str = "heuristic-race-control-v1"
+    parameter_version: str = "heuristic-race-control-v2"
     rationale: str = (
-        "Hipoteses iniciais inspiradas nas ordens de grandeza descritas no PRD "
-        "4.4; nao constituem calibracao. A fatia de integracao deve ajustar as "
-        "frequencias para cerca de 0,6 SC/VSC por corrida e uma vermelha a cada "
-        "seis corridas."
+        "Hipotese heuristica, nao calibrada. A v1 gerava 1,13 neutralizacao "
+        "(SC+VSC) por corrida. A v2 reduz a chance de uma batida neutralizar a "
+        "prova sem inverter a proporcao real (batida com detritos leva mais a SC "
+        "que a VSC): vermelha 10% das batidas (teto aprovado no PRD 4.4.2); "
+        "nas demais, SC 33%, VSC 17%, "
+        "amarela 50%; abandono mecanico sem intervencao 65%, amarela 25%, VSC "
+        "10%. Alvo do PRD 4.4.2: ~0,6 SC+VSC e ~1 vermelha a cada 6 corridas. "
+        "Medido com race_control_frequency.py, 200 corridas por semente "
+        "(67202, 1, 2026): 0,58-0,66 SC+VSC e 0,08-0,09 vermelha por corrida "
+        "(cerca de 1 a cada 11-12). Atingir 1 a cada 6 exigiria ~15% de "
+        "batidas graves, acima do teto aprovado; decisao pendente."
     )
 
     def __post_init__(self) -> None:

@@ -24,6 +24,43 @@ from f1_simulator.domain.race_control import (
 from f1_simulator.domain.random_source import SeededRandomSource
 
 
+
+def _crash_response_draw(status: RaceStatus) -> float:
+    """Sorteio no ponto medio da faixa da resposta a uma batida.
+
+    Derivado dos parametros padrao, para que o teste verifique a logica de
+    selecao e nao um valor de ajuste de frequencia, que pode mudar de versao.
+    """
+
+    p = HEURISTIC_RACE_CONTROL
+    if status == SC:
+        return p.crash_sc_probability / 2
+    if status == VSC:
+        return p.crash_sc_probability + p.crash_vsc_probability / 2
+    return (
+        p.crash_sc_probability
+        + p.crash_vsc_probability
+        + p.crash_yellow_probability / 2
+    )
+
+
+def _mechanical_response_draw(response: str) -> float:
+    """Sorteio no ponto medio da faixa da resposta a um abandono mecanico."""
+
+    p = HEURISTIC_RACE_CONTROL
+    if response == "NONE":
+        return p.mechanical_no_intervention_probability / 2
+    if response == "YELLOW":
+        return (
+            p.mechanical_no_intervention_probability
+            + p.mechanical_yellow_probability / 2
+        )
+    return (
+        p.mechanical_no_intervention_probability
+        + p.mechanical_yellow_probability
+        + p.mechanical_vsc_probability / 2
+    )
+
 class ScriptedRandomSource:
     """Fonte estrita: faltar ou sobrar sorteio torna a ordem observavel."""
 
@@ -154,9 +191,9 @@ class RaceControlTransitionsTest(unittest.TestCase):
 
     def test_crash_responses_cover_sc_vsc_and_yellow(self) -> None:
         cases = (
-            ((0.50, 0.10, 0.00), SC, 3),
-            ((0.50, 0.70, 1.00), VSC, 3),
-            ((0.50, 0.95), YELLOW, 1),
+            ((0.50, _crash_response_draw(SC), 0.00), SC, 3),
+            ((0.50, _crash_response_draw(VSC), 1.00), VSC, 3),
+            ((0.50, _crash_response_draw(YELLOW)), YELLOW, 1),
         )
 
         for values, expected_status, expected_duration in cases:
@@ -176,9 +213,9 @@ class RaceControlTransitionsTest(unittest.TestCase):
 
     def test_mechanical_responses_cover_none_yellow_and_vsc(self) -> None:
         cases = (
-            ((0.20,), GREEN, 0, "NONE"),
-            ((0.70,), YELLOW, 1, "YELLOW"),
-            ((0.90, 0.00), VSC, 1, "VSC"),
+            ((_mechanical_response_draw("NONE"),), GREEN, 0, "NONE"),
+            ((_mechanical_response_draw("YELLOW"),), YELLOW, 1, "YELLOW"),
+            ((_mechanical_response_draw("VSC"), 0.00), VSC, 1, "VSC"),
         )
 
         for values, expected_status, duration, response in cases:
@@ -202,14 +239,14 @@ class RaceControlTransitionsTest(unittest.TestCase):
                 sc_state, _ = step(
                     RaceControlState(),
                     (incident(1),),
-                    ScriptedRandomSource(0.5, 0.1, draw),
+                    ScriptedRandomSource(0.5, _crash_response_draw(SC), draw),
                     HEURISTIC_RACE_CONTROL,
                     1,
                 )
                 vsc_state, _ = step(
                     RaceControlState(),
                     (incident(1),),
-                    ScriptedRandomSource(0.5, 0.7, draw),
+                    ScriptedRandomSource(0.5, _crash_response_draw(VSC), draw),
                     HEURISTIC_RACE_CONTROL,
                     1,
                 )

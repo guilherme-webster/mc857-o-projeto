@@ -16,6 +16,7 @@ vezes, erro descrito em ``docs/contrato-perfil-simulacao.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 from f1_simulator.domain.model_parameters import ModelParameters, TrackParameters
 from f1_simulator.domain.random_source import RandomSource
@@ -44,18 +45,36 @@ class LapTimeBreakdown:
     noise_ms: float
     total_ms: float
     floored: bool = False
+    lap_time_factor: float = 1.0
+    lap_time_loss_ms: float = 0.0
 
     def components_sum_ms(self) -> float:
         """Soma das parcelas antes do piso; usada por testes e pelo relatorio."""
 
-        return (
+        running_time_ms = (
             self.reference_ms
             + self.fuel_ms
             + self.tyre_ms
             + self.traffic_ms
-            + self.pit_ms
             + self.noise_ms
         )
+        return (
+            running_time_ms * self.lap_time_factor
+            + self.lap_time_loss_ms
+            + self.pit_ms
+        )
+
+
+def _non_negative_factor(value: float, name: str) -> None:
+    """Rejeite fatores invalidos antes que algum sorteio seja consumido."""
+
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not isfinite(value)
+        or value < 0.0
+    ):
+        raise ValueError(f"{name} deve ser nao negativo e finito")
 
 
 def fuel_penalty_ms(
@@ -103,7 +122,11 @@ def traffic_penalty_ms(
     return parameters.traffic_penalty_ms * closeness * track.overtaking_difficulty
 
 
-def lap_noise_ms(parameters: ModelParameters, rng: RandomSource) -> float:
+def lap_noise_ms(
+    parameters: ModelParameters,
+    rng: RandomSource,
+    label: str = "",
+) -> float:
     """Perturbacao assimetrica por volta, consumindo a fonte aleatoria injetada.
 
     Os residuos medidos no historico sao claramente assimetricos a direita
@@ -118,7 +141,9 @@ def lap_noise_ms(parameters: ModelParameters, rng: RandomSource) -> float:
 
     if parameters.lap_noise_ms == 0.0:
         return 0.0
-    z = rng.standard_normal()
+    if not isinstance(label, str):
+        raise ValueError("label deve ser str")
+    z = rng.standard_normal(label)
     scale = 1.0 + parameters.lap_noise_skew if z > 0 else 1.0 - parameters.lap_noise_skew
     return z * parameters.lap_noise_ms * scale
 
@@ -134,25 +159,66 @@ def compute_lap_time(
     gap_ahead_ms: float | None,
     pitting: bool,
     rng: RandomSource,
+    noise_scale: float = 1.0,
+    degradation_factor: float = 1.0,
+    pit_loss_factor: float = 1.0,
+    lap_time_factor: float = 1.0,
+    lap_time_loss_ms: float = 0.0,
+    noise_label: str = "",
 ) -> LapTimeBreakdown:
     """Monte o tempo desta volta somando referencia e penalidades.
 
     A ordem de consumo da fonte aleatoria e fixa (apenas ``lap_noise_ms``), o
     que mantem a reprodutibilidade por semente. O abandono e sorteado pelo
     motor, nao aqui, para que esta funcao permaneca uma regra de tempo pura.
+
+    Os cinco modificadores opcionais sao neutros em ``1.0``/``0.0`` e nao
+    acrescentam sorteios. ``degradation_factor`` multiplica somente o desgaste
+    dependente da idade; o ``pace_offset_ms`` do composto permanece intacto.
+    ``lap_time_factor`` atua sobre o tempo em pista (referencia, combustivel,
+    pneu, trafego e ruido), enquanto a perda de boxes e escalada separadamente
+    por ``pit_loss_factor``. Essa separacao evita que uma volta sob SC volte a
+    encarecer a parada que o proprio SC tornou relativamente mais barata.
+    ``noise_label`` da ao unico sorteio uma finalidade auditavel; vazio preserva
+    as chamadas e sequencias historicas do motor legado.
     """
 
     if reference_ms <= 0:
         raise ValueError("reference_ms deve ser positivo")
+    for name, value in (
+        ("noise_scale", noise_scale),
+        ("degradation_factor", degradation_factor),
+        ("pit_loss_factor", pit_loss_factor),
+        ("lap_time_factor", lap_time_factor),
+        ("lap_time_loss_ms", lap_time_loss_ms),
+    ):
+        _non_negative_factor(value, name)
+    if lap_time_factor == 0.0:
+        raise ValueError("lap_time_factor deve ser positivo")
+    if not isinstance(noise_label, str):
+        raise ValueError("noise_label deve ser str")
 
     compound = parameters.compound(tyre.compound)
     fuel = fuel_penalty_ms(parameters, lap_number, total_laps)
-    tyre_ms = tyre_penalty_ms(tyre, compound, track)
+    raw_tyre_ms = tyre_penalty_ms(tyre, compound, track)
+    if degradation_factor == 1.0:
+        # O caminho neutro conserva inclusive a aritmetica anterior: subtrair
+        # e somar o offset poderia mudar o ultimo bit de um ``float`` e quebrar
+        # a reproducao historica por hash.
+        tyre_ms = raw_tyre_ms
+    else:
+        degradation_ms = raw_tyre_ms - compound.pace_offset_ms
+        tyre_ms = compound.pace_offset_ms + degradation_ms * degradation_factor
     traffic = traffic_penalty_ms(parameters, track, gap_ahead_ms)
-    pit = track.pit_loss_ms if pitting else 0.0
-    noise = lap_noise_ms(parameters, rng)
+    pit = track.pit_loss_ms * pit_loss_factor if pitting else 0.0
+    raw_noise_ms = lap_noise_ms(parameters, rng, noise_label)
+    noise = raw_noise_ms if noise_scale == 1.0 else raw_noise_ms * noise_scale
 
-    total = reference_ms + fuel + tyre_ms + traffic + pit + noise
+    running_time_ms = reference_ms + fuel + tyre_ms + traffic + noise
+    if lap_time_factor == 1.0 and lap_time_loss_ms == 0.0:
+        total = running_time_ms + pit
+    else:
+        total = running_time_ms * lap_time_factor + lap_time_loss_ms + pit
     floored = total < MINIMUM_LAP_TIME_MS
     if floored:
         total = MINIMUM_LAP_TIME_MS
@@ -166,4 +232,6 @@ def compute_lap_time(
         noise_ms=noise,
         total_ms=total,
         floored=floored,
+        lap_time_factor=lap_time_factor,
+        lap_time_loss_ms=lap_time_loss_ms,
     )
