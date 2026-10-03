@@ -1,0 +1,456 @@
+<title>Pit Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    /* Escuro por padrao: um painel de cronometragem vive num box escuro.
+       Os neutros tem viés azul, escolhidos e nao herdados de um cinza puro. */
+    --ground: #111820;
+    --surface: #18212B;
+    --surface-2: #1E2935;
+    --line: #27333F;
+    --line-soft: #202B36;
+    --ink: #E8EFF5;
+    --ink-muted: #8FA0B2;
+    --ink-faint: #61717F;
+    --steel: #5B8DB8;
+
+    /* Cores do dominio, nao decoracao: sao as convencoes da propria F1. */
+    --soft: #F5333F;
+    --medium: #FFD12E;
+    --hard: #EDEFF2;
+    --purple: #A855F7;   /* volta mais rapida da corrida */
+    --gain: #2ED573;
+    --loss: #FF5A6E;
+    --pit: #FF9F1C;
+
+    --r: 6px;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --cond: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: "Barlow", system-ui, -apple-system, sans-serif;
+  }
+  :root[data-theme="light"] {
+    --ground: #F2F5F8;
+    --surface: #FFFFFF;
+    --surface-2: #F7F9FB;
+    --line: #D8E0E8;
+    --line-soft: #E7EDF2;
+    --ink: #16202B;
+    --ink-muted: #5A6B7C;
+    --ink-faint: #8A9AA8;
+    --steel: #3C6F9E;
+    --hard: #4A5460;
+    --purple: #8B35DC;
+    --gain: #16A34A;
+    --loss: #DC2626;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --ground: #F2F5F8;
+      --surface: #FFFFFF;
+      --surface-2: #F7F9FB;
+      --line: #D8E0E8;
+      --line-soft: #E7EDF2;
+      --ink: #16202B;
+      --ink-muted: #5A6B7C;
+      --ink-faint: #8A9AA8;
+      --steel: #3C6F9E;
+      --hard: #4A5460;
+      --purple: #8B35DC;
+      --gain: #16A34A;
+      --loss: #DC2626;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; }
+
+  /* ---- cabecalho ---- */
+  .head { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+  .eyebrow { font-family: var(--cond); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--steel); font-weight: 600; }
+  h1 { font-family: var(--cond); font-size: clamp(28px, 5vw, 44px); font-weight: 700; margin: 2px 0 0; letter-spacing: -.01em; text-wrap: balance; line-height: 1.05; }
+  .sub { color: var(--ink-muted); font-size: 13px; margin-top: 4px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  .meta b { color: var(--ink-muted); font-weight: 500; }
+  .theme-btn { font-family: var(--cond); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; background: var(--surface-2); color: var(--ink-muted); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 12px; cursor: pointer; }
+  .theme-btn:hover { color: var(--ink); border-color: var(--steel); }
+
+  /* ---- transporte ---- */
+  .transport { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+  .play { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--steel); background: var(--surface-2); color: var(--ink); cursor: pointer; font-size: 15px; display: grid; place-items: center; flex: none; }
+  .play:hover { background: var(--steel); color: #fff; }
+  .lapbox { font-family: var(--cond); font-weight: 700; font-size: 26px; letter-spacing: .02em; line-height: 1; flex: none; min-width: 96px; }
+  .lapbox small { display: block; font-size: 10px; letter-spacing: .16em; color: var(--ink-faint); font-weight: 600; }
+  input[type="range"] { flex: 1 1 220px; min-width: 160px; accent-color: var(--steel); height: 22px; }
+  .speed { display: flex; gap: 4px; flex: none; }
+  .speed button { font-family: var(--mono); font-size: 11px; background: var(--surface-2); color: var(--ink-muted); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; cursor: pointer; }
+  .speed button[aria-pressed="true"] { background: var(--steel); border-color: var(--steel); color: #fff; }
+
+  /* ---- grade principal ---- */
+  .grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; margin-top: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .panel > h2 { font-family: var(--cond); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; margin: 0; padding: 11px 14px; border-bottom: 1px solid var(--line-soft); }
+
+  #map { display: block; width: 100%; height: auto; background: var(--surface); }
+  .trackline { fill: none; stroke: var(--line); stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }
+  .trackline-in { fill: none; stroke: var(--surface-2); stroke-width: 4.2; stroke-linejoin: round; stroke-linecap: round; }
+  .startline { stroke: var(--ink-faint); stroke-width: 2.4; }
+
+  /* ---- torre de tempos ---- */
+  .tower { position: relative; padding: 6px; }
+  .row { position: absolute; left: 6px; right: 6px; height: 34px; display: grid; grid-template-columns: 26px 12px 1fr auto auto; align-items: center; gap: 8px; padding: 0 8px; border-radius: 4px; transition: transform .45s cubic-bezier(.4,.9,.3,1), background-color .2s; will-change: transform; }
+  .row.lead { background: var(--surface-2); }
+  .row.out { opacity: .42; }
+  .pos { font-family: var(--mono); font-weight: 700; font-size: 13px; text-align: right; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .row.lead .pos { color: var(--purple); }
+  .bar { width: 4px; height: 20px; border-radius: 2px; }
+  .nm { font-family: var(--cond); font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .01em; }
+  .tyre { font-family: var(--mono); font-size: 10px; font-weight: 700; width: 34px; text-align: center; border-radius: 3px; padding: 2px 0; border: 1px solid currentColor; }
+  .gap { font-family: var(--mono); font-size: 12px; text-align: right; min-width: 74px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+  .gap.pitting { color: var(--pit); font-weight: 700; }
+  .gap.dnf { color: var(--loss); }
+  .delta { font-family: var(--mono); font-size: 10px; width: 24px; text-align: right; }
+  .up { color: var(--gain); } .down { color: var(--loss); }
+
+  /* ---- lap chart ---- */
+  .chartwrap { overflow-x: auto; padding: 12px 14px 14px; }
+  #lapchart { display: block; min-width: 520px; width: 100%; height: auto; }
+  .lc-grid { stroke: var(--line-soft); stroke-width: 1; }
+  .lc-line { fill: none; stroke-width: 1.6; opacity: .5; }
+  .lc-line.on { opacity: 1; stroke-width: 2.6; }
+  .lc-lab { font-family: var(--mono); font-size: 9px; fill: var(--ink-faint); }
+  .lc-now { stroke: var(--steel); stroke-width: 1.4; stroke-dasharray: 3 3; }
+
+  /* ---- rodape ---- */
+  .notes { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+  .notes h3 { font-family: var(--cond); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--steel); margin: 0 0 6px; font-weight: 600; }
+  .notes p { margin: 0 0 8px; color: var(--ink-muted); font-size: 13px; max-width: 62ch; }
+  .notes code { font-family: var(--mono); font-size: 11.5px; color: var(--ink); background: var(--surface-2); padding: 1px 5px; border-radius: 3px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .legend span { font-family: var(--mono); font-size: 10px; display: inline-flex; align-items: center; gap: 5px; color: var(--ink-muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .row { transition: none; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div>
+      <div class="eyebrow" id="eyebrow">Corrida simulada</div>
+      <h1 id="title">Pit Wall</h1>
+      <div class="sub" id="circuit"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+      <button class="theme-btn" id="theme" type="button">Tema</button>
+      <div class="meta" id="meta"></div>
+    </div>
+  </header>
+
+  <div class="transport">
+    <button class="play" id="play" type="button" aria-label="Reproduzir">&#9654;</button>
+    <div class="lapbox"><small>VOLTA</small><span id="lapnum">1 / 1</span></div>
+    <input type="range" id="scrub" min="0" max="1000" value="0" step="1" aria-label="Linha do tempo da corrida">
+    <div class="speed" id="speed"></div>
+  </div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2 id="maptitle">Circuito</h2>
+      <svg id="map" viewBox="0 0 600 440" role="img" aria-label="Mapa do circuito com a posicao dos carros"></svg>
+    </section>
+    <section class="panel">
+      <h2>Classificacao ao vivo</h2>
+      <div class="tower" id="tower"></div>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <h2>Grafico de voltas &mdash; posicao a cada volta</h2>
+    <div class="chartwrap"><svg id="lapchart" viewBox="0 0 900 300" role="img" aria-label="Posicao de cada piloto ao longo das voltas"></svg></div>
+  </section>
+
+  <div class="notes">
+    <div>
+      <h3>O que voce esta vendo</h3>
+      <p id="note-model"></p>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--soft)"></i>SOFT</span>
+        <span><i class="dot" style="background:var(--medium)"></i>MEDIUM</span>
+        <span><i class="dot" style="background:var(--hard)"></i>HARD</span>
+        <span><i class="dot" style="background:var(--pit)"></i>nos boxes</span>
+        <span><i class="dot" style="background:var(--loss)"></i>abandonou</span>
+      </div>
+    </div>
+    <div>
+      <h3>O que isto nao e</h3>
+      <p>O ritmo de referencia de cada carro vem do proprio fim de semana real. A simulacao responde &ldquo;dado o ritmo, como a corrida se desenrola?&rdquo; &mdash; nao prevê o ritmo de uma corrida futura.</p>
+      <p>Composto de pneu nao existe na fonte Trotman: os compostos aqui sao uma escolha do cenario. O que se compara com a realidade e o <em>numero de paradas</em>.</p>
+    </div>
+    <div>
+      <h3>Reproduzir</h3>
+      <p>Mesma semente, mesmos parametros e mesmos dados produzem exatamente esta corrida.</p>
+      <p><code id="cmd"></code></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var DATA = /*__RACE_DATA__*/null;
+  if (!DATA) { document.getElementById("title").textContent = "Sem dados"; return; }
+
+  var R = DATA.race, G = DATA.geometry, D = DATA.drivers, LAPS = R.total_laps;
+
+  /* ---------- paleta de carros -------------------------------------------
+     Uma rampa perceptualmente espacada, para 20 carros continuarem
+     distinguiveis. Nao e a cor real das equipes: o dataset nao a fornece. */
+  var HUES = [4, 28, 45, 70, 96, 130, 158, 176, 194, 210, 226, 244, 262, 280, 300, 320, 338, 352, 16, 54];
+  D.forEach(function (d, i) {
+    d.color = "hsl(" + HUES[i % HUES.length] + " " + (62 + (i % 3) * 9) + "% " + (56 + (i % 2) * 8) + "%)";
+  });
+
+  /* ---------- relogio da corrida ----------------------------------------- */
+  var TEND = 0;
+  D.forEach(function (d) { if (d.t.length) TEND = Math.max(TEND, d.t[d.t.length - 1]); });
+
+  /* progresso (voltas fracionarias) de um carro no instante t */
+  function progressAt(d, t) {
+    var n = d.t.length;
+    if (!n) return 0;
+    /* Depois da ultima volta registrada o carro para de avancar: quem terminou
+       cruzou a linha, quem abandonou ficou onde estava. */
+    if (t >= d.t[n - 1]) return n;
+    var lo = 0, hi = n - 1, prev = 0, idx = 0;
+    while (lo <= hi) { var m = (lo + hi) >> 1; if (d.t[m] <= t) { idx = m + 1; lo = m + 1; } else hi = m - 1; }
+    prev = idx === 0 ? 0 : d.t[idx - 1];
+    var next = d.t[idx];
+    var f = next > prev ? (t - prev) / (next - prev) : 0;
+    return idx + f;
+  }
+  /* instante em que um carro atingiu certo progresso (inverso do acima) */
+  function timeAtProgress(d, p) {
+    if (p <= 0) return 0;
+    var i = Math.floor(p), f = p - i, n = d.t.length;
+    if (i >= n) return d.t[n - 1];
+    var a = i === 0 ? 0 : d.t[i - 1], b = d.t[i];
+    return a + (b - a) * f;
+  }
+
+  /* ---------- geometria --------------------------------------------------- */
+  var track = null;
+  if (G && G.x && G.x.length > 1) {
+    var W = 600, H = 440, PAD = 34;
+    var xs = G.x, ys = G.y;
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    var sx = (W - 2 * PAD) / ((maxX - minX) || 1), sy = (H - 2 * PAD) / ((maxY - minY) || 1);
+    var s = Math.min(sx, sy);
+    var ox = (W - (maxX - minX) * s) / 2 - minX * s;
+    var oy = (H - (maxY - minY) * s) / 2 - minY * s;
+    var px = xs.map(function (v) { return v * s + ox; });
+    /* y do SVG cresce para baixo: espelhar para o tracado nao sair invertido */
+    var py = ys.map(function (v) { return H - (v * s + oy); });
+    track = { px: px, py: py, cum: G.cumulative_m, len: G.lap_length_m };
+  }
+  function pointAt(distM) {
+    var d = ((distM % track.len) + track.len) % track.len;
+    var c = track.cum, lo = 0, hi = c.length - 1, i = 0;
+    while (lo <= hi) { var m = (lo + hi) >> 1; if (c[m] <= d) { i = m; lo = m + 1; } else hi = m - 1; }
+    var j = Math.min(i + 1, c.length - 1);
+    var a = c[i], b = c[j], f = b > a ? (d - a) / (b - a) : 0;
+    return [track.px[i] + (track.px[j] - track.px[i]) * f, track.py[i] + (track.py[j] - track.py[i]) * f];
+  }
+
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function el(n, attrs) { var e = document.createElementNS(SVGNS, n); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  var map = document.getElementById("map"), carNodes = {};
+  if (track) {
+    var dpath = track.px.map(function (x, i) { return (i ? "L" : "M") + x.toFixed(1) + " " + track.py[i].toFixed(1); }).join(" ") + " Z";
+    map.appendChild(el("path", { d: dpath, class: "trackline" }));
+    map.appendChild(el("path", { d: dpath, class: "trackline-in" }));
+    var p0 = pointAt(0), p1 = pointAt(track.len * 0.012);
+    var ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]) + Math.PI / 2;
+    map.appendChild(el("line", { x1: p0[0] - Math.cos(ang) * 8, y1: p0[1] - Math.sin(ang) * 8, x2: p0[0] + Math.cos(ang) * 8, y2: p0[1] + Math.sin(ang) * 8, class: "startline" }));
+    D.forEach(function (d) {
+      var g = el("g", {});
+      var c = el("circle", { r: 6.4, fill: d.color, stroke: "var(--surface)", "stroke-width": 1.6 });
+      var t = el("text", { "font-size": "8.5", "font-family": "var(--mono)", "font-weight": "700", fill: "var(--surface)", "text-anchor": "middle", dy: "2.9" });
+      t.textContent = d.tag;
+      g.appendChild(c); g.appendChild(t);
+      map.appendChild(g); carNodes[d.id] = { g: g, c: c };
+    });
+  } else {
+    map.appendChild(el("text", { x: 300, y: 220, "text-anchor": "middle", fill: "var(--ink-faint)", "font-family": "var(--mono)", "font-size": "13" })).textContent = "Geometria do circuito indisponivel";
+  }
+
+  /* ---------- torre ------------------------------------------------------- */
+  var tower = document.getElementById("tower"), rows = {};
+  var COMP = { S: "var(--soft)", M: "var(--medium)", H: "var(--hard)" };
+  D.forEach(function (d) {
+    var r = document.createElement("div"); r.className = "row";
+    r.innerHTML = '<div class="pos"></div><div class="bar" style="background:' + d.color + '"></div>'
+      + '<div class="nm">' + d.name + '</div><div class="tyre"></div><div class="gap"></div>';
+    tower.appendChild(r);
+    rows[d.id] = { root: r, pos: r.children[0], tyre: r.children[3], gap: r.children[4] };
+  });
+  tower.style.height = (D.length * 34 + 12) + "px";
+
+  /* ---------- lap chart --------------------------------------------------- */
+  var lc = document.getElementById("lapchart");
+  (function () {
+    var W = 900, H = 300, L = 30, Rr = 12, T = 12, B = 22;
+    var n = D.length;
+    function X(lap) { return L + (W - L - Rr) * (lap / LAPS); }
+    function Y(pos) { return T + (H - T - B) * ((pos - 1) / Math.max(1, n - 1)); }
+    for (var p = 1; p <= n; p += (n > 12 ? 2 : 1)) {
+      lc.appendChild(el("line", { x1: L, y1: Y(p), x2: W - Rr, y2: Y(p), class: "lc-grid" }));
+      var tx = el("text", { x: L - 6, y: Y(p) + 3, class: "lc-lab", "text-anchor": "end" }); tx.textContent = p; lc.appendChild(tx);
+    }
+    var step = LAPS > 40 ? 10 : 5;
+    for (var lp = 0; lp <= LAPS; lp += step) {
+      var lx = el("text", { x: X(lp), y: H - 6, class: "lc-lab", "text-anchor": "middle" }); lx.textContent = lp; lc.appendChild(lx);
+    }
+    D.forEach(function (d) {
+      var pts = d.pos.map(function (p, i) { return X(i + 1).toFixed(1) + "," + Y(p).toFixed(1); });
+      pts.unshift(X(0).toFixed(1) + "," + Y(d.grid || n).toFixed(1));
+      var pl = el("polyline", { points: pts.join(" "), class: "lc-line", stroke: d.color });
+      lc.appendChild(pl); d._lc = pl;
+    });
+    var now = el("line", { x1: X(0), y1: T, x2: X(0), y2: H - B, class: "lc-now" });
+    lc.appendChild(now); lc._now = now; lc._X = X;
+  })();
+
+  /* ---------- render ------------------------------------------------------ */
+  function fmtGap(ms) {
+    if (ms < 60000) return "+" + (ms / 1000).toFixed(3);
+    var m = Math.floor(ms / 60000);
+    return "+" + m + ":" + String(Math.floor((ms % 60000) / 1000)).padStart(2, "0");
+  }
+  var lapnum = document.getElementById("lapnum"), scrub = document.getElementById("scrub");
+  var prevOrder = {};
+
+  function render(t) {
+    var live = D.map(function (d) {
+      var p = progressAt(d, t);
+      var done = d.t.length;
+      var gone = d.retired && t >= d.t[done - 1];
+      return { d: d, p: gone ? Math.min(p, done) : p, gone: gone };
+    });
+    live.sort(function (a, b) { return b.p - a.p || a.d.id.localeCompare(b.d.id); });
+    /* abandonados sempre atras de quem segue na pista */
+    live.sort(function (a, b) { return (a.gone ? 1 : 0) - (b.gone ? 1 : 0); });
+
+    var lead = live[0];
+    var leadLap = Math.min(LAPS, Math.floor(lead.p) + 1);
+    lapnum.textContent = leadLap + " / " + LAPS;
+
+    live.forEach(function (o, i) {
+      var d = o.d, r = rows[d.id], lapIdx = Math.max(0, Math.min(d.t.length - 1, Math.floor(o.p)));
+      r.root.style.transform = "translateY(" + (i * 34 + 3) + "px)";
+      r.root.classList.toggle("lead", i === 0);
+      r.root.classList.toggle("out", o.gone);
+      r.pos.textContent = i + 1;
+
+      var comp = d.comp[lapIdx] || "M", age = d.age[lapIdx] || 0;
+      var pitting = lapIdx > 0 && d.stops[lapIdx] > d.stops[lapIdx - 1] && (o.p - Math.floor(o.p)) > .35;
+      r.tyre.textContent = comp + age;
+      r.tyre.style.color = COMP[comp] || "var(--ink-muted)";
+
+      if (o.gone) { r.gap.textContent = "DNF"; r.gap.className = "gap dnf"; }
+      else if (pitting) { r.gap.textContent = "BOXES"; r.gap.className = "gap pitting"; }
+      else if (i === 0) { r.gap.textContent = "LIDER"; r.gap.className = "gap"; }
+      else {
+        var down = Math.floor(lead.p) - Math.floor(o.p);
+        if (down >= 1) { r.gap.textContent = "+" + down + (down > 1 ? " VOLTAS" : " VOLTA"); r.gap.className = "gap"; }
+        else { r.gap.textContent = fmtGap(t - timeAtProgress(lead.d, o.p)); r.gap.className = "gap"; }
+      }
+
+      if (track && carNodes[d.id]) {
+        var xy = pointAt(o.p * track.len);
+        carNodes[d.id].g.setAttribute("transform", "translate(" + xy[0].toFixed(1) + "," + xy[1].toFixed(1) + ")");
+        carNodes[d.id].g.style.opacity = o.gone ? .25 : 1;
+        carNodes[d.id].c.setAttribute("fill", pitting ? "var(--pit)" : d.color);
+      }
+      d._lc.classList.toggle("on", i < 3);
+    });
+
+    lc._now.setAttribute("x1", lc._X(lead.p)); lc._now.setAttribute("x2", lc._X(lead.p));
+  }
+
+  /* ---------- transporte -------------------------------------------------- */
+  var t = 0, playing = false, rate = 60000, last = 0;
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var playBtn = document.getElementById("play");
+
+  function frame(ts) {
+    if (!playing) return;
+    if (last) { t = Math.min(TEND, t + (ts - last) * (rate / 1000)); }
+    last = ts;
+    scrub.value = Math.round(t / TEND * 1000);
+    render(t);
+    if (t >= TEND) { setPlaying(false); return; }
+    requestAnimationFrame(frame);
+  }
+  function setPlaying(v) {
+    playing = v; last = 0;
+    playBtn.innerHTML = v ? "&#10073;&#10073;" : "&#9654;";
+    playBtn.setAttribute("aria-label", v ? "Pausar" : "Reproduzir");
+    if (v) { if (t >= TEND) t = 0; requestAnimationFrame(frame); }
+  }
+  playBtn.addEventListener("click", function () { setPlaying(!playing); });
+  scrub.addEventListener("input", function () { t = TEND * (scrub.value / 1000); render(t); });
+
+  [["1x", 30000], ["2x", 60000], ["4x", 120000], ["10x", 300000]].forEach(function (o, i) {
+    var b = document.createElement("button"); b.type = "button"; b.textContent = o[0];
+    b.setAttribute("aria-pressed", o[1] === rate ? "true" : "false");
+    b.addEventListener("click", function () {
+      rate = o[1];
+      [].forEach.call(document.querySelectorAll(".speed button"), function (x) { x.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true");
+    });
+    document.getElementById("speed").appendChild(b);
+  });
+
+  /* ---------- tema -------------------------------------------------------- */
+  document.getElementById("theme").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    var dark = cur ? cur === "dark" : !window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.setAttribute("data-theme", dark ? "light" : "dark");
+  });
+
+  /* ---------- textos ------------------------------------------------------ */
+  document.getElementById("title").textContent = R.name;
+  document.getElementById("eyebrow").textContent = "Corrida simulada · " + R.season;
+  document.getElementById("circuit").textContent = R.circuit + " — " + LAPS + " voltas";
+  document.getElementById("maptitle").textContent = R.circuit;
+  document.getElementById("meta").innerHTML =
+    "<span><b>parametros</b> " + R.parameters_version + "</span>"
+    + "<span><b>calibrado</b> " + R.calibration_seasons.join("–") + "</span>"
+    + "<span><b>semente</b> " + R.seed + "</span>"
+    + "<span><b>perda boxes</b> " + R.pit_loss_s + "s</span>";
+  document.getElementById("note-model").innerHTML =
+    "Cada volta e a soma de uma referencia limpa mais penalidades de combustivel, pneu, trafego, boxes e ruido. "
+    + "O combustivel queima e o carro acelera; o pneu desgasta e ele desacelera. Os coeficientes foram estimados de "
+    + "<b>" + R.calibration_seasons.join("–") + "</b> e esta corrida nao entrou nessa calibracao.";
+  document.getElementById("cmd").textContent =
+    "python scripts/race_report.py --race-id " + R.race_id + " --seed " + R.seed + " --html corrida.html";
+
+  render(0);
+  if (!reduce) setTimeout(function () { setPlaying(true); }, 550);
+})();
+</script>
