@@ -135,9 +135,8 @@ um banco antigo de corrida para o catálogo completo.
 Instalar FastF1 em um ambiente isolado, sem acrescentá-lo ao motor:
 
 ```bash
-python3 -m venv /tmp/mc857-etl-venv
-/tmp/mc857-etl-venv/bin/python -m pip install -r requirements-etl.txt
-/tmp/mc857-etl-venv/bin/python scripts/ingest_fastf1.py \
+uv sync
+uv run python scripts/ingest_fastf1.py \
   --base data/curated/history.sqlite \
   --race-id 1141 --sessions R Q \
   --output data/curated/history-fastf1-2024.sqlite --strict

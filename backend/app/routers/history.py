@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from app.schemas.responses import HistoryBuildErrorResponse, HistoryBuildResponse
+from app.schemas.responses import (
+    HistoryBuildErrorResponse,
+    HistoryBuildResponse,
+    HistoryRaceResponse,
+    HistoryRacesResponse,
+)
 from app.services import history
 from app.services.errors import ETLError, http_from
 from fastapi import APIRouter, Query, status
@@ -9,14 +14,14 @@ router = APIRouter(prefix="/api/history", tags=["Historical Archive (ETL B)"])
 
 _BUILD_ERROR_MESSAGE = {
     "validation": (
-        "O ETL historico rejeitou a importacao: alguma linha violou o contrato "
-        "do esquema historico durante a validacao."
+        "history ETL rejected the import: a row violated the history schema "
+        "contract during validation"
     ),
     "source": (
-        "Nao foi possivel ler o dataset bruto do Trotman: arquivo ausente ou "
-        "malformado. Gere-o com scripts/download_trotman.py."
+        "could not read the raw Trotman dataset: file missing or malformed; "
+        "generate it with scripts/download_trotman.py"
     ),
-    "storage": "Falha ao gravar o banco historico no armazenamento curado.",
+    "storage": "failed to write the history database to curated storage",
 }
 
 
@@ -34,7 +39,7 @@ def build_history_database() -> HistoryBuildResponse:
         report = history.build_history()
     except ETLError as error:
         message = _BUILD_ERROR_MESSAGE.get(
-            error.reason, "Nao foi possivel gerar o banco historico."
+            error.reason, "could not build the history database"
         )
         raise http_from(error, message)
 
@@ -66,3 +71,23 @@ def preview_history_table(
 @router.get("/reports")
 def list_history_reports() -> dict:
     return history.list_reports()
+
+
+@router.get("/races", response_model=HistoryRacesResponse)
+def list_history_races() -> HistoryRacesResponse:
+    races = history.list_races()
+    return HistoryRacesResponse(
+        count=len(races),
+        races=[
+            HistoryRaceResponse(
+                race_id=race.race_id,
+                name=race.name,
+                season=race.season,
+                round_number=race.round_number,
+                circuit_id=race.circuit_id,
+                race_date=race.race_date,
+                start_time_utc=race.start_time_utc,
+            )
+            for race in races
+        ],
+    )

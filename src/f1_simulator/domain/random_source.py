@@ -9,13 +9,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from hashlib import sha256
-from math import isfinite
+from math import erf, isfinite, sqrt
 from random import Random
 from typing import Protocol
 
 
 MAX_TRUNCATED_STANDARD_NORMAL_ATTEMPTS = 10_000
 """Numero maximo de sorteios antes de declarar a truncagem inviavel."""
+
+MAX_UNIFORM_INDEX_ATTEMPTS = 10_000
+"""Numero maximo de sorteios antes de declarar o sorteio de indice inviavel."""
 
 
 class RandomSource(Protocol):
@@ -136,3 +139,46 @@ def truncated_standard_normal(
         "normal truncada excedeu o numero maximo de tentativas "
         f"({MAX_TRUNCATED_STANDARD_NORMAL_ATTEMPTS})"
     )
+
+
+def uniform_index(
+    source: RandomSource,
+    label: str,
+    count: int,
+) -> int:
+    if type(count) is not int or count <= 0:
+        raise ValueError("count deve ser um inteiro positivo")
+    if not isinstance(label, str):
+        raise ValueError("label deve ser str")
+
+    for _ in range(MAX_UNIFORM_INDEX_ATTEMPTS):
+        z = source.standard_normal(label)
+        unit = 0.5 * (1.0 + erf(z / sqrt(2.0)))
+        index = int(unit * count)
+        # u == 1.0 (cauda extrema) cairia em index == count: rejeita, mesma label.
+        if index < count:
+            return index
+
+    raise ValueError(
+        "sorteio de indice uniforme excedeu o numero maximo de tentativas "
+        f"({MAX_UNIFORM_INDEX_ATTEMPTS})"
+    )
+
+
+def uniform_float(
+    source: RandomSource,
+    label: str,
+    low: float,
+    high: float,
+) -> float:
+    for name, value in (("low", low), ("high", high)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not isfinite(value):
+            raise ValueError(f"{name} must be a finite number")
+    if low > high:
+        raise ValueError("low must not exceed high")
+    if not isinstance(label, str):
+        raise ValueError("label must be str")
+
+    z = source.standard_normal(label)
+    unit = 0.5 * (1.0 + erf(z / sqrt(2.0)))
+    return low + unit * (high - low)

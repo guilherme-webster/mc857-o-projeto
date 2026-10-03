@@ -138,7 +138,7 @@ não uma fixture de calibração nem registros já incorporados ao modelo.
 ## Reprodução da amostra e gráficos com nomes
 
 ```bash
-# Usar um ambiente com requirements-etl.txt instalado.
+# Sincronizar o ambiente com uv sync (inclui FastF1).
 python3 -B scripts/ingest_fastf1.py \
   --base data/curated/history.sqlite \
   --season 2024 --rounds 1 12 21 --sessions R --without-telemetry \

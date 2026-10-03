@@ -6,8 +6,6 @@ from fastapi import HTTPException, status
 
 
 def geometry_artifacts() -> tuple:
-    """Retorne (track_csv, track_manifest, pit_csv, pit_manifest) da config."""
-
     from app.config import (
         GEOMETRY_PIT_LANE_POINTS,
         GEOMETRY_PIT_MANIFEST,
@@ -24,8 +22,6 @@ def geometry_artifacts() -> tuple:
 
 
 def geometry_dataset():
-    """Monte o adaptador de geometria, ou None se os artefatos nao existirem."""
-
     from f1_simulator.adapters.datasets.mock_track_geometry import (
         MockTrackDatasetAdapter,
     )
@@ -37,13 +33,6 @@ def geometry_dataset():
 
 
 def _geometry_payload(geometry) -> dict:
-    """Serialize os dois caminhos validados no sistema de coordenadas comum.
-
-    Pista e pit lane pertencem ao mesmo agregado e foram normalizadas pela
-    mesma transformacao. Mantê-las na mesma resposta impede que um cliente
-    redimensione cada caminho isoladamente e destaque o pit fora da pista.
-    """
-
     return {
         "circuit_id": geometry.circuit_id,
         "lap_length_m": geometry.lap_length_m,
@@ -70,17 +59,11 @@ def _geometry_payload(geometry) -> dict:
 
 
 def list_available_tracks() -> dict:
-    """Liste os circuitos com geometria disponivel, direto do manifesto.
-
-    Independente do ETL: le apenas o manifesto de pistas para oferecer ao
-    usuario as pistas que ele pode visualizar (id canonico, nome e comprimento).
-    """
-
     _, track_manifest, _, _ = geometry_artifacts()
     if not track_manifest.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Manifesto de geometria nao encontrado: {track_manifest.name}.",
+            detail=f"geometry manifest not found: {track_manifest.name}",
         )
     try:
         manifest = json.loads(track_manifest.read_text(encoding="utf-8"))
@@ -88,7 +71,7 @@ def list_available_tracks() -> dict:
     except (OSError, ValueError, KeyError) as error:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Manifesto de geometria invalido: {error}",
+            detail=f"invalid geometry manifest: {error}",
         ) from error
 
     tracks = [
@@ -104,13 +87,6 @@ def list_available_tracks() -> dict:
 
 
 def track_geometry_for(circuit_id: str) -> dict:
-    """Retorne a geometria de qualquer circuito, sem depender do ETL carregado.
-
-    Le a geometria direto da fonte reduzida (ADR 0003) via adaptador + factory,
-    entao o usuario pode visualizar qualquer pista mapeada mesmo sem ter curado
-    a corrida correspondente. Aceita ``circuit:<id>`` ou apenas ``<id>``.
-    """
-
     from f1_simulator.adapters.datasets.mock_track_geometry import (
         MockTrackDatasetAdapter,
         MockTrackDatasetError,
@@ -128,7 +104,7 @@ def track_geometry_for(circuit_id: str) -> dict:
     if not all(path.exists() for path in artifacts):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Artefatos de geometria nao encontrados no volume /data/geometry.",
+            detail="geometry artifacts not found in /data/geometry volume",
         )
 
     adapter = MockTrackDatasetAdapter(*artifacts)
@@ -138,7 +114,7 @@ def track_geometry_for(circuit_id: str) -> dict:
     except (MockTrackDatasetError, TrackGeometryValidationError) as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Geometria indisponivel para {canonical}: {error}",
+            detail=f"geometry unavailable for {canonical}: {error}",
         ) from error
 
     return _geometry_payload(geometry)

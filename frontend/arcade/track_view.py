@@ -15,7 +15,7 @@ SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 800
 MARGIN = 80
 CAR_RADIUS = 7
-PLAYBACK_SPEED = 60_000.0  # ms de corrida por segundo de tela
+PLAYBACK_SPEED = 20_000.0  # ms de corrida por segundo de tela
 
 _PALETTE = [
     (225, 36, 54), (58, 134, 218), (70, 211, 142), (245, 197, 66),

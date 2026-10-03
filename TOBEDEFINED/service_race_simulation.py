@@ -2,34 +2,23 @@ from __future__ import annotations
 
 import json
 import os
-import sqlite3
 import tempfile
 
 from app.config import DEFAULT_RACE_DB, RACE_JSON
 from fastapi import HTTPException, status
 
 
-def _total_laps(db_path) -> int:
-
-    connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
-    try:
-        row = connection.execute("SELECT MAX(lap_number) FROM laps").fetchone()
-    finally:
-        connection.close()
-    return int(row[0]) if row and row[0] else 1
-
-
 def simulate_current_race() -> dict:
 
-    from app.loaders.loader import load_driver_parameters
+    from app.loaders.loader import load_driver_parameters, load_total_laps
     from f1_simulator.domain.race_simulation import Competitor, simulate_race
 
     if not DEFAULT_RACE_DB.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
-                f"Banco curado ({DEFAULT_RACE_DB.name}) nao encontrado. "
-                "Rode POST /simulation/load antes de simular."
+                f"curated database ({DEFAULT_RACE_DB.name}) not found; "
+                "run POST /simulation/load before simulating"
             ),
         )
 
@@ -39,7 +28,7 @@ def simulate_current_race() -> dict:
         for p in parameters
         if p.base_lap_time_ms is not None
     )
-    result = simulate_race(competitors, _total_laps(DEFAULT_RACE_DB))
+    result = simulate_race(competitors, load_total_laps(DEFAULT_RACE_DB))
 
     _write_json_atomic(RACE_JSON, result)
     return result
