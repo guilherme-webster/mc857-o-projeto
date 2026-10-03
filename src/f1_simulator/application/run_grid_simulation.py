@@ -6,6 +6,7 @@ from math import isfinite
 from typing import Literal
 
 from f1_simulator.application.build_grid import GridEntry
+from f1_simulator.domain.attribute_effects import detailed_degradation_factor
 from f1_simulator.domain.driver_attributes import DriverAttributes
 from f1_simulator.domain.model_parameters import ModelParameters
 from f1_simulator.domain.race_control import (
@@ -217,8 +218,10 @@ def run_detailed_grid_simulation(
                 strategy=HeuristicPitStrategy(
                     parameters,
                     track,
-                    tyre_management_factor=(
-                        driver_attributes.tyre_management_factor
+                    # O mesmo multiplicador que o motor aplica ao desgaste, para
+                    # a decisao de parar enxergar o pneu que o carro tera.
+                    tyre_management_factor=detailed_degradation_factor(
+                        driver_attributes
                     ),
                     offset_laps=offset_laps,
                 ),

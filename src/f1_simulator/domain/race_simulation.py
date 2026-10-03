@@ -30,6 +30,8 @@ from math import floor, isfinite
 from typing import Literal
 
 from f1_simulator.domain.attribute_effects import (
+    DETAILED_TYRE_MANAGEMENT,
+    detailed_degradation_factor,
     adjusted_reference_ms,
     adjusted_tyre_effect_ms,
     attributes_assumption,
@@ -965,11 +967,7 @@ def _simulate_detailed_race_enhanced(
                 pitting=decision.pit and not free_change,
                 rng=rng,
                 noise_scale=consistency_scale(driver_attributes),
-                degradation_factor=(
-                    driver_attributes.tyre_management_factor
-                    if driver_attributes is not None
-                    else 1.0
-                ),
+                degradation_factor=detailed_degradation_factor(driver_attributes),
                 pit_loss_factor=lap_effects.pit_loss_factor,
                 lap_time_factor=lap_effects.lap_time_factor,
                 lap_time_loss_ms=lap_effects.lap_time_loss_ms,
@@ -1318,6 +1316,16 @@ def _detailed_assumptions(
         attributes_assumption(attributes[driver_id])
         for driver_id in sorted(attributes)
     ]
+    if attributes:
+        assumptions.append(
+            {
+                "kind": "detailed_tyre_management",
+                **{
+                    item.name: getattr(DETAILED_TYRE_MANAGEMENT, item.name)
+                    for item in fields(DETAILED_TYRE_MANAGEMENT)
+                },
+            }
+        )
     if dispute_model == "pressure":
         assumptions.append(
             {

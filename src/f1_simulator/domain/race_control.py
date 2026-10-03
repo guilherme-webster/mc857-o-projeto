@@ -164,7 +164,7 @@ class RaceControlParameters:
         "amarela 50%; abandono mecanico sem intervencao 65%, amarela 25%, VSC "
         "10%. Alvo do PRD 4.4.2: ~0,6 SC+VSC e ~1 vermelha a cada 6 corridas. "
         "Medido com race_control_frequency.py, 200 corridas por semente "
-        "(67202, 1, 2026): 0,58-0,66 SC+VSC e 0,08-0,09 vermelha por corrida "
+        "(67202, 1, 2026): 0,60-0,70 SC+VSC e 0,09-0,10 vermelha por corrida "
         "(cerca de 1 a cada 11-12). Atingir 1 a cada 6 exigiria ~15% de "
         "batidas graves, acima do teto aprovado; decisao pendente."
     )
