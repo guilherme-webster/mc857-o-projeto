@@ -1,6 +1,8 @@
 # Integração do motor calibrado com perfis, paradas e bandeiras heurísticos
 
-**Status:** aprovado (v3.1). Em implementação.
+**Status:** implementado em 2026-10-03 (v3.1). Valores atuais em
+[`docs/modelagem-heuristica.md`](../modelagem-heuristica.md); decisão no
+[ADR 0008](../adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md).
 **Data:** 2026-10-03
 **Issues:** #67 (Modelagem pilotos, filha de #61). Integra o trabalho da #40
 (`40-modelagem-corrida-calibrada`, de @DaviGabrielBC), que não chegou à
@@ -294,3 +296,34 @@ do commit.
   Mitigação: origem (`assumed`, `preset`, `heuristic`) em toda resposta.
 - **Agentes Codex:** a sessão do Codex já caiu uma vez. Cada fatia é pequena e
   verificada por mim antes do commit.
+
+## 9. Resultado da implementação (2026-10-03)
+
+Commits na `67-modelagem-pilotos`, nesta ordem: integração da `develop` e da
+`40-modelagem-corrida-calibrada` (fatia 0); atributos e perfis fictícios
+(fatia 1); disputa de pressão e bandeira azul (2); controle de prova (3);
+paradas heurísticas (4); ligação no motor (5a); backend no motor detalhado (5b);
+dois ajustes de realismo; documentação (6). As fatias 1 a 5b foram implementadas
+por agentes Codex (`gpt-5.6-sol`) e revisadas; a fatia 0, os ajustes e a
+documentação foram feitos diretamente.
+
+Desvios em relação a este plano, todos aprovados:
+
+- **Fatia 5 dividida** em 5a (motor) e 5b (backend), para reduzir o risco.
+- **Bandeira azul corrigida na revisão:** o líder ganhava tempo artificial ao
+  dar volta e podia ficar preso atrás do retardatário.
+- **Frequência do controle de prova refeita na revisão:** o ajuste do agente
+  valia para uma semente só e invertia a proporção SC/VSC nas batidas.
+- **Vermelha:** o teto de 10% das batidas (seção 4.4.2) e o alvo de 1 vermelha a
+  cada 6 corridas não cabem juntos; o grupo manteve o teto (~1 a cada 10–11).
+- **Gestão de pneus amortecida** no motor detalhado (elasticidade 0,4): as
+  faixas dos arquétipos faziam os agressivos rápidos terminarem atrás dos
+  conservadores lentos. Não estava no plano; decidido após o teste ponta a ponta.
+- **Volta de referência por circuito** a partir do histórico: o ritmo único de
+  17 s/km dava Mônaco com 56 s. Não estava no plano; decidido após o teste ponta
+  a ponta.
+- **Abandono na última volta:** com o controle de prova ativo, um carro pode
+  abandonar na última volta (no motor calibrado, isso era ignorado).
+
+Pendências: a pole ainda vence com frequência alta; o clima não afeta a corrida;
+a interface Arcade não dispara nem reproduz a corrida volta a volta.

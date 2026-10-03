@@ -29,7 +29,7 @@ O que existe **hoje** e o que não existe:
 
 | Área | Estado |
 |---|---|
-| Motor de corrida | Mínimo: **ritmo constante** por piloto (`domain/race_simulation.py`). Clima, pit, pneus e tráfego ainda **não** alteram o resultado. |
+| Motor de corrida | Dois níveis em `domain/race_simulation.py`: `simulate_race` (ritmo constante, linha de base) e `simulate_detailed_race` (motor calibrado da #40: combustível, pneus, tráfego, paradas, disputas, abandonos), com perfis, disputa, SC/VSC/bandeiras e paradas **heurísticos** por cima (ADR 0008). `POST /catalog/grid/run` usa o detalhado. Clima ainda não afeta a corrida. Atualizado em 2026-10-03; ver `docs/modelagem-heuristica.md`. |
 | Sequência de corridas livres | Implementada (ADR 0006): `POST /simulation/series/simulate`. Cada etapa tem classificação independente, sem pontuação de campeonato. |
 | Frontend | Telas de torneio, configuração de sessão e clima. "Confirmar torneio" **só valida**; ainda não chama o backend para simular. |
 | Perfis de pilotos | Estudos offline completos (ritmo por contexto, ranking, companheiros, avaliação entre eventos). Um adaptador alimenta o experimento de **uma volta**; o motor da corrida completa ainda não usa perfis. |
@@ -129,7 +129,11 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 |---|---|---|
 | `race_data.py` | Agregado `RaceData` (circuito, corrida, pilotos, times, entradas, voltas, pits, `SourceId`, geometria opcional). IDs como `race:1141`, `driver:830`. | Geometria é opcional; nunca se infere traçado a partir de lat/long. |
 | `track_geometry.py` | `TrackGeometry`, `TrackPoint`, `PitLanePoint`, `GeometryProvenance`. | X/Y **normalizados, sem unidade**; só `cumulative_distance_m` está em metros. |
-| `race_simulation.py` | `Competitor`, `simulate_race(competitors, total_laps)`. **Fonte de verdade da classificação.** | Ordena por `(tempo acumulado, driver_id)`. Sem aleatoriedade, pneus, pit, abandono. `total_time_ms` arredondado a 0,1 ms só na saída. |
+| `race_simulation.py` | `simulate_race` (núcleo simples) e `simulate_detailed_race` (motor detalhado). **Fonte de verdade da classificação.** | Sem os recursos opcionais, o detalhado reproduz exatamente o motor calibrado da #40 (teste com hashes). Os recursos novos são só por palavra-chave. |
+| `disputes.py` | Bloqueio, ultrapassagem e contato; modelos `legacy` e `pressure` (P/(P+R)) e bandeira azul. | Neutro por padrão; contato retira um dos dois no `pressure`. |
+| `race_control.py` | Autômato de SC, VSC, amarela, vermelha e relargada. | Voltas sem incidente não consomem aleatoriedade. |
+| `strategy.py` | Estratégias de parada, inclusive `HeuristicPitStrategy`. | `decide()` determinístico; variação por piloto sorteada fora. |
+| `driver_attributes.py`, `attribute_effects.py` | Atributos por arquétipo (`aggression`, `composure`) e seus efeitos. | Gestão de pneus amortecida no motor detalhado. |
 | `race_series.py` | `SeriesTrack`, `SeriesCompetitor`, `simulate_series`. | Tempo de volta = `round(pace_ms_per_km * lap_length_m / 1000, 1)`. Corridas independentes. |
 | `driver_parameters.py` | `DriverPaceParameters`, `deterministic_lap_time`. | `variability_mode` só `"disabled"`. Arredonda **uma vez** com `ROUND_HALF_UP`. MAD e bootstrap não entram no tempo (evita contar carro duas vezes). |
 | `driver_profile.py` | `METHOD_VERSION = "contextual-pace-v1"`, `ProfileConfig`, `PaceContext`, `assess_session`, `estimate_profiles`. | `ProfileConfig` não tem defaults. Cada volta é auditada com todas as razões de exclusão. Consistência é MAD, não sigma. |
@@ -343,7 +347,8 @@ com `race_entries` como tabela real) usado pelo backend.
 | Adicionar uma tabela ao histórico | `domain/history.py` (esquema) → `adapters/datasets/trotman_history.py` (`MAPPINGS`) → testes em `test_history_etl.py` |
 | Adicionar um feed FastF1 | `domain/session_data.py` → `adapters/datasets/fastf1_sessions.py` → `sqlite_history.py` |
 | Novo endpoint | `backend/app/routers/`, schema em `schemas/responses.py`, serviço em `services/`; lógica no núcleo, não no router |
-| Alterar a regra de simulação | `domain/race_simulation.py`, `race_series.py`; testes em `test_race_simulation_core.py`, `test_race_series.py` |
+| Alterar a regra de simulação | `domain/race_simulation.py` (+ `disputes.py`, `race_control.py`, `strategy.py`); testes em `test_race_engine.py`, `test_detailed_race_heuristics.py` |
+| Ajustar uma heurística | `docs/modelagem-heuristica.md` (tabela "Como reajustar") |
 | Usar perfis no motor da corrida | `application/ports/driver_parameters.py` + `adapters/profile_parameters.py` + `domain/driver_parameters.py`; falta política para contexto ausente e referências por volta |
 | Novo estudo de pneus | `application/analyze_tyres.py` (base), `scripts/analyze_tyres.py`; helpers de teste em `tests/test_tyres.py` |
 | Nova tela Arcade | `frontend/arcade/`; estado puro em `configuration_state.py`, HTTP em `track_client.py` |
