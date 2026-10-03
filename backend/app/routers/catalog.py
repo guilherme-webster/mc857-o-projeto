@@ -40,6 +40,8 @@ def _attributes_response(item) -> DriverAttributesResponse:
         pace_offset_pct=item.pace_offset_pct,
         consistency_factor=item.consistency_factor,
         tyre_management_factor=item.tyre_management_factor,
+        aggression=item.aggression,
+        composure=item.composure,
         sources=dict(item.sources),
     )
 

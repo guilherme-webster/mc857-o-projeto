@@ -24,6 +24,8 @@ def consistency_scale(attributes: DriverAttributes | None) -> float:
 
 
 def attributes_assumption(attributes: DriverAttributes) -> dict:
+    """Exponha valores e proveniencia sem reinterpretar ausencia como zero."""
+
     return {
         "kind": "driver_attributes",
         "driver_id": attributes.driver_id,
@@ -34,5 +36,7 @@ def attributes_assumption(attributes: DriverAttributes) -> dict:
         "pace_offset_pct": attributes.pace_offset_pct,
         "consistency_factor": attributes.consistency_factor,
         "tyre_management_factor": attributes.tyre_management_factor,
+        "aggression": attributes.aggression,
+        "composure": attributes.composure,
         "sources": dict(attributes.sources),
     }

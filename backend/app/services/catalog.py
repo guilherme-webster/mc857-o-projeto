@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 import tempfile
+from pathlib import Path
 
 from fastapi import HTTPException, status
 
@@ -15,6 +16,20 @@ _HISTORY_NOT_FOUND = (
     "run POST /api/history/build to import the full history"
 )
 _GRID_NOT_FOUND = "no current grid; run POST /catalog/grid to build one"
+
+# O caminho fica nesta composition root porque ``backend/app/config.py`` nao
+# pertence a esta fatia. O default atende execucao local a partir do checkout;
+# ``F1_DRIVER_PRESETS_JSON`` permite que empacotamentos montem o mesmo arquivo
+# em outro lugar sem acoplar o nucleo ao sistema de arquivos.
+_REPOSITORY_DRIVER_PRESETS = (
+    Path(__file__).resolve().parents[3]
+    / "configs"
+    / "drivers"
+    / "perfis-ficticios.json"
+)
+DRIVER_PRESETS_JSON = Path(
+    os.environ.get("F1_DRIVER_PRESETS_JSON", _REPOSITORY_DRIVER_PRESETS)
+)
 
 
 def _repository():
@@ -54,11 +69,28 @@ def _select_pairs(pool, size, mode, manual_pair_ids, seed):
 
 
 def _generate(driver_ids, seed):
-    from f1_simulator.application.generate_attributes import generate_attributes
+    from f1_simulator.application.generate_attributes import (
+        apply_presets,
+        generate_attributes,
+    )
     from f1_simulator.domain.random_source import SeededRandomSource
 
     source = SeededRandomSource(seed).spawn("attributes")
     attributes = generate_attributes(driver_ids, source)
+    if DRIVER_PRESETS_JSON.exists():
+        from f1_simulator.adapters.driver_presets_json import (
+            DriverPresetError,
+            load_driver_presets,
+        )
+
+        try:
+            presets = load_driver_presets(DRIVER_PRESETS_JSON)
+            attributes = apply_presets(attributes, presets, source)
+        except DriverPresetError as error:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(error),
+            ) from error
     return {item.driver_id: item for item in attributes}
 
 
@@ -93,6 +125,8 @@ def edit_current_grid(overrides):
                 ("pace_offset_pct", item.pace_offset_pct),
                 ("consistency_factor", item.consistency_factor),
                 ("tyre_management_factor", item.tyre_management_factor),
+                ("aggression", item.aggression),
+                ("composure", item.composure),
             )
             if value is not None
         }
@@ -146,6 +180,8 @@ def _serialize_grid(pairs, attributes, seed) -> dict:
                     "tyre_management_factor": attributes[
                         entry.driver_id
                     ].tyre_management_factor,
+                    "aggression": attributes[entry.driver_id].aggression,
+                    "composure": attributes[entry.driver_id].composure,
                     "sources": dict(attributes[entry.driver_id].sources),
                 },
             }
@@ -176,6 +212,8 @@ def _deserialize_grid(state: dict):
             pace_offset_pct=attribute["pace_offset_pct"],
             consistency_factor=attribute["consistency_factor"],
             tyre_management_factor=attribute["tyre_management_factor"],
+            aggression=attribute["aggression"],
+            composure=attribute["composure"],
             sources=attribute["sources"],
         )
     return tuple(pairs), attributes, state["seed"]
