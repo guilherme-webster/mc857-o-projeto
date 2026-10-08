@@ -216,13 +216,27 @@ def run_grid(*, total_laps, track_id, weather, engine="detailed"):
         run_grid_simulation,
     )
     from f1_simulator.domain.random_source import SeededRandomSource
+    from f1_simulator.domain.weather import RainLevel, WeatherSegment
 
     pairs, attributes, seed = read_current_grid()
     canonical_track_id, lap_length_m = _track_reference(track_id)
+    try:
+        segments = tuple(
+            WeatherSegment(
+                from_lap=item.from_lap,
+                to_lap=item.to_lap,
+                rain=RainLevel(item.rain),
+            )
+            for item in weather
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
     setup = RaceSetup(
         total_laps=total_laps,
         track_id=canonical_track_id,
-        weather=weather,
+        weather=segments,
     )
     rng = SeededRandomSource(seed).spawn("race")
     try:

@@ -76,12 +76,28 @@ class EditGridAttributesRequest(BaseModel):
     overrides: list[AttributeOverride] = Field(min_length=1, max_length=40)
 
 
+class WeatherSegmentRequest(BaseModel):
+
+    from_lap: int = Field(ge=1, le=200)
+    to_lap: int = Field(ge=1, le=200)
+    rain: Literal["dry", "light_rain", "heavy_rain"]
+
+
 class RaceSetupRequest(BaseModel):
 
     total_laps: int = Field(ge=1, le=200)
     track_id: str | None = None
-    weather: str | None = None
+    weather: list[WeatherSegmentRequest] = Field(default_factory=list)
     engine: Literal["detailed", "simple"] = "detailed"
+
+    @model_validator(mode="after")
+    def _validate_weather(self) -> "RaceSetupRequest":
+        for segment in self.weather:
+            if segment.to_lap < segment.from_lap:
+                raise ValueError("weather segment: to_lap must be >= from_lap")
+            if segment.to_lap > self.total_laps:
+                raise ValueError("weather segment exceeds total_laps")
+        return self
 
 
 class RunGridRequest(BaseModel):

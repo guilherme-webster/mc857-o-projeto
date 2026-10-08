@@ -47,6 +47,7 @@ class LapTimeBreakdown:
     floored: bool = False
     lap_time_factor: float = 1.0
     lap_time_loss_ms: float = 0.0
+    weather_ms: float = 0.0
 
     def components_sum_ms(self) -> float:
         """Soma das parcelas antes do piso; usada por testes e pelo relatorio."""
@@ -56,6 +57,7 @@ class LapTimeBreakdown:
             + self.fuel_ms
             + self.tyre_ms
             + self.traffic_ms
+            + self.weather_ms
             + self.noise_ms
         )
         return (
@@ -164,6 +166,7 @@ def compute_lap_time(
     pit_loss_factor: float = 1.0,
     lap_time_factor: float = 1.0,
     lap_time_loss_ms: float = 0.0,
+    weather_ms: float = 0.0,
     noise_label: str = "",
 ) -> LapTimeBreakdown:
     """Monte o tempo desta volta somando referencia e penalidades.
@@ -191,6 +194,7 @@ def compute_lap_time(
         ("pit_loss_factor", pit_loss_factor),
         ("lap_time_factor", lap_time_factor),
         ("lap_time_loss_ms", lap_time_loss_ms),
+        ("weather_ms", weather_ms),
     ):
         _non_negative_factor(value, name)
     if lap_time_factor == 0.0:
@@ -214,7 +218,7 @@ def compute_lap_time(
     raw_noise_ms = lap_noise_ms(parameters, rng, noise_label)
     noise = raw_noise_ms if noise_scale == 1.0 else raw_noise_ms * noise_scale
 
-    running_time_ms = reference_ms + fuel + tyre_ms + traffic + noise
+    running_time_ms = reference_ms + fuel + tyre_ms + traffic + weather_ms + noise
     if lap_time_factor == 1.0 and lap_time_loss_ms == 0.0:
         total = running_time_ms + pit
     else:
@@ -234,4 +238,5 @@ def compute_lap_time(
         floored=floored,
         lap_time_factor=lap_time_factor,
         lap_time_loss_ms=lap_time_loss_ms,
+        weather_ms=weather_ms,
     )

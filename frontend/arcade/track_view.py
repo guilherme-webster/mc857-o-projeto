@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import urllib.error
 from bisect import bisect_right
 
 import arcade
@@ -87,15 +88,33 @@ class TrackView(arcade.View):
             arcade.draw_circle_filled(x, y, CAR_RADIUS, car["color"])
 
 
-def show(circuit_id: int | str = 18) -> None:
-    track = fetch_track(circuit_id)
+def show(circuit_id: int | str | None = None) -> None:
     race = fetch_race()
+    resolved = circuit_id if circuit_id is not None else _race_circuit_id(race)
+    if resolved is None:
+        raise SystemExit(
+            "a corrida atual nao tem pista no setup; informe o circuito: "
+            "python -m frontend.arcade.track_view <circuit_id>"
+        )
+    try:
+        track = fetch_track(resolved)
+    except urllib.error.HTTPError as error:
+        raise SystemExit(
+            f"pista {resolved} sem geometria disponivel no backend "
+            f"(HTTP {error.code})"
+        ) from error
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, "Simulacao")
     window.show_view(TrackView(track, race))
     arcade.run()
 
 
+def _race_circuit_id(race: dict) -> str | None:
+    setup = race.get("setup") if isinstance(race, dict) else None
+    track_id = setup.get("track_id") if isinstance(setup, dict) else None
+    return track_id or None
+
+
 if __name__ == "__main__":
     import sys
 
-    show(sys.argv[1] if len(sys.argv) > 1 else 18)
+    show(sys.argv[1] if len(sys.argv) > 1 else None)
