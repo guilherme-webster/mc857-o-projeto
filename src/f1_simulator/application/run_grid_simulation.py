@@ -6,7 +6,9 @@ from math import isfinite
 from typing import Literal
 
 from f1_simulator.application.build_grid import GridEntry
-from f1_simulator.application.reference_laps import METHOD_VERSION as REFERENCE_LAPS_METHOD_VERSION
+from f1_simulator.application.reference_laps import (
+    METHOD_VERSION as REFERENCE_LAPS_METHOD_VERSION,
+)
 from f1_simulator.application.reference_laps import ReferenceLap
 from f1_simulator.domain.attribute_effects import detailed_degradation_factor
 from f1_simulator.domain.driver_attributes import DriverAttributes
@@ -16,12 +18,9 @@ from f1_simulator.domain.race_control import (
     RaceControlParameters,
 )
 from f1_simulator.domain.race_simulation import (
-    ASSUMED_LAP_VARIABILITY,
     NOMINAL_LAP_TIME_MS,
-    Competitor,
     Entrant,
     simulate_detailed_race,
-    simulate_race,
 )
 from f1_simulator.domain.random_source import RandomSource, uniform_index
 from f1_simulator.domain.strategy import (
@@ -35,7 +34,6 @@ from f1_simulator.domain.weather import (
     expand_segments,
     simulate_weather,
 )
-
 
 _REFERENCE_PACE_RATIONALE = (
     "Hipotese de composicao, nao calibrada: 17 s/km representa somente a "
@@ -100,34 +98,6 @@ def _weather_echo(setup: RaceSetup) -> list[dict]:
         {"from_lap": s.from_lap, "to_lap": s.to_lap, "rain": s.rain.value}
         for s in setup.weather
     ]
-
-
-def run_grid_simulation(
-    grid: Sequence[GridEntry],
-    attributes: dict[str, DriverAttributes],
-    setup: RaceSetup,
-    rng: RandomSource | None = None,
-) -> dict:
-    competitors = tuple(
-        Competitor(
-            driver_id=entry.driver_id,
-            name=entry.driver_name,
-            attributes=attributes[entry.driver_id],
-        )
-        for entry in grid
-    )
-    result = simulate_race(
-        competitors,
-        setup.total_laps,
-        variability=ASSUMED_LAP_VARIABILITY if rng is not None else None,
-        rng=rng,
-    )
-    result["setup"] = {
-        "total_laps": setup.total_laps,
-        "track_id": setup.track_id,
-        "weather": _weather_echo(setup),
-    }
-    return result
 
 
 def run_detailed_grid_simulation(
@@ -213,9 +183,7 @@ def run_detailed_grid_simulation(
         raise ValueError(f"attributes ausentes para pilotos: {missing_attributes}")
 
     amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
-    known_team_ids = {
-        candidate.team_id for candidate in parameters.team_reliability
-    }
+    known_team_ids = {candidate.team_id for candidate in parameters.team_reliability}
     entrants = []
     reliability_fallbacks = []
     for grid_position, entry in enumerate(grid, start=1):
@@ -225,16 +193,17 @@ def run_detailed_grid_simulation(
         strategy_rng = rng.spawn(  # type: ignore[attr-defined]
             f"strategy:offset:{entry.driver_id}"
         )
-        offset_laps = uniform_index(
-            strategy_rng,
-            f"strategy:offset:{entry.driver_id}:uniform-index",
-            2 * amplitude + 1,
-        ) - amplitude
+        offset_laps = (
+            uniform_index(
+                strategy_rng,
+                f"strategy:offset:{entry.driver_id}:uniform-index",
+                2 * amplitude + 1,
+            )
+            - amplitude
+        )
         team_is_modeled = entry.team_id in known_team_ids
         reliability_factor = (
-            parameters.reliability_factor(entry.team_id)
-            if team_is_modeled
-            else 1.0
+            parameters.reliability_factor(entry.team_id) if team_is_modeled else 1.0
         )
         if not team_is_modeled:
             reliability_fallbacks.append(
@@ -268,9 +237,7 @@ def run_detailed_grid_simulation(
 
     lap_surface_water = None
     if setup.weather:
-        lap_weather = simulate_weather(
-            expand_segments(setup.weather, setup.total_laps)
-        )
+        lap_weather = simulate_weather(expand_segments(setup.weather, setup.total_laps))
         lap_surface_water = tuple(item.state.surface_water for item in lap_weather)
 
     result = simulate_detailed_race(
@@ -313,15 +280,11 @@ def run_detailed_grid_simulation(
                 else None
             ),
             **asdict(
-                ReferencePaceParameters(
-                    pace_ms_per_km=float(reference_pace_ms_per_km)
-                )
+                ReferencePaceParameters(pace_ms_per_km=float(reference_pace_ms_per_km))
             ),
             "used_nominal_lap_time_fallback": reference_source == "nominal_lap_time",
             "nominal_lap_time_ms": (
-                NOMINAL_LAP_TIME_MS
-                if reference_source == "nominal_lap_time"
-                else None
+                NOMINAL_LAP_TIME_MS if reference_source == "nominal_lap_time" else None
             ),
         },
         {

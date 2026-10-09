@@ -7,18 +7,12 @@ from typing import Literal
 from f1_simulator.domain.driver_attributes import DriverAttributes
 
 
-def adjusted_reference_ms(base_reference_ms: float, attributes: DriverAttributes | None) -> float:
+def adjusted_reference_ms(
+    base_reference_ms: float, attributes: DriverAttributes | None
+) -> float:
     if attributes is None:
         return base_reference_ms
     return base_reference_ms * (1.0 + attributes.pace_offset_pct / 100.0)
-
-
-def adjusted_tyre_effect_ms(
-    tyre_effect_ms: float | None, attributes: DriverAttributes | None
-) -> float | None:
-    if tyre_effect_ms is None or attributes is None:
-        return tyre_effect_ms
-    return tyre_effect_ms * attributes.tyre_management_factor
 
 
 @dataclass(frozen=True, slots=True)

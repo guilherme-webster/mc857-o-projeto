@@ -211,11 +211,10 @@ def _reference_lap(track_id):
     return table.get(track_id)
 
 
-def run_grid(*, total_laps, track_id, weather, engine="detailed"):
+def run_grid(*, total_laps, track_id, weather):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
         run_detailed_grid_simulation,
-        run_grid_simulation,
     )
     from f1_simulator.domain.random_source import SeededRandomSource
     from f1_simulator.domain.weather import RainLevel, WeatherSegment
@@ -242,20 +241,15 @@ def run_grid(*, total_laps, track_id, weather, engine="detailed"):
     )
     rng = SeededRandomSource(seed).spawn("race")
     try:
-        if engine == "detailed":
-            result = run_detailed_grid_simulation(
-                pairs,
-                attributes,
-                setup,
-                parameters=_model_parameters(),
-                lap_length_m=lap_length_m,
-                rng=rng,
-                reference_lap=_reference_lap(canonical_track_id),
-            )
-        elif engine == "simple":
-            result = run_grid_simulation(pairs, attributes, setup, rng=rng)
-        else:
-            raise ValueError("engine deve ser 'detailed' ou 'simple'")
+        result = run_detailed_grid_simulation(
+            pairs,
+            attributes,
+            setup,
+            parameters=_model_parameters(),
+            lap_length_m=lap_length_m,
+            rng=rng,
+            reference_lap=_reference_lap(canonical_track_id),
+        )
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
