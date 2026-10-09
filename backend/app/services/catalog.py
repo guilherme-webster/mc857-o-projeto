@@ -14,6 +14,7 @@ from app.config import (
     HISTORY_DB,
     MODEL_PARAMETERS,
     REFERENCE_LAPS,
+    SAVED_RACES_DIR,
 )
 from f1_simulator.application import catalog as core_catalog
 
@@ -216,13 +217,27 @@ def run_grid(*, total_laps, track_id, weather, engine="detailed"):
         run_grid_simulation,
     )
     from f1_simulator.domain.random_source import SeededRandomSource
+    from f1_simulator.domain.weather import RainLevel, WeatherSegment
 
     pairs, attributes, seed = read_current_grid()
     canonical_track_id, lap_length_m = _track_reference(track_id)
+    try:
+        segments = tuple(
+            WeatherSegment(
+                from_lap=item.from_lap,
+                to_lap=item.to_lap,
+                rain=RainLevel(item.rain),
+            )
+            for item in weather
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
     setup = RaceSetup(
         total_laps=total_laps,
         track_id=canonical_track_id,
-        weather=weather,
+        weather=segments,
     )
     rng = SeededRandomSource(seed).spawn("race")
     try:
@@ -337,6 +352,94 @@ def _write_json(destination, payload: dict) -> None:
         except OSError:
             pass
         raise
+
+
+def save_current_race(name):
+    from datetime import datetime, timezone
+
+    if not CURRENT_RACE_JSON.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="no current race; run POST /catalog/grid/run before saving",
+        )
+    try:
+        race = json.loads(CURRENT_RACE_JSON.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
+
+    race_id = _unique_saved_id(name)
+    setup = race.get("setup", {})
+    meta = {
+        "id": race_id,
+        "name": name,
+        "saved_at": datetime.now(timezone.utc).isoformat(),
+        "seed": race.get("seed"),
+        "track_id": setup.get("track_id"),
+        "total_laps": setup.get("total_laps"),
+        "car_count": len(race.get("classification", [])),
+    }
+    _write_json(SAVED_RACES_DIR / f"{race_id}.json", {"meta": meta, "race": race})
+    return meta
+
+
+def list_saved_races():
+    if not SAVED_RACES_DIR.exists():
+        return []
+    saved = []
+    for path in SAVED_RACES_DIR.glob("*.json"):
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+            saved.append(document["meta"])
+        except (OSError, ValueError, KeyError):
+            continue
+    saved.sort(key=lambda item: item.get("saved_at", ""), reverse=True)
+    return saved
+
+
+def read_saved_race(race_id):
+    path = SAVED_RACES_DIR / f"{_safe_id(race_id)}.json"
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"saved race not found: {race_id}",
+        )
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
+    return document["race"]
+
+
+def _slug(name: str) -> str:
+    import re
+
+    slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")
+    return slug or "race"
+
+
+def _safe_id(race_id: str) -> str:
+    # Impede travessia de diretório vinda do id informado pelo cliente.
+    import re
+
+    cleaned = re.sub(r"[^a-z0-9-]", "", str(race_id).lower())
+    if not cleaned:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="invalid saved race id",
+        )
+    return cleaned
+
+
+def _unique_saved_id(name: str) -> str:
+    import secrets
+
+    base = _slug(name)
+    SAVED_RACES_DIR.mkdir(parents=True, exist_ok=True)
+    return f"{base}-{secrets.token_hex(3)}"
 
 
 def _new_seed() -> int:

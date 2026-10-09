@@ -24,7 +24,7 @@ milissegundos.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields
 from math import floor, isfinite
 from typing import Literal
@@ -70,6 +70,11 @@ from f1_simulator.domain.tyres import (
     TyreState,
     tyre_effect_ms,
     tyre_parameters_for,
+)
+from f1_simulator.domain.weather import (
+    ASSUMED_WEATHER_EFFECT,
+    WeatherEffectParameters,
+    weather_penalty_ms,
 )
 
 
@@ -600,6 +605,8 @@ def simulate_detailed_race(
     dispute_model: Literal["legacy", "pressure"] = "legacy",
     dispute_heuristics: DisputeHeuristics = DEFAULT_DISPUTE_HEURISTICS,
     race_control: RaceControlParameters | None = None,
+    lap_surface_water: Sequence[float] | None = None,
+    weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
 ) -> dict:
     """Simule uma corrida detalhada, com extensoes opt-in e caminho neutro fiel.
 
@@ -621,6 +628,7 @@ def simulate_detailed_race(
         attributes is not None
         or dispute_model == "pressure"
         or race_control is not None
+        or lap_surface_water is not None
     )
     if not enhanced:
         return _simulate_detailed_race_legacy(
@@ -644,6 +652,8 @@ def simulate_detailed_race(
         dispute_model=dispute_model,
         dispute_heuristics=dispute_heuristics,
         race_control=race_control,
+        lap_surface_water=lap_surface_water,
+        weather_effect=weather_effect,
     )
 
 
@@ -844,6 +854,8 @@ def _simulate_detailed_race_enhanced(
     dispute_model: Literal["legacy", "pressure"],
     dispute_heuristics: DisputeHeuristics,
     race_control: RaceControlParameters | None,
+    lap_surface_water: Sequence[float] | None = None,
+    weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
 ) -> dict:
     """Execute a composicao opt-in de atributos, disputas e controle de prova.
 
@@ -954,10 +966,21 @@ def _simulate_detailed_race_enhanced(
                 if free_change and decision.compound is not None
                 else state.tyre
             )
+            lap_reference_ms = adjusted_reference_ms(
+                entrant.reference_lap_time_ms, driver_attributes
+            )
+            surface_water = (
+                lap_surface_water[lap - 1]
+                if lap_surface_water is not None and lap - 1 < len(lap_surface_water)
+                else 0.0
+            )
+            lap_weather_ms = (
+                weather_penalty_ms(lap_reference_ms, surface_water, weather_effect)
+                if surface_water > 0.0
+                else 0.0
+            )
             breakdown = compute_lap_time(
-                reference_ms=adjusted_reference_ms(
-                    entrant.reference_lap_time_ms, driver_attributes
-                ),
+                reference_ms=lap_reference_ms,
                 parameters=parameters,
                 track=track,
                 tyre=lap_tyre,
@@ -971,6 +994,7 @@ def _simulate_detailed_race_enhanced(
                 pit_loss_factor=lap_effects.pit_loss_factor,
                 lap_time_factor=lap_effects.lap_time_factor,
                 lap_time_loss_ms=lap_effects.lap_time_loss_ms,
+                weather_ms=lap_weather_ms,
                 noise_label=(
                     f"detailed-race:lap:{lap}:{state.driver_id}:lap-noise"
                 ),
@@ -991,6 +1015,7 @@ def _simulate_detailed_race_enhanced(
                         "fuel_ms": round(breakdown.fuel_ms, 1),
                         "tyre_ms": round(breakdown.tyre_ms, 1),
                         "traffic_ms": round(breakdown.traffic_ms, 1),
+                        "weather_ms": round(breakdown.weather_ms, 1),
                         "pit_ms": round(breakdown.pit_ms, 1),
                         "noise_ms": round(breakdown.noise_ms, 1),
                         "lap_time_factor": breakdown.lap_time_factor,

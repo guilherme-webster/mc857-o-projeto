@@ -28,6 +28,13 @@ from f1_simulator.domain.strategy import (
     DEFAULT_HEURISTIC_PIT_PARAMETERS,
     HeuristicPitStrategy,
 )
+from f1_simulator.domain.weather import (
+    ASSUMED_WEATHER_EFFECT,
+    ASSUMED_WEATHER_PARAMETERS,
+    WeatherSegment,
+    expand_segments,
+    simulate_weather,
+)
 
 
 _REFERENCE_PACE_RATIONALE = (
@@ -79,11 +86,20 @@ ASSUMED_REFERENCE_PACE_MS_PER_KM = ASSUMED_REFERENCE_PACE.pace_ms_per_km
 class RaceSetup:
     total_laps: int
     track_id: str | None = None
-    weather: str | None = None
+    weather: tuple[WeatherSegment, ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.total_laps) is not int or self.total_laps <= 0:
             raise ValueError("total_laps must be a positive integer")
+        if not isinstance(self.weather, tuple):
+            raise ValueError("weather must be a tuple of WeatherSegment")
+
+
+def _weather_echo(setup: RaceSetup) -> list[dict]:
+    return [
+        {"from_lap": s.from_lap, "to_lap": s.to_lap, "rain": s.rain.value}
+        for s in setup.weather
+    ]
 
 
 def run_grid_simulation(
@@ -109,7 +125,7 @@ def run_grid_simulation(
     result["setup"] = {
         "total_laps": setup.total_laps,
         "track_id": setup.track_id,
-        "weather": setup.weather,
+        "weather": _weather_echo(setup),
     }
     return result
 
@@ -250,6 +266,13 @@ def run_detailed_grid_simulation(
             )
         )
 
+    lap_surface_water = None
+    if setup.weather:
+        lap_weather = simulate_weather(
+            expand_segments(setup.weather, setup.total_laps)
+        )
+        lap_surface_water = tuple(item.state.surface_water for item in lap_weather)
+
     result = simulate_detailed_race(
         entrants,
         total_laps=setup.total_laps,
@@ -259,11 +282,12 @@ def run_detailed_grid_simulation(
         attributes=attributes,
         dispute_model=dispute_model,
         race_control=race_control,
+        lap_surface_water=lap_surface_water,
     )
     result["setup"] = {
         "total_laps": setup.total_laps,
         "track_id": setup.track_id,
-        "weather": setup.weather,
+        "weather": _weather_echo(setup),
     }
     result["reference_lap_time_ms"] = reference_lap_time_ms
     result["track_reference"] = {
@@ -326,6 +350,24 @@ def run_detailed_grid_simulation(
                     "o fator neutro 1.0, sem inferencia por nome."
                 ),
                 "entries": reliability_fallbacks,
+            }
+        )
+    if setup.weather:
+        result["assumptions"].append(
+            {
+                "kind": "weather",
+                "segments": _weather_echo(setup),
+                "evolution": {
+                    "source_kind": ASSUMED_WEATHER_PARAMETERS.source_kind,
+                    "parameter_version": ASSUMED_WEATHER_PARAMETERS.parameter_version,
+                    "rationale": ASSUMED_WEATHER_PARAMETERS.rationale,
+                },
+                "effect": {
+                    "wet_penalty_pct_max": ASSUMED_WEATHER_EFFECT.wet_penalty_pct_max,
+                    "source_kind": ASSUMED_WEATHER_EFFECT.source_kind,
+                    "parameter_version": ASSUMED_WEATHER_EFFECT.parameter_version,
+                    "rationale": ASSUMED_WEATHER_EFFECT.rationale,
+                },
             }
         )
     return result

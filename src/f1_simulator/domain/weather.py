@@ -179,3 +179,96 @@ def simulate_weather(
         )
         history.append(LapWeather(lap=lap, rain=rain, state=state))
     return tuple(history)
+
+
+@dataclass(frozen=True, slots=True)
+class WeatherEffectParameters:
+    """Hipótese do efeito do clima no tempo de volta, proporcional à água.
+
+    ``wet_penalty_pct_max`` é a fração máxima adicionada ao tempo em pista
+    saturada (``surface_water`` = 1); escala linearmente com a água. Não é
+    calibrado: representa só a ordem de grandeza de uma volta na chuva.
+    """
+
+    wet_penalty_pct_max: float
+    source_kind: Literal["assumed", "estimated"]
+    parameter_version: str
+    rationale: str
+
+    def __post_init__(self) -> None:
+        _bounded("wet_penalty_pct_max", self.wet_penalty_pct_max, 2)
+        if self.source_kind not in ("assumed", "estimated"):
+            raise ValueError("source_kind deve ser 'assumed' ou 'estimated'")
+        if not isinstance(self.parameter_version, str) or not self.parameter_version.strip():
+            raise ValueError("parameter_version deve ser não vazio")
+        if not isinstance(self.rationale, str) or not self.rationale.strip():
+            raise ValueError("rationale deve ser não vazio")
+
+
+ASSUMED_WEATHER_EFFECT = WeatherEffectParameters(
+    wet_penalty_pct_max=0.40,
+    source_kind="assumed",
+    parameter_version="assumed-weather-effect-v1",
+    rationale=(
+        "Hipótese não calibrada: pista saturada deixa a volta ~40% mais lenta, "
+        "proporcional à água na pista. Não descreve aderência medida."
+    ),
+)
+
+
+def weather_penalty_ms(
+    reference_ms: float,
+    surface_water: float,
+    parameters: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
+) -> float:
+    """Penalidade de tempo da volta pela água na pista, zero em pista seca."""
+
+    _bounded("surface_water", surface_water, 1)
+    if reference_ms <= 0:
+        raise ValueError("reference_ms deve ser positivo")
+    return reference_ms * parameters.wet_penalty_pct_max * surface_water
+
+
+@dataclass(frozen=True, slots=True)
+class WeatherSegment:
+    """Intervalo inclusivo de voltas com uma intensidade de chuva."""
+
+    from_lap: int
+    to_lap: int
+    rain: RainLevel
+
+    def __post_init__(self) -> None:
+        if type(self.from_lap) is not int or type(self.to_lap) is not int:
+            raise ValueError("from_lap e to_lap devem ser inteiros")
+        if self.from_lap < 1 or self.to_lap < self.from_lap:
+            raise ValueError("segmento inválido: exija 1 <= from_lap <= to_lap")
+        if type(self.rain) is not RainLevel:
+            raise ValueError("rain deve ser RainLevel")
+
+
+def expand_segments(
+    segments: Sequence[WeatherSegment],
+    total_laps: int,
+) -> tuple[RainLevel, ...]:
+    """Expanda segmentos numa condição por volta; voltas não cobertas = seco.
+
+    Segmentos sobrepostos (mesma volta em dois segmentos) são erro. Voltas além
+    de ``total_laps`` em um segmento também. A ausência de cobertura vira ``dry``
+    de forma explícita, nunca um estado indefinido.
+    """
+
+    if type(total_laps) is not int or total_laps < 1:
+        raise ValueError("total_laps deve ser inteiro positivo")
+    conditions = [RainLevel.DRY] * total_laps
+    assigned = [False] * total_laps
+    for segment in segments:
+        if segment.to_lap > total_laps:
+            raise ValueError(
+                f"segmento {segment.from_lap}-{segment.to_lap} excede {total_laps} voltas"
+            )
+        for lap in range(segment.from_lap, segment.to_lap + 1):
+            if assigned[lap - 1]:
+                raise ValueError(f"volta {lap} coberta por mais de um segmento")
+            assigned[lap - 1] = True
+            conditions[lap - 1] = segment.rain
+    return tuple(conditions)
