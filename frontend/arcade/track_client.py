@@ -30,3 +30,11 @@ def fetch_tracks(base_url: str = BASE_URL) -> dict:
 
 def fetch_race(base_url: str = BASE_URL) -> dict:
     return _get("/simulation/race", base_url)
+
+
+def fetch_saved_races(base_url: str = BASE_URL) -> dict:
+    return _get("/simulation/saved", base_url)
+
+
+def fetch_saved_race(race_id: str, base_url: str = BASE_URL) -> dict:
+    return _get(f"/simulation/saved/{race_id}", base_url)

@@ -105,6 +105,28 @@ class RunGridRequest(BaseModel):
     setup: RaceSetupRequest
 
 
+class SaveRaceRequest(BaseModel):
+
+    name: str = Field(min_length=1, max_length=120)
+
+
+class SavedRaceMeta(BaseModel):
+
+    id: str
+    name: str
+    saved_at: str
+    seed: int | None = None
+    track_id: str | None = None
+    total_laps: int | None = None
+    car_count: int
+
+
+class SavedRacesResponse(BaseModel):
+
+    count: int
+    saved: list[SavedRaceMeta]
+
+
 class HistoryRaceResponse(BaseModel):
 
     race_id: str
