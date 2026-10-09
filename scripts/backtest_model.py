@@ -24,8 +24,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,24 +105,22 @@ def main() -> int:
         list_races,
         load_observed_race,
     )
+    from f1_simulator.adapters.persistence.sqlite_trotman_profiles import (
+        assess_trotman_races,
+        races_before,
+    )
     from f1_simulator.application.backtest_model import (
         aggregate,
         evaluate,
         grid_baseline_classification,
     )
-    from f1_simulator.domain.race_simulation import (
-        Competitor,
-        Entrant,
-        simulate_detailed_race,
-        simulate_race,
-    )
-    from f1_simulator.adapters.persistence.sqlite_trotman_profiles import (
-        assess_trotman_races,
-        races_before,
-    )
     from f1_simulator.application.pace_profiles import (
         build_pace_profiles,
         reference_times_from_profiles,
+    )
+    from f1_simulator.domain.race_simulation import (
+        Entrant,
+        simulate_detailed_race,
     )
     from f1_simulator.domain.random_source import SeededRandomSource
     from f1_simulator.domain.strategy import PlannedStopStrategy
@@ -156,7 +154,7 @@ def main() -> int:
     from f1_simulator.application.pace_profiles import TROTMAN_PROFILE_CONFIG
 
     compounds = ("MEDIUM", "HARD", "MEDIUM", "HARD")
-    collected: dict[str, list] = {"grid": [], "constant": [], "model": []}
+    collected: dict[str, list] = {"grid": [], "model": []}
     skipped: list[str] = []
     profiled_total = fallback_total = 0
 
@@ -172,18 +170,14 @@ def main() -> int:
         # Ritmo de referencia de cada participante. Em "profile", ele vem de
         # corridas ANTERIORES: a corrida validada nao contribui para estimar o
         # ritmo de seus proprios pilotos.
-        references = {
-            e.driver_id: e.reference_lap_time_ms for e in observed.entries
-        }
+        references = {e.driver_id: e.reference_lap_time_ms for e in observed.entries}
         if args.pace_source == "combined":
             # Media geometrica das duas fontes. Cada uma mede algo que a outra
             # nao ve: a classificacao mede a velocidade daquele fim de semana em
             # uma volta unica, o perfil mede a forma sustentada em corrida.
             # A media geometrica e a natural para grandezas multiplicativas --
             # um piloto 2% mais lento em uma e 0% na outra fica 1% mais lento.
-            prior = races_before(
-                args.database, race_id, max_races=args.profile_races
-            )
+            prior = races_before(args.database, race_id, max_races=args.profile_races)
             assessments, drivers = assess_trotman_races(
                 args.database, prior, TROTMAN_PROFILE_CONFIG
             )
@@ -220,16 +214,12 @@ def main() -> int:
                     fallback_total += 1
             references = converted
         elif args.pace_source == "profile":
-            prior = races_before(
-                args.database, race_id, max_races=args.profile_races
-            )
+            prior = races_before(args.database, race_id, max_races=args.profile_races)
             assessments, drivers = assess_trotman_races(
                 args.database, prior, TROTMAN_PROFILE_CONFIG
             )
             profiles, _ = build_pace_profiles(assessments, drivers)
-            references, coverage = reference_times_from_profiles(
-                references, profiles
-            )
+            references, coverage = reference_times_from_profiles(references, profiles)
             profiled_total += coverage.profiled
             fallback_total += coverage.fell_back
 
@@ -238,22 +228,6 @@ def main() -> int:
                 label="grid",
                 observed=observed,
                 simulated_classification=grid_baseline_classification(observed),
-            )
-        )
-
-        constant = simulate_race(
-            [
-                Competitor(e.driver_id, e.name, references[e.driver_id])
-                for e in observed.entries
-            ],
-            observed.total_laps,
-        )
-        collected["constant"].append(
-            evaluate(
-                label="constant",
-                observed=observed,
-                simulated_classification=constant["classification"],
-                simulated_history=constant["history"],
             )
         )
 
@@ -273,8 +247,7 @@ def main() -> int:
                         args.stops,
                         compounds,
                         offset_laps=round(
-                            rng.standard_normal()
-                            * parameters.pit_window_spread_laps
+                            rng.standard_normal() * parameters.pit_window_spread_laps
                         ),
                     ),
                     team_id=e.team_id,
@@ -313,8 +286,10 @@ def main() -> int:
     if args.pace_source != "weekend":
         total = profiled_total + fallback_total
         share = 100 * profiled_total / total if total else 0
-        print(f"  ({profiled_total} de {total} participantes, {share:.0f}%; "
-              f"o resto manteve o ritmo do fim de semana)")
+        print(
+            f"  ({profiled_total} de {total} participantes, {share:.0f}%; "
+            f"o resto manteve o ritmo do fim de semana)"
+        )
     else:
         print()
     if skipped:
@@ -330,7 +305,7 @@ def main() -> int:
     print("-" * len(header))
 
     summary = {}
-    for label in ("grid", "constant", "model"):
+    for label in ("grid", "model"):
         metrics = aggregate(label, collected[label])
         summary[label] = asdict(metrics)
         print(

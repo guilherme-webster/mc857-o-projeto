@@ -14,15 +14,16 @@ BACKEND = str(ROOT / "backend")
 if BACKEND not in sys.path:
     sys.path.insert(0, BACKEND)
 
-from app.routers import catalog as catalog_router  # noqa: E402
-from app.schemas.responses import RunGridRequest  # noqa: E402
-from app.services import catalog as catalog_service  # noqa: E402
-from f1_simulator.application.build_grid import GridEntry  # noqa: E402
-from f1_simulator.domain.driver_attributes import (  # noqa: E402
+from app.routers import catalog as catalog_router
+from app.schemas.responses import RunGridRequest
+from app.services import catalog as catalog_service
+
+from f1_simulator.application.build_grid import GridEntry
+from f1_simulator.domain.driver_attributes import (
     ATTRIBUTE_FIELDS,
     DriverAttributes,
 )
-from tests.model_support import parameters  # noqa: E402
+from tests.model_support import parameters
 
 
 def current_grid() -> tuple:
@@ -41,34 +42,19 @@ def current_grid() -> tuple:
 
 
 class CatalogGridRunRouteTest(unittest.TestCase):
-    def test_route_defaults_to_detailed_engine(self) -> None:
-        request = RunGridRequest(
-            setup={"total_laps": 5, "track_id": "circuit:1"}
-        )
+    def test_route_forwards_setup_to_service(self) -> None:
+        request = RunGridRequest(setup={"total_laps": 5, "track_id": "circuit:1"})
         with patch.object(
-            catalog_router.catalog, "run_grid", return_value={"engine": "detailed"}
+            catalog_router.catalog, "run_grid", return_value={"ok": True}
         ) as run:
             result = catalog_router.run_grid(request)
 
-        self.assertEqual(result, {"engine": "detailed"})
+        self.assertEqual(result, {"ok": True})
         run.assert_called_once_with(
             total_laps=5,
             track_id="circuit:1",
-            weather=None,
-            engine="detailed",
+            weather=[],
         )
-
-    def test_route_forwards_explicit_simple_engine(self) -> None:
-        request = RunGridRequest(
-            setup={"total_laps": 5, "track_id": None, "engine": "simple"}
-        )
-        with patch.object(
-            catalog_router.catalog, "run_grid", return_value={"engine": "simple"}
-        ) as run:
-            result = catalog_router.run_grid(request)
-
-        self.assertEqual(result, {"engine": "simple"})
-        self.assertEqual(run.call_args.kwargs["engine"], "simple")
 
 
 class CatalogGridRunServiceTest(unittest.TestCase):
@@ -94,8 +80,7 @@ class CatalogGridRunServiceTest(unittest.TestCase):
             result = catalog_service.run_grid(
                 total_laps=5,
                 track_id="circuit:1",
-                weather="dry",
-                engine="detailed",
+                weather=[],
             )
 
         self.assertEqual(result["seed"], 42)
@@ -103,33 +88,6 @@ class CatalogGridRunServiceTest(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs["lap_length_m"], 4_000.0)
         self.assertEqual(run.call_args.args[2].track_id, "circuit:1")
         write.assert_called_once()
-
-    def test_simple_engine_preserves_baseline_without_loading_model(self) -> None:
-        simple_result = {"total_laps": 5, "history": [], "classification": []}
-        with (
-            patch.object(
-                catalog_service, "read_current_grid", return_value=current_grid()
-            ),
-            patch.object(
-                catalog_service, "_track_reference", return_value=(None, None)
-            ),
-            patch.object(catalog_service, "_model_parameters") as load_model,
-            patch(
-                "f1_simulator.application.run_grid_simulation.run_grid_simulation",
-                return_value=simple_result,
-            ) as run,
-            patch.object(catalog_service, "_write_json"),
-        ):
-            result = catalog_service.run_grid(
-                total_laps=5,
-                track_id=None,
-                weather=None,
-                engine="simple",
-            )
-
-        self.assertEqual(result["seed"], 42)
-        run.assert_called_once()
-        load_model.assert_not_called()
 
     def test_missing_model_parameters_returns_503(self) -> None:
         missing = ROOT / "tmp" / "model-parameters-inexistentes.json"
@@ -141,14 +99,13 @@ class CatalogGridRunServiceTest(unittest.TestCase):
             patch.object(
                 catalog_service, "_track_reference", return_value=(None, None)
             ),
+            self.assertRaises(HTTPException) as raised,
         ):
-            with self.assertRaises(HTTPException) as raised:
-                catalog_service.run_grid(
-                    total_laps=5,
-                    track_id=None,
-                    weather=None,
-                    engine="detailed",
-                )
+            catalog_service.run_grid(
+                total_laps=5,
+                track_id=None,
+                weather=None,
+            )
 
         self.assertEqual(raised.exception.status_code, 503)
         self.assertIn("parametros do modelo indisponiveis", raised.exception.detail)
@@ -172,14 +129,13 @@ class CatalogGridRunServiceTest(unittest.TestCase):
                     ],
                 },
             ),
+            self.assertRaises(HTTPException) as raised,
         ):
-            with self.assertRaises(HTTPException) as raised:
-                catalog_service.run_grid(
-                    total_laps=5,
-                    track_id="circuit:999",
-                    weather=None,
-                    engine="detailed",
-                )
+            catalog_service.run_grid(
+                total_laps=5,
+                track_id="circuit:999",
+                weather=None,
+            )
 
         self.assertEqual(raised.exception.status_code, 422)
         self.assertIn("track_id desconhecido", raised.exception.detail)

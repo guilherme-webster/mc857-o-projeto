@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from fastapi import APIRouter
+
 from app.schemas.responses import (
     BuildGridRequest,
     BuildGridResponse,
@@ -11,7 +13,6 @@ from app.schemas.responses import (
     RunGridRequest,
 )
 from app.services import catalog
-from fastapi import APIRouter
 
 router = APIRouter(prefix="/catalog", tags=["Catalog"])
 
@@ -92,5 +93,4 @@ def run_grid(request: RunGridRequest) -> dict:
         total_laps=request.setup.total_laps,
         track_id=request.setup.track_id,
         weather=request.setup.weather,
-        engine=request.setup.engine,
     )
