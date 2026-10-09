@@ -31,6 +31,8 @@ __pycache__/
 /data/raw/
 /data/curated/
 /data/geometry/
+# Saidas geradas pela simulacao (corrida/grid atuais e corridas salvas)
+/data/simulation/
 
 .vscode
 *.pyc
@@ -40,8 +42,6 @@ __pycache__/
 Pipfile.lock
 
 commands.txt
-
-/backend/races/race.json
 
 .kiro
 # Saidas geradas por backtest_model.py e race_report.py

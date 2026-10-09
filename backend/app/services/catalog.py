@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 import tempfile
+from datetime import UTC
 from pathlib import Path
 
 from fastapi import HTTPException, status
@@ -111,7 +112,9 @@ def build_grid(size, *, mode, manual_pair_ids, seed):
 
 def read_current_grid():
     if not CURRENT_GRID_JSON.exists():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=_GRID_NOT_FOUND)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=_GRID_NOT_FOUND
+        )
     try:
         state = json.loads(CURRENT_GRID_JSON.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
@@ -158,9 +161,7 @@ def _track_reference(track_id):
     from app.services.track_geometry import list_available_tracks
 
     canonical = track_id if track_id.startswith("circuit:") else f"circuit:{track_id}"
-    tracks = {
-        item["circuit_id"]: item for item in list_available_tracks()["tracks"]
-    }
+    tracks = {item["circuit_id"]: item for item in list_available_tracks()["tracks"]}
     if canonical not in tracks:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -261,6 +262,7 @@ def run_grid(*, total_laps, track_id, weather, engine="detailed"):
         ) from error
     result["seed"] = seed
     _write_json(CURRENT_RACE_JSON, result)
+    _persist_saved_race(result, _default_race_name(result))
     return result
 
 
@@ -276,7 +278,9 @@ def _serialize_grid(pairs, attributes, seed) -> dict:
                 "attributes": {
                     "archetype": attributes[entry.driver_id].archetype,
                     "pace_offset_pct": attributes[entry.driver_id].pace_offset_pct,
-                    "consistency_factor": attributes[entry.driver_id].consistency_factor,
+                    "consistency_factor": attributes[
+                        entry.driver_id
+                    ].consistency_factor,
                     "tyre_management_factor": attributes[
                         entry.driver_id
                     ].tyre_management_factor,
@@ -355,8 +359,6 @@ def _write_json(destination, payload: dict) -> None:
 
 
 def save_current_race(name):
-    from datetime import datetime, timezone
-
     if not CURRENT_RACE_JSON.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -368,13 +370,18 @@ def save_current_race(name):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
+    return _persist_saved_race(race, name)
+
+
+def _persist_saved_race(race: dict, name: str) -> dict:
+    from datetime import datetime
 
     race_id = _unique_saved_id(name)
     setup = race.get("setup", {})
     meta = {
         "id": race_id,
         "name": name,
-        "saved_at": datetime.now(timezone.utc).isoformat(),
+        "saved_at": datetime.now(UTC).isoformat(),
         "seed": race.get("seed"),
         "track_id": setup.get("track_id"),
         "total_laps": setup.get("total_laps"),
@@ -382,6 +389,15 @@ def save_current_race(name):
     }
     _write_json(SAVED_RACES_DIR / f"{race_id}.json", {"meta": meta, "race": race})
     return meta
+
+
+def _default_race_name(race: dict) -> str:
+    from datetime import datetime
+
+    setup = race.get("setup", {})
+    track = setup.get("track_id") or "sem-pista"
+    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    return f"{track} {stamp}"
 
 
 def list_saved_races():

@@ -1,13 +1,14 @@
 from pathlib import Path
 
 DATA_DIR = Path("/data/curated")
+SIMULATION_DIR = Path("/data/simulation")
 
 RAW_SOURCE = Path("/data/raw/formula-1-race-data-v128.zip")
 
 CURRENT_RACE_DB = DATA_DIR / "current-race.sqlite"
-CURRENT_RACE_JSON = DATA_DIR / "current-race.json"
-CURRENT_GRID_JSON = DATA_DIR / "current-grid.json"
-SAVED_RACES_DIR = DATA_DIR / "saved-races"
+CURRENT_RACE_JSON = SIMULATION_DIR / "current-race.json"
+CURRENT_GRID_JSON = SIMULATION_DIR / "current-grid.json"
+SAVED_RACES_DIR = SIMULATION_DIR / "saved-races"
 
 DEFAULT_RACE_DB = CURRENT_RACE_DB
 
@@ -30,9 +31,7 @@ _REPOSITORY_PARAMETERS = (
     Path(__file__).resolve().parents[2] / "data" / "parameters" / "model-v1.json"
 )
 MODEL_PARAMETERS = (
-    _CONTAINER_PARAMETERS
-    if _CONTAINER_PARAMETERS.exists()
-    else _REPOSITORY_PARAMETERS
+    _CONTAINER_PARAMETERS if _CONTAINER_PARAMETERS.exists() else _REPOSITORY_PARAMETERS
 )
 
 # Volta de referencia por circuito (mediana historica), gerada por

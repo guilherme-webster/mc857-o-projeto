@@ -5,28 +5,35 @@ from bisect import bisect_right
 
 import arcade
 
-from frontend.arcade.track_client import (
-    fetch_race,
-    fetch_saved_race,
-    fetch_track,
-)
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
     PRIMARY_TEXT_COLOR,
     TRACK_EDGE_COLOR,
+)
+from frontend.arcade.track_client import (
+    fetch_race,
+    fetch_saved_race,
+    fetch_saved_races,
+    fetch_track,
 )
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 800
 MARGIN = 80
 CAR_RADIUS = 7
-BASE_PLAYBACK_SPEED = 20_000.0  # ms de corrida por segundo de tela, em 1x
-MIN_SPEED = 0.125
+BASE_PLAYBACK_SPEED = 1_000.0  # 1x = tempo real (1 s de simulacao por 1 s de tela)
+MIN_SPEED = 1.0 / 256.0  # ~0,004x: permite camera lenta extrema
 SPEED_FACTOR = 2.0  # cada toque em up/down dobra ou divide a velocidade
 
 _PALETTE = [
-    (225, 36, 54), (58, 134, 218), (70, 211, 142), (245, 197, 66),
-    (168, 100, 233), (240, 132, 60), (90, 200, 250), (255, 105, 180),
+    (225, 36, 54),
+    (58, 134, 218),
+    (70, 211, 142),
+    (245, 197, 66),
+    (168, 100, 233),
+    (240, 132, 60),
+    (90, 200, 250),
+    (255, 105, 180),
 ]
 
 _RAIN_LABEL = {
@@ -34,6 +41,11 @@ _RAIN_LABEL = {
     "light_rain": ("Chuva leve", (120, 190, 255)),
     "heavy_rain": ("Chuva forte", (90, 150, 255)),
 }
+
+_MENU_BG = (16, 22, 30)
+_ROW_BG = (30, 41, 53)
+_ROW_HOVER = (46, 62, 80)
+_SWITCH_BG = (46, 62, 80)
 
 
 def _normalize(points):
@@ -47,6 +59,118 @@ def _normalize(points):
     return [((x - min_x) / span_x, (y - min_y) / span_y) for x, y in points], (
         span_x / span_y
     )
+
+
+def _load_race_view(saved_id: str | None) -> TrackView:
+    """Monte a TrackView de uma corrida salva (ou da atual, se ``saved_id`` None)."""
+
+    race = fetch_saved_race(saved_id) if saved_id else fetch_race()
+    circuit_id = _race_circuit_id(race)
+    if circuit_id is None:
+        raise RuntimeError("a corrida nao tem pista no setup")
+    track = fetch_track(circuit_id)
+    return TrackView(track, race)
+
+
+class MenuView(arcade.View):
+    """Lista as corridas salvas; um clique abre a corrida selecionada."""
+
+    ROW_H = 44
+    LIST_TOP = 120
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._saved: list[dict] = []
+        self._error: str | None = None
+        self._hover = -1
+        self._title = arcade.Text(
+            "Corridas salvas", 40, 0, PRIMARY_TEXT_COLOR, 24, bold=True
+        )
+        self._subtitle = arcade.Text("", 40, 0, (150, 160, 170), 13)
+        self._refresh()
+
+    def _refresh(self) -> None:
+        try:
+            self._saved = fetch_saved_races().get("saved", [])
+            self._error = None
+        except (urllib.error.URLError, OSError) as error:
+            self._saved = []
+            self._error = f"nao foi possivel listar as corridas: {error}"
+
+    def on_show_view(self) -> None:
+        super().on_show_view()
+        arcade.set_background_color(_MENU_BG)
+
+    def _row_rect(self, index: int):
+        """(left, bottom, width, height) da linha ``index``, do topo para baixo."""
+
+        top = self.window.height - self.LIST_TOP
+        bottom = top - (index + 1) * self.ROW_H + 6
+        return 40, bottom, self.window.width - 80, self.ROW_H - 10
+
+    def on_mouse_motion(self, x, y, dx, dy) -> None:
+        self._hover = -1
+        for i in range(len(self._saved)):
+            left, bottom, width, height = self._row_rect(i)
+            if left <= x <= left + width and bottom <= y <= bottom + height:
+                self._hover = i
+                break
+
+    def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if self._hover < 0 or self._hover >= len(self._saved):
+            return
+        saved_id = self._saved[self._hover]["id"]
+        try:
+            view = _load_race_view(saved_id)
+        except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError) as error:
+            self._error = f"nao foi possivel abrir a corrida: {error}"
+            return
+        self.window.show_view(view)
+
+    def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if symbol == arcade.key.R:
+            self._refresh()
+
+    def on_draw(self) -> None:
+        self.clear()
+        self._title.y = self.window.height - 60
+        self._title.draw()
+        self._subtitle.text = (
+            self._error
+            if self._error
+            else f"{len(self._saved)} corridas  |  clique para abrir  |  R atualiza"
+        )
+        self._subtitle.y = self.window.height - 90
+        self._subtitle.color = (230, 120, 120) if self._error else (150, 160, 170)
+        self._subtitle.draw()
+
+        for i, item in enumerate(self._saved):
+            left, bottom, width, height = self._row_rect(i)
+            if bottom < 0:
+                break
+            color = _ROW_HOVER if i == self._hover else _ROW_BG
+            arcade.draw_lbwh_rectangle_filled(left, bottom, width, height, color)
+            label = item.get("name", item["id"])
+            detail = (
+                f"{item.get('track_id') or '-'}   "
+                f"{item.get('total_laps') or '?'} voltas   "
+                f"{item.get('car_count') or '?'} carros"
+            )
+            arcade.draw_text(
+                label,
+                left + 16,
+                bottom + height - 24,
+                PRIMARY_TEXT_COLOR,
+                15,
+                bold=True,
+            )
+            arcade.draw_text(
+                detail,
+                left + 16,
+                bottom + 6,
+                (150, 160, 170),
+                11,
+            )
 
 
 class TrackView(arcade.View):
@@ -85,15 +209,41 @@ class TrackView(arcade.View):
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
         self._circuit = str(track["circuit_id"])
+        self._switch_hover = False
+        self._end_hover = False
 
         self._title = arcade.Text("", 20, 0, PRIMARY_TEXT_COLOR, 18, bold=True)
-        self._hud = arcade.Text("", 20, 24, PRIMARY_TEXT_COLOR, 13, font_name="monospace")
+        self._hud = arcade.Text(
+            "", 20, 24, PRIMARY_TEXT_COLOR, 13, font_name="monospace"
+        )
         self._weather_text = arcade.Text(
             "", 0, 0, PRIMARY_TEXT_COLOR, 15, bold=True, anchor_x="right"
         )
         self._help = arcade.Text(
             "espaco pausa  |  <- -> inverte sentido  |  up/down velocidade  |  R reinicia",
-            20, 6, (130, 140, 150), 10, font_name="monospace",
+            20,
+            6,
+            (130, 140, 150),
+            10,
+            font_name="monospace",
+        )
+        self._switch_text = arcade.Text(
+            "Trocar corrida",
+            0,
+            0,
+            PRIMARY_TEXT_COLOR,
+            13,
+            anchor_x="center",
+            anchor_y="center",
+        )
+        self._end_text = arcade.Text(
+            "Pular pro fim",
+            0,
+            0,
+            PRIMARY_TEXT_COLOR,
+            13,
+            anchor_x="center",
+            anchor_y="center",
         )
         self._row_texts: list[arcade.Text] = []
 
@@ -101,13 +251,25 @@ class TrackView(arcade.View):
         super().on_show_view()
         arcade.set_background_color(BACKGROUND_COLOR)
 
+    def _switch_rect(self):
+        """(left, bottom, width, height) do botao 'Trocar corrida'."""
+
+        width, height = 150, 34
+        return self.window.width - width - 20, 20, width, height
+
+    def _end_rect(self):
+        """(left, bottom, width, height) do botao 'Pular pro fim'."""
+
+        width, height = 150, 34
+        switch_left = self.window.width - width - 20
+        return switch_left - width - 10, 20, width, height
+
     def _projected(self) -> list[tuple[float, float]]:
         """Projete a geometria normalizada no tamanho atual da janela."""
 
         width, height = self.window.width, self.window.height
         usable_w = max(1.0, width - 2 * MARGIN)
         usable_h = max(1.0, height - 2 * MARGIN)
-        # Mantem a razao de aspecto da pista dentro do espaco util.
         if usable_w / usable_h > self._aspect:
             draw_h = usable_h
             draw_w = draw_h * self._aspect
@@ -145,6 +307,23 @@ class TrackView(arcade.View):
         step = dt * BASE_PLAYBACK_SPEED * self._speed * self._direction
         self._elapsed = max(0.0, min(self._elapsed + step, self._race_len_ms))
 
+    @staticmethod
+    def _in_rect(x, y, rect) -> bool:
+        left, bottom, width, height = rect
+        return left <= x <= left + width and bottom <= y <= bottom + height
+
+    def on_mouse_motion(self, x, y, dx, dy) -> None:
+        self._switch_hover = self._in_rect(x, y, self._switch_rect())
+        self._end_hover = self._in_rect(x, y, self._end_rect())
+
+    def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if self._in_rect(x, y, self._switch_rect()):
+            self.window.show_view(MenuView())
+        elif self._in_rect(x, y, self._end_rect()):
+            self._elapsed = self._race_len_ms
+            self._paused = True
+            self._direction = 1
+
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if symbol == arcade.key.SPACE:
             self._paused = not self._paused
@@ -161,6 +340,8 @@ class TrackView(arcade.View):
         elif symbol == arcade.key.R:
             self._elapsed = 0.0
             self._direction = 1
+        elif symbol == arcade.key.M:
+            self.window.show_view(MenuView())
 
     def _pos_at(self, screen, distance_m: float):
         d = distance_m % self._lap_length
@@ -205,6 +386,16 @@ class TrackView(arcade.View):
         self._hud.draw()
         self._help.draw()
         self._draw_standings(height)
+        self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
+        self._draw_button(self._end_rect(), self._end_text, self._end_hover)
+
+    def _draw_button(self, rect, text, hover) -> None:
+        left, bottom, width, height = rect
+        color = _ROW_HOVER if hover else _SWITCH_BG
+        arcade.draw_lbwh_rectangle_filled(left, bottom, width, height, color)
+        text.x = left + width / 2
+        text.y = bottom + height / 2
+        text.draw()
 
     def _draw_standings(self, height: int) -> None:
         standings = self._current_standings()
@@ -223,9 +414,7 @@ class TrackView(arcade.View):
             elif pos == 1:
                 time_text = _format_clock(car.get("total_time_ms", 0.0))
             else:
-                time_text = _format_gap(
-                    car.get("total_time_ms", 0.0) - leader_time
-                )
+                time_text = _format_gap(car.get("total_time_ms", 0.0) - leader_time)
             rows.append((car["driver_id"], f"{pos:>2}  {name:<16} {time_text:>10}"))
 
         while len(self._row_texts) < len(rows):
@@ -264,36 +453,27 @@ def _race_circuit_id(race: dict) -> str | None:
     return track_id or None
 
 
-def show(circuit_id: int | str | None = None, saved_id: str | None = None) -> None:
-    try:
-        race = fetch_saved_race(saved_id) if saved_id else fetch_race()
-    except urllib.error.HTTPError as error:
-        raise SystemExit(
-            f"nao foi possivel carregar a corrida (HTTP {error.code})"
-        ) from error
-    resolved = circuit_id if circuit_id is not None else _race_circuit_id(race)
-    if resolved is None:
-        raise SystemExit(
-            "a corrida nao tem pista no setup; informe o circuito: "
-            "python -m frontend.arcade.track_view <circuit_id>"
-        )
-    try:
-        track = fetch_track(resolved)
-    except urllib.error.HTTPError as error:
-        raise SystemExit(
-            f"pista {resolved} sem geometria disponivel no backend "
-            f"(HTTP {error.code})"
-        ) from error
+def show(saved_id: str | None = None) -> None:
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, "Simulacao", resizable=True)
-    window.show_view(TrackView(track, race))
+    if saved_id:
+        try:
+            window.show_view(_load_race_view(saved_id))
+        except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError) as error:
+            raise SystemExit(f"nao foi possivel abrir a corrida: {error}") from error
+    else:
+        window.show_view(MenuView())
     arcade.run()
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Visualiza uma corrida simulada.")
-    parser.add_argument("circuit_id", nargs="?", default=None)
-    parser.add_argument("--saved", dest="saved_id", default=None, help="id de uma corrida salva")
+    parser = argparse.ArgumentParser(description="Visualiza corridas simuladas salvas.")
+    parser.add_argument(
+        "--saved",
+        dest="saved_id",
+        default=None,
+        help="abre direto uma corrida salva por id (sem passar pelo menu)",
+    )
     args = parser.parse_args()
-    show(args.circuit_id, args.saved_id)
+    show(args.saved_id)
