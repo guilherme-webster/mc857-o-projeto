@@ -5,6 +5,7 @@ from bisect import bisect_right
 
 import arcade
 
+from frontend.arcade.race_playback import RacePlayback
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
     PRIMARY_TEXT_COLOR,
@@ -122,7 +123,12 @@ class MenuView(arcade.View):
         saved_id = self._saved[self._hover]["id"]
         try:
             view = _load_race_view(saved_id)
-        except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError) as error:
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            RuntimeError,
+            ValueError,
+        ) as error:
             self._error = f"nao foi possivel abrir a corrida: {error}"
             return
         self.window.show_view(view)
@@ -174,6 +180,13 @@ class MenuView(arcade.View):
 
 
 class TrackView(arcade.View):
+    """Reproduz a corrida volta a volta sobre a geometria da pista.
+
+    ``_elapsed`` e o relogio da corrida em ms. Posicoes, volta atual e
+    classificacao vem de ``RacePlayback``, construido a partir do ``history``
+    do motor; a view so converte voltas em metros e metros em pontos da tela.
+    """
+
     def __init__(self, track: dict, race: dict) -> None:
         super().__init__()
         pts = sorted(track["track_points"], key=lambda p: p["sequence"])
@@ -181,27 +194,13 @@ class TrackView(arcade.View):
         self._unit, self._aspect = _normalize([(p["x"], p["y"]) for p in pts])
         self._lap_length = track["lap_length_m"]
 
-        self._total_laps = race["total_laps"]
+        self._playback = RacePlayback(race)
+        self._total_laps = self._playback.total_laps
         self._color_by_driver = {
-            c["driver_id"]: _PALETTE[i % len(_PALETTE)]
-            for i, c in enumerate(race["classification"])
+            car.driver_id: _PALETTE[i % len(_PALETTE)]
+            for i, car in enumerate(self._playback.cars)
         }
-        self._cars = [
-            {
-                "driver_id": c["driver_id"],
-                "name": c["name"],
-                "lap_time_ms": c["lap_time_ms"],
-                "color": self._color_by_driver[c["driver_id"]],
-            }
-            for c in race["classification"]
-        ]
-        self._history = race.get("history", [])
-        self._race_len_ms = max(
-            (c["lap_time_ms"] * self._total_laps for c in self._cars), default=1
-        )
-        self._lead_lap_time_ms = min(
-            (c["lap_time_ms"] for c in self._cars), default=self._race_len_ms
-        )
+        self._race_len_ms = self._playback.duration_ms
         self._weather = _weather_segments(race)
 
         self._elapsed = 0.0
@@ -281,9 +280,7 @@ class TrackView(arcade.View):
         return [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._unit]
 
     def _current_lap(self) -> int:
-        lead_dist = self._elapsed / self._lead_lap_time_ms * self._lap_length
-        lap = int(lead_dist // self._lap_length) + 1
-        return max(1, min(lap, self._total_laps))
+        return self._playback.current_lap(self._elapsed)
 
     def _current_rain(self) -> str:
         lap = self._current_lap()
@@ -291,15 +288,6 @@ class TrackView(arcade.View):
             if segment["from_lap"] <= lap <= segment["to_lap"]:
                 return segment["rain"]
         return "dry"
-
-    def _current_standings(self) -> list[dict]:
-        """Classificacao da volta corrente do playback (ou a ultima disponivel)."""
-
-        if not self._history:
-            return []
-        index = min(self._current_lap(), len(self._history)) - 1
-        cars = self._history[index].get("cars", [])
-        return sorted(cars, key=lambda car: car["position"])
 
     def on_update(self, dt: float) -> None:
         if self._paused:
@@ -361,11 +349,13 @@ class TrackView(arcade.View):
         self._title.draw()
 
         arcade.draw_line_strip([*screen, screen[0]], TRACK_EDGE_COLOR, 2)
-        race_dist = self._total_laps * self._lap_length
-        for car in self._cars:
-            dist = min(self._elapsed / car["lap_time_ms"] * self._lap_length, race_dist)
-            x, y = self._pos_at(screen, dist)
-            arcade.draw_circle_filled(x, y, CAR_RADIUS, car["color"])
+        # Carros que abandonaram nao sao desenhados; os demais param na linha
+        # de chegada, onde ``laps`` vale ``total_laps``.
+        for driver_id, laps in self._playback.on_track(self._elapsed):
+            x, y = self._pos_at(screen, laps * self._lap_length)
+            arcade.draw_circle_filled(
+                x, y, CAR_RADIUS, self._color_by_driver[driver_id]
+            )
 
         rain = self._current_rain()
         label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
@@ -398,24 +388,24 @@ class TrackView(arcade.View):
         text.draw()
 
     def _draw_standings(self, height: int) -> None:
-        standings = self._current_standings()
-        if not standings:
-            return
+        standings = self._playback.standings(self._elapsed)
         top = height - 80
         line_h = 20
-        leader_time = standings[0].get("total_time_ms", 0.0)
         rows = []
-        for car in standings:
-            pos = car["position"]
-            name = car["name"][:16]
-            status = car.get("status")
-            if status and status != "RUNNING":
+        for row in standings:
+            if row.retired:
                 time_text = "OUT"
-            elif pos == 1:
-                time_text = _format_clock(car.get("total_time_ms", 0.0))
+            elif row.position == 1:
+                leader = self._playback.car(row.driver_id)
+                time_text = _format_clock(min(self._elapsed, leader.finish_time_ms))
+            elif row.gap_ms is None:
+                time_text = "-"
             else:
-                time_text = _format_gap(car.get("total_time_ms", 0.0) - leader_time)
-            rows.append((car["driver_id"], f"{pos:>2}  {name:<16} {time_text:>10}"))
+                time_text = _format_gap(row.gap_ms)
+            name = row.name[:16]
+            rows.append(
+                (row.driver_id, f"{row.position:>2}  {name:<16} {time_text:>10}")
+            )
 
         while len(self._row_texts) < len(rows):
             self._row_texts.append(
@@ -458,7 +448,12 @@ def show(saved_id: str | None = None) -> None:
     if saved_id:
         try:
             window.show_view(_load_race_view(saved_id))
-        except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError) as error:
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            RuntimeError,
+            ValueError,
+        ) as error:
             raise SystemExit(f"nao foi possivel abrir a corrida: {error}") from error
     else:
         window.show_view(MenuView())

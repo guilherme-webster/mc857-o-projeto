@@ -232,7 +232,7 @@ class ModelledEffectsTest(unittest.TestCase):
         self.assertIn("fuel_ms", result["breakdowns"][0])
 
     def test_snapshot_keeps_the_field_the_arcade_view_reads(self) -> None:
-        # frontend/arcade/track_view.py interpola a posicao com lap_time_ms.
+        # Campo do contrato publico; a TrackView usa total_time_ms do history.
         result = simulate_detailed_race(
             field(3),
             total_laps=5,
