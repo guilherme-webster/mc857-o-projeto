@@ -464,3 +464,28 @@ Três gráficos inspecionados; JSON/três CSVs idênticos em duas execuções.
 Backlog regenerado com novos comentários da issue #13; separar esse diff
 em commit de espelho do backlog. Sem commits/push/comentários GitHub; publicar
 andamento na #63 quando autorizado. 
+
+## Reprodução volta a volta na TrackView — 2026-10-16 (-03:00)
+
+Issue #6 (sub-issues #16/#18), responsável @ViniciusFCoracin; trabalho de
+@guilherme-webster na branch local `6-reproducao-volta-a-volta`, a partir da
+`develop` em `f00f599`. Etapa 1 do plano de levar `modelagem-heuristica.md` à
+interface.
+
+- `frontend/arcade/race_playback.py` (puro, sem Arcade) monta a linha do tempo
+  de cada carro a partir de `history[].cars[].total_time_ms`. A `TrackView`
+  passa a posicionar os carros por ela, em vez da velocidade constante de
+  `lap_time_ms`. Ultrapassagens, perdas nos boxes e o agrupamento sob SC
+  aparecem na pista; quem abandona some no fim da última volta registrada;
+  classificação e intervalos são ao vivo e coincidem com a classificação final
+  do motor.
+- A compressão do SC pode pôr o fim de volta de um carro muito atrasado antes do
+  anterior; o degrau é tratado como avanço instantâneo, nunca como recuo.
+- Verificações: 18 testes novos, incluindo contrato com a saída real do motor
+  detalhado. Suíte com 460 testes, 35 ignorados e 3 erros preexistentes por
+  falta de `fastapi` no Python do sistema (`uv` ausente nesta máquina). Ruff
+  check passou. Smoke test da `TrackView` com stub do Arcade; a janela real não
+  foi aberta.
+- Próximo passo: abrir a tela real com uma corrida do backend, depois as etapas
+  2 (faixa de SC/VSC/bandeiras) e 3 (pneus, paradas e causa de abandono na
+  tabela). Sem commit, push ou comentário no GitHub; levar este registro à #6.
