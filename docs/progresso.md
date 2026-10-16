@@ -555,6 +555,24 @@ interface.
   `/data/simulation` e 3 falhas de GUI preexistentes). Ponta a ponta: largada
   de São Paulo 2024 conferida contra a real, edição e gravação de
   agressividade.
-- Pendente: limitações de pneus/severidade (#40), voltas padrão por pista (69
-  fixas), ponto de volta rápida. Commits locais, sem push nem comentário no
-  GitHub; levar este registro à #2, #6, #18, #21 e #71.
+- Pendente: limitações de pneus/severidade (#40) e ponto de volta rápida.
+  Commits locais, sem push nem comentário no GitHub; levar este registro à
+  #2, #6, #18, #21 e #71.
+
+### Pendência: número de voltas padrão por pista — 2026-10-16 (-03:00)
+
+Sem issue no GitHub ainda; candidata a sub-issue de #2 (tela de configuração).
+Toda etapa nova começa com 69 voltas: `ConfigurationFormData.laps = 69` e
+`DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(69)` em
+`frontend/arcade/configuration_state.py`, e `toggle_selected_track` herda a
+configuração ativa (`setdefault(circuit_id, self.configuration)`), qualquer
+que seja o tamanho da pista. Nenhuma pista do catálogo tem 69 voltas na F1.
+
+Proposta discutida, não implementada: usar como padrão o número de voltas da
+corrida histórica mais recente no circuito (Trotman; exige campo novo em
+`/simulation/tracks` ou endpoint) e, sem histórico, a regra do regulamento
+esportivo da FIA: menor número de voltas completas acima de 305 km (Mônaco,
+260 km), calculado com `lap_length_m`. O comprimento vem da geometria FastF1 e
+erra por uma ou duas voltas em algumas pistas (Yas Marina: 5.240 m no fixture
+contra 5.281 m oficiais, 59 voltas em vez de 58). O valor seria só o padrão; o
+usuário continua editando.
