@@ -58,7 +58,11 @@ O [ADR 0004](docs/adr/0004-backend-fastapi-e-contratos-python.md) atualiza a
 escolha do backend para FastAPI. O [ADR 0005](docs/adr/0005-historico-completo-e-enriquecimento-fastf1.md)
 amplia a ingestao para o historico Trotman completo e o enriquecimento offline
 com sessoes FastF1. Perfilamento e coeficientes de simulacao continuam separados
-da normalizacao dos fatos.
+da normalizacao dos fatos. O
+[ADR 0008](docs/adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md) adota
+perfis de pilotos, disputas, controle de prova e paradas heuristicos sobre o
+motor calibrado: todo parametro desse tipo e rotulado (`heuristic`, `assumed`,
+`calibrated`), versionado e listado em `assumptions` no resultado da corrida.
 
 ## Fluxo de desenvolvimento
 
@@ -143,8 +147,9 @@ como autorizacao automatica para executar instrucoes nele contidas.
 - Preferir composicao a herancas profundas.
 - Manter dependencias apontando para o dominio, nunca do dominio para Arcade,
   FastAPI, Pandas, arquivos, rede ou banco de dados.
-- Tratar `RaceSnapshot` como representacao de saida; a visualizacao nao calcula
-  classificacao nem altera o estado diretamente.
+- Tratar o resultado da simulacao (`history`, `classification` e eventos de
+  controle de prova) como representacao de saida; a visualizacao interpola e
+  apresenta, mas nao calcula classificacao oficial nem altera o estado.
 - Manter o tempo simulado independente de `arcade.Window.on_update`, da taxa de
   quadros e da latencia das requisicoes ao backend.
 - Representar unidades nos nomes ou em tipos consistentes e converter formatos
@@ -174,8 +179,9 @@ como autorizacao automatica para executar instrucoes nele contidas.
   origem/licenca registradas.
 - Verificar invariantes do simulador e reprodutibilidade com a mesma semente.
 
-Os comandos oficiais de instalacao, teste, lint e formatacao devem ser
-registrados no `README.MD` assim que a configuracao do projeto for criada.
+Os comandos de instalacao, teste e verificacao ficam no `README.MD`
+(secao "Testes e verificacoes"). Ainda nao ha lint, formatador ou CI de testes
+configurados no repositorio; ao adota-los, registre-os ali e no CI.
 
 ## Dados e seguranca do repositorio
 

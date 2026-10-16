@@ -4,6 +4,21 @@ Relatório da fatia que substituiu o núcleo de ritmo constante por um modelo de
 tempo de volta decomposto, calibrado no histórico Trotman v128 e validado contra
 corridas reais não usadas na calibração.
 
+> **Estado em 2026-10-16.** Este relatório registra o trabalho de 2026-09-24 e
+> seus resultados continuam valendo como histórico. Desde então:
+> - o motor detalhado é servido por `POST /catalog/grid/run`, com as
+>   heurísticas do [ADR 0008](adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md)
+>   por cima (valores em [modelagem-heuristica.md](modelagem-heuristica.md));
+> - o núcleo de ritmo constante e a linha de base `constant` do backtest foram
+>   removidos (`d510721`); o backtest compara só com a ordem de largada;
+> - o caminho `POST /simulation/load`/`/simulation/simulate`,
+>   `backend/app/loaders/loader.py` e `services/race_simulation.py` não existem
+>   mais;
+> - a `TrackView` reproduz a corrida pelo `history`, e não mais por `lap_time_ms`.
+>
+> As seções 3 e 9 abaixo foram ajustadas onde descreviam como executar; o
+> restante segue como foi escrito.
+
 Escopo: itens 1 e 4 do plano (`Desenvolvimento de Simulador F1.md`, seções 8.2 e
 11, fases 2 e 6) e as frentes de modelagem #60/#61/#63 do backlog. Preserva as
 fronteiras do ADR 0002 e não introduz nova fonte de dados além do Trotman v128
@@ -127,7 +142,12 @@ backend/app/loaders/loader.py                application/backtest_model.py      
   → frontend/arcade/track_view.py
 ```
 
-Pontos de ligação que exigiram cuidado:
+O ramo BACKEND do diagrama descreve 2026-09-24. Hoje ele é
+`backend/app/services/catalog.py` → `application/run_grid_simulation.py` →
+`POST /catalog/grid/run` → `data/simulation/current-race.json` →
+`frontend/arcade/race_playback.py`/`track_view.py`.
+
+Pontos de ligação que exigiram cuidado (na época):
 
 | Ligação | Como foi preservada |
 | --- | --- |
@@ -542,10 +562,11 @@ python scripts/backtest_model.py --database data/curated/history.sqlite --parame
 python -m unittest
 ```
 
-Aplicação completa: `docker compose up --build`, depois
-`POST /simulation/load {"race_id": 1141}` e `POST /simulation/simulate`.
-A rota aceita `?seed=` e `?stops=`; a mesma semente reproduz exatamente a mesma
-corrida.
+Aplicação completa (estado de 2026-10-16): `docker compose up --build`, depois
+`POST /api/history/build`, `POST /catalog/grid` e `POST /catalog/grid/run`
+(ver o README). O `seed` do grid fixa atributos e corrida; a mesma semente
+reproduz exatamente a mesma corrida. O backtest atual compara apenas com a
+ordem de largada.
 
 ---
 

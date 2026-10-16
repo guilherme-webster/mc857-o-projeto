@@ -5,7 +5,8 @@ valores e onde mudá-las**. O plano e o histórico das decisões estão no
 [PRD](prds/modelagem-pilotos-heuristica.md); a decisão arquitetural está no
 [ADR 0008](adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md).
 
-Valores conferidos no código em 2026-10-03 (branch `67-modelagem-pilotos`).
+Valores conferidos no código em 2026-10-16 (branch `6-reproducao-volta-a-volta`;
+os valores não mudaram desde a branch `67-modelagem-pilotos`, de 2026-10-03).
 Se um número aqui divergir do código, **vale o código**: atualize este arquivo.
 
 ## 1. Princípios
@@ -34,6 +35,8 @@ Se um número aqui divergir do código, **vale o código**: atualize este arquiv
 | SC, VSC e bandeiras | `domain/race_control.py` | `HEURISTIC_RACE_CONTROL` (`heuristic-race-control-v2`) |
 | Paradas | `domain/strategy.py` (`HeuristicPitStrategy`) | `DEFAULT_HEURISTIC_PIT_PARAMETERS` (`heuristic-pit-v1`) |
 | Volta de referência | `application/reference_laps.py`, `data/parameters/reference-laps-v1.json` | `historical-median-fastest-laps-v1` |
+| Clima no tempo de volta | `domain/weather.py` (`simulate_weather`, `weather_penalty_ms`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`), `ASSUMED_WEATHER_EFFECT` (`assumed-weather-effect-v1`) |
+| Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
 | Ligação ao grid | `application/run_grid_simulation.py` (`run_detailed_grid_simulation`) | ritmo de reserva `ASSUMED_REFERENCE_PACE_MS_PER_KM` |
 | Motor | `domain/race_simulation.py` (`simulate_detailed_race`) | — |
 | Física calibrada (colega, #40) | `data/parameters/model-v1.json` | `trotman-v128-2022-2023` |
@@ -58,8 +61,7 @@ nomeado) > `generated` (sorteio).
 `1 + 0,4 × (tyre_management_factor − 1)`, ou seja, 0,86× a 1,18× em vez de
 0,65× a 1,45×. Com o fator integral, os agressivos faziam 2,4 paradas contra
 1,1 dos conservadores em pistas de desgaste alto e terminavam atrás deles. O
-mesmo multiplicador vai para a estratégia de parada. O motor simples continua
-usando o fator integral.
+mesmo multiplicador vai para a estratégia de parada.
 
 **Perfis nomeados.** 24 pilotos do grid de 2024 em
 `configs/drivers/perfis-ficticios.json`, com arquétipo, alguns valores fixados
@@ -158,7 +160,8 @@ Ordem de uso: tabela → comprimento da pista × 17.000 ms/km (reserva) → 90 s
 | Quero mudar... | Onde |
 |---|---|
 | Um piloto específico | `configs/drivers/perfis-ficticios.json` |
-| As faixas de um arquétipo | `ASSUMED_ARCHETYPES` em `domain/driver_attributes.py` (afeta também o motor simples) |
+| As faixas de um arquétipo | `ASSUMED_ARCHETYPES` em `domain/driver_attributes.py` |
+| O efeito da chuva no tempo de volta | `ASSUMED_WEATHER_EFFECT.wet_penalty_pct_max` em `domain/weather.py` |
 | Quanto pesa a gestão de pneus | `DETAILED_TYRE_MANAGEMENT.elasticity` em `domain/attribute_effects.py` |
 | Dificuldade de ultrapassar | `resistance_scale` em `domain/disputes.py`, ou a dificuldade por circuito no `model-v1.json` |
 | Frequência de SC/VSC/vermelha | `RaceControlParameters` em `domain/race_control.py`; depois meça com `scripts/race_control_frequency.py` |
@@ -177,8 +180,24 @@ próprios parâmetros, não números fixos.
   de grid (782 ms por posição) e `resistance_scale`.
 - A ultrapassagem é decidida por volta, não em um ponto da pista.
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
-- O clima existe (`domain/weather.py`, #69) mas ainda não afeta o tempo de volta
-  nem os incidentes.
+- **Clima só no tempo de volta.** A água na pista ao fim de cada volta
+  (`domain/weather.py`, #69) acrescenta até 40% ao tempo de referência
+  (`assumed-weather-effect-v1`, proporcional à água). O clima não altera
+  disputas, incidentes nem paradas, e não há pneus intermediários ou de chuva:
+  todos seguem nos compostos secos.
+- **Composto de largada fixo e médio quase sem volta.** Todos largam de MEDIUM
+  (hipótese). Enquanto a regra de dois compostos não foi cumprida, o médio fica
+  fora da escolha; depois vence o mais macio cuja vida típica (macio 14, médio
+  22, duro 37 voltas) cobre o restante. Por isso as paradas vão quase sempre
+  para HARD, ou para SOFT nas últimas 14 voltas.
+- **Severidade de pneu por circuito pouco confiável.** `tyre_severity` vem de
+  `scripts/calibrate_model.py` (regressão por circuito dividida pela do campo,
+  encolhida para 1,0 com peso `n/(n+1500)` e cortada em 0,30–2,50). Zandvoort
+  bate no piso (0,30) apesar de 87 paradas observadas; Spa e Bahrein batem no
+  teto. Efeito observado em 2026-10-16: em Zandvoort ninguém para por desgaste
+  (a parada vira obrigação da regra de dois compostos, perto do fim); em Suzuka
+  (2,46) os carros fazem 3–4 paradas. `observed_stops` não entra na
+  calibração. Revisão a combinar com a #40.
 - A interface Arcade reproduz a corrida volta a volta a partir do `history`
   (`frontend/arcade/race_playback.py`): dentro de cada volta a velocidade é
   constante, então paradas e SC aparecem como voltas mais lentas, não como

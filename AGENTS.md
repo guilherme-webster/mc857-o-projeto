@@ -52,6 +52,13 @@ complementares de sessoes FastF1, offline e com proveniencia. Dados brutos,
 telemetria e bancos completos continuam fora do Git. Novas fontes alem desse
 escopo ainda exigem decisao explicita.
 
+O ADR 0008 adota perfis de pilotos, disputas, controle de prova e paradas
+heuristicos sobre o motor calibrado da issue #40. Parametros desse tipo sao
+escolhidos, nao medidos: rotule-os (`heuristic`, `assumed`), versione-os e
+nunca os apresente como calibrados. Os valores atuais estao em
+`docs/modelagem-heuristica.md`. O frontend nao importa o pacote `f1_simulator`:
+regras de dominio chegam a ele por HTTP.
+
 ## Forma de trabalhar
 
 - Preserve alteracoes existentes e limite o diff ao pedido atual.
