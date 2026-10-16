@@ -499,6 +499,21 @@ interface.
   (caminho do container). Janela real do Arcade aberta com geometria do fixture
   `trotman_v128_tracks_2025` e corrida do motor; capturas conferidas sob
   amarela, SC e relargada.
-- Próximo passo: etapa 3 (pneus, paradas e causa de abandono na tabela).
-  Commits locais na branch, sem push nem comentário no GitHub; levar este
-  registro à #6 e à #21.
+- Etapa 3 (sub-issue #18): o caso de uso publica `starting_grid` (posição e
+  composto de largada) no resultado. A classificação mostra composto, idade
+  do pneu, paradas, "BOX" durante a volta que termina em parada, posições
+  ganhas ou perdidas e a causa do abandono. Colunas desenhadas como textos
+  separados (a fonte "monospace" não é monoespaçada aqui), paleta com 20
+  cores e pista desenhada à direita da tabela.
+- Fluxo completo validado no Docker: `POST /api/history/build`, grid manual
+  com os pares da última etapa de 2024, `POST /catalog/grid/run` em
+  `circuit:24` e `TrackView` lendo a corrida salva via HTTP. O container roda
+  como root, então `data/curated/history.sqlite` e `data/simulation/` ficaram
+  com dono root no host.
+- Observação de modelagem, sem alteração: nessa corrida 12 de 20 carros
+  pararam (MEDIUM -> HARD) entre as voltas 5 e 10 de 58; vale revisar a
+  regra econômica de `HeuristicPitStrategy`.
+- Suíte: 495 testes, 35 ignorados, os mesmos 2 erros de `/data/simulation`.
+- Próximo passo: etapa 4 (botão Iniciar das telas de configuração chamando
+  `POST /catalog/grid` e `/catalog/grid/run`). Commits locais, sem push nem
+  comentário no GitHub; levar este registro à #6, #18 e #21.
