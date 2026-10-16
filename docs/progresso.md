@@ -514,6 +514,22 @@ interface.
   pararam (MEDIUM -> HARD) entre as voltas 5 e 10 de 58; vale revisar a
   regra econômica de `HeuristicPitStrategy`.
 - Suíte: 495 testes, 35 ignorados, os mesmos 2 erros de `/data/simulation`.
-- Próximo passo: etapa 4 (botão Iniciar das telas de configuração chamando
-  `POST /catalog/grid` e `/catalog/grid/run`). Commits locais, sem push nem
-  comentário no GitHub; levar este registro à #6, #18 e #21.
+- Etapa 4 (#2/#71): o "Iniciar" da `ParametersView` roda o plano no backend
+  numa thread (`frontend/arcade/race_launcher.py`, puro): reutiliza o grid
+  atual ou cria um aleatório de 20 pilotos (404/409), roda cada etapa com
+  voltas, pista e faixas de clima ("Seco em todas" força seco) e abre a
+  `TrackView` da primeira etapa; as demais ficam em "Trocar corrida". Origem
+  do grid e opções ainda não suportadas (intervalo de sessão, largada lançada)
+  aparecem como avisos na tela da corrida. `track_client` ganhou `GET/POST
+  /catalog/grid`, `POST /catalog/grid/run` e `BackendError` com o `detail`.
+- Verificações: 13 testes puros e 2 de GUI novos; suíte com 510 testes, 37
+  ignorados (GUI sem `ARCADE_GUI_TEST`) e os 2 erros de `/data/simulation`.
+  Com `ARCADE_GUI_TEST=1`, `test_parameters_view` tem 3 falhas que já
+  existiam na `HEAD`. Ponta a ponta no app real contra o backend em Docker:
+  Interlagos, 30 voltas, chuva leve da 15 em diante.
+- Limitações: o preset ("Corrida livre"/"GP de São Paulo 2024") ainda não
+  escolhe o grid; regras de pontuação e desempate do torneio não são
+  calculadas; da `TrackView` não há volta para a configuração.
+- Próximo passo: etapa 5 (tela de grid e pilotos) e a etapa 6 de backend que
+  ela exige. Commits locais, sem push nem comentário no GitHub; levar este
+  registro à #2, #6, #18, #21 e #71.
