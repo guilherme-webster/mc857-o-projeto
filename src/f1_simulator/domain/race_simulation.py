@@ -46,7 +46,15 @@ from f1_simulator.domain.race_control import (
     step,
 )
 from f1_simulator.domain.random_source import RandomSource
+from f1_simulator.domain.speed_dynamics import (
+    ASSUMED_CAR_PHYSICS,
+    CarPhysics,
+    lap_time_ms,
+    physics_for,
+    steady_lap,
+)
 from f1_simulator.domain.strategy import StrategyState, TyreStrategy
+from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.tyres import TyreSet
 from f1_simulator.domain.weather import (
     ASSUMED_WEATHER_EFFECT,
@@ -186,6 +194,8 @@ def simulate_detailed_race(
     race_control: RaceControlParameters | None = None,
     lap_surface_water: Sequence[float] | None = None,
     weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
+    geometry: TrackGeometry | None = None,
+    car_physics: CarPhysics = ASSUMED_CAR_PHYSICS,
 ) -> dict:
     """Simule uma corrida detalhada, com extensoes opt-in e caminho neutro fiel.
 
@@ -208,6 +218,7 @@ def simulate_detailed_race(
         or dispute_model == "pressure"
         or race_control is not None
         or lap_surface_water is not None
+        or geometry is not None
     )
     if not enhanced:
         return _simulate_detailed_race_legacy(
@@ -233,6 +244,8 @@ def simulate_detailed_race(
         race_control=race_control,
         lap_surface_water=lap_surface_water,
         weather_effect=weather_effect,
+        geometry=geometry,
+        car_physics=car_physics,
     )
 
 
@@ -433,6 +446,8 @@ def _simulate_detailed_race_enhanced(
     race_control: RaceControlParameters | None,
     lap_surface_water: Sequence[float] | None = None,
     weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
+    geometry: TrackGeometry | None = None,
+    car_physics: CarPhysics = ASSUMED_CAR_PHYSICS,
 ) -> dict:
     """Execute a composicao opt-in de atributos, disputas e controle de prova.
 
@@ -453,6 +468,18 @@ def _simulate_detailed_race_enhanced(
     ordered_entrants, by_id, used_attributes = _prepare_enhanced_race(
         entrants, total_laps, parameters, attributes
     )
+    # Com geometria, o tempo-base da volta emerge da fisica (ADR 0009) e
+    # substitui a volta de referencia escalar como fonte do tempo. Cada carro
+    # tem seu envelope, derivado dos atributos, entao o tempo fisico difere por
+    # piloto. As penalidades aditivas e o ruido seguem somando por cima,
+    # preservando pit, disputa, clima e a ordem de consumo do rng.
+    physical_lap_ms_by_id: dict[str, float] = {}
+    if geometry is not None:
+        for entrant in ordered_entrants:
+            physics = physics_for(used_attributes.get(entrant.driver_id), car_physics)
+            physical_lap_ms_by_id[entrant.driver_id] = lap_time_ms(
+                steady_lap(geometry, physics)
+            )
     profiles = {
         driver_id: DisputeProfile(
             aggression=item.aggression,
@@ -541,8 +568,12 @@ def _simulate_detailed_race_enhanced(
                 if free_change and decision.compound is not None
                 else state.tyre
             )
-            lap_reference_ms = adjusted_reference_ms(
-                entrant.reference_lap_time_ms, driver_attributes
+            lap_reference_ms = (
+                physical_lap_ms_by_id[state.driver_id]
+                if physical_lap_ms_by_id
+                else adjusted_reference_ms(
+                    entrant.reference_lap_time_ms, driver_attributes
+                )
             )
             surface_water = (
                 lap_surface_water[lap - 1]
@@ -608,7 +639,11 @@ def _simulate_detailed_race_enhanced(
             derived_laps = None
             if race_control is not None or dispute_model == "pressure":
                 derived_laps = _laps_completed_from_elapsed_time(
-                    contenders, states, by_id, used_attributes
+                    contenders,
+                    states,
+                    by_id,
+                    used_attributes,
+                    physical_lap_ms_by_id or None,
                 )
             outcomes = {
                 outcome.driver_id: outcome
@@ -779,6 +814,7 @@ def _laps_completed_from_elapsed_time(
     states: Mapping[str, CarState],
     entrants: Mapping[str, Entrant],
     attributes: Mapping[str, DriverAttributes],
+    physical_lap_ms_by_id: Mapping[str, float] | None = None,
 ) -> dict[str, int]:
     """Derive voltas relativas do relogio para aplicar a bandeira azul.
 
@@ -793,8 +829,12 @@ def _laps_completed_from_elapsed_time(
     if not contenders:
         return {}
     leader_id, leader_time_ms, _ = min(contenders, key=lambda row: (row[1], row[0]))
-    leader_reference_ms = adjusted_reference_ms(
-        entrants[leader_id].reference_lap_time_ms, attributes.get(leader_id)
+    leader_reference_ms = (
+        physical_lap_ms_by_id[leader_id]
+        if physical_lap_ms_by_id is not None
+        else adjusted_reference_ms(
+            entrants[leader_id].reference_lap_time_ms, attributes.get(leader_id)
+        )
     )
     leader_laps = states[leader_id].laps_completed
     result: dict[str, int] = {}

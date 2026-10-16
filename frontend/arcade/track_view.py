@@ -61,6 +61,49 @@ def _normalize(points):
     )
 
 
+def _build_time_to_distance(cum, physical=None):
+    """Mapa fracao-de-tempo-da-volta -> distancia, pelo perfil fisico do motor.
+
+    Usa o tempo acumulado de cada ponto, de modo que a posicao na tela e a
+    velocidade exibida saem da mesma fonte. Sem perfil, o mapa e linear.
+    """
+
+    lap_length = cum[-1]
+    if not physical or len(physical) < 2:
+        return lambda t: max(0.0, min(1.0, t)) * lap_length
+
+    total_time = physical[-1]["time_s"] or 1.0
+    time_marks = [p["time_s"] / total_time for p in physical]
+    dists = [p["distance_m"] for p in physical]
+    marks = len(time_marks) - 1
+
+    def mapper(t: float) -> float:
+        t = max(0.0, min(1.0, t))
+        i = max(0, min(bisect_right(time_marks, t) - 1, marks - 1))
+        t0, t1 = time_marks[i], time_marks[i + 1]
+        f = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
+        return dists[i] + (dists[i + 1] - dists[i]) * f
+
+    return mapper
+
+
+def _build_speed_lookup(profile):
+    if not profile:
+        return None
+    dists = [p["distance_m"] for p in profile]
+    speeds_kmh = [p["speed_ms"] * 3.6 for p in profile]
+    lap_length = dists[-1] or 1.0
+
+    def lookup(distance_m: float) -> float:
+        d = distance_m % lap_length
+        i = max(1, min(bisect_right(dists, d), len(dists) - 1))
+        d0, d1 = dists[i - 1], dists[i]
+        f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
+        return speeds_kmh[i - 1] + (speeds_kmh[i] - speeds_kmh[i - 1]) * f
+
+    return lookup
+
+
 def _load_race_view(saved_id: str | None) -> TrackView:
     """Monte a TrackView de uma corrida salva (ou da atual, se ``saved_id`` None)."""
 
@@ -180,21 +223,27 @@ class TrackView(arcade.View):
         self._cum = [p["cumulative_distance_m"] for p in pts]
         self._unit, self._aspect = _normalize([(p["x"], p["y"]) for p in pts])
         self._lap_length = track["lap_length_m"]
+        track_physical = track.get("speed_profile_physical")
 
         self._total_laps = race["total_laps"]
         self._color_by_driver = {
             c["driver_id"]: _PALETTE[i % len(_PALETTE)]
             for i, c in enumerate(race["classification"])
         }
-        self._cars = [
-            {
-                "driver_id": c["driver_id"],
-                "name": c["name"],
-                "lap_time_ms": c["lap_time_ms"],
-                "color": self._color_by_driver[c["driver_id"]],
-            }
-            for c in race["classification"]
-        ]
+        per_driver = race.get("speed_profiles") or {}
+        self._cars = []
+        for c in race["classification"]:
+            profile = per_driver.get(c["driver_id"], track_physical)
+            self._cars.append(
+                {
+                    "driver_id": c["driver_id"],
+                    "name": c["name"],
+                    "lap_time_ms": c["lap_time_ms"],
+                    "color": self._color_by_driver[c["driver_id"]],
+                    "time_to_dist": _build_time_to_distance(self._cum, profile),
+                    "speed_lookup": _build_speed_lookup(profile),
+                }
+            )
         self._history = race.get("history", [])
         self._race_len_ms = max(
             (c["lap_time_ms"] * self._total_laps for c in self._cars), default=1
@@ -206,6 +255,7 @@ class TrackView(arcade.View):
 
         self._elapsed = 0.0
         self._speed = 1.0
+        self._speed_kmh: dict[str, float] = {}
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
         self._circuit = str(track["circuit_id"])
@@ -362,8 +412,14 @@ class TrackView(arcade.View):
 
         arcade.draw_line_strip([*screen, screen[0]], TRACK_EDGE_COLOR, 2)
         race_dist = self._total_laps * self._lap_length
+        self._speed_kmh = {}
         for car in self._cars:
-            dist = min(self._elapsed / car["lap_time_ms"] * self._lap_length, race_dist)
+            laps_done = self._elapsed / car["lap_time_ms"]
+            lap_fraction = laps_done - int(laps_done)
+            dist = int(laps_done) * self._lap_length + car["time_to_dist"](lap_fraction)
+            dist = min(dist, race_dist)
+            if car["speed_lookup"] is not None:
+                self._speed_kmh[car["driver_id"]] = car["speed_lookup"](dist)
             x, y = self._pos_at(screen, dist)
             arcade.draw_circle_filled(x, y, CAR_RADIUS, car["color"])
 
@@ -415,7 +471,17 @@ class TrackView(arcade.View):
                 time_text = _format_clock(car.get("total_time_ms", 0.0))
             else:
                 time_text = _format_gap(car.get("total_time_ms", 0.0) - leader_time)
-            rows.append((car["driver_id"], f"{pos:>2}  {name:<16} {time_text:>10}"))
+            speed = self._speed_kmh.get(car["driver_id"])
+            if speed is not None and (not status or status == "RUNNING"):
+                speed_text = f"{speed:>3.0f} km/h"
+            else:
+                speed_text = ""
+            rows.append(
+                (
+                    car["driver_id"],
+                    f"{pos:>2}  {name:<16} {time_text:>10} {speed_text:>8}",
+                )
+            )
 
         while len(self._row_texts) < len(rows):
             self._row_texts.append(

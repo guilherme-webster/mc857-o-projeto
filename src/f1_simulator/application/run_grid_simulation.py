@@ -23,6 +23,7 @@ from f1_simulator.domain.race_simulation import (
     simulate_detailed_race,
 )
 from f1_simulator.domain.random_source import RandomSource, uniform_index
+from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.strategy import (
     DEFAULT_HEURISTIC_PIT_PARAMETERS,
     HeuristicPitStrategy,
@@ -100,6 +101,22 @@ def _weather_echo(setup: RaceSetup) -> list[dict]:
     ]
 
 
+def _speed_profiles_by_driver(geometry, grid, attributes):
+    """Perfil fisico de velocidade por piloto, para a tela mostrar carros distintos."""
+
+    from f1_simulator.domain.speed_dynamics import physics_for, steady_lap
+
+    profiles = {}
+    for entry in grid:
+        physics = physics_for(attributes.get(entry.driver_id))
+        samples = steady_lap(geometry, physics)
+        profiles[entry.driver_id] = [
+            {"distance_m": s.distance_m, "speed_ms": s.speed_ms, "time_s": s.time_s}
+            for s in samples
+        ]
+    return profiles
+
+
 def run_detailed_grid_simulation(
     grid: Sequence[GridEntry],
     attributes: dict[str, DriverAttributes],
@@ -112,6 +129,7 @@ def run_detailed_grid_simulation(
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
     dispute_model: Literal["legacy", "pressure"] = "pressure",
     reference_lap: ReferenceLap | None = None,
+    geometry: TrackGeometry | None = None,
 ) -> dict:
     """Execute o grid no motor detalhado sem conhecer arquivo, HTTP ou banco.
 
@@ -250,7 +268,12 @@ def run_detailed_grid_simulation(
         dispute_model=dispute_model,
         race_control=race_control,
         lap_surface_water=lap_surface_water,
+        geometry=geometry,
     )
+    if geometry is not None:
+        result["speed_profiles"] = _speed_profiles_by_driver(
+            geometry, grid, attributes
+        )
     result["setup"] = {
         "total_laps": setup.total_laps,
         "track_id": setup.track_id,
@@ -313,6 +336,19 @@ def run_detailed_grid_simulation(
                     "o fator neutro 1.0, sem inferencia por nome."
                 ),
                 "entries": reliability_fallbacks,
+            }
+        )
+    if geometry is not None:
+        result["assumptions"].append(
+            {
+                "kind": "physical_lap_time",
+                "origin": "assumed",
+                "parameter_version": "assumed-car-physics-v1",
+                "rationale": (
+                    "ADR 0009: o tempo de volta emerge da velocidade por trecho "
+                    "derivada da curvatura, com envelope fisico assumido e nao "
+                    "calibrado; substitui a volta de referencia historica."
+                ),
             }
         )
     if setup.weather:

@@ -211,6 +211,22 @@ def _reference_lap(track_id):
     return table.get(track_id)
 
 
+def _track_geometry(track_id):
+    """TrackGeometry da pista para o motor fisico (ADR 0009), ou None sem artefato.
+
+    Pista sem geometria disponivel nao e erro: o motor cai no tempo calibrado.
+    """
+
+    if track_id is None:
+        return None
+    from app.services.track_geometry import geometry_object
+
+    try:
+        return geometry_object(track_id)
+    except HTTPException:
+        return None
+
+
 def run_grid(*, total_laps, track_id, weather):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
@@ -221,6 +237,7 @@ def run_grid(*, total_laps, track_id, weather):
 
     pairs, attributes, seed = read_current_grid()
     canonical_track_id, lap_length_m = _track_reference(track_id)
+    geometry = _track_geometry(canonical_track_id)
     try:
         segments = tuple(
             WeatherSegment(
@@ -249,6 +266,7 @@ def run_grid(*, total_laps, track_id, weather):
             lap_length_m=lap_length_m,
             rng=rng,
             reference_lap=_reference_lap(canonical_track_id),
+            geometry=geometry,
         )
     except ValueError as error:
         raise HTTPException(
