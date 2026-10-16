@@ -192,6 +192,64 @@ class ParametersViewTest(unittest.TestCase):
         self.assertIn("track_id desconhecido", view.status_message)
         self.assertFalse(view._launching)
 
+    def test_grid_view_builds_edits_and_saves_through_the_client(self) -> None:
+        from frontend.arcade.grid_view import GridView
+        from tests.test_grid_editor import grid_payload
+
+        class FakeGridClient:
+            def __init__(self) -> None:
+                self.calls: list[tuple] = []
+
+            def fetch_current_grid(self):
+                return None
+
+            def fetch_history_races(self, season):
+                return {
+                    "races": [
+                        {
+                            "race_id": "race:1141",
+                            "name": "São Paulo Grand Prix",
+                            "season": season,
+                            "round_number": 21,
+                        }
+                    ]
+                }
+
+            def build_grid(self, **request):
+                self.calls.append(("build", request))
+                return grid_payload()
+
+            def edit_grid(self, overrides):
+                self.calls.append(("edit", overrides))
+                return grid_payload()
+
+        client = FakeGridClient()
+        view = GridView(client=client)
+        deadline = time.monotonic() + 5
+        while len(view._sources) < 2 and time.monotonic() < deadline:
+            view.on_update(0)
+            time.sleep(0.01)
+        view._source_index = 1
+        view.build_grid()
+        while view._draft is None and time.monotonic() < deadline:
+            view.on_update(0)
+            time.sleep(0.01)
+        view.step_attribute("aggression", 1)
+        view.save_changes()
+        while view._busy and time.monotonic() < deadline:
+            view.on_update(0)
+            time.sleep(0.01)
+        view.on_draw()
+
+        self.assertEqual(
+            client.calls,
+            [
+                ("build", {"mode": "race", "race_id": "race:1141"}),
+                ("edit", [{"driver_id": "driver:830", "aggression": 1.53}]),
+            ],
+        )
+        self.assertIn("salvas", view._status)
+
     def test_restores_the_initial_values(self) -> None:
         view = ParametersView()
         view.laps_input.text = "12"

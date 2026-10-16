@@ -53,6 +53,8 @@ NEXT_TRACK_BOUNDS = (816, 382, 34, 31)
 TOGGLE_TRACK_BOUNDS = (956, 286, 268, 38)
 REMOVE_TRACK_BOUNDS = (956, 236, 268, 38)
 AUTOMATIC_BOUNDS = (956, 186, 268, 38)
+# Abaixo do painel de regras, que termina em y=230.
+DRIVERS_BOUNDS = (28, 176, 268, 38)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
 CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 36)
 SAVE_RULES_BOUNDS = (916, 13, 138, 36)
@@ -820,6 +822,7 @@ class ParametersView(UIView):
         self._draw_selection_button()
         self._draw_remove_button()
         self._draw_automatic_button()
+        self._draw_drivers_button()
         self._draw_confirmation_button()
         self._draw_track_navigation()
         self._draw_preview()
@@ -912,6 +915,9 @@ class ParametersView(UIView):
         if self._contains(AUTOMATIC_BOUNDS, x, y):
             self._update_rules(generation_mode="Automática")
             self.generate_automatic_sequence()
+            return
+        if self._contains(DRIVERS_BOUNDS, x, y):
+            self.open_grid_view()
             return
         if self._contains(CONFIRM_SERIES_BOUNDS, x, y):
             self.submit_configuration()
@@ -1022,6 +1028,36 @@ class ParametersView(UIView):
             anchor_x="center",
             anchor_y="center",
         ).draw()
+
+    def _draw_drivers_button(self) -> None:
+        left, bottom, width, height = DRIVERS_BOUNDS
+        self._draw_rounded_panel(
+            left, bottom, width, height, 8, (26, 36, 48), PANEL_BORDER_COLOR
+        )
+        self._native_text(
+            "Pilotos e grid",
+            left + width / 2,
+            bottom + height / 2,
+            PRIMARY_TEXT_COLOR,
+            11,
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+        self._native_text(
+            "Grid usado pelo Iniciar e atributos dos pilotos.",
+            left + width + 14,
+            bottom + height / 2,
+            SECONDARY_TEXT_COLOR,
+            9,
+            anchor_y="center",
+        ).draw()
+
+    def open_grid_view(self) -> None:
+        """Abra a tela de pilotos; ela volta para esta mesma configuração."""
+
+        from frontend.arcade.grid_view import GridView
+
+        self.window.show_view(GridView(return_view=self))
 
     def _draw_confirmation_button(self) -> None:
         """Offer a visible action to finalize the chosen order."""

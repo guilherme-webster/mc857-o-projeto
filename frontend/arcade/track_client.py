@@ -33,12 +33,18 @@ def _get(path: str, base_url: str) -> dict:
         return json.loads(response.read())
 
 
-def _post(path: str, payload: dict, base_url: str, timeout: float = 10) -> dict:
+def _post(
+    path: str,
+    payload: dict,
+    base_url: str,
+    timeout: float = 10,
+    method: str = "POST",
+) -> dict:
     request = urllib.request.Request(
         f"{base_url}{path}",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
-        method="POST",
+        method=method,
     )
     try:
         with _OPENER.open(request, timeout=timeout) as response:
@@ -96,14 +102,40 @@ def fetch_current_grid(base_url: str = BASE_URL) -> dict | None:
 
 
 def build_grid(
-    size: int, mode: str = "random", seed: int | None = None, base_url: str = BASE_URL
+    size: int | None = None,
+    mode: str = "random",
+    seed: int | None = None,
+    race_id: str | None = None,
+    base_url: str = BASE_URL,
 ) -> dict:
-    """Monte um grid novo no backend (``POST /catalog/grid``)."""
+    """Monte um grid novo no backend (``POST /catalog/grid``).
 
-    payload: dict = {"size": size, "mode": mode}
+    ``mode="race"`` usa a largada de ``race_id``; ai o tamanho vem da corrida.
+    """
+
+    payload: dict = {"mode": mode}
+    if size is not None:
+        payload["size"] = size
+    if race_id is not None:
+        payload["race_id"] = race_id
     if seed is not None:
         payload["seed"] = seed
     return _post("/catalog/grid", payload, base_url)
+
+
+def edit_grid(overrides: list[dict], base_url: str = BASE_URL) -> dict:
+    """Edite atributos do grid atual (``PATCH /catalog/grid``)."""
+
+    return _post("/catalog/grid", {"overrides": overrides}, base_url, method="PATCH")
+
+
+def fetch_history_races(season: int, base_url: str = BASE_URL) -> dict:
+    """Corridas historicas de uma temporada, para montar grids de largada."""
+
+    try:
+        return _get(f"/api/history/races?season={int(season)}", base_url)
+    except urllib.error.HTTPError as error:
+        raise BackendError(error.code, _error_detail(error)) from error
 
 
 def run_grid(setup: dict, base_url: str = BASE_URL) -> dict:
