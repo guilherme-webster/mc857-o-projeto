@@ -67,8 +67,12 @@ e uma frase de caracterização. Para mudar um piloto, edite o JSON: valores for
 da faixa do arquétipo são rejeitados.
 
 O `POST /catalog/grid` em modo `random` sorteia pilotos de toda a história
-(desde 1950); os perfis nomeados só entram num grid `manual` com os pares de
-2024. Pilotos sem perfil nomeado recebem atributos sorteados do arquétipo.
+(desde 1950); os perfis nomeados entram num grid `manual` com os pares de 2024
+ou no modo `race`, que reproduz a largada de uma corrida histórica
+(`race_id`, por exemplo uma etapa de 2024). Pilotos sem perfil nomeado recebem
+atributos sorteados do arquétipo. A resposta do grid traz, para quem tem campo
+de origem `preset`, a caracterização do perfil, e no topo o aviso de que os
+perfis são fictícios; a tela "Pilotos e grid" do Arcade mostra ambos.
 
 ## 4. Disputa de posição (slides da #40)
 
@@ -175,7 +179,7 @@ próprios parâmetros, não números fixos.
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
 - O clima existe (`domain/weather.py`, #69) mas ainda não afeta o tempo de volta
   nem os incidentes.
-- A interface Arcade ainda não dispara corridas nem as reproduz volta a volta;
-  `frontend/arcade/track_view.py` anima com velocidade constante. O
-  `scripts/race_report.py --html` do motor calibrado tem um visualizador que
-  pode servir de base.
+- A interface Arcade reproduz a corrida volta a volta a partir do `history`
+  (`frontend/arcade/race_playback.py`): dentro de cada volta a velocidade é
+  constante, então paradas e SC aparecem como voltas mais lentas, não como
+  entrada no pit lane ou carro de segurança desenhado.

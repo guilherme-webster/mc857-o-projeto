@@ -540,7 +540,21 @@ interface.
 - Verificações: 532 testes, 37 ignorados, os 2 erros de `/data/simulation`;
   GUI com as 3 falhas preexistentes. Ponta a ponta no app real: Suzuka +
   Interlagos, 15 voltas, navegação e tabela final conferidas.
-- Próximo passo: etapa 5 (tela de grid e pilotos) e a etapa 6 de backend que
-  ela exige; à parte, decidir com a #40 a calibração de `tyre_severity`.
-  Commits locais, sem push nem comentário no GitHub; levar este registro à
-  #2, #6, #18, #21 e #71.
+- Etapa 5 (+ backend da 6): `POST /catalog/grid` ganhou o modo `race`
+  (largada histórica via `starting_grid_pair_ids`; pit lane e sem posição ao
+  fim; carro compartilhado conta a primeira entrada) e a resposta do grid traz
+  `profile` (caracterização) e `profiles_disclaimer`; `/api/history/races`
+  aceita `season`. Tela "Pilotos e grid" (`grid_view.py`, estado puro em
+  `grid_editor.py`): aleatório ou largada de cada etapa de 2024, tabela com
+  arquétipo e atributos coloridos pela origem, painel com perfil, −/+ e
+  `PATCH`. Botão na configuração, abaixo das regras.
+- Defeitos achados no teste real e corrigidos: `GridDraft` com `slots` sem o
+  campo `_index`; `HistoricalRecord` sem `.get` (o teste com dicts não pegava;
+  o falso agora só indexa).
+- Verificações: suíte e GUI sem regressões (mesmos 2 erros de
+  `/data/simulation` e 3 falhas de GUI preexistentes). Ponta a ponta: largada
+  de São Paulo 2024 conferida contra a real, edição e gravação de
+  agressividade.
+- Pendente: limitações de pneus/severidade (#40), voltas padrão por pista (69
+  fixas), ponto de volta rápida. Commits locais, sem push nem comentário no
+  GitHub; levar este registro à #2, #6, #18, #21 e #71.
