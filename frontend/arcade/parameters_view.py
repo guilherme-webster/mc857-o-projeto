@@ -29,6 +29,7 @@ from frontend.arcade.configuration_state import (
     WEATHER_MODE_OPTIONS,
     WeatherSchedule,
 )
+from frontend.arcade.race_launcher import HttpRaceClient, LaunchOutcome, launch_plan
 from frontend.arcade.track_client import fetch_track, fetch_tracks
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 from frontend.arcade.theme import (
@@ -89,8 +90,21 @@ class ParametersView(UIView):
         on_start: Callable[[SimulationPlan], None] | None = None,
         track_catalog_loader: Callable[[], dict] = fetch_tracks,
         track_loader: Callable[[str], dict] = fetch_track,
+        simulation_runner: (
+            Callable[[SimulationPlan, Callable[[str], None]], LaunchOutcome] | None
+        ) = None,
     ) -> None:
+        """``on_start`` recebe o plano e encerra o fluxo aqui (usado em testes).
+
+        ``simulation_runner`` executa o plano no backend fora do laco do
+        Arcade; ao terminar, a view abre a corrida da primeira etapa. Sem
+        nenhum dos dois, o botao apenas valida o plano.
+        """
+
         super().__init__()
+        self._simulation_runner = simulation_runner
+        self._launch_results: SimpleQueue[tuple[str, object]] = SimpleQueue()
+        self._launching = False
         self.layout = build_initial_configuration_layout()
         self.initial = initial or ConfigurationFormData()
         self.configuration = self.initial
@@ -223,6 +237,7 @@ class ParametersView(UIView):
         """Accept completed catalog responses on the Arcade thread."""
 
         del delta_time
+        self._accept_launch_results()
         try:
             outcome, payload = self._catalog_results.get_nowait()
         except Empty:
@@ -537,9 +552,74 @@ class ParametersView(UIView):
         if self._on_start is not None:
             self._on_start(plan)
             message = "Sequência enviada para iniciar a simulação."
+        elif self._simulation_runner is not None:
+            self._start_simulation(plan)
+            return
         else:
             message = "Sequência válida; execução pela interface ainda pendente."
         self._set_status(message, SUCCESS_COLOR)
+
+    def _start_simulation(self, plan: SimulationPlan) -> None:
+        """Rode o plano numa thread; ``on_update`` recebe progresso e fim."""
+
+        if self._launching:
+            self._set_status("Simulação já em andamento…", SECONDARY_TEXT_COLOR)
+            return
+        self._launching = True
+        runner = self._simulation_runner
+        results = self._launch_results
+
+        def run() -> None:
+            try:
+                outcome = runner(
+                    plan, lambda message: results.put(("progress", message))
+                )
+            except (RuntimeError, OSError, ValueError, KeyError) as error:
+                # BackendError e RuntimeError; URLError e OSError.
+                results.put(("error", str(error)))
+            else:
+                results.put(("done", outcome))
+
+        self._set_status("Iniciando a simulação…", SECONDARY_TEXT_COLOR)
+        Thread(target=run, name="simulation-launcher", daemon=True).start()
+
+    def _accept_launch_results(self) -> None:
+        """Aplique, na thread do Arcade, o que o lancador publicou."""
+
+        while True:
+            try:
+                kind, payload = self._launch_results.get_nowait()
+            except Empty:
+                return
+            if kind == "progress":
+                self._set_status(str(payload), SECONDARY_TEXT_COLOR)
+                continue
+            self._launching = False
+            if kind == "error":
+                self._set_status(f"Não foi possível simular: {payload}", ERROR_COLOR)
+                return
+            self._open_simulated_race(payload)
+            return
+
+    def _open_simulated_race(self, outcome: LaunchOutcome) -> None:
+        from frontend.arcade.track_view import TrackView
+
+        first = outcome.races[0]
+        notices = [outcome.grid_note, *outcome.warnings]
+        if len(outcome.races) > 1:
+            notices.append(
+                f"Etapas 2-{len(outcome.races)} salvas: abra em Trocar corrida."
+            )
+        try:
+            view = TrackView(first.track, first.race, notices=notices)
+        except (KeyError, TypeError, ValueError) as error:
+            self._set_status(
+                f"Corrida simulada, mas não foi possível exibi-la: {error}",
+                ERROR_COLOR,
+            )
+            return
+        self._set_status("Simulação concluída.", SUCCESS_COLOR)
+        self.window.show_view(view)
 
     def reset_configuration(self) -> None:
         """Restore the values that were supplied when the view was created."""
@@ -1451,5 +1531,11 @@ def create_parameters_window() -> arcade.Window:
         layout.title,
         resizable=False,
     )
-    window.show_view(ParametersView())
+    window.show_view(
+        ParametersView(
+            simulation_runner=lambda plan, progress: launch_plan(
+                plan, HttpRaceClient(), progress
+            )
+        )
+    )
     return window

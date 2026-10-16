@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import urllib.error
 from bisect import bisect_right
+from collections.abc import Sequence
 
 import arcade
 
@@ -256,7 +257,10 @@ class TrackView(arcade.View):
     do motor; a view so converte voltas em metros e metros em pontos da tela.
     """
 
-    def __init__(self, track: dict, race: dict) -> None:
+    def __init__(self, track: dict, race: dict, notices: Sequence[str] = ()) -> None:
+        """``notices`` sao avisos de quem disparou a corrida (origem do grid,
+        opcoes ignoradas pelo motor), mostrados no canto superior direito."""
+
         super().__init__()
         pts = sorted(track["track_points"], key=lambda p: p["sequence"])
         self._cum = [p["cumulative_distance_m"] for p in pts]
@@ -287,6 +291,10 @@ class TrackView(arcade.View):
         self._hud = arcade.Text(
             "", 20, 24, PRIMARY_TEXT_COLOR, 13, font_name="monospace"
         )
+        self._notice_texts = [
+            arcade.Text(notice, 0, 0, _HEADER_COLOR, 10, anchor_x="right")
+            for notice in notices
+        ]
         self._weather_text = arcade.Text(
             "", 0, 0, PRIMARY_TEXT_COLOR, 15, bold=True, anchor_x="right"
         )
@@ -461,6 +469,10 @@ class TrackView(arcade.View):
         self._weather_text.x = width - 20
         self._weather_text.y = height - 40
         self._weather_text.draw()
+        for i, notice in enumerate(self._notice_texts):
+            notice.x = width - 20
+            notice.y = height - 64 - i * 16
+            notice.draw()
 
         if self._paused:
             state = "PAUSADO"
