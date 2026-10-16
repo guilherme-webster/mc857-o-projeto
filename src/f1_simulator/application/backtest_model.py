@@ -14,13 +14,14 @@ quando o ritmo e conhecido. Essa distincao precisa aparecer em qualquer
 relatorio, porque um leitor desavisado leria "erro de 1 posicao" como poder
 preditivo sobre uma corrida futura, que este experimento nao demonstra.
 
-Toda metrica e comparada contra duas linhas de base deliberadamente ingenuas:
+Toda metrica e comparada contra uma linha de base deliberadamente ingenua:
 
-``grid``      -- a ordem de largada e a ordem de chegada;
-``constant``  -- o modelo antigo, de ritmo constante por carro.
+``grid``      -- a ordem de largada e a ordem de chegada.
 
-Um modelo mais complexo so se justifica se vencer as duas. Essa regra evita
-adicionar mecanismos que apenas aumentam a contagem de classes.
+A segunda linha de base, ``constant`` (ritmo constante por carro), saiu junto
+com o nucleo simples, em ``d510721``. Um modelo mais complexo so se justifica se
+vencer a linha de base; essa regra evita adicionar mecanismos que apenas
+aumentam a contagem de classes.
 """
 
 from __future__ import annotations
