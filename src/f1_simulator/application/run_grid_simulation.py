@@ -256,6 +256,17 @@ def run_detailed_grid_simulation(
         "track_id": setup.track_id,
         "weather": _weather_echo(setup),
     }
+    # O history so tem retratos ao fim de cada volta; sem a largada, quem
+    # consome o resultado (a TrackView, por exemplo) nao sabe a posicao de
+    # partida nem o pneu da primeira volta.
+    result["starting_grid"] = [
+        {
+            "position": entrant.grid_position,
+            "driver_id": entrant.driver_id,
+            "compound": entrant.starting_compound,
+        }
+        for entrant in entrants
+    ]
     result["reference_lap_time_ms"] = reference_lap_time_ms
     result["track_reference"] = {
         "requested_track_id": setup.track_id,
