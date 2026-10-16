@@ -27,6 +27,8 @@ BASE_PLAYBACK_SPEED = 1_000.0  # 1x = tempo real (1 s de simulacao por 1 s de te
 MIN_SPEED = 1.0 / 256.0  # ~0,004x: permite camera lenta extrema
 SPEED_FACTOR = 2.0  # cada toque em up/down dobra ou divide a velocidade
 
+# Uma cor por carro para um grid de ate 20 carros; acima disso as cores voltam
+# a se repetir. Todas com contraste suficiente sobre o fundo preto.
 _PALETTE = [
     (225, 36, 54),
     (58, 134, 218),
@@ -36,6 +38,18 @@ _PALETTE = [
     (240, 132, 60),
     (90, 200, 250),
     (255, 105, 180),
+    (160, 220, 80),
+    (0, 175, 175),
+    (200, 160, 255),
+    (255, 160, 120),
+    (210, 210, 210),
+    (255, 225, 150),
+    (110, 140, 255),
+    (60, 180, 90),
+    (230, 90, 140),
+    (190, 150, 100),
+    (150, 230, 220),
+    (255, 240, 90),
 ]
 
 _RAIN_LABEL = {
@@ -63,6 +77,40 @@ _TRACK_TINT = {
 _FEED_TINT = {**_TRACK_TINT, "GREEN": (70, 211, 142)}
 _FEED_LINES = 6
 _FEED_COLOR = (190, 198, 210)
+
+# Composto -> (letra, cor). Composto desconhecido aparece como "?".
+_COMPOUND_STYLE = {
+    "SOFT": ("S", (225, 36, 54)),
+    "MEDIUM": ("M", (245, 197, 66)),
+    "HARD": ("H", (235, 235, 235)),
+    "INTERMEDIATE": ("I", (70, 211, 142)),
+    "WET": ("W", (58, 134, 218)),
+}
+_RETIREMENT_LABEL = {
+    "CONTACT": "CONTATO",
+    "CRASH": "BATIDA",
+    "MECHANICAL": "QUEBRA",
+}
+_GAINED_COLOR = (70, 211, 142)
+_LOST_COLOR = (255, 112, 112)
+_PIT_COLOR = (240, 150, 40)
+_HEADER_COLOR = (130, 140, 150)
+# Colunas da classificacao: (cabecalho, x em px a partir da margem, ancora).
+# Cada coluna e um texto proprio porque a fonte "monospace" nem sempre e
+# monoespacada e alinhar com espacos deixava as colunas tortas.
+_STANDING_COLUMNS = {
+    "position": ("P", 22, "right"),
+    "name": ("PILOTO", 32, "left"),
+    "time": ("INTERVALO", 262, "right"),
+    "tyre": ("PN", 280, "center"),
+    "age": ("VOL", 318, "right"),
+    "stops": ("PAR", 350, "right"),
+    "delta": ("+/-", 392, "right"),
+}
+_TYRE_RADIUS = 8
+# Largura reservada a esquerda para a classificacao; a pista e desenhada so no
+# espaco restante, para que tabela e tracado nao se sobreponham.
+STANDINGS_WIDTH = 440
 
 _MENU_BG = (16, 22, 30)
 _ROW_BG = (30, 41, 53)
@@ -268,7 +316,11 @@ class TrackView(arcade.View):
             anchor_x="center",
             anchor_y="center",
         )
-        self._row_texts: list[arcade.Text] = []
+        self._row_texts: list[dict[str, arcade.Text]] = []
+        self._header_texts = {
+            key: arcade.Text(label, 0, 0, _HEADER_COLOR, 9, bold=True, anchor_x=anchor)
+            for key, (label, _, anchor) in _STANDING_COLUMNS.items()
+        }
         self._status_text = arcade.Text(
             "",
             0,
@@ -305,7 +357,8 @@ class TrackView(arcade.View):
         """Projete a geometria normalizada no tamanho atual da janela."""
 
         width, height = self.window.width, self.window.height
-        usable_w = max(1.0, width - 2 * MARGIN)
+        area_left = STANDINGS_WIDTH
+        usable_w = max(1.0, width - area_left - MARGIN)
         usable_h = max(1.0, height - 2 * MARGIN)
         if usable_w / usable_h > self._aspect:
             draw_h = usable_h
@@ -313,7 +366,7 @@ class TrackView(arcade.View):
         else:
             draw_w = usable_w
             draw_h = draw_w / self._aspect
-        off_x = (width - draw_w) / 2
+        off_x = area_left + (width - area_left - MARGIN - draw_w) / 2
         off_y = (height - draw_h) / 2
         return [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._unit]
 
@@ -433,36 +486,98 @@ class TrackView(arcade.View):
         text.draw()
 
     def _draw_standings(self, height: int) -> None:
-        standings = self._playback.standings(self._elapsed)
-        top = height - 80
-        line_h = 20
-        rows = []
-        for row in standings:
-            if row.retired:
-                time_text = "OUT"
-            elif row.position == 1:
-                leader = self._playback.car(row.driver_id)
-                time_text = _format_clock(min(self._elapsed, leader.finish_time_ms))
-            elif row.gap_ms is None:
-                time_text = "-"
-            else:
-                time_text = _format_gap(row.gap_ms)
-            name = row.name[:16]
-            rows.append(
-                (row.driver_id, f"{row.position:>2}  {name:<16} {time_text:>10}")
-            )
+        """Classificacao ao vivo com pneu, paradas e posicoes ganhas.
 
-        while len(self._row_texts) < len(rows):
-            self._row_texts.append(
-                arcade.Text("", 20, 0, PRIMARY_TEXT_COLOR, 12, font_name="monospace")
-            )
-        for i, (driver_id, line) in enumerate(rows):
-            text = self._row_texts[i]
-            text.text = line
-            text.x = 20
-            text.y = top - i * line_h
-            text.color = self._color_by_driver.get(driver_id, PRIMARY_TEXT_COLOR)
+        O composto e a idade sao os do ultimo retrato do carro; "BOX" marca a
+        volta que termina com parada; quem abandonou mostra a causa.
+        """
+
+        left = 20
+        header_y = height - 74
+        top = height - 96
+        line_h = 20
+        for key, text in self._header_texts.items():
+            text.x = left + _STANDING_COLUMNS[key][1]
+            text.y = header_y
             text.draw()
+
+        standings = self._playback.standings(self._elapsed)
+        while len(self._row_texts) < len(standings):
+            self._row_texts.append(
+                {
+                    key: arcade.Text(
+                        "",
+                        0,
+                        0,
+                        PRIMARY_TEXT_COLOR,
+                        9 if key == "tyre" else 12,
+                        anchor_x=anchor,
+                        anchor_y="center",
+                        bold=key == "tyre",
+                    )
+                    for key, (_, _, anchor) in _STANDING_COLUMNS.items()
+                }
+            )
+        for i, row in enumerate(standings):
+            texts = self._row_texts[i]
+            y = top - i * line_h
+            car_color = self._color_by_driver.get(row.driver_id, PRIMARY_TEXT_COLOR)
+            cells = self._standing_cells(row, car_color)
+            for key, (value, color) in cells.items():
+                text = texts[key]
+                text.text = value
+                text.color = color
+                text.x = left + _STANDING_COLUMNS[key][1]
+                text.y = y
+                if key == "tyre" and value:
+                    arcade.draw_circle_outline(text.x, y, _TYRE_RADIUS, color, 2)
+                text.draw()
+
+    def _standing_cells(self, row, car_color) -> dict[str, tuple[str, tuple]]:
+        """Texto e cor de cada coluna de uma linha da classificacao."""
+
+        if row.retired:
+            time_text = _RETIREMENT_LABEL.get(row.retirement_cause, "OUT")
+        elif row.position == 1:
+            leader = self._playback.car(row.driver_id)
+            time_text = _format_clock(min(self._elapsed, leader.finish_time_ms))
+        elif row.gap_ms is None:
+            time_text = "-"
+        else:
+            time_text = _format_gap(row.gap_ms)
+
+        tyre = row.tyre
+        letter, tyre_color = ("", car_color)
+        age_text = stops_text = ""
+        if tyre is not None and not row.retired:
+            letter, tyre_color = _COMPOUND_STYLE.get(
+                tyre.compound, ("?", _HEADER_COLOR)
+            )
+            age_text = "" if tyre.age_laps is None else str(tyre.age_laps)
+            stops_text = str(tyre.stops)
+
+        if row.retired:
+            delta = ("", car_color)
+        elif row.in_pit:
+            delta = ("BOX", _PIT_COLOR)
+        elif row.positions_gained is None:
+            delta = ("", car_color)
+        elif row.positions_gained > 0:
+            delta = (f"+{row.positions_gained}", _GAINED_COLOR)
+        elif row.positions_gained < 0:
+            delta = (str(row.positions_gained), _LOST_COLOR)
+        else:
+            delta = ("=", _HEADER_COLOR)
+
+        return {
+            "position": (str(row.position), car_color),
+            "name": (row.name[:18], car_color),
+            "time": (time_text, car_color),
+            "tyre": (letter, tyre_color),
+            "age": (age_text, car_color),
+            "stops": (stops_text, car_color),
+            "delta": delta,
+        }
 
     def _draw_race_control(self, status, width: int, height: int) -> None:
         """Faixa do estado da pista no topo e ultimas mensagens embaixo."""

@@ -23,7 +23,10 @@ Hipoteses de exibicao (nao fazem parte do modelo de corrida):
   interpolada linearmente entre dois fins de volta. Uma parada nos boxes ou um
   SC aparecem como uma volta inteira mais lenta, nao como um ponto da pista;
 - o carro que abandona completa a volta registrada e some da pista no fim
-  dela, porque o motor decide o abandono depois de contabilizar a volta.
+  dela, porque o motor decide o abandono depois de contabilizar a volta;
+- o pneu mostrado e o do ultimo retrato do proprio carro: o motor troca o jogo
+  ao fim da volta da parada, entao o composto novo aparece quando o carro
+  fecha essa volta. Durante a volta da parada a tabela mostra ``in_pit``.
 """
 
 from __future__ import annotations
@@ -34,6 +37,20 @@ from dataclasses import dataclass
 from math import floor
 
 RETIRED = "RETIRED"
+
+
+@dataclass(frozen=True, slots=True)
+class TyreState:
+    """Pneu e paradas de um carro num retrato; ``None`` quando desconhecido.
+
+    O estado inicial vem de ``starting_grid``. Corridas salvas antes desse
+    campo nao informam o pneu da largada, e ele fica ``None`` em vez de ser
+    adivinhado a partir do primeiro retrato.
+    """
+
+    compound: str | None
+    age_laps: int | None
+    stops: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +71,10 @@ class CarTimeline:
     name: str
     lap_end_times_ms: tuple[float, ...]
     retired: bool
+    # ``tyre_states[k]`` e o estado depois da volta ``k``; ``[0]`` e a largada.
+    tyre_states: tuple[TyreState, ...] = ()
+    retirement_cause: str | None = None
+    grid_position: int | None = None
 
     @property
     def laps_completed(self) -> int:
@@ -98,6 +119,29 @@ class CarTimeline:
     def is_retired_at(self, t_ms: float) -> bool:
         return self.retired and t_ms >= self.finish_time_ms
 
+    def tyre_at(self, t_ms: float) -> TyreState | None:
+        """Pneu em uso no instante: o do ultimo retrato do proprio carro."""
+
+        if not self.tyre_states:
+            return None
+        completed = min(floor(self.laps_at(t_ms)), len(self.tyre_states) - 1)
+        return self.tyre_states[completed]
+
+    def in_pit_lap_at(self, t_ms: float) -> bool:
+        """Se a volta em andamento termina com uma parada nos boxes.
+
+        O motor nao modela a entrada no pit lane: a perda da parada esta
+        diluida na volta inteira, e por isso a volta inteira e marcada.
+        """
+
+        laps = self.laps_at(t_ms)
+        completed = floor(laps)
+        if completed >= self.laps_completed or completed + 1 >= len(self.tyre_states):
+            return False
+        before = self.tyre_states[completed]
+        after = self.tyre_states[completed + 1]
+        return after.stops > before.stops
+
 
 @dataclass(frozen=True, slots=True)
 class StandingRow:
@@ -115,6 +159,11 @@ class StandingRow:
     lap: int
     retired: bool
     gap_ms: float | None
+    tyre: TyreState | None = None
+    in_pit: bool = False
+    retirement_cause: str | None = None
+    # Largada menos posicao atual: positivo quando ganhou posicoes.
+    positions_gained: int | None = None
 
 
 class RacePlayback:
@@ -132,7 +181,9 @@ class RacePlayback:
                 "corrida sem history volta a volta; rode-a de novo no motor atual"
             )
         self.total_laps = total_laps
-        self._cars = _build_timelines(history, total_laps)
+        self._cars = _build_timelines(
+            history, total_laps, _starting_grid(race.get("starting_grid"))
+        )
         self._by_id = {car.driver_id: car for car in self._cars}
         self.duration_ms = max(car.finish_time_ms for car in self._cars)
 
@@ -207,14 +258,22 @@ class RacePlayback:
                 reach_time = car.time_at_laps(leader_laps)
                 if reach_time is not None and leader_time is not None:
                     gap_ms = reach_time - leader_time
+            position = len(rows) + 1
             rows.append(
                 StandingRow(
-                    position=len(rows) + 1,
+                    position=position,
                     driver_id=car.driver_id,
                     name=car.name,
                     lap=_lap_in_progress(laps, self.total_laps),
                     retired=False,
                     gap_ms=gap_ms,
+                    tyre=car.tyre_at(t_ms),
+                    in_pit=car.in_pit_lap_at(t_ms),
+                    positions_gained=(
+                        car.grid_position - position
+                        if car.grid_position is not None
+                        else None
+                    ),
                 )
             )
         for car in retired:
@@ -226,13 +285,46 @@ class RacePlayback:
                     lap=car.laps_completed,
                     retired=True,
                     gap_ms=None,
+                    tyre=car.tyre_at(t_ms),
+                    retirement_cause=car.retirement_cause,
                 )
             )
         return rows
 
 
+def _starting_grid(value: object) -> dict[str, tuple[int, str]]:
+    """``driver_id -> (posicao, composto)`` de ``starting_grid``, se houver."""
+
+    if value is None:
+        return {}
+    if not isinstance(value, Sequence):
+        raise ValueError("starting_grid deveria ser uma lista")
+    grid: dict[str, tuple[int, str]] = {}
+    for entry in value:
+        try:
+            grid[str(entry["driver_id"])] = (
+                int(entry["position"]),
+                str(entry["compound"]),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"starting_grid malformado: {error!r}") from error
+    return grid
+
+
+def _tyre_state(car: Mapping[str, object]) -> TyreState:
+    compound = car.get("compound")
+    age = car.get("tyre_age_laps")
+    return TyreState(
+        compound=str(compound) if compound is not None else None,
+        age_laps=int(age) if age is not None else None,
+        stops=int(car.get("stops_made") or 0),
+    )
+
+
 def _build_timelines(
-    history: Sequence[object], total_laps: int
+    history: Sequence[object],
+    total_laps: int,
+    starting_grid: Mapping[str, tuple[int, str]],
 ) -> tuple[CarTimeline, ...]:
     """Monte as linhas do tempo validando o contrato do ``history``.
 
@@ -247,6 +339,8 @@ def _build_timelines(
     names: dict[str, str] = {}
     times: dict[str, list[float]] = {}
     statuses: dict[str, str] = {}
+    tyres: dict[str, list[TyreState]] = {}
+    causes: dict[str, str | None] = {}
     for snapshot in history:
         cars = snapshot.get("cars") if isinstance(snapshot, Mapping) else None
         if not isinstance(cars, Sequence):
@@ -262,15 +356,27 @@ def _build_timelines(
                 order.append(driver_id)
                 names[driver_id] = str(car.get("name", driver_id))
                 times[driver_id] = []
+                start = starting_grid.get(driver_id)
+                tyres[driver_id] = [
+                    TyreState(start[1], 0, 0) if start else TyreState(None, None, 0)
+                ]
             lap_times = times[driver_id]
             if laps == len(lap_times) + 1:
                 previous = lap_times[-1] if lap_times else 0.0
                 lap_times.append(max(total_ms, previous))
+                try:
+                    tyres[driver_id].append(_tyre_state(car))
+                except (TypeError, ValueError) as error:
+                    raise ValueError(
+                        f"{driver_id}: pneu malformado no history: {error!r}"
+                    ) from error
             elif laps != len(lap_times):
                 raise ValueError(
                     f"{driver_id}: laps_completed salta de {len(lap_times)} para {laps}"
                 )
             statuses[driver_id] = str(car.get("status", ""))
+            cause = car.get("retirement_cause")
+            causes[driver_id] = str(cause) if cause is not None else None
 
     timelines = []
     for driver_id in order:
@@ -284,8 +390,17 @@ def _build_timelines(
             )
         if not lap_times:
             raise ValueError(f"{driver_id}: sem nenhuma volta registrada")
+        start = starting_grid.get(driver_id)
         timelines.append(
-            CarTimeline(driver_id, names[driver_id], tuple(lap_times), retired)
+            CarTimeline(
+                driver_id,
+                names[driver_id],
+                tuple(lap_times),
+                retired,
+                tyre_states=tuple(tyres[driver_id]),
+                retirement_cause=causes[driver_id] if retired else None,
+                grid_position=start[0] if start else None,
+            )
         )
     if not timelines:
         raise ValueError("history sem carros")

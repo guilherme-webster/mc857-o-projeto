@@ -16,13 +16,20 @@ from f1_simulator.domain.random_source import SeededRandomSource
 from tests.model_support import parameters
 
 
-def car(driver_id: str, laps: int, total_ms: float, status: str = "RUNNING") -> dict:
+def car(
+    driver_id: str,
+    laps: int,
+    total_ms: float,
+    status: str = "RUNNING",
+    **extra: object,
+) -> dict:
     return {
         "driver_id": driver_id,
         "name": f"Piloto {driver_id}",
         "laps_completed": laps,
         "total_time_ms": total_ms,
         "status": status,
+        **extra,
     }
 
 
@@ -121,6 +128,104 @@ class RacePlaybackRetirementTest(unittest.TestCase):
         self.assertEqual(self.playback.current_lap(250_000.0), 3)
 
 
+def tyre(compound: str, age: int, stops: int) -> dict:
+    return {"compound": compound, "tyre_age_laps": age, "stops_made": stops}
+
+
+class RacePlaybackTyresAndPitsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        # A larga em 2o e para ao fim da volta 2 (MEDIUM -> HARD); B larga na
+        # pole, nao para e abandona por contato na volta 3.
+        payload = race(
+            4,
+            [
+                car("B", 1, 99_000.0, **tyre("MEDIUM", 1, 0)),
+                car("A", 1, 100_000.0, **tyre("MEDIUM", 1, 0)),
+            ],
+            [
+                car("B", 2, 198_000.0, **tyre("MEDIUM", 2, 0)),
+                car("A", 2, 220_000.0, **tyre("HARD", 0, 1)),
+            ],
+            [
+                car("A", 3, 318_000.0, **tyre("HARD", 1, 1)),
+                car(
+                    "B",
+                    3,
+                    297_000.0,
+                    "RETIRED",
+                    retirement_cause="CONTACT",
+                    **tyre("MEDIUM", 3, 0),
+                ),
+            ],
+            [
+                car("A", 4, 416_000.0, **tyre("HARD", 2, 1)),
+                car(
+                    "B",
+                    3,
+                    297_000.0,
+                    "RETIRED",
+                    retirement_cause="CONTACT",
+                    **tyre("MEDIUM", 3, 0),
+                ),
+            ],
+        )
+        payload["starting_grid"] = [
+            {"position": 1, "driver_id": "B", "compound": "MEDIUM"},
+            {"position": 2, "driver_id": "A", "compound": "MEDIUM"},
+        ]
+        self.playback = RacePlayback(payload)
+
+    def test_starting_tyre_comes_from_the_grid(self) -> None:
+        state = self.playback.car("A").tyre_at(0.0)
+        self.assertEqual(
+            (state.compound, state.age_laps, state.stops), ("MEDIUM", 0, 0)
+        )
+
+    def test_tyre_shown_is_the_one_of_the_last_completed_lap(self) -> None:
+        a = self.playback.car("A")
+        self.assertEqual(a.tyre_at(150_000.0).compound, "MEDIUM")
+        self.assertEqual(a.tyre_at(219_999.0).compound, "MEDIUM")
+        after_stop = a.tyre_at(220_000.0)
+        self.assertEqual((after_stop.compound, after_stop.stops), ("HARD", 1))
+
+    def test_whole_pit_lap_is_flagged(self) -> None:
+        a = self.playback.car("A")
+        self.assertFalse(a.in_pit_lap_at(99_000.0))
+        self.assertTrue(a.in_pit_lap_at(100_001.0))
+        self.assertTrue(a.in_pit_lap_at(219_000.0))
+        self.assertFalse(a.in_pit_lap_at(220_001.0))
+        self.assertFalse(a.in_pit_lap_at(1e9))
+
+    def test_rows_carry_pit_and_positions_gained(self) -> None:
+        rows = {row.driver_id: row for row in self.playback.standings(150_000.0)}
+        self.assertTrue(rows["A"].in_pit)
+        self.assertEqual(rows["A"].positions_gained, 0)
+        self.assertEqual(rows["B"].positions_gained, 0)
+
+        final = self.playback.standings(self.playback.duration_ms)
+        self.assertEqual(final[0].driver_id, "A")
+        self.assertEqual(final[0].positions_gained, 1)
+
+    def test_retired_row_keeps_the_cause(self) -> None:
+        final = self.playback.standings(self.playback.duration_ms)
+        self.assertTrue(final[1].retired)
+        self.assertEqual(final[1].retirement_cause, "CONTACT")
+        self.assertIsNone(final[1].positions_gained)
+
+    def test_race_without_starting_grid_hides_what_it_cannot_know(self) -> None:
+        playback = RacePlayback(race(1, [car("A", 1, 100_000.0, **tyre("SOFT", 1, 0))]))
+        a = playback.car("A")
+        self.assertIsNone(a.tyre_at(0.0).compound)
+        self.assertEqual(a.tyre_at(100_000.0).compound, "SOFT")
+        self.assertIsNone(playback.standings(0.0)[0].positions_gained)
+
+    def test_rejects_malformed_starting_grid(self) -> None:
+        payload = race(1, [car("A", 1, 1.0)])
+        payload["starting_grid"] = [{"driver_id": "A"}]
+        with self.assertRaisesRegex(ValueError, "starting_grid"):
+            RacePlayback(payload)
+
+
 class RacePlaybackSafetyCarCompressionTest(unittest.TestCase):
     def test_compressed_lap_end_never_moves_a_car_backwards(self) -> None:
         # Sob SC o motor reescreve L para tempo_lider + 700 ms; L, que estava
@@ -200,6 +305,24 @@ class RacePlaybackEngineContractTest(unittest.TestCase):
             [row.retired for row in rows],
             [entry["status"] == "RETIRED" for entry in classification],
         )
+
+    def test_final_positions_gained_use_the_engine_starting_grid(self) -> None:
+        grid = {
+            entry["driver_id"]: entry["position"]
+            for entry in self.result["starting_grid"]
+        }
+        for row in self.playback.standings(self.playback.duration_ms):
+            if row.retired:
+                continue
+            self.assertEqual(row.positions_gained, grid[row.driver_id] - row.position)
+
+    def test_tyre_states_follow_the_engine_snapshots(self) -> None:
+        final = {car["driver_id"]: car for car in self.result["classification"]}
+        for timeline in self.playback.cars:
+            last = timeline.tyre_at(self.playback.duration_ms)
+            entry = final[timeline.driver_id]
+            self.assertEqual(last.compound, entry["compound"])
+            self.assertEqual(last.stops, entry["stops_made"])
 
     def test_each_car_reaches_lap_k_at_its_recorded_time(self) -> None:
         for snapshot in self.result["history"]:
