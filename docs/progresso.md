@@ -530,6 +530,17 @@ interface.
 - Limitações: o preset ("Corrida livre"/"GP de São Paulo 2024") ainda não
   escolhe o grid; regras de pontuação e desempate do torneio não são
   calculadas; da `TrackView` não há volta para a configuração.
+- Torneio: `f1_simulator.domain.championship` calcula a tabela (pontos F1
+  25-18-...-1 sem volta rápida, abandono não pontua, desempate por média ou
+  vitórias) e é exposto em `POST /championship/standings`. O frontend não
+  importa o núcleo (ADR 0004; a imagem do frontend não tem `f1_simulator`).
+  A `TrackView` ganhou "Próxima etapa"/"Resultado do torneio" e o título
+  "Etapa i/N · pista"; `TournamentResultView` mostra a tabela, com "Voltar à
+  última etapa", "Corridas salvas" e "Nova simulação".
+- Verificações: 532 testes, 37 ignorados, os 2 erros de `/data/simulation`;
+  GUI com as 3 falhas preexistentes. Ponta a ponta no app real: Suzuka +
+  Interlagos, 15 voltas, navegação e tabela final conferidas.
 - Próximo passo: etapa 5 (tela de grid e pilotos) e a etapa 6 de backend que
-  ela exige. Commits locais, sem push nem comentário no GitHub; levar este
-  registro à #2, #6, #18, #21 e #71.
+  ela exige; à parte, decidir com a #40 a calibração de `tyre_severity`.
+  Commits locais, sem push nem comentário no GitHub; levar este registro à
+  #2, #6, #18, #21 e #71.
