@@ -4,6 +4,9 @@
 [`docs/modelagem-heuristica.md`](../modelagem-heuristica.md); decisão no
 [ADR 0008](../adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md).
 **Data:** 2026-10-03
+**Atualização (2026-10-16):** as telas do Arcade que este PRD deixava de fora
+(disparar e reproduzir a corrida, grid e perfis) foram implementadas na branch
+`6-reproducao-volta-a-volta`; ver o README e o [CODEBASE_MAP](../CODEBASE_MAP.md).
 **Issues:** #67 (Modelagem pilotos, filha de #61). Integra o trabalho da #40
 (`40-modelagem-corrida-calibrada`, de @DaviGabrielBC), que não chegou à
 `develop`.

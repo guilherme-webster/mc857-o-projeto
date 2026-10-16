@@ -1,5 +1,10 @@
 # Planejamento da modelagem do simulador
 
+> Atualização em 16/10/2026: os caminhos auditados neste planejamento
+> (`backend/app/engine/simulation.py`, `frontend/arcade/oval_track.py`,
+> `race_view.py`) não existem mais. Hoje o motor da corrida é `simulate_detailed_race` (`src/f1_simulator/domain/race_simulation.py`), servido por `POST /catalog/grid/run`, com atributos de piloto heurísticos ([ADR 0008](adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md)), e a interface reproduz a
+> corrida volta a volta. Ver [CODEBASE_MAP](CODEBASE_MAP.md).
+
 > Implementação inicial após integração do ETL: veja o
 > [contrato executável de ritmo e consistência](modelagem-pilotos-inicial.md).
 > O texto abaixo preserva o planejamento anterior; o novo documento distingue

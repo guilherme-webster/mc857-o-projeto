@@ -1,5 +1,10 @@
 # O que o perfil de piloto deverá controlar na simulação
 
+> Atualização em 16/10/2026: o demonstrador `backend/app/engine/simulation.py`
+> citado abaixo não existe mais; o motor da corrida é `simulate_detailed_race` (`src/f1_simulator/domain/race_simulation.py`), servido por `POST /catalog/grid/run`, com atributos de piloto heurísticos ([ADR 0008](adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md)). Os efeitos de perfil especificados
+> aqui não entram na corrida completa; continuam alimentando só o experimento
+> de uma volta. O texto segue como registro da especificação.
+
 Especificação `driver-profile-effects-v1`, de 13/09/2026, para #67.
 A especificação original definiu o experimento e seus critérios de aceite.
 Em 18/09/2026, o [adaptador Python e consumidor de uma volta](ranking-e-adaptador-pilotos.md)
