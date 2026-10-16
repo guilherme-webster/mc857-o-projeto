@@ -486,6 +486,19 @@ interface.
   falta de `fastapi` no Python do sistema (`uv` ausente nesta máquina). Ruff
   check passou. Smoke test da `TrackView` com stub do Arcade; a janela real não
   foi aberta.
-- Próximo passo: abrir a tela real com uma corrida do backend, depois as etapas
-  2 (faixa de SC/VSC/bandeiras) e 3 (pneus, paradas e causa de abandono na
-  tabela). Sem commit, push ou comentário no GitHub; levar este registro à #6.
+- Etapa 2 (sub-issue #21): `frontend/arcade/race_control_feed.py` (puro)
+  traduz `race_control_by_lap` e `race_control_events` em faixa de status
+  (verde, amarela, VSC, SC, vermelha, relargada), pista tingida e registro das
+  últimas mensagens (contato, batida, quebra, acionamento, escalada,
+  prorrogação, fim e relargada). Evento da volta L aparece quando o líder
+  completa L; o status segue a volta em andamento do líder.
+- Verificações: 28 testes novos nas duas etapas, inclusive contrato com todos os
+  tipos de evento de `race_control.step`. Suíte com o venv de
+  `../mc857-modelagem-pilotos` (Arcade 3.3.3, FastAPI): 486 testes, 35
+  ignorados, 2 erros preexistentes porque o serviço grava em `/data/simulation`
+  (caminho do container). Janela real do Arcade aberta com geometria do fixture
+  `trotman_v128_tracks_2025` e corrida do motor; capturas conferidas sob
+  amarela, SC e relargada.
+- Próximo passo: etapa 3 (pneus, paradas e causa de abandono na tabela).
+  Commits locais na branch, sem push nem comentário no GitHub; levar este
+  registro à #6 e à #21.
