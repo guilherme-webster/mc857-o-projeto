@@ -152,14 +152,18 @@ class RacePlayback:
             if not car.is_retired_at(t_ms)
         ]
 
-    def current_lap(self, t_ms: float) -> int:
-        """Volta em andamento do lider, entre 1 e ``total_laps``."""
+    def leader_laps(self, t_ms: float) -> float:
+        """Voltas percorridas pelo lider entre os carros ainda na pista."""
 
-        leader_laps = max(
+        return max(
             (laps for _, laps in self.on_track(t_ms)),
             default=max(car.laps_completed for car in self._cars),
         )
-        return _lap_in_progress(leader_laps, self.total_laps)
+
+    def current_lap(self, t_ms: float) -> int:
+        """Volta em andamento do lider, entre 1 e ``total_laps``."""
+
+        return _lap_in_progress(self.leader_laps(t_ms), self.total_laps)
 
     def standings(self, t_ms: float) -> list[StandingRow]:
         """Classificacao ao vivo no instante ``t_ms``.

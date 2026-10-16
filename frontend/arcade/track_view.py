@@ -5,6 +5,7 @@ from bisect import bisect_right
 
 import arcade
 
+from frontend.arcade.race_control_feed import RaceControlFeed
 from frontend.arcade.race_playback import RacePlayback
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
@@ -42,6 +43,26 @@ _RAIN_LABEL = {
     "light_rain": ("Chuva leve", (120, 190, 255)),
     "heavy_rain": ("Chuva forte", (90, 150, 255)),
 }
+
+# Faixa de controle de prova: (fundo, texto) por status do motor. A pista
+# inteira tambem e tingida, porque a bandeira do motor e global.
+_STATUS_STYLE = {
+    "GREEN": ((28, 110, 60), PRIMARY_TEXT_COLOR),
+    "YELLOW": ((235, 190, 40), (20, 20, 20)),
+    "VSC": ((235, 150, 40), (20, 20, 20)),
+    "SC": ((235, 150, 40), (20, 20, 20)),
+    "RED": ((200, 30, 40), PRIMARY_TEXT_COLOR),
+}
+_RESTART_STYLE = ((40, 170, 90), PRIMARY_TEXT_COLOR)
+_TRACK_TINT = {
+    "YELLOW": (235, 190, 40),
+    "VSC": (235, 150, 40),
+    "SC": (235, 150, 40),
+    "RED": (200, 30, 40),
+}
+_FEED_TINT = {**_TRACK_TINT, "GREEN": (70, 211, 142)}
+_FEED_LINES = 6
+_FEED_COLOR = (190, 198, 210)
 
 _MENU_BG = (16, 22, 30)
 _ROW_BG = (30, 41, 53)
@@ -201,6 +222,9 @@ class TrackView(arcade.View):
             for i, car in enumerate(self._playback.cars)
         }
         self._race_len_ms = self._playback.duration_ms
+        self._feed = RaceControlFeed(
+            race, {car.driver_id: car.name for car in self._playback.cars}
+        )
         self._weather = _weather_segments(race)
 
         self._elapsed = 0.0
@@ -245,6 +269,20 @@ class TrackView(arcade.View):
             anchor_y="center",
         )
         self._row_texts: list[arcade.Text] = []
+        self._status_text = arcade.Text(
+            "",
+            0,
+            0,
+            PRIMARY_TEXT_COLOR,
+            14,
+            bold=True,
+            anchor_x="center",
+            anchor_y="center",
+        )
+        self._feed_texts = [
+            arcade.Text("", 20, 0, _FEED_COLOR, 11, font_name="monospace")
+            for _ in range(_FEED_LINES)
+        ]
 
     def on_show_view(self) -> None:
         super().on_show_view()
@@ -348,7 +386,13 @@ class TrackView(arcade.View):
         self._title.y = height - 40
         self._title.draw()
 
-        arcade.draw_line_strip([*screen, screen[0]], TRACK_EDGE_COLOR, 2)
+        status = self._feed.status_on_lap(self._current_lap())
+        track_color = (
+            _TRACK_TINT.get(status.status, TRACK_EDGE_COLOR)
+            if status
+            else TRACK_EDGE_COLOR
+        )
+        arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
         # Carros que abandonaram nao sao desenhados; os demais param na linha
         # de chegada, onde ``laps`` vale ``total_laps``.
         for driver_id, laps in self._playback.on_track(self._elapsed):
@@ -376,6 +420,7 @@ class TrackView(arcade.View):
         self._hud.draw()
         self._help.draw()
         self._draw_standings(height)
+        self._draw_race_control(status, width, height)
         self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
         self._draw_button(self._end_rect(), self._end_text, self._end_hover)
 
@@ -417,6 +462,35 @@ class TrackView(arcade.View):
             text.x = 20
             text.y = top - i * line_h
             text.color = self._color_by_driver.get(driver_id, PRIMARY_TEXT_COLOR)
+            text.draw()
+
+    def _draw_race_control(self, status, width: int, height: int) -> None:
+        """Faixa do estado da pista no topo e ultimas mensagens embaixo."""
+
+        if status is not None:
+            if status.restart and status.status == "GREEN":
+                background, foreground = _RESTART_STYLE
+            else:
+                background, foreground = _STATUS_STYLE.get(
+                    status.status, (_SWITCH_BG, PRIMARY_TEXT_COLOR)
+                )
+            band_w, band_h = 260, 30
+            left, bottom = (width - band_w) / 2, height - 52
+            arcade.draw_lbwh_rectangle_filled(left, bottom, band_w, band_h, background)
+            self._status_text.text = status.label
+            self._status_text.color = foreground
+            self._status_text.x = width / 2
+            self._status_text.y = bottom + band_h / 2
+            self._status_text.draw()
+
+        entries = self._feed.entries_through(self._playback.leader_laps(self._elapsed))
+        recent = entries[-_FEED_LINES:]
+        # A mais recente fica embaixo, logo acima do HUD; as antigas sobem.
+        for i, entry in enumerate(reversed(recent)):
+            text = self._feed_texts[i]
+            text.text = f"V{entry.lap:<3} {entry.text}"
+            text.color = _FEED_TINT.get(entry.status, _FEED_COLOR)
+            text.y = 52 + i * 18
             text.draw()
 
 
