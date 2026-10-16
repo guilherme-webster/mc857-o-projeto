@@ -28,6 +28,21 @@ class DriverPresetError(ValueError):
 def load_driver_presets(path: str | Path) -> dict[str, DriverPreset]:
     """Leia e valide ``path``, devolvendo presets indexados por ``driver_id``.
 
+    Veja ``load_driver_preset_file`` para obter tambem o aviso de que os
+    perfis sao ficticios.
+    """
+
+    return load_driver_preset_file(path)[0]
+
+
+def load_driver_preset_file(
+    path: str | Path,
+) -> tuple[dict[str, DriverPreset], str]:
+    """Leia e valide ``path``: presets por ``driver_id`` e o ``disclaimer``.
+
+    O aviso acompanha os perfis porque quem os exibe precisa dizer, junto do
+    nome real, que a caracterizacao e ficticia.
+
     O adaptador rejeita campos desconhecidos para que erros de digitacao nao
     virem configuracao ignorada. Valores fixados devem pertencer a faixa do
     arquétipo declarado; edicoes fora dessas faixas continuam possiveis pelo
@@ -72,7 +87,7 @@ def load_driver_presets(path: str | Path) -> dict[str, DriverPreset]:
     rationale = _nonempty_text(root["rationale"], "raiz.rationale")
     if root["fictional_profiles"] is not True:
         raise DriverPresetError("raiz.fictional_profiles deve ser true")
-    _nonempty_text(root["disclaimer"], "raiz.disclaimer")
+    disclaimer = _nonempty_text(root["disclaimer"], "raiz.disclaimer")
 
     drivers = root["drivers"]
     if not isinstance(drivers, list) or not drivers:
@@ -119,7 +134,7 @@ def load_driver_presets(path: str | Path) -> dict[str, DriverPreset]:
             )
         except ValueError as error:
             raise DriverPresetError(f"preset invalido em {location}: {error}") from error
-    return result
+    return result, disclaimer
 
 
 def _mapping(value: Any, location: str) -> Mapping[str, Any]:
