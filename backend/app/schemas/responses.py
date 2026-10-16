@@ -137,3 +137,32 @@ class HistoryBuildErrorResponse(BaseModel):
     reason: str
     message: str
     detail: str | None = None
+
+
+class ChampionshipStageEntry(BaseModel):
+    driver_id: str = Field(min_length=1)
+    position: int = Field(ge=1)
+    retired: bool = False
+
+
+class ChampionshipRequest(BaseModel):
+    scoring: Literal["f1", "none"] = "f1"
+    tiebreak: Literal["best_average", "most_wins"] = "best_average"
+    stages: list[list[ChampionshipStageEntry]] = Field(min_length=1, max_length=24)
+
+
+class ChampionshipRowResponse(BaseModel):
+    position: int
+    driver_id: str
+    points: int
+    wins: int
+    podiums: int
+    average_position: float
+    stage_positions: list[int | None]
+    stage_retired: list[bool]
+
+
+class ChampionshipResponse(BaseModel):
+    scoring: Literal["f1", "none"]
+    tiebreak: Literal["best_average", "most_wins"]
+    rows: list[ChampionshipRowResponse]
