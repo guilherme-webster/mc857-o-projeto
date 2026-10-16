@@ -8,6 +8,7 @@ import arcade
 
 from frontend.arcade.race_control_feed import RaceControlFeed
 from frontend.arcade.race_playback import RacePlayback
+from frontend.arcade.tournament_session import TournamentSession
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
     PRIMARY_TEXT_COLOR,
@@ -117,6 +118,8 @@ _MENU_BG = (16, 22, 30)
 _ROW_BG = (30, 41, 53)
 _ROW_HOVER = (46, 62, 80)
 _SWITCH_BG = (46, 62, 80)
+_PRIMARY_BG = (190, 30, 45)
+_PRIMARY_HOVER = (225, 45, 60)
 
 
 def _normalize(points):
@@ -257,11 +260,24 @@ class TrackView(arcade.View):
     do motor; a view so converte voltas em metros e metros em pontos da tela.
     """
 
-    def __init__(self, track: dict, race: dict, notices: Sequence[str] = ()) -> None:
+    def __init__(
+        self,
+        track: dict,
+        race: dict,
+        notices: Sequence[str] = (),
+        tournament: TournamentSession | None = None,
+        stage_index: int = 1,
+    ) -> None:
         """``notices`` sao avisos de quem disparou a corrida (origem do grid,
-        opcoes ignoradas pelo motor), mostrados no canto superior direito."""
+        opcoes ignoradas pelo motor), mostrados no canto superior direito.
+
+        Com ``tournament``, a view mostra a etapa ``stage_index`` e oferece o
+        botao para a proxima etapa ou, na ultima, para o resultado final.
+        """
 
         super().__init__()
+        self._tournament = tournament
+        self._stage_index = stage_index
         pts = sorted(track["track_points"], key=lambda p: p["sequence"])
         self._cum = [p["cumulative_distance_m"] for p in pts]
         self._unit, self._aspect = _normalize([(p["x"], p["y"]) for p in pts])
@@ -283,9 +299,14 @@ class TrackView(arcade.View):
         self._speed = 1.0
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
-        self._circuit = str(track["circuit_id"])
+        self._circuit = (
+            tournament.stage_title(stage_index)
+            if tournament is not None
+            else _race_title(race, track)
+        )
         self._switch_hover = False
         self._end_hover = False
+        self._next_hover = False
 
         self._title = arcade.Text("", 20, 0, PRIMARY_TEXT_COLOR, 18, bold=True)
         self._hud = arcade.Text(
@@ -324,6 +345,27 @@ class TrackView(arcade.View):
             anchor_x="center",
             anchor_y="center",
         )
+        next_label = None
+        if tournament is not None:
+            next_label = (
+                "Próxima etapa"
+                if tournament.has_next(stage_index)
+                else "Resultado do torneio"
+            )
+        self._next_text = (
+            arcade.Text(
+                next_label,
+                0,
+                0,
+                PRIMARY_TEXT_COLOR,
+                13,
+                bold=True,
+                anchor_x="center",
+                anchor_y="center",
+            )
+            if next_label
+            else None
+        )
         self._row_texts: list[dict[str, arcade.Text]] = []
         self._header_texts = {
             key: arcade.Text(label, 0, 0, _HEADER_COLOR, 9, bold=True, anchor_x=anchor)
@@ -360,6 +402,35 @@ class TrackView(arcade.View):
         width, height = 150, 34
         switch_left = self.window.width - width - 20
         return switch_left - width - 10, 20, width, height
+
+    def _next_rect(self):
+        """(left, bottom, width, height) do botao de proxima etapa/resultado."""
+
+        width, height = 190, 34
+        end_left = self._end_rect()[0]
+        return end_left - width - 10, 20, width, height
+
+    def _open_next(self) -> None:
+        """Avance para a proxima etapa ou abra o resultado do torneio."""
+
+        tournament = self._tournament
+        assert tournament is not None
+        if tournament.has_next(self._stage_index):
+            index = self._stage_index + 1
+            stage = tournament.stage(index)
+            self.window.show_view(
+                TrackView(
+                    stage.track,
+                    stage.race,
+                    notices=tournament.notices,
+                    tournament=tournament,
+                    stage_index=index,
+                )
+            )
+            return
+        from frontend.arcade.tournament_view import TournamentResultView
+
+        self.window.show_view(TournamentResultView(tournament, return_view=self))
 
     def _projected(self) -> list[tuple[float, float]]:
         """Projete a geometria normalizada no tamanho atual da janela."""
@@ -402,9 +473,14 @@ class TrackView(arcade.View):
     def on_mouse_motion(self, x, y, dx, dy) -> None:
         self._switch_hover = self._in_rect(x, y, self._switch_rect())
         self._end_hover = self._in_rect(x, y, self._end_rect())
+        self._next_hover = self._next_text is not None and self._in_rect(
+            x, y, self._next_rect()
+        )
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
-        if self._in_rect(x, y, self._switch_rect()):
+        if self._next_text is not None and self._in_rect(x, y, self._next_rect()):
+            self._open_next()
+        elif self._in_rect(x, y, self._switch_rect()):
             self.window.show_view(MenuView())
         elif self._in_rect(x, y, self._end_rect()):
             self._elapsed = self._race_len_ms
@@ -488,10 +564,17 @@ class TrackView(arcade.View):
         self._draw_race_control(status, width, height)
         self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
         self._draw_button(self._end_rect(), self._end_text, self._end_hover)
+        if self._next_text is not None:
+            self._draw_button(
+                self._next_rect(), self._next_text, self._next_hover, primary=True
+            )
 
-    def _draw_button(self, rect, text, hover) -> None:
+    def _draw_button(self, rect, text, hover, primary: bool = False) -> None:
         left, bottom, width, height = rect
-        color = _ROW_HOVER if hover else _SWITCH_BG
+        if primary:
+            color = _PRIMARY_HOVER if hover else _PRIMARY_BG
+        else:
+            color = _ROW_HOVER if hover else _SWITCH_BG
         arcade.draw_lbwh_rectangle_filled(left, bottom, width, height, color)
         text.x = left + width / 2
         text.y = bottom + height / 2
@@ -636,6 +719,23 @@ def _weather_segments(race: dict) -> list[dict]:
     setup = race.get("setup") if isinstance(race, dict) else None
     segments = setup.get("weather") if isinstance(setup, dict) else None
     return segments if isinstance(segments, list) else []
+
+
+def _race_title(race: dict, track: dict) -> str:
+    """Nome da pista quando o modelo a conhece; senao, o ID do circuito.
+
+    A geometria nao traz nome. ``track_reference`` traz o nome do circuito
+    calibrado, mas, para pistas fora do modelo, ele descreve o circuito de
+    reserva ("mediana do campo"), e ai o ID e mais honesto.
+    """
+
+    reference = race.get("track_reference") if isinstance(race, dict) else None
+    circuit_id = str(track["circuit_id"])
+    if isinstance(reference, dict) and reference.get("model_track_id") == circuit_id:
+        name = reference.get("model_track_name")
+        if name:
+            return str(name)
+    return circuit_id
 
 
 def _race_circuit_id(race: dict) -> str | None:

@@ -110,3 +110,9 @@ def run_grid(setup: dict, base_url: str = BASE_URL) -> dict:
     """Rode o grid atual com ``setup`` e devolva a corrida salva pelo backend."""
 
     return _post("/catalog/grid/run", {"setup": setup}, base_url, RUN_TIMEOUT_S)
+
+
+def fetch_championship_standings(request: dict, base_url: str = BASE_URL) -> dict:
+    """Tabela do campeonato calculada pelo backend para as etapas enviadas."""
+
+    return _post("/championship/standings", request, base_url)

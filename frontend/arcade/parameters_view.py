@@ -604,14 +604,19 @@ class ParametersView(UIView):
     def _open_simulated_race(self, outcome: LaunchOutcome) -> None:
         from frontend.arcade.track_view import TrackView
 
+        from frontend.arcade.tournament_session import TournamentSession
+
         first = outcome.races[0]
-        notices = [outcome.grid_note, *outcome.warnings]
-        if len(outcome.races) > 1:
-            notices.append(
-                f"Etapas 2-{len(outcome.races)} salvas: abra em Trocar corrida."
-            )
+        notices = (outcome.grid_note, *outcome.warnings)
         try:
-            view = TrackView(first.track, first.race, notices=notices)
+            tournament = TournamentSession(outcome.races, outcome.rules, notices)
+            view = TrackView(
+                first.track,
+                first.race,
+                notices=notices,
+                tournament=tournament,
+                stage_index=1,
+            )
         except (KeyError, TypeError, ValueError) as error:
             self._set_status(
                 f"Corrida simulada, mas não foi possível exibi-la: {error}",
@@ -1531,11 +1536,13 @@ def create_parameters_window() -> arcade.Window:
         layout.title,
         resizable=False,
     )
-    window.show_view(
-        ParametersView(
-            simulation_runner=lambda plan, progress: launch_plan(
-                plan, HttpRaceClient(), progress
-            )
-        )
-    )
+    window.show_view(ParametersView(simulation_runner=backend_simulation_runner))
     return window
+
+
+def backend_simulation_runner(
+    plan: SimulationPlan, progress: Callable[[str], None]
+) -> LaunchOutcome:
+    """Runner de producao: roda o plano no backend HTTP configurado."""
+
+    return launch_plan(plan, HttpRaceClient(), progress)
