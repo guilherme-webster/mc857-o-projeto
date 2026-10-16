@@ -19,15 +19,29 @@ class CatalogResponse(BaseModel):
 
 
 class BuildGridRequest(BaseModel):
-    size: int = Field(ge=1, le=40)
-    mode: Literal["manual", "random"]
+    """``race`` monta o grid com a largada de ``race_id`` no historico; o
+    tamanho vem da propria corrida."""
+
+    size: int | None = Field(default=None, ge=1, le=40)
+    mode: Literal["manual", "random", "race"]
     pair_ids: list[str] = Field(default_factory=list)
+    race_id: str | None = None
     seed: int | None = Field(default=None, ge=0, le=2**53 - 1)
 
     @model_validator(mode="after")
     def _validate_scenario(self) -> BuildGridRequest:
-        if self.mode == "random" and self.pair_ids:
-            raise ValueError("pair_ids are not accepted in random mode")
+        if self.mode in ("random", "race") and self.pair_ids:
+            raise ValueError(f"pair_ids are not accepted in {self.mode} mode")
+        if self.mode == "race":
+            if not self.race_id:
+                raise ValueError("race mode requires race_id")
+            if self.size is not None:
+                raise ValueError("size comes from the race in race mode")
+        else:
+            if self.race_id is not None:
+                raise ValueError("race_id is only accepted in race mode")
+            if self.size is None:
+                raise ValueError(f"size is required in {self.mode} mode")
         return self
 
 
@@ -41,18 +55,28 @@ class DriverAttributesResponse(BaseModel):
     sources: dict[str, Literal["generated", "preset", "manual"]]
 
 
+class DriverProfileResponse(BaseModel):
+    """Perfil ficticio nomeado aplicado ao piloto (origem ``preset``)."""
+
+    characterization: str
+    parameter_version: str
+
+
 class GridEntryResponse(BaseModel):
     driver_id: str
     driver_name: str
     team_id: str
     team_name: str
     attributes: DriverAttributesResponse
+    profile: DriverProfileResponse | None = None
 
 
 class BuildGridResponse(BaseModel):
     size: int
     seed: int
     grid: list[GridEntryResponse]
+    # Presente quando algum piloto do grid tem perfil ficticio nomeado.
+    profiles_disclaimer: str | None = None
 
 
 class AttributeOverride(BaseModel):
@@ -137,3 +161,32 @@ class HistoryBuildErrorResponse(BaseModel):
     reason: str
     message: str
     detail: str | None = None
+
+
+class ChampionshipStageEntry(BaseModel):
+    driver_id: str = Field(min_length=1)
+    position: int = Field(ge=1)
+    retired: bool = False
+
+
+class ChampionshipRequest(BaseModel):
+    scoring: Literal["f1", "none"] = "f1"
+    tiebreak: Literal["best_average", "most_wins"] = "best_average"
+    stages: list[list[ChampionshipStageEntry]] = Field(min_length=1, max_length=24)
+
+
+class ChampionshipRowResponse(BaseModel):
+    position: int
+    driver_id: str
+    points: int
+    wins: int
+    podiums: int
+    average_position: float
+    stage_positions: list[int | None]
+    stage_retired: list[bool]
+
+
+class ChampionshipResponse(BaseModel):
+    scoring: Literal["f1", "none"]
+    tiebreak: Literal["best_average", "most_wins"]
+    rows: list[ChampionshipRowResponse]

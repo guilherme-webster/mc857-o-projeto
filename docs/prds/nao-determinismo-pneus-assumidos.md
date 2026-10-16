@@ -1,6 +1,10 @@
 # Não determinismo controlado no core, com pneus e ruído assumidos
 
-**Status:** rascunho para aprovação do grupo. Nada aqui foi implementado.
+**Status:** rascunho não aprovado e não implementado. Superado na prática: o
+motor calibrado da #40 trouxe `RandomSource`, pneus por composto e paradas, e o
+[ADR 0008](../adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md) pôs as
+heurísticas por cima; `simulate_series` e a rota de série citados aqui foram
+removidos. Mantido como registro (atualizado em 2026-10-16).
 **Data:** 2026-09-25
 **Origem:** pedido do professor de MC857 por mais cenário não determinístico; revisão da
 modelagem de pneus (#63) feita em 2026-09-25.

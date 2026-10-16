@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import urllib.error
 from bisect import bisect_right
+from collections.abc import Sequence
 
 import arcade
 
+from frontend.arcade.race_control_feed import RaceControlFeed
+from frontend.arcade.race_playback import RacePlayback
+from frontend.arcade.tournament_session import TournamentSession
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
     PRIMARY_TEXT_COLOR,
@@ -25,6 +29,8 @@ BASE_PLAYBACK_SPEED = 1_000.0  # 1x = tempo real (1 s de simulacao por 1 s de te
 MIN_SPEED = 1.0 / 256.0  # ~0,004x: permite camera lenta extrema
 SPEED_FACTOR = 2.0  # cada toque em up/down dobra ou divide a velocidade
 
+# Uma cor por carro para um grid de ate 20 carros; acima disso as cores voltam
+# a se repetir. Todas com contraste suficiente sobre o fundo preto.
 _PALETTE = [
     (225, 36, 54),
     (58, 134, 218),
@@ -34,6 +40,18 @@ _PALETTE = [
     (240, 132, 60),
     (90, 200, 250),
     (255, 105, 180),
+    (160, 220, 80),
+    (0, 175, 175),
+    (200, 160, 255),
+    (255, 160, 120),
+    (210, 210, 210),
+    (255, 225, 150),
+    (110, 140, 255),
+    (60, 180, 90),
+    (230, 90, 140),
+    (190, 150, 100),
+    (150, 230, 220),
+    (255, 240, 90),
 ]
 
 _RAIN_LABEL = {
@@ -42,10 +60,66 @@ _RAIN_LABEL = {
     "heavy_rain": ("Chuva forte", (90, 150, 255)),
 }
 
+# Faixa de controle de prova: (fundo, texto) por status do motor. A pista
+# inteira tambem e tingida, porque a bandeira do motor e global.
+_STATUS_STYLE = {
+    "GREEN": ((28, 110, 60), PRIMARY_TEXT_COLOR),
+    "YELLOW": ((235, 190, 40), (20, 20, 20)),
+    "VSC": ((235, 150, 40), (20, 20, 20)),
+    "SC": ((235, 150, 40), (20, 20, 20)),
+    "RED": ((200, 30, 40), PRIMARY_TEXT_COLOR),
+}
+_RESTART_STYLE = ((40, 170, 90), PRIMARY_TEXT_COLOR)
+_TRACK_TINT = {
+    "YELLOW": (235, 190, 40),
+    "VSC": (235, 150, 40),
+    "SC": (235, 150, 40),
+    "RED": (200, 30, 40),
+}
+_FEED_TINT = {**_TRACK_TINT, "GREEN": (70, 211, 142)}
+_FEED_LINES = 6
+_FEED_COLOR = (190, 198, 210)
+
+# Composto -> (letra, cor). Composto desconhecido aparece como "?".
+_COMPOUND_STYLE = {
+    "SOFT": ("S", (225, 36, 54)),
+    "MEDIUM": ("M", (245, 197, 66)),
+    "HARD": ("H", (235, 235, 235)),
+    "INTERMEDIATE": ("I", (70, 211, 142)),
+    "WET": ("W", (58, 134, 218)),
+}
+_RETIREMENT_LABEL = {
+    "CONTACT": "CONTATO",
+    "CRASH": "BATIDA",
+    "MECHANICAL": "QUEBRA",
+}
+_GAINED_COLOR = (70, 211, 142)
+_LOST_COLOR = (255, 112, 112)
+_PIT_COLOR = (240, 150, 40)
+_HEADER_COLOR = (130, 140, 150)
+# Colunas da classificacao: (cabecalho, x em px a partir da margem, ancora).
+# Cada coluna e um texto proprio porque a fonte "monospace" nem sempre e
+# monoespacada e alinhar com espacos deixava as colunas tortas.
+_STANDING_COLUMNS = {
+    "position": ("P", 22, "right"),
+    "name": ("PILOTO", 32, "left"),
+    "time": ("INTERVALO", 262, "right"),
+    "tyre": ("PN", 280, "center"),
+    "age": ("VOL", 318, "right"),
+    "stops": ("PAR", 350, "right"),
+    "delta": ("+/-", 392, "right"),
+}
+_TYRE_RADIUS = 8
+# Largura reservada a esquerda para a classificacao; a pista e desenhada so no
+# espaco restante, para que tabela e tracado nao se sobreponham.
+STANDINGS_WIDTH = 440
+
 _MENU_BG = (16, 22, 30)
 _ROW_BG = (30, 41, 53)
 _ROW_HOVER = (46, 62, 80)
 _SWITCH_BG = (46, 62, 80)
+_PRIMARY_BG = (190, 30, 45)
+_PRIMARY_HOVER = (225, 45, 60)
 
 
 def _normalize(points):
@@ -122,7 +196,12 @@ class MenuView(arcade.View):
         saved_id = self._saved[self._hover]["id"]
         try:
             view = _load_race_view(saved_id)
-        except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError) as error:
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            RuntimeError,
+            ValueError,
+        ) as error:
             self._error = f"nao foi possivel abrir a corrida: {error}"
             return
         self.window.show_view(view)
@@ -174,33 +253,45 @@ class MenuView(arcade.View):
 
 
 class TrackView(arcade.View):
-    def __init__(self, track: dict, race: dict) -> None:
+    """Reproduz a corrida volta a volta sobre a geometria da pista.
+
+    ``_elapsed`` e o relogio da corrida em ms. Posicoes, volta atual e
+    classificacao vem de ``RacePlayback``, construido a partir do ``history``
+    do motor; a view so converte voltas em metros e metros em pontos da tela.
+    """
+
+    def __init__(
+        self,
+        track: dict,
+        race: dict,
+        notices: Sequence[str] = (),
+        tournament: TournamentSession | None = None,
+        stage_index: int = 1,
+    ) -> None:
+        """``notices`` sao avisos de quem disparou a corrida (origem do grid,
+        opcoes ignoradas pelo motor), mostrados no canto superior direito.
+
+        Com ``tournament``, a view mostra a etapa ``stage_index`` e oferece o
+        botao para a proxima etapa ou, na ultima, para o resultado final.
+        """
+
         super().__init__()
+        self._tournament = tournament
+        self._stage_index = stage_index
         pts = sorted(track["track_points"], key=lambda p: p["sequence"])
         self._cum = [p["cumulative_distance_m"] for p in pts]
         self._unit, self._aspect = _normalize([(p["x"], p["y"]) for p in pts])
         self._lap_length = track["lap_length_m"]
 
-        self._total_laps = race["total_laps"]
+        self._playback = RacePlayback(race)
+        self._total_laps = self._playback.total_laps
         self._color_by_driver = {
-            c["driver_id"]: _PALETTE[i % len(_PALETTE)]
-            for i, c in enumerate(race["classification"])
+            car.driver_id: _PALETTE[i % len(_PALETTE)]
+            for i, car in enumerate(self._playback.cars)
         }
-        self._cars = [
-            {
-                "driver_id": c["driver_id"],
-                "name": c["name"],
-                "lap_time_ms": c["lap_time_ms"],
-                "color": self._color_by_driver[c["driver_id"]],
-            }
-            for c in race["classification"]
-        ]
-        self._history = race.get("history", [])
-        self._race_len_ms = max(
-            (c["lap_time_ms"] * self._total_laps for c in self._cars), default=1
-        )
-        self._lead_lap_time_ms = min(
-            (c["lap_time_ms"] for c in self._cars), default=self._race_len_ms
+        self._race_len_ms = self._playback.duration_ms
+        self._feed = RaceControlFeed(
+            race, {car.driver_id: car.name for car in self._playback.cars}
         )
         self._weather = _weather_segments(race)
 
@@ -208,14 +299,23 @@ class TrackView(arcade.View):
         self._speed = 1.0
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
-        self._circuit = str(track["circuit_id"])
+        self._circuit = (
+            tournament.stage_title(stage_index)
+            if tournament is not None
+            else _race_title(race, track)
+        )
         self._switch_hover = False
         self._end_hover = False
+        self._next_hover = False
 
         self._title = arcade.Text("", 20, 0, PRIMARY_TEXT_COLOR, 18, bold=True)
         self._hud = arcade.Text(
             "", 20, 24, PRIMARY_TEXT_COLOR, 13, font_name="monospace"
         )
+        self._notice_texts = [
+            arcade.Text(notice, 0, 0, _HEADER_COLOR, 10, anchor_x="right")
+            for notice in notices
+        ]
         self._weather_text = arcade.Text(
             "", 0, 0, PRIMARY_TEXT_COLOR, 15, bold=True, anchor_x="right"
         )
@@ -245,7 +345,46 @@ class TrackView(arcade.View):
             anchor_x="center",
             anchor_y="center",
         )
-        self._row_texts: list[arcade.Text] = []
+        next_label = None
+        if tournament is not None:
+            next_label = (
+                "Próxima etapa"
+                if tournament.has_next(stage_index)
+                else "Resultado do torneio"
+            )
+        self._next_text = (
+            arcade.Text(
+                next_label,
+                0,
+                0,
+                PRIMARY_TEXT_COLOR,
+                13,
+                bold=True,
+                anchor_x="center",
+                anchor_y="center",
+            )
+            if next_label
+            else None
+        )
+        self._row_texts: list[dict[str, arcade.Text]] = []
+        self._header_texts = {
+            key: arcade.Text(label, 0, 0, _HEADER_COLOR, 9, bold=True, anchor_x=anchor)
+            for key, (label, _, anchor) in _STANDING_COLUMNS.items()
+        }
+        self._status_text = arcade.Text(
+            "",
+            0,
+            0,
+            PRIMARY_TEXT_COLOR,
+            14,
+            bold=True,
+            anchor_x="center",
+            anchor_y="center",
+        )
+        self._feed_texts = [
+            arcade.Text("", 20, 0, _FEED_COLOR, 11, font_name="monospace")
+            for _ in range(_FEED_LINES)
+        ]
 
     def on_show_view(self) -> None:
         super().on_show_view()
@@ -264,11 +403,41 @@ class TrackView(arcade.View):
         switch_left = self.window.width - width - 20
         return switch_left - width - 10, 20, width, height
 
+    def _next_rect(self):
+        """(left, bottom, width, height) do botao de proxima etapa/resultado."""
+
+        width, height = 190, 34
+        end_left = self._end_rect()[0]
+        return end_left - width - 10, 20, width, height
+
+    def _open_next(self) -> None:
+        """Avance para a proxima etapa ou abra o resultado do torneio."""
+
+        tournament = self._tournament
+        assert tournament is not None
+        if tournament.has_next(self._stage_index):
+            index = self._stage_index + 1
+            stage = tournament.stage(index)
+            self.window.show_view(
+                TrackView(
+                    stage.track,
+                    stage.race,
+                    notices=tournament.notices,
+                    tournament=tournament,
+                    stage_index=index,
+                )
+            )
+            return
+        from frontend.arcade.tournament_view import TournamentResultView
+
+        self.window.show_view(TournamentResultView(tournament, return_view=self))
+
     def _projected(self) -> list[tuple[float, float]]:
         """Projete a geometria normalizada no tamanho atual da janela."""
 
         width, height = self.window.width, self.window.height
-        usable_w = max(1.0, width - 2 * MARGIN)
+        area_left = STANDINGS_WIDTH
+        usable_w = max(1.0, width - area_left - MARGIN)
         usable_h = max(1.0, height - 2 * MARGIN)
         if usable_w / usable_h > self._aspect:
             draw_h = usable_h
@@ -276,14 +445,12 @@ class TrackView(arcade.View):
         else:
             draw_w = usable_w
             draw_h = draw_w / self._aspect
-        off_x = (width - draw_w) / 2
+        off_x = area_left + (width - area_left - MARGIN - draw_w) / 2
         off_y = (height - draw_h) / 2
         return [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._unit]
 
     def _current_lap(self) -> int:
-        lead_dist = self._elapsed / self._lead_lap_time_ms * self._lap_length
-        lap = int(lead_dist // self._lap_length) + 1
-        return max(1, min(lap, self._total_laps))
+        return self._playback.current_lap(self._elapsed)
 
     def _current_rain(self) -> str:
         lap = self._current_lap()
@@ -291,15 +458,6 @@ class TrackView(arcade.View):
             if segment["from_lap"] <= lap <= segment["to_lap"]:
                 return segment["rain"]
         return "dry"
-
-    def _current_standings(self) -> list[dict]:
-        """Classificacao da volta corrente do playback (ou a ultima disponivel)."""
-
-        if not self._history:
-            return []
-        index = min(self._current_lap(), len(self._history)) - 1
-        cars = self._history[index].get("cars", [])
-        return sorted(cars, key=lambda car: car["position"])
 
     def on_update(self, dt: float) -> None:
         if self._paused:
@@ -315,9 +473,14 @@ class TrackView(arcade.View):
     def on_mouse_motion(self, x, y, dx, dy) -> None:
         self._switch_hover = self._in_rect(x, y, self._switch_rect())
         self._end_hover = self._in_rect(x, y, self._end_rect())
+        self._next_hover = self._next_text is not None and self._in_rect(
+            x, y, self._next_rect()
+        )
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
-        if self._in_rect(x, y, self._switch_rect()):
+        if self._next_text is not None and self._in_rect(x, y, self._next_rect()):
+            self._open_next()
+        elif self._in_rect(x, y, self._switch_rect()):
             self.window.show_view(MenuView())
         elif self._in_rect(x, y, self._end_rect()):
             self._elapsed = self._race_len_ms
@@ -360,12 +523,20 @@ class TrackView(arcade.View):
         self._title.y = height - 40
         self._title.draw()
 
-        arcade.draw_line_strip([*screen, screen[0]], TRACK_EDGE_COLOR, 2)
-        race_dist = self._total_laps * self._lap_length
-        for car in self._cars:
-            dist = min(self._elapsed / car["lap_time_ms"] * self._lap_length, race_dist)
-            x, y = self._pos_at(screen, dist)
-            arcade.draw_circle_filled(x, y, CAR_RADIUS, car["color"])
+        status = self._feed.status_on_lap(self._current_lap())
+        track_color = (
+            _TRACK_TINT.get(status.status, TRACK_EDGE_COLOR)
+            if status
+            else TRACK_EDGE_COLOR
+        )
+        arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
+        # Carros que abandonaram nao sao desenhados; os demais param na linha
+        # de chegada, onde ``laps`` vale ``total_laps``.
+        for driver_id, laps in self._playback.on_track(self._elapsed):
+            x, y = self._pos_at(screen, laps * self._lap_length)
+            arcade.draw_circle_filled(
+                x, y, CAR_RADIUS, self._color_by_driver[driver_id]
+            )
 
         rain = self._current_rain()
         label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
@@ -374,6 +545,10 @@ class TrackView(arcade.View):
         self._weather_text.x = width - 20
         self._weather_text.y = height - 40
         self._weather_text.draw()
+        for i, notice in enumerate(self._notice_texts):
+            notice.x = width - 20
+            notice.y = height - 64 - i * 16
+            notice.draw()
 
         if self._paused:
             state = "PAUSADO"
@@ -386,47 +561,146 @@ class TrackView(arcade.View):
         self._hud.draw()
         self._help.draw()
         self._draw_standings(height)
+        self._draw_race_control(status, width, height)
         self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
         self._draw_button(self._end_rect(), self._end_text, self._end_hover)
+        if self._next_text is not None:
+            self._draw_button(
+                self._next_rect(), self._next_text, self._next_hover, primary=True
+            )
 
-    def _draw_button(self, rect, text, hover) -> None:
+    def _draw_button(self, rect, text, hover, primary: bool = False) -> None:
         left, bottom, width, height = rect
-        color = _ROW_HOVER if hover else _SWITCH_BG
+        if primary:
+            color = _PRIMARY_HOVER if hover else _PRIMARY_BG
+        else:
+            color = _ROW_HOVER if hover else _SWITCH_BG
         arcade.draw_lbwh_rectangle_filled(left, bottom, width, height, color)
         text.x = left + width / 2
         text.y = bottom + height / 2
         text.draw()
 
     def _draw_standings(self, height: int) -> None:
-        standings = self._current_standings()
-        if not standings:
-            return
-        top = height - 80
-        line_h = 20
-        leader_time = standings[0].get("total_time_ms", 0.0)
-        rows = []
-        for car in standings:
-            pos = car["position"]
-            name = car["name"][:16]
-            status = car.get("status")
-            if status and status != "RUNNING":
-                time_text = "OUT"
-            elif pos == 1:
-                time_text = _format_clock(car.get("total_time_ms", 0.0))
-            else:
-                time_text = _format_gap(car.get("total_time_ms", 0.0) - leader_time)
-            rows.append((car["driver_id"], f"{pos:>2}  {name:<16} {time_text:>10}"))
+        """Classificacao ao vivo com pneu, paradas e posicoes ganhas.
 
-        while len(self._row_texts) < len(rows):
+        O composto e a idade sao os do ultimo retrato do carro; "BOX" marca a
+        volta que termina com parada; quem abandonou mostra a causa.
+        """
+
+        left = 20
+        header_y = height - 74
+        top = height - 96
+        line_h = 20
+        for key, text in self._header_texts.items():
+            text.x = left + _STANDING_COLUMNS[key][1]
+            text.y = header_y
+            text.draw()
+
+        standings = self._playback.standings(self._elapsed)
+        while len(self._row_texts) < len(standings):
             self._row_texts.append(
-                arcade.Text("", 20, 0, PRIMARY_TEXT_COLOR, 12, font_name="monospace")
+                {
+                    key: arcade.Text(
+                        "",
+                        0,
+                        0,
+                        PRIMARY_TEXT_COLOR,
+                        9 if key == "tyre" else 12,
+                        anchor_x=anchor,
+                        anchor_y="center",
+                        bold=key == "tyre",
+                    )
+                    for key, (_, _, anchor) in _STANDING_COLUMNS.items()
+                }
             )
-        for i, (driver_id, line) in enumerate(rows):
-            text = self._row_texts[i]
-            text.text = line
-            text.x = 20
-            text.y = top - i * line_h
-            text.color = self._color_by_driver.get(driver_id, PRIMARY_TEXT_COLOR)
+        for i, row in enumerate(standings):
+            texts = self._row_texts[i]
+            y = top - i * line_h
+            car_color = self._color_by_driver.get(row.driver_id, PRIMARY_TEXT_COLOR)
+            cells = self._standing_cells(row, car_color)
+            for key, (value, color) in cells.items():
+                text = texts[key]
+                text.text = value
+                text.color = color
+                text.x = left + _STANDING_COLUMNS[key][1]
+                text.y = y
+                if key == "tyre" and value:
+                    arcade.draw_circle_outline(text.x, y, _TYRE_RADIUS, color, 2)
+                text.draw()
+
+    def _standing_cells(self, row, car_color) -> dict[str, tuple[str, tuple]]:
+        """Texto e cor de cada coluna de uma linha da classificacao."""
+
+        if row.retired:
+            time_text = _RETIREMENT_LABEL.get(row.retirement_cause, "OUT")
+        elif row.position == 1:
+            leader = self._playback.car(row.driver_id)
+            time_text = _format_clock(min(self._elapsed, leader.finish_time_ms))
+        elif row.gap_ms is None:
+            time_text = "-"
+        else:
+            time_text = _format_gap(row.gap_ms)
+
+        tyre = row.tyre
+        letter, tyre_color = ("", car_color)
+        age_text = stops_text = ""
+        if tyre is not None and not row.retired:
+            letter, tyre_color = _COMPOUND_STYLE.get(
+                tyre.compound, ("?", _HEADER_COLOR)
+            )
+            age_text = "" if tyre.age_laps is None else str(tyre.age_laps)
+            stops_text = str(tyre.stops)
+
+        if row.retired:
+            delta = ("", car_color)
+        elif row.in_pit:
+            delta = ("BOX", _PIT_COLOR)
+        elif row.positions_gained is None:
+            delta = ("", car_color)
+        elif row.positions_gained > 0:
+            delta = (f"+{row.positions_gained}", _GAINED_COLOR)
+        elif row.positions_gained < 0:
+            delta = (str(row.positions_gained), _LOST_COLOR)
+        else:
+            delta = ("=", _HEADER_COLOR)
+
+        return {
+            "position": (str(row.position), car_color),
+            "name": (row.name[:18], car_color),
+            "time": (time_text, car_color),
+            "tyre": (letter, tyre_color),
+            "age": (age_text, car_color),
+            "stops": (stops_text, car_color),
+            "delta": delta,
+        }
+
+    def _draw_race_control(self, status, width: int, height: int) -> None:
+        """Faixa do estado da pista no topo e ultimas mensagens embaixo."""
+
+        if status is not None:
+            if status.restart and status.status == "GREEN":
+                background, foreground = _RESTART_STYLE
+            else:
+                background, foreground = _STATUS_STYLE.get(
+                    status.status, (_SWITCH_BG, PRIMARY_TEXT_COLOR)
+                )
+            band_w, band_h = 260, 30
+            left, bottom = (width - band_w) / 2, height - 52
+            arcade.draw_lbwh_rectangle_filled(left, bottom, band_w, band_h, background)
+            self._status_text.text = status.label
+            self._status_text.color = foreground
+            self._status_text.x = width / 2
+            self._status_text.y = bottom + band_h / 2
+            self._status_text.draw()
+
+        entries = self._feed.entries_through(self._playback.leader_laps(self._elapsed))
+        recent = entries[-_FEED_LINES:]
+        # A mais recente fica embaixo, logo acima do HUD; as antigas sobem.
+        for i, entry in enumerate(reversed(recent)):
+            text = self._feed_texts[i]
+            text.text = f"V{entry.lap:<3} {entry.text}"
+            text.color = _FEED_TINT.get(entry.status, _FEED_COLOR)
+            text.y = 52 + i * 18
             text.draw()
 
 
@@ -447,6 +721,23 @@ def _weather_segments(race: dict) -> list[dict]:
     return segments if isinstance(segments, list) else []
 
 
+def _race_title(race: dict, track: dict) -> str:
+    """Nome da pista quando o modelo a conhece; senao, o ID do circuito.
+
+    A geometria nao traz nome. ``track_reference`` traz o nome do circuito
+    calibrado, mas, para pistas fora do modelo, ele descreve o circuito de
+    reserva ("mediana do campo"), e ai o ID e mais honesto.
+    """
+
+    reference = race.get("track_reference") if isinstance(race, dict) else None
+    circuit_id = str(track["circuit_id"])
+    if isinstance(reference, dict) and reference.get("model_track_id") == circuit_id:
+        name = reference.get("model_track_name")
+        if name:
+            return str(name)
+    return circuit_id
+
+
 def _race_circuit_id(race: dict) -> str | None:
     setup = race.get("setup") if isinstance(race, dict) else None
     track_id = setup.get("track_id") if isinstance(setup, dict) else None
@@ -458,7 +749,12 @@ def show(saved_id: str | None = None) -> None:
     if saved_id:
         try:
             window.show_view(_load_race_view(saved_id))
-        except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError) as error:
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            RuntimeError,
+            ValueError,
+        ) as error:
             raise SystemExit(f"nao foi possivel abrir a corrida: {error}") from error
     else:
         window.show_view(MenuView())

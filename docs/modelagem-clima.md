@@ -1,8 +1,9 @@
-# Modelo climático isolado
+# Modelo climático
 
 A issue #69 introduz uma evolução determinística da umidade relativa do ar e
-da água superficial por volta em `src/f1_simulator/domain/weather.py`. Ela não
-conecta a configuração Arcade, a API FastAPI ou o cálculo do tempo de volta.
+da água superficial por volta em `src/f1_simulator/domain/weather.py`. A seção
+[Integração atual](#integração-atual) descreve como ela chega à interface, à
+API e ao tempo de volta; o restante deste texto descreve o modelo em si.
 Os três valores de entrada (`dry`, `light_rain`, `heavy_rain`) são **intensidades
 de chuva prescritas**, não estados da pista. Portanto, uma volta sem chuva
 pode começar e terminar com pista molhada.
@@ -32,3 +33,24 @@ integrações ficam para outra etapa, com mapeamento explícito dos rótulos da 
 e parâmetros próprios para os efeitos nos carros.
 
 Verificação isolada: `uv run python -m unittest tests.test_weather`.
+
+## Integração atual
+
+Atualizado em 2026-10-16.
+
+- **Interface:** a tela de configuração da etapa pinta o clima por volta com os
+  rótulos "Seco", "Chuva leve" e "Chuva intensa".
+  `frontend/arcade/race_launcher.py` os envia como faixas contíguas `dry`,
+  `light_rain` e `heavy_rain`. A regra de torneio "Seco em todas" força pista
+  seca em todas as etapas. A tela da corrida mostra a condição da volta do líder.
+- **API:** `POST /catalog/grid/run` recebe `setup.weather` (faixas
+  `from_lap`/`to_lap`/`rain`). Voltas não cobertas são secas
+  (`expand_segments`), e as faixas voltam ecoadas em `setup.weather`.
+- **Tempo de volta:** `run_detailed_grid_simulation` roda `simulate_weather` e
+  entrega ao motor a água ao fim de cada volta. O motor soma
+  `weather_penalty_ms`, que vai até 40% do tempo de referência com pista
+  saturada (`ASSUMED_WEATHER_EFFECT`, `assumed-weather-effect-v1`, não
+  calibrado, proporcional à água). A parcela aparece como `weather_ms` na
+  decomposição do tempo de volta.
+- **Fora da integração:** disputas, incidentes, controle de prova e a escolha de
+  pneus não consideram o clima. Não há compostos intermediário ou de chuva.

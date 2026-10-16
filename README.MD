@@ -13,15 +13,17 @@ Projeto da disciplina MC857 desenvolvido por um grupo de cinco integrantes.
 - [Registros de decisoes arquiteturais](docs/adr/README.md)
 - [Fluxo e responsabilidades do ETL](docs/fluxo-etl.md)
 - [ETL completo: Trotman e FastF1](docs/etl-enriquecimento.md)
-- [Proposta de planejamento da modelagem](docs/planejamento-modelagem.md)
+- [Mapa do codigo](docs/CODEBASE_MAP.md)
+- [Modelagem heuristica da corrida (valores atuais)](docs/modelagem-heuristica.md)
 - [Modelagem calibrada da corrida e validacao](docs/modelagem-corrida-calibrada.md)
-- [Dados e plano de perfilamento dos pilotos](docs/perfilamento-pilotos.md)
+- [Modelo de clima](docs/modelagem-clima.md)
+- [Proposta de planejamento da modelagem (historica)](docs/planejamento-modelagem.md)
+- [Dados e plano de perfilamento dos pilotos (historico)](docs/perfilamento-pilotos.md)
 
-O frontend do MVP sera uma aplicacao desktop em Python com Arcade, inspirada na
+O frontend do MVP e uma aplicacao desktop em Python com Arcade, inspirada na
 experiencia de visualizacao do projeto
-[IAmTomShaw/f1-race-replay](https://github.com/IAmTomShaw/f1-race-replay). FastAPI 
-será o backend, e o motor de simulacao continuara independente dos dois
-frameworks. O
+[IAmTomShaw/f1-race-replay](https://github.com/IAmTomShaw/f1-race-replay). FastAPI
+e o backend, e o motor de simulacao e independente dos dois frameworks. O
 [ADR 0002](docs/adr/0002-arquitetura-hexagonal-e-integracao-de-dados.md)
 estabelece arquitetura hexagonal, integracao de dados com Adapter + Factory e a
 base Formula 1 Race Data, de James Trotman, como fonte inicial. O
@@ -40,7 +42,7 @@ Antes de iniciar a execução do projeto, certifique-se de possuir as ferramenta
   * **Windows / macOS:** Baixe e instale o [Docker Desktop](https://www.docker.com/products/docker-desktop/). No Windows, certifique-se de habilitar a integração com o WSL2 durante o assistente.
   * **Linux (Ubuntu/Debian):**
     ```bash
-    curl -fsSL [https://get.docker.com](https://get.docker.com) | sh
+    curl -fsSL https://get.docker.com | sh
     sudo usermod -aG docker $USER
     ```
 
@@ -48,6 +50,7 @@ Antes de iniciar a execução do projeto, certifique-se de possuir as ferramenta
   ```bash
   docker --version
   docker compose version
+  ```
 
 ### 2. uv (Gerenciador de Pacotes e Python)
 
@@ -58,12 +61,13 @@ Antes de iniciar a execução do projeto, certifique-se de possuir as ferramenta
     ```
   * **Linux / macOS / WSL:**
     ```bash
-    curl -LsSf [https://astral.sh/uv/install.sh](https://astral.sh/uv/install.sh) | sh
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     ```
 
 * **Como verificar se está instalado:**
   ```bash
   uv --version
+  ```
 
 ## ETL da Base Trotman
 
@@ -143,19 +147,8 @@ omita `--source` depois de baixar o Trotman v128. O comando importa apenas a
 geometria do circuito da corrida, validando ambos os CSVs e seus manifestos.
 As geometrias das 24 pistas continuam disponiveis para outras corridas suportadas.
 
-Na interface Arcade, a primeira tela (1672 × 900) configura as regras do
-torneio e consulta `GET /simulation/tracks`. Use as setas para percorrer as
-pistas, **Adicionar à sequência** para inclui-las na ordem desejada e arraste
-as linhas da lista para reordenar. Tambem e possivel gerar uma sequencia
-automatica reproduzivel a partir do nome do torneio. Clique na previa da
-pista para abrir a segunda tela, de configuracao da corrida. Nela, a aba
-**Clima** edita os intervalos na propria tela, por campos ou pintando a timeline;
-**Pista**, **Regras** e
-**Carros** permanecem apenas como areas futuras. A geometria da previa vem de
-`GET /simulation/track/{circuit_id}`. A configuracao padrao e **Corrida livre**:
-nao exige escolher um GP historico. **Confirmar torneio** produz um plano
-validado; a interface ainda nao contem o editor de participantes nem a tela
-de reproducao dessa sequencia.
+O fluxo da interface Arcade esta descrito em
+[Telas implementadas com Arcade](#telas-implementadas-com-arcade).
 
 Para rodar uma corrida pela API, monte o grid e depois execute-o:
 
@@ -166,17 +159,27 @@ curl -X POST localhost:8000/catalog/grid/run -H 'Content-Type: application/json'
   -d '{"setup": {"total_laps": 44, "track_id": "circuit:13"}}'
 ```
 
-`POST /catalog/grid` sorteia os pares piloto/equipe do historico e seus
-atributos; perfis ficticios nomeados de `configs/drivers/perfis-ficticios.json`
-sao aplicados por cima, e `PATCH /catalog/grid` edita atributos a mao.
-O modo `random` sorteia pilotos de toda a historia (desde 1950), entao os
-perfis nomeados, que sao do grid de 2024, so aparecem de fato num grid `manual`
-com `pair_ids` (`driver_id@team_id`, listados em `GET /catalog`).
+O catalogo de pilotos (`GET /catalog`) e o grid dependem do banco historico.
+No primeiro uso, construa-o com `curl -X POST localhost:8000/api/history/build`
+(cerca de 20 s a partir do ZIP do Trotman em `data/raw/`).
+
+`POST /catalog/grid` tem tres modos: `random` sorteia `size` pares
+piloto/equipe de toda a historia (desde 1950); `manual` recebe `pair_ids`
+(`driver_id@team_id`, listados em `GET /catalog`); `race` reproduz a largada de
+uma corrida historica (`{"mode": "race", "race_id": "race:1141"}`; as corridas
+de uma temporada saem de `GET /api/history/races?season=2024`). Os atributos sao
+sorteados por arquetipo, os perfis ficticios nomeados de
+`configs/drivers/perfis-ficticios.json` sao aplicados por cima (pilotos de
+2024) e `PATCH /catalog/grid` edita atributos a mao. A resposta traz a
+caracterizacao de cada perfil aplicado e o aviso de que os perfis sao
+ficticios.
+
 `POST /catalog/grid/run` roda o motor detalhado (combustivel, pneus, paradas,
-disputas, abandonos, safety car e bandeiras) e devolve o historico volta a volta,
-a classificacao, os eventos do controle de prova e, em `assumptions`, todos os
-parametros heuristicos usados. A mesma semente reproduz a mesma corrida;
-`"engine": "simple"` no `setup` usa o motor antigo de ritmo constante.
+disputas, abandonos, safety car, bandeiras e clima) e devolve o historico volta
+a volta, a classificacao, a largada (`starting_grid`), os eventos do controle de
+prova e, em `assumptions`, todos os parametros heuristicos e assumidos usados.
+A mesma semente reproduz a mesma corrida. `POST /championship/standings`
+calcula a classificacao de um torneio a partir da chegada de cada etapa.
 Detalhes em [Modelagem heuristica da corrida](#modelagem-heurística-da-corrida).
 
 X/Y sao normalizados e sem unidade; distancia acumulada da pista e em metros.
@@ -184,11 +187,23 @@ As geometrias sao de 2025: seu uso com uma corrida de outro ano fica explicito n
 relatorio. Consulte o [contrato de consumo](docs/fluxo-etl.md#geometria-de-pista-e-pit-lane)
 para ler as novas tabelas com `SQLiteTrackGeometryRepository`.
 
-Execute os testes sem instalar dependencias adicionais:
+## Testes e verificacoes
+
+Com as dependencias do `pyproject.toml` instaladas (`uv sync`), rode a suite a
+partir da raiz:
 
 ```bash
-python3 -m unittest -v
+uv run python -m unittest -v
 ```
+
+Sem elas, `python3 -m unittest -v` ainda roda os testes do nucleo; os modulos
+que importam FastAPI falham na importacao e os de interface sao pulados. Os
+testes de interface grafica abrem janelas Arcade e so rodam com
+`ARCADE_GUI_TEST=1` e um display disponivel. Dois testes do servico de catalogo
+gravam em `/data/simulation` e so passam dentro do container do backend.
+Para lint e formatacao tem sido usado o `ruff` (`ruff check`, `ruff format`),
+instalado a parte: ele nao e dependencia declarada e nao ha configuracao
+propria; varios arquivos antigos ainda nao seguem o `ruff format`.
 
 O projeto usa o layout `src`: o pacote `f1_simulator` fica dentro dessa pasta,
 mas ainda nao e instalado no ambiente Python. A suite configura esse caminho em
@@ -244,9 +259,10 @@ docker compose up -d --build backend
 uv run python -m frontend.arcade
 ```
 
-Os requisitos de display, autorização e diagnóstico estão no guia
-[Frontend Arcade em Docker](docs/containerizacao-frontend.md). Sem um perfil,
-`docker compose up` continua iniciando somente o backend.
+Sem um perfil, `docker compose up` inicia somente o backend. Os requisitos de
+display e autorizacao do frontend em container estao no proprio
+`docker-compose.yaml` (variaveis `DISPLAY`, `XAUTHORITY` e
+`LIBGL_ALWAYS_SOFTWARE`) e em `run.py`.
 
 ### Somente o frontend no host
 
@@ -258,10 +274,11 @@ Depois de `uv sync`, execute a tela desejada:
   uv run python -m frontend.arcade
   ```
 
-- Protótipo de visualização de pista:
+- Corridas salvas, direto na reprodução (sem passar pela configuração):
 
   ```bash
   uv run python -m frontend.arcade.track_view
+  uv run python -m frontend.arcade.track_view --saved <id-da-corrida>
   ```
 
 Por padrão, o frontend no host consulta `http://localhost:8000`. Para outro
@@ -287,18 +304,45 @@ docker compose down
 
 ## Telas implementadas com Arcade
 
-### Tela inicial
+O fluxo completo roda sem `curl`: configurar o torneio, ajustar o grid,
+simular, assistir a cada etapa e ver o resultado do campeonato.
 
-A `ParametersView` monta o torneio a partir do catálogo de pistas. A
-`RaceConfigurationView` permite ajustar sessão e clima para cada etapa; a aba
-Clima pinta intervalos de voltas na timeline sem sair dessa tela. A confirmação
-valida o plano, mas o início da simulação pela interface pertence a um
-incremento posterior.
+### Configuração do torneio (`ParametersView`)
 
-### Tela de simulação da corrida
+A primeira tela (1672 × 900) define nome, pontuação, número de etapas, clima e
+desempate do torneio e consulta `GET /simulation/tracks`. Use as setas para
+percorrer as pistas, **Adicionar à sequência** para incluí-las na ordem
+desejada e arraste as linhas da lista para reordenar; também é possível gerar
+uma sequência automática reproduzível a partir do nome do torneio. Clicar na
+prévia da pista abre a `RaceConfigurationView`, onde as abas **Sessão** e
+**Clima** editam a etapa (o clima é pintado na timeline); **Pista**, **Regras**
+e **Carros** ainda são áreas futuras. Toda etapa nova começa com 69 voltas,
+qualquer que seja a pista (pendência registrada em `docs/progresso.md`).
 
-Por enquanto, a simulação da corrida consiste de uma pista oval e dois carros
-com velocidade constante
+**Confirmar torneio** usa o grid atual do backend (ou cria um aleatório de 20
+pilotos, se não houver), roda cada etapa em `POST /catalog/grid/run` numa thread
+e abre a reprodução da primeira. Intervalo de voltas da sessão e largada lançada
+ainda não são suportados pelo motor: viram avisos na tela da corrida.
+
+### Pilotos e grid (`GridView`)
+
+Aberta pelo botão **Pilotos e grid**, monta o grid usado pelo Confirmar
+(aleatório ou a largada de qualquer etapa de 2024), mostra arquétipo e os cinco
+atributos de cada piloto coloridos pela origem (sorteado, perfil fictício ou
+editado) e, para o piloto selecionado, a caracterização fictícia e controles
+−/+ gravados via `PATCH /catalog/grid`.
+
+### Reprodução da corrida (`TrackView`)
+
+Reproduz a corrida volta a volta a partir do `history` do motor: ultrapassagens,
+paradas, abandonos e o agrupamento sob safety car aparecem na pista. Mostra a
+faixa de controle de prova (verde, amarela, VSC, SC, vermelha, relargada), o
+registro de eventos, o clima e a classificação ao vivo com intervalo, pneu,
+idade do pneu, paradas, "BOX" e posições ganhas. Espaço pausa, ↑/↓ mudam a
+velocidade (1x é tempo real), ←/→ invertem o sentido e R reinicia. Num
+torneio, **Próxima etapa** avança e, na última, **Resultado do torneio** abre a
+`TournamentResultView`, com pontos, vitórias, pódios, média e a posição em cada
+etapa (calculados por `POST /championship/standings`).
 
 ## Git Actions
 
@@ -341,7 +385,7 @@ HTTP. O método é exploratório e não representa calibração do motor.
 
 A [avaliação de perfis entre eventos](docs/avaliacao-perfis-entre-eventos.md)
 usa o protocolo em `configs/profile-evaluation-2024.json`. Execute
-`pipenv run python -B scripts/evaluate_profiles.py --database data/curated/history-profile-evaluation-2024.sqlite --plan configs/profile-evaluation-2024.json`.
+`uv run python -B scripts/evaluate_profiles.py --database data/curated/history-profile-evaluation-2024.sqlite --plan configs/profile-evaluation-2024.json`.
 A saída é uma pasta nova com relatório, JSON, CSVs e gráficos; não exige
 redirecionar o JSON nem remover resultados anteriores.
 
@@ -350,7 +394,7 @@ compara agrupamento por stint e janela de voltas, mostrando cobertura e
 intervalos exploratórios por evento nos gráficos:
 
 ```bash
-pipenv run python -B scripts/analyze_profile_contexts.py \
+uv run python -B scripts/analyze_profile_contexts.py \
   --database data/curated/history-profile-evaluation-2024.sqlite \
   --plan configs/profile-evaluation-2024.json
 ```
@@ -379,18 +423,21 @@ do histórico Trotman e gravados versionados em `data/parameters/`.
 
 ```bash
 python3 scripts/ingest_trotman.py --all-tables --output data/curated/history.sqlite
-python3 scripts/calibrate_model.py --database data/curated/history.sqlite \n  --seasons 2022 2023 --output data/parameters/model-v1.json
+python3 scripts/calibrate_model.py --database data/curated/history.sqlite \
+  --seasons 2022 2023 --output data/parameters/model-v1.json
 ```
 
 Valide contra corridas que não entraram na calibração. O script recusa
 validar sobre uma temporada calibrada sem `--allow-calibrated-seasons`:
 
 ```bash
-python3 scripts/backtest_model.py --database data/curated/history.sqlite \n  --parameters data/parameters/model-v1.json --seasons 2024 --repeats 10
+python3 scripts/backtest_model.py --database data/curated/history.sqlite \
+  --parameters data/parameters/model-v1.json --seasons 2024 --repeats 10
 ```
 
-Cada corrida é comparada com duas linhas de base (ordem de largada e o modelo
-antigo de ritmo constante); o modelo só se justifica se vencer as duas. O
+Cada corrida é comparada com a linha de base da ordem de largada; o modelo só
+se justifica se vencê-la. O relatório de 24/09 também comparava com o modelo
+antigo de ritmo constante, removido do código depois. O
 [relatório da modelagem](docs/modelagem-corrida-calibrada.md) traz método,
 coeficientes, resultados de 2024 e limitações.
 

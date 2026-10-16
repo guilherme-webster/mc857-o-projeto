@@ -100,6 +100,13 @@ class DetailedGridSimulationTest(unittest.TestCase):
         self.assertEqual(captured["kwargs"]["dispute_model"], "pressure")
         self.assertIs(captured["kwargs"]["race_control"], HEURISTIC_RACE_CONTROL)
         self.assertEqual(result["reference_lap_time_ms"], 68_000.0)
+        self.assertEqual(
+            result["starting_grid"],
+            [
+                {"position": 1, "driver_id": "driver:2", "compound": "MEDIUM"},
+                {"position": 2, "driver_id": "driver:1", "compound": "MEDIUM"},
+            ],
+        )
 
     def test_uses_calibrated_track_and_geometry_reference(self) -> None:
         result = run_detailed_grid_simulation(

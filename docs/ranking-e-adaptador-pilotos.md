@@ -1,5 +1,9 @@
 # Ranking de ritmo e integração Python com o núcleo
 
+> Atualização em 16/10/2026: o demonstrador `backend/app/engine/simulation.py`
+> não existe mais; o motor da corrida é `simulate_detailed_race` (`src/f1_simulator/domain/race_simulation.py`), servido por `POST /catalog/grid/run`, com atributos de piloto heurísticos ([ADR 0008](adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md)). A porta `DriverParametersProvider` descrita aqui
+> continua consumida só pelo experimento de uma volta.
+
 Implementação de 18/09/2026, relacionada às issues #67 e #70.
 
 ## Ranking observacional

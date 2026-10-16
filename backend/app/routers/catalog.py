@@ -8,6 +8,7 @@ from app.schemas.responses import (
     CatalogEntryResponse,
     CatalogResponse,
     DriverAttributesResponse,
+    DriverProfileResponse,
     EditGridAttributesRequest,
     GridEntryResponse,
     RunGridRequest,
@@ -48,19 +49,43 @@ def _attributes_response(item) -> DriverAttributesResponse:
 
 
 def _grid_response(pairs, attributes, seed) -> BuildGridResponse:
-    return BuildGridResponse(
-        size=len(pairs),
-        seed=seed,
-        grid=[
+    """Grid com o perfil ficticio de quem tem atributo de origem ``preset``.
+
+    O perfil so aparece quando foi de fato aplicado: um piloto com perfil no
+    arquivo mas sem nenhum campo ``preset`` (por exemplo, apos editar todos
+    manualmente) nao exibe uma caracterizacao que ja nao o descreve.
+    """
+
+    profiles, disclaimer = catalog.driver_profiles()
+    entries = []
+    for entry in pairs:
+        item = attributes[entry.driver_id]
+        preset = profiles.get(entry.driver_id)
+        applied = preset is not None and "preset" in item.sources.values()
+        entries.append(
             GridEntryResponse(
                 driver_id=entry.driver_id,
                 driver_name=entry.driver_name,
                 team_id=entry.team_id,
                 team_name=entry.team_name,
-                attributes=_attributes_response(attributes[entry.driver_id]),
+                attributes=_attributes_response(item),
+                profile=(
+                    DriverProfileResponse(
+                        characterization=preset.characterization,
+                        parameter_version=preset.parameter_version,
+                    )
+                    if applied
+                    else None
+                ),
             )
-            for entry in pairs
-        ],
+        )
+    return BuildGridResponse(
+        size=len(pairs),
+        seed=seed,
+        grid=entries,
+        profiles_disclaimer=(
+            disclaimer if any(entry.profile for entry in entries) else None
+        ),
     )
 
 
@@ -71,6 +96,7 @@ def build_grid(request: BuildGridRequest) -> BuildGridResponse:
         mode=request.mode,
         manual_pair_ids=request.pair_ids,
         seed=request.seed,
+        race_id=request.race_id,
     )
     return _grid_response(pairs, attributes, used_seed)
 

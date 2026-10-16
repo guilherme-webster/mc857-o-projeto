@@ -74,8 +74,10 @@ def list_history_reports() -> dict:
 
 
 @router.get("/races", response_model=HistoryRacesResponse)
-def list_history_races() -> HistoryRacesResponse:
+def list_history_races(season: int | None = None) -> HistoryRacesResponse:
     races = history.list_races()
+    if season is not None:
+        races = [race for race in races if race.season == season]
     return HistoryRacesResponse(
         count=len(races),
         races=[

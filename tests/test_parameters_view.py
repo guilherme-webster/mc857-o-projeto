@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -112,6 +113,142 @@ class ParametersViewTest(unittest.TestCase):
 
         self.assertEqual(received, [])
         self.assertIn("número inteiro", view.status_message)
+
+    RUN_RACE = {
+        "total_laps": 1,
+        "history": [
+            {
+                "lap": 1,
+                "cars": [
+                    {
+                        "driver_id": "driver:1",
+                        "name": "Piloto",
+                        "laps_completed": 1,
+                        "total_time_ms": 90_000.0,
+                        "status": "RUNNING",
+                    }
+                ],
+            }
+        ],
+    }
+    RUN_TRACK = {
+        "circuit_id": "circuit:18",
+        "lap_length_m": 1_000.0,
+        "track_points": [
+            {"sequence": 0, "x": 0, "y": 0, "cumulative_distance_m": 0.0},
+            {"sequence": 1, "x": 1, "y": 0, "cumulative_distance_m": 500.0},
+            {"sequence": 2, "x": 1, "y": 1, "cumulative_distance_m": 1_000.0},
+        ],
+    }
+
+    def runner_view(self, runner) -> ParametersView:
+        view = ParametersView(
+            track_catalog_loader=lambda: self.CATALOG, simulation_runner=runner
+        )
+        view._catalog_results.put(("success", self.CATALOG))
+        view.on_update(0)
+        view.toggle_selected_track()
+        return view
+
+    def pump_until(self, view: ParametersView, done) -> None:
+        deadline = time.monotonic() + 5
+        while not done() and time.monotonic() < deadline:
+            view.on_update(0)
+            time.sleep(0.01)
+
+    def test_runner_simulates_in_background_and_opens_the_race(self) -> None:
+        from frontend.arcade.race_launcher import LaunchedRace, LaunchOutcome
+        from frontend.arcade.track_view import TrackView
+
+        received: list[SimulationPlan] = []
+
+        def runner(plan, progress):
+            received.append(plan)
+            progress("Simulando etapa 1/1: Interlagos…")
+            return LaunchOutcome(
+                (LaunchedRace(plan.races[0], self.RUN_RACE, self.RUN_TRACK),),
+                "grid atual do backend (1 pilotos, semente 1)",
+                (),
+            )
+
+        view = self.runner_view(runner)
+        view.submit_configuration()
+        self.pump_until(view, lambda: isinstance(self.window.current_view, TrackView))
+
+        self.assertIsInstance(self.window.current_view, TrackView)
+        self.assertEqual(received[0].races[0].circuit_id, "circuit:18")
+        self.assertEqual(view.status_message, "Simulação concluída.")
+
+    def test_runner_failure_stays_on_the_form_with_the_reason(self) -> None:
+        from frontend.arcade.track_client import BackendError
+
+        def runner(plan, progress):
+            raise BackendError(422, "track_id desconhecido no catalogo")
+
+        view = self.runner_view(runner)
+        view.submit_configuration()
+        self.pump_until(view, lambda: "Não foi possível" in view.status_message)
+
+        self.assertIn("track_id desconhecido", view.status_message)
+        self.assertFalse(view._launching)
+
+    def test_grid_view_builds_edits_and_saves_through_the_client(self) -> None:
+        from frontend.arcade.grid_view import GridView
+        from tests.test_grid_editor import grid_payload
+
+        class FakeGridClient:
+            def __init__(self) -> None:
+                self.calls: list[tuple] = []
+
+            def fetch_current_grid(self):
+                return None
+
+            def fetch_history_races(self, season):
+                return {
+                    "races": [
+                        {
+                            "race_id": "race:1141",
+                            "name": "São Paulo Grand Prix",
+                            "season": season,
+                            "round_number": 21,
+                        }
+                    ]
+                }
+
+            def build_grid(self, **request):
+                self.calls.append(("build", request))
+                return grid_payload()
+
+            def edit_grid(self, overrides):
+                self.calls.append(("edit", overrides))
+                return grid_payload()
+
+        client = FakeGridClient()
+        view = GridView(client=client)
+        deadline = time.monotonic() + 5
+        while len(view._sources) < 2 and time.monotonic() < deadline:
+            view.on_update(0)
+            time.sleep(0.01)
+        view._source_index = 1
+        view.build_grid()
+        while view._draft is None and time.monotonic() < deadline:
+            view.on_update(0)
+            time.sleep(0.01)
+        view.step_attribute("aggression", 1)
+        view.save_changes()
+        while view._busy and time.monotonic() < deadline:
+            view.on_update(0)
+            time.sleep(0.01)
+        view.on_draw()
+
+        self.assertEqual(
+            client.calls,
+            [
+                ("build", {"mode": "race", "race_id": "race:1141"}),
+                ("edit", [{"driver_id": "driver:830", "aggression": 1.53}]),
+            ],
+        )
+        self.assertIn("salvas", view._status)
 
     def test_restores_the_initial_values(self) -> None:
         view = ParametersView()

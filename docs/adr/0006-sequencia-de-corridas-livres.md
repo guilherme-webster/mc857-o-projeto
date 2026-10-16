@@ -5,6 +5,16 @@
 - Responsável pela autorização: usuário, ao confirmar a sequência de corridas
 - Atualiza: recorte de circuito único do ADR 0002 e do plano do MVP
 
+> Atualização em 2026-10-16: a rota `POST /simulation/series/simulate` e os
+> ritmos informados pelo usuário foram removidos do código (registrado no PRD
+> v3 da [modelagem heurística](../prds/modelagem-pilotos-heuristica.md), sem
+> ADR próprio). A sequência de corridas livres segue existindo de outra forma:
+> o frontend roda cada etapa em `POST /catalog/grid/run` sobre o grid do
+> catálogo, e `POST /championship/standings` calcula a pontuação acumulada que
+> este ADR deixava para depois. O ritmo vem do motor do
+> [ADR 0008](0008-modelagem-heuristica-sobre-o-motor-calibrado.md). Falta um ADR
+> que registre a substituição do mecanismo.
+
 ## Contexto
 
 A interface já lista 24 geometrias, mas o fluxo existente só seleciona uma.

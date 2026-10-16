@@ -102,12 +102,56 @@ def _generate(driver_ids, seed):
     return {item.driver_id: item for item in attributes}
 
 
-def build_grid(size, *, mode, manual_pair_ids, seed):
+def build_grid(size, *, mode, manual_pair_ids, seed, race_id=None):
+    """Monte e persista o grid atual.
+
+    ``mode="race"`` reproduz a largada de ``race_id`` no historico: os pares
+    vem de ``starting_grid_pair_ids`` e seguem pelo modo manual, de modo que
+    a validacao do catalogo e a mesma.
+    """
+
     used_seed = seed if seed is not None else _new_seed()
+    if mode == "race":
+        manual_pair_ids = _race_pair_ids(race_id)
+        size, mode = len(manual_pair_ids), "manual"
     pairs = _select_pairs(list_entries(), size, mode, manual_pair_ids, used_seed)
     attributes = _generate([entry.driver_id for entry in pairs], used_seed)
     _write_current_grid(pairs, attributes, used_seed)
     return pairs, attributes, used_seed
+
+
+def _race_pair_ids(race_id):
+    try:
+        return core_catalog.starting_grid_pair_ids(_repository(), race_id)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
+    except (OSError, sqlite3.Error) as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
+
+
+def driver_profiles():
+    """Perfis ficticios nomeados e o aviso do arquivo, ou ``({}, None)``.
+
+    Sem arquivo de presets o grid continua valido, apenas sem perfis.
+    """
+
+    if not DRIVER_PRESETS_JSON.exists():
+        return {}, None
+    from f1_simulator.adapters.driver_presets_json import (
+        DriverPresetError,
+        load_driver_preset_file,
+    )
+
+    try:
+        return load_driver_preset_file(DRIVER_PRESETS_JSON)
+    except DriverPresetError as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
 
 
 def read_current_grid():

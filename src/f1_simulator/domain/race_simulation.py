@@ -152,10 +152,10 @@ def _detailed_classification(states: list[CarState]) -> list[dict]:
             "name": state.name,
             "total_time_ms": round(state.total_time_ms, 1),
             # ``lap_time_ms`` e o tempo medio por volta ate aqui, e nao um ritmo
-            # constante. O campo permanece no retrato porque a visualizacao
-            # Arcade o usa para interpolar a posicao do carro na pista; mantendo
-            # o nome, a interface existente continua funcionando e passa a
-            # refletir o modelo novo sem alteracao alguma no frontend.
+            # constante. A visualizacao Arcade nao o usa mais: ela reproduz a
+            # corrida pelos ``total_time_ms`` de cada retrato
+            # (``frontend/arcade/race_playback.py``). O campo permanece no
+            # contrato para corridas salvas e outros consumidores.
             "lap_time_ms": round(state.total_time_ms / state.laps_completed, 1)
             if state.laps_completed
             else 0.0,
