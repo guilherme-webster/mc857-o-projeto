@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Valide o modelo contra corridas reais nao usadas na calibracao.
 
-Executa, para cada corrida de validacao, tres cenarios sobre o mesmo grid:
+Executa, para cada corrida de validacao, dois cenarios sobre o mesmo grid:
 
 ``grid``      -- linha de base: chega na ordem em que largou;
-``constant``  -- linha de base: o modelo antigo, ritmo constante por carro;
 ``model``     -- o modelo calibrado, com combustivel, pneu, trafego, paradas,
                  largada, abandono e ruido.
 
-Um modelo so se justifica se vencer as duas linhas de base. Exemplo::
+A linha de base ``constant`` (ritmo constante por carro) saiu junto com o
+nucleo simples, em ``d510721``. O modelo so se justifica se vencer a linha de
+base. Exemplo::
 
     python scripts/backtest_model.py \\
         --database data/curated/history.sqlite \\

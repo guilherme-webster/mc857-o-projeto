@@ -74,3 +74,45 @@ def list_races(repository: HistoryRepository) -> tuple[RaceEntry, ...]:
     ]
     races.sort(key=lambda race: (race.season, race.round_number))
     return tuple(races)
+
+
+def starting_grid_pair_ids(
+    repository: HistoryRepository, race_id: str
+) -> tuple[str, ...]:
+    """Pares ``piloto@equipe`` na ordem de largada de uma corrida historica.
+
+    O formato do par e o de ``build_grid._pair_id``, para que o resultado
+    alimente o modo manual sem traducao. Particularidades do Trotman:
+
+    - ``grid_position`` 0 ou ausente indica largada do pit lane ou piloto sem
+      posicao de grid; esses carros vao para o fim, na ordem de chegada
+      (``classification_order``), em vez de ganharem a posicao zero;
+    - corridas antigas tem o mesmo piloto mais de uma vez (carros
+      compartilhados); vale a primeira entrada na ordem de largada, porque o
+      grid nao repete piloto.
+    """
+
+    results = list(repository.records("race_results", race_id=race_id))
+    if not results:
+        raise ValueError(f"corrida sem resultados no historico: {race_id}")
+
+    # ``HistoricalRecord`` so oferece indexacao, nao ``.get``.
+    def starting_order(record) -> tuple:
+        grid = record["grid_position"]
+        without_grid = grid is None or grid <= 0
+        order = record["classification_order"]
+        return (
+            without_grid,
+            0 if without_grid else grid,
+            order if order is not None else 10_000,
+            record["driver_id"],
+        )
+
+    pair_ids: list[str] = []
+    seen: set[str] = set()
+    for record in sorted(results, key=starting_order):
+        if record["driver_id"] in seen:
+            continue
+        seen.add(record["driver_id"])
+        pair_ids.append(f"{record['driver_id']}@{record['team_id']}")
+    return tuple(pair_ids)

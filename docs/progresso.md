@@ -15,6 +15,7 @@ arquivo: o estado oficial continua no GitHub.
 | --- | --- | --- | --- | --- | --- |
 | #40, #61, #66 e #67 | #40: @DaviGabrielBC; #61/#66: @guilherme-webster; #67: sem responsavel atribuido | 2026-09-11 21:40 -03:00 | Revisao documental em `40-planejamento-modelagem`: FastAPI confirmado no ADR 0004; planejamento geral e pesquisa de perfilamento. `67-modelagem-pilotos` criada em worktree separado, sem implementacao. | Diff sem erros de whitespace; links locais conferidos; auditoria de contagens do ZIP Trotman/2024; fontes oficiais consultadas; uma consulta limitada OpenF1; leitura da branch #43 em `0f6255d`. Nenhum teste de execucao ou calibracao realizado. | Revisar e commitar documentos, integrar as decisoes na branch #67, coordenar o calculo com #43 e definir recorte/contrato Python. Expansao de FastF1 alem da geometria permanece proposta. Registro local para posterior publicacao nas issues: esta solicitacao autorizou documentacao e branches, sem envio de comentarios ao GitHub. |
 | #69 | @Jmvjr, @guilherme-webster | 2026-10-02 19:25 -03:00 | Modelo climático por volta implementado no domínio: umidade relativa e índice de água superficial, sem integração com API, Arcade, pneus ou tempo de volta. | 255 testes passaram, 35 ignorados; Ruff e `git diff --check` passaram. `pytest` não está instalado no ambiente `uv`; a suíte foi executada por `unittest` com `PYTHONPATH=src:.`. | Revisar hipóteses e parâmetros ilustrativos; na próxima etapa, mapear rótulos da UI e ligar resultados ao motor. Atualizar a issue #69 no GitHub após autorização para comentário. |
+| Modelagem do combustível (issue a abrir, ex.: #97); #63 | a definir na issue | 2026-10-23 -03:00 | Combustível por massa por carro, reabastecimento como regra do cenário e paradas estratégicas por piloto (pneus e combustível na mesma parada) implementados para a branch `97-modelagem-combustivel`, ainda sem commit; ADR 0009 proposto e `docs/modelagem-heuristica.md` atualizado. #63: tentativa de calibrar compostos em voltas FastF1 corrigidas pelo combustível **não adotada** e retirada do repositório para o backlog; a reserva de 2024 do plano `profile-evaluation-2024-expanded` foi consultada **duas vezes** nessa tentativa. | 627 testes por `unittest`; só as 3 falhas que já existem na `develop` (`test_catalog_grid_run` ×2, `test_track_geometry_etl`). Hashes do motor legado preservados. Validação do combustível em `data/parameters/fuel-v1.json` (inclinação por corrida 16,1 contra 22,3 ms/volta em 2024–2025). Ruff não executado (ausente no ambiente). App completo (Docker) não executado. | Abrir a issue, fazer os commits e o PR para a `develop`; o grupo decide se o reabastecimento fica ligado por padrão (ADR 0009). Na #63, registrar o uso da reserva e a proveniência do export CSV F1-Tyre-Strategy-Engine antes de retomar a calibração de pneus. Transferir este registro para as issues e remover a linha. |
 
 ## ETL enriquecido — 2026-09-12 (-03:00)
 
@@ -464,3 +465,115 @@ Três gráficos inspecionados; JSON/três CSVs idênticos em duas execuções.
 Backlog regenerado com novos comentários da issue #13; separar esse diff
 em commit de espelho do backlog. Sem commits/push/comentários GitHub; publicar
 andamento na #63 quando autorizado. 
+
+## Reprodução volta a volta na TrackView — 2026-10-16 (-03:00)
+
+Issue #6 (sub-issues #16/#18), responsável @ViniciusFCoracin; trabalho de
+@guilherme-webster na branch local `6-reproducao-volta-a-volta`, a partir da
+`develop` em `f00f599`. Etapa 1 do plano de levar `modelagem-heuristica.md` à
+interface.
+
+- `frontend/arcade/race_playback.py` (puro, sem Arcade) monta a linha do tempo
+  de cada carro a partir de `history[].cars[].total_time_ms`. A `TrackView`
+  passa a posicionar os carros por ela, em vez da velocidade constante de
+  `lap_time_ms`. Ultrapassagens, perdas nos boxes e o agrupamento sob SC
+  aparecem na pista; quem abandona some no fim da última volta registrada;
+  classificação e intervalos são ao vivo e coincidem com a classificação final
+  do motor.
+- A compressão do SC pode pôr o fim de volta de um carro muito atrasado antes do
+  anterior; o degrau é tratado como avanço instantâneo, nunca como recuo.
+- Verificações: 18 testes novos, incluindo contrato com a saída real do motor
+  detalhado. Suíte com 460 testes, 35 ignorados e 3 erros preexistentes por
+  falta de `fastapi` no Python do sistema (`uv` ausente nesta máquina). Ruff
+  check passou. Smoke test da `TrackView` com stub do Arcade; a janela real não
+  foi aberta.
+- Etapa 2 (sub-issue #21): `frontend/arcade/race_control_feed.py` (puro)
+  traduz `race_control_by_lap` e `race_control_events` em faixa de status
+  (verde, amarela, VSC, SC, vermelha, relargada), pista tingida e registro das
+  últimas mensagens (contato, batida, quebra, acionamento, escalada,
+  prorrogação, fim e relargada). Evento da volta L aparece quando o líder
+  completa L; o status segue a volta em andamento do líder.
+- Verificações: 28 testes novos nas duas etapas, inclusive contrato com todos os
+  tipos de evento de `race_control.step`. Suíte com o venv de
+  `../mc857-modelagem-pilotos` (Arcade 3.3.3, FastAPI): 486 testes, 35
+  ignorados, 2 erros preexistentes porque o serviço grava em `/data/simulation`
+  (caminho do container). Janela real do Arcade aberta com geometria do fixture
+  `trotman_v128_tracks_2025` e corrida do motor; capturas conferidas sob
+  amarela, SC e relargada.
+- Etapa 3 (sub-issue #18): o caso de uso publica `starting_grid` (posição e
+  composto de largada) no resultado. A classificação mostra composto, idade
+  do pneu, paradas, "BOX" durante a volta que termina em parada, posições
+  ganhas ou perdidas e a causa do abandono. Colunas desenhadas como textos
+  separados (a fonte "monospace" não é monoespaçada aqui), paleta com 20
+  cores e pista desenhada à direita da tabela.
+- Fluxo completo validado no Docker: `POST /api/history/build`, grid manual
+  com os pares da última etapa de 2024, `POST /catalog/grid/run` em
+  `circuit:24` e `TrackView` lendo a corrida salva via HTTP. O container roda
+  como root, então `data/curated/history.sqlite` e `data/simulation/` ficaram
+  com dono root no host.
+- Observação de modelagem, sem alteração: nessa corrida 12 de 20 carros
+  pararam (MEDIUM -> HARD) entre as voltas 5 e 10 de 58; vale revisar a
+  regra econômica de `HeuristicPitStrategy`.
+- Suíte: 495 testes, 35 ignorados, os mesmos 2 erros de `/data/simulation`.
+- Etapa 4 (#2/#71): o "Iniciar" da `ParametersView` roda o plano no backend
+  numa thread (`frontend/arcade/race_launcher.py`, puro): reutiliza o grid
+  atual ou cria um aleatório de 20 pilotos (404/409), roda cada etapa com
+  voltas, pista e faixas de clima ("Seco em todas" força seco) e abre a
+  `TrackView` da primeira etapa; as demais ficam em "Trocar corrida". Origem
+  do grid e opções ainda não suportadas (intervalo de sessão, largada lançada)
+  aparecem como avisos na tela da corrida. `track_client` ganhou `GET/POST
+  /catalog/grid`, `POST /catalog/grid/run` e `BackendError` com o `detail`.
+- Verificações: 13 testes puros e 2 de GUI novos; suíte com 510 testes, 37
+  ignorados (GUI sem `ARCADE_GUI_TEST`) e os 2 erros de `/data/simulation`.
+  Com `ARCADE_GUI_TEST=1`, `test_parameters_view` tem 3 falhas que já
+  existiam na `HEAD`. Ponta a ponta no app real contra o backend em Docker:
+  Interlagos, 30 voltas, chuva leve da 15 em diante.
+- Limitações: o preset ("Corrida livre"/"GP de São Paulo 2024") ainda não
+  escolhe o grid; regras de pontuação e desempate do torneio não são
+  calculadas; da `TrackView` não há volta para a configuração.
+- Torneio: `f1_simulator.domain.championship` calcula a tabela (pontos F1
+  25-18-...-1 sem volta rápida, abandono não pontua, desempate por média ou
+  vitórias) e é exposto em `POST /championship/standings`. O frontend não
+  importa o núcleo (ADR 0004; a imagem do frontend não tem `f1_simulator`).
+  A `TrackView` ganhou "Próxima etapa"/"Resultado do torneio" e o título
+  "Etapa i/N · pista"; `TournamentResultView` mostra a tabela, com "Voltar à
+  última etapa", "Corridas salvas" e "Nova simulação".
+- Verificações: 532 testes, 37 ignorados, os 2 erros de `/data/simulation`;
+  GUI com as 3 falhas preexistentes. Ponta a ponta no app real: Suzuka +
+  Interlagos, 15 voltas, navegação e tabela final conferidas.
+- Etapa 5 (+ backend da 6): `POST /catalog/grid` ganhou o modo `race`
+  (largada histórica via `starting_grid_pair_ids`; pit lane e sem posição ao
+  fim; carro compartilhado conta a primeira entrada) e a resposta do grid traz
+  `profile` (caracterização) e `profiles_disclaimer`; `/api/history/races`
+  aceita `season`. Tela "Pilotos e grid" (`grid_view.py`, estado puro em
+  `grid_editor.py`): aleatório ou largada de cada etapa de 2024, tabela com
+  arquétipo e atributos coloridos pela origem, painel com perfil, −/+ e
+  `PATCH`. Botão na configuração, abaixo das regras.
+- Defeitos achados no teste real e corrigidos: `GridDraft` com `slots` sem o
+  campo `_index`; `HistoricalRecord` sem `.get` (o teste com dicts não pegava;
+  o falso agora só indexa).
+- Verificações: suíte e GUI sem regressões (mesmos 2 erros de
+  `/data/simulation` e 3 falhas de GUI preexistentes). Ponta a ponta: largada
+  de São Paulo 2024 conferida contra a real, edição e gravação de
+  agressividade.
+- Pendente: limitações de pneus/severidade (#40) e ponto de volta rápida.
+  Commits locais, sem push nem comentário no GitHub; levar este registro à
+  #2, #6, #18, #21 e #71.
+
+### Pendência: número de voltas padrão por pista — 2026-10-16 (-03:00)
+
+Sem issue no GitHub ainda; candidata a sub-issue de #2 (tela de configuração).
+Toda etapa nova começa com 69 voltas: `ConfigurationFormData.laps = 69` e
+`DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(69)` em
+`frontend/arcade/configuration_state.py`, e `toggle_selected_track` herda a
+configuração ativa (`setdefault(circuit_id, self.configuration)`), qualquer
+que seja o tamanho da pista. Nenhuma pista do catálogo tem 69 voltas na F1.
+
+Proposta discutida, não implementada: usar como padrão o número de voltas da
+corrida histórica mais recente no circuito (Trotman; exige campo novo em
+`/simulation/tracks` ou endpoint) e, sem histórico, a regra do regulamento
+esportivo da FIA: menor número de voltas completas acima de 305 km (Mônaco,
+260 km), calculado com `lap_length_m`. O comprimento vem da geometria FastF1 e
+erra por uma ou duas voltas em algumas pistas (Yas Marina: 5.240 m no fixture
+contra 5.281 m oficiais, 59 voltas em vez de 58). O valor seria só o padrão; o
+usuário continua editando.

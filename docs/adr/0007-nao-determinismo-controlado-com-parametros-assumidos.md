@@ -9,6 +9,14 @@
 - Relaciona-se com: ADR 0002 (aleatoriedade injetável e reprodutível por
   semente) e ADR 0004 (backend FastAPI)
 
+> Atualização em 2026-10-16: o que este ADR propõe não foi implementado nesta
+> forma. `simulate_race`, `simulate_series` e a rota de série deixaram de
+> existir, e o não determinismo reproduzível chegou pelo motor calibrado da #40
+> e pelo [ADR 0008](0008-modelagem-heuristica-sobre-o-motor-calibrado.md)
+> (`RandomSource`, pneus por composto, paradas, controle de prova). O status
+> continua "proposta": cabe ao grupo rejeitá-lo, substituí-lo ou revisá-lo,
+> como o ADR 0008 recomenda.
+
 ## Contexto
 
 O professor da disciplina pediu que a simulação passe a ter um cenário mais não

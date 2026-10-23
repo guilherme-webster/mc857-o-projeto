@@ -1,5 +1,11 @@
 # Modelagem inicial de pneus: estudo e contrato proposto
 
+> Atualização em 16/10/2026: `backend/app/engine/loader.py`, citado no
+> levantamento, foi removido. Os pneus da corrida vêm hoje do motor calibrado
+> da #40 (`data/parameters/model-v1.json`: penalidade por composto e
+> `tyre_severity` por circuito); nenhum coeficiente deste estudo foi exportado.
+> Limitações atuais em [modelagem-heuristica.md](modelagem-heuristica.md), §9.
+
 > Estudo executado: [gráficos, resultados e conclusões de 2024](analise-pneus-2024.md).
 > O levantamento abaixo preserva o planejamento inicial.
 

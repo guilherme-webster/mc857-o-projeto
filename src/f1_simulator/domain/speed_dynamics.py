@@ -40,7 +40,7 @@ def physics_for(
     attributes: DriverAttributes | None,
     base: CarPhysics = ASSUMED_CAR_PHYSICS,
 ) -> CarPhysics:
-    """Envelope fisico de um piloto, derivado dos atributos (ADR 0009, caráter).
+    """Envelope fisico de um piloto, derivado dos atributos (ADR 0010, caráter).
 
     Sem atributos, devolve o envelope base inalterado. O ritmo escala as duas
     velocidades, a compostura levanta a velocidade de curva e a agressividade

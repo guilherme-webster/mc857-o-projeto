@@ -1,5 +1,10 @@
 # Modificações — modelo calibrado de corrida
 
+> Registro histórico da branch `40-modelagem-corrida-calibrada` (24/09/2026),
+> integrada pela #67. Caminhos como `services/race_simulation.py` e
+> `loaders/loader.py`, e o núcleo `simulate_race`, foram removidos depois;
+> o estado atual está no [CODEBASE_MAP](docs/CODEBASE_MAP.md).
+
 Resumo do que mudou nesta branch. Base: `3549828` (`43-criar-endpoints`).
 Total: 8 arquivos modificados, 25 novos. Suíte passa de 164 para 288 testes.
 

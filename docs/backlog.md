@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-10-03T20:35:50Z
-- **Abertas:** 43
-- **Fechadas:** 13
+- **Ultima atividade registrada:** 2026-10-16T20:24:01Z
+- **Abertas:** 42
+- **Fechadas:** 15
 
 ## Issues abertas
 
@@ -225,13 +225,13 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @Jmvjr
-- **Responsaveis:** @ViniciusFCoracin
+- **Responsaveis:** @ViniciusFCoracin, @guilherme-webster
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
 - **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18), [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19), [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21)
 - **Criada:** 2026-08-28T23:06:03Z
-- **Atualizada:** 2026-08-28T23:39:04Z
+- **Atualizada:** 2026-10-16T20:24:01Z
 - **Fechada:** —
 
 <details>
@@ -244,6 +244,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-10-16T20:24:01Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-08-28T23:39:04Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
 - 2026-08-28T23:36:19Z — sub-issue adicionada: #21 por @ViniciusFCoracin
 - 2026-08-28T23:34:45Z — sub-issue adicionada: #19 por @ViniciusFCoracin
@@ -1054,34 +1055,6 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 
 </details>
 
-### [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
-- **Sub-issues:** —
-- **Criada:** 2026-09-05T19:56:26Z
-- **Atualizada:** 2026-09-05T19:56:38Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-05T19:56:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
-
-</details>
-
 ### [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
 
 - **Estado:** aberta
@@ -1177,27 +1150,6 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - 2026-09-08T22:38:28Z — fechada por @Jmvjr
 - 2026-09-08T22:18:09Z — label adicionada: História por @Jmvjr
 - 2026-09-08T22:18:08Z — atribuida: @Jmvjr por @Jmvjr
-
-</details>
-
-### [#54 — Carregar dados de pista no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/54)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T20:24:00Z
-- **Atualizada:** 2026-09-11T20:24:00Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
 
 </details>
 
@@ -1589,6 +1541,27 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <summary>Historico de estado</summary>
 
 - 2026-09-11T23:54:52Z — label adicionada: História por @guilherme-webster
+
+</details>
+
+### [#95 — Modelagem da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/95)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-16T19:57:22Z
+- **Atualizada:** 2026-10-16T19:57:22Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
 
 </details>
 
@@ -2106,6 +2079,35 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 
 </details>
 
+### [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+- **Sub-issues:** —
+- **Criada:** 2026-09-05T19:56:26Z
+- **Atualizada:** 2026-10-08T16:22:58Z
+- **Fechada:** 2026-10-08T16:22:58Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-08T16:22:58Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-05T19:56:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
 ### [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53)
 
 - **Estado:** fechada
@@ -2133,6 +2135,34 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-11T22:13:36Z — fechada por @guilherme-webster
 - 2026-09-11T20:22:54Z — label adicionada: História por @guilherme-webster
 - 2026-09-11T20:22:52Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#54 — Carregar dados de pista no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/54)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T20:24:00Z
+- **Atualizada:** 2026-10-08T16:23:01Z
+- **Fechada:** 2026-10-08T16:23:01Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-08T16:23:02Z — fechada por @Gustavo-Jun-Tsuji
 
 </details>
 

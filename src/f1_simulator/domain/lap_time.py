@@ -168,6 +168,8 @@ def compute_lap_time(
     lap_time_loss_ms: float = 0.0,
     weather_ms: float = 0.0,
     noise_label: str = "",
+    fuel_ms: float | None = None,
+    pit_ms: float | None = None,
 ) -> LapTimeBreakdown:
     """Monte o tempo desta volta somando referencia e penalidades.
 
@@ -184,6 +186,14 @@ def compute_lap_time(
     encarecer a parada que o proprio SC tornou relativamente mais barata.
     ``noise_label`` da ao unico sorteio uma finalidade auditavel; vazio preserva
     as chamadas e sequencias historicas do motor legado.
+
+    ``fuel_ms`` substitui a penalidade linear por voltas restantes quando o
+    motor acompanha a massa de combustivel de cada carro (``domain/fuel.py``).
+    ``None`` preserva exatamente o calculo legado.
+
+    ``pit_ms`` substitui a perda de boxes do circuito numa parada cuja perda
+    e propria do carro (reabastecimento, ``domain/fuel.py``). Continua
+    escalada por ``pit_loss_factor`` e so vale com ``pitting``.
     """
 
     if reference_ms <= 0:
@@ -201,9 +211,17 @@ def compute_lap_time(
         raise ValueError("lap_time_factor deve ser positivo")
     if not isinstance(noise_label, str):
         raise ValueError("noise_label deve ser str")
+    if fuel_ms is not None:
+        _non_negative_factor(fuel_ms, "fuel_ms")
+    if pit_ms is not None:
+        _non_negative_factor(pit_ms, "pit_ms")
 
     compound = parameters.compound(tyre.compound)
-    fuel = fuel_penalty_ms(parameters, lap_number, total_laps)
+    fuel = (
+        fuel_penalty_ms(parameters, lap_number, total_laps)
+        if fuel_ms is None
+        else fuel_ms
+    )
     raw_tyre_ms = tyre_penalty_ms(tyre, compound, track)
     if degradation_factor == 1.0:
         # O caminho neutro conserva inclusive a aritmetica anterior: subtrair
@@ -214,7 +232,8 @@ def compute_lap_time(
         degradation_ms = raw_tyre_ms - compound.pace_offset_ms
         tyre_ms = compound.pace_offset_ms + degradation_ms * degradation_factor
     traffic = traffic_penalty_ms(parameters, track, gap_ahead_ms)
-    pit = track.pit_loss_ms * pit_loss_factor if pitting else 0.0
+    stop_ms = track.pit_loss_ms if pit_ms is None else pit_ms
+    pit = stop_ms * pit_loss_factor if pitting else 0.0
     raw_noise_ms = lap_noise_ms(parameters, rng, noise_label)
     noise = raw_noise_ms if noise_scale == 1.0 else raw_noise_ms * noise_scale
 

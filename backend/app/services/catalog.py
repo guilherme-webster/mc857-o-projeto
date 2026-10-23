@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from app.config import (
     CURRENT_GRID_JSON,
     CURRENT_RACE_JSON,
+    FUEL_PARAMETERS,
     HISTORY_DB,
     MODEL_PARAMETERS,
     REFERENCE_LAPS,
@@ -102,12 +103,56 @@ def _generate(driver_ids, seed):
     return {item.driver_id: item for item in attributes}
 
 
-def build_grid(size, *, mode, manual_pair_ids, seed):
+def build_grid(size, *, mode, manual_pair_ids, seed, race_id=None):
+    """Monte e persista o grid atual.
+
+    ``mode="race"`` reproduz a largada de ``race_id`` no historico: os pares
+    vem de ``starting_grid_pair_ids`` e seguem pelo modo manual, de modo que
+    a validacao do catalogo e a mesma.
+    """
+
     used_seed = seed if seed is not None else _new_seed()
+    if mode == "race":
+        manual_pair_ids = _race_pair_ids(race_id)
+        size, mode = len(manual_pair_ids), "manual"
     pairs = _select_pairs(list_entries(), size, mode, manual_pair_ids, used_seed)
     attributes = _generate([entry.driver_id for entry in pairs], used_seed)
     _write_current_grid(pairs, attributes, used_seed)
     return pairs, attributes, used_seed
+
+
+def _race_pair_ids(race_id):
+    try:
+        return core_catalog.starting_grid_pair_ids(_repository(), race_id)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
+    except (OSError, sqlite3.Error) as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
+
+
+def driver_profiles():
+    """Perfis ficticios nomeados e o aviso do arquivo, ou ``({}, None)``.
+
+    Sem arquivo de presets o grid continua valido, apenas sem perfis.
+    """
+
+    if not DRIVER_PRESETS_JSON.exists():
+        return {}, None
+    from f1_simulator.adapters.driver_presets_json import (
+        DriverPresetError,
+        load_driver_preset_file,
+    )
+
+    try:
+        return load_driver_preset_file(DRIVER_PRESETS_JSON)
+    except DriverPresetError as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
 
 
 def read_current_grid():
@@ -212,7 +257,7 @@ def _reference_lap(track_id):
 
 
 def _track_geometry(track_id):
-    """TrackGeometry da pista para o motor fisico (ADR 0009), ou None sem artefato.
+    """TrackGeometry da pista para o motor fisico (ADR), ou None sem artefato.
 
     Pista sem geometria disponivel nao e erro: o motor cai no tempo calibrado.
     """
@@ -224,6 +269,60 @@ def _track_geometry(track_id):
     try:
         return geometry_object(track_id)
     except HTTPException:
+        return None
+
+
+def _fuel_parameters():
+    """Modelo de massa de combustivel, ou ``None`` se o artefato nao existe.
+
+    Ausencia nao e erro: o motor usa o combustivel linear de ``model-v1.json``
+    e o resultado simplesmente nao traz o bloco ``fuel``. Artefato presente
+    porem invalido e erro de implantacao e vira 503.
+    """
+
+    from f1_simulator.adapters.fuel_parameters_json import (
+        FuelParametersError,
+        read_fuel_parameters,
+    )
+
+    try:
+        return read_fuel_parameters(FUEL_PARAMETERS)
+    except FileNotFoundError:
+        return None
+    except (OSError, FuelParametersError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"parametros de combustivel invalidos: {error}",
+        ) from error
+
+
+def _pit_entry_fraction(track_id):
+    """Posicao da entrada dos boxes na volta, pela geometria; ``None`` sem ela.
+
+    Geometria ausente ou invalida nao impede a corrida: o caso de uso supoe a
+    entrada na linha de chegada.
+    """
+
+    if track_id is None:
+        return None
+    from app.services.track_geometry import geometry_dataset
+
+    from f1_simulator.adapters.datasets.mock_track_geometry import (
+        MockTrackDatasetError,
+    )
+    from f1_simulator.domain.track_geometry import pit_entry_lap_fraction
+    from f1_simulator.factories.track_geometry_factory import (
+        TrackGeometryFactory,
+        TrackGeometryValidationError,
+    )
+
+    try:
+        dataset = geometry_dataset()
+        if dataset is None:
+            return None
+        geometry = TrackGeometryFactory.build(dataset.load_geometry(track_id))
+        return pit_entry_lap_fraction(geometry)
+    except (OSError, ValueError, MockTrackDatasetError, TrackGeometryValidationError):
         return None
 
 
@@ -267,6 +366,8 @@ def run_grid(*, total_laps, track_id, weather):
             rng=rng,
             reference_lap=_reference_lap(canonical_track_id),
             geometry=geometry,
+            fuel_parameters=_fuel_parameters(),
+            pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
         )
     except ValueError as error:
         raise HTTPException(

@@ -18,10 +18,11 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | [0003](0003-geometria-mockada-derivada-do-fastf1.md) | aceita; escopo de dados ampliado pelo 0005 | Geometria reduzida derivada offline. |
 | [0004](0004-backend-fastapi-e-contratos-python.md) | aceita | FastAPI substitui Django; integracao interna por contratos Python. |
 | [0005](0005-historico-completo-e-enriquecimento-fastf1.md) | aceita | Historico Trotman completo e observacoes complementares FastF1 offline. |
-| [0006](0006-sequencia-de-corridas-livres.md) | aceita | Sequencia de corridas livres em varias pistas, sem evento historico obrigatorio. |
-| [0007](0007-nao-determinismo-controlado-com-parametros-assumidos.md) | proposta; contexto a revisar pelo 0008 | Variancia reproduzivel por semente, com pneus e ruido assumidos e rotulados. |
+| [0006](0006-sequencia-de-corridas-livres.md) | aceita; mecanismo (rota de serie) removido sem ADR, ver nota de 2026-10-16 | Sequencia de corridas livres em varias pistas, sem evento historico obrigatorio. |
+| [0007](0007-nao-determinismo-controlado-com-parametros-assumidos.md) | proposta, nao implementada; contexto a revisar pelo 0008 | Variancia reproduzivel por semente, com pneus e ruido assumidos e rotulados. |
 | [0008](0008-modelagem-heuristica-sobre-o-motor-calibrado.md) | aceita | Perfis, disputa, SC/VSC/bandeiras e paradas heuristicos sobre o motor calibrado da #40. |
-| [0009](0009-motor-fisico-de-velocidade-por-trecho.md) | aceita; atualiza o 0008 | Motor fisico de velocidade por trecho: o tempo de volta emerge da velocidade derivada da curvatura. |
+| [0009](0009-combustivel-por-massa-e-reabastecimento.md) | proposta | Combustivel por massa por carro e reabastecimento como regra do cenario, com paradas estrategicas por piloto. |
+| [0010](0010-motor-fisico-de-velocidade-por-trecho.md) | aceita; atualiza o 0008 | Motor fisico de velocidade por trecho: o tempo de volta emerge da velocidade derivada da curvatura. |
 
 ## Modelo
 
