@@ -92,11 +92,14 @@ _RETIREMENT_LABEL = {
     "CONTACT": "CONTATO",
     "CRASH": "BATIDA",
     "MECHANICAL": "QUEBRA",
+    "FUEL": "SEM COMB.",
 }
 _GAINED_COLOR = (70, 211, 142)
 _LOST_COLOR = (255, 112, 112)
 _PIT_COLOR = (240, 150, 40)
 _HEADER_COLOR = (130, 140, 150)
+_FUEL_COLOR = (170, 180, 195)
+_LIFT_COAST_COLOR = (90, 200, 250)
 # Colunas da classificacao: (cabecalho, x em px a partir da margem, ancora).
 # Cada coluna e um texto proprio porque a fonte "monospace" nem sempre e
 # monoespacada e alinhar com espacos deixava as colunas tortas.
@@ -108,11 +111,20 @@ _STANDING_COLUMNS = {
     "age": ("VOL", 318, "right"),
     "stops": ("PAR", 350, "right"),
     "delta": ("+/-", 392, "right"),
+    "fuel": ("COMB (kg)", 472, "right"),
+    "saving": ("", 478, "left"),
 }
+# Colunas que so existem quando a corrida traz o modelo de massa.
+_FUEL_COLUMNS = ("fuel", "saving")
+# Medidor de combustivel a esquerda dos kg: (x a partir da margem, largura,
+# altura) em px. A barra cheia e ``max_fuel_kg``, o teto regulamentar.
+_FUEL_GAUGE = (400, 28, 7)
 _TYRE_RADIUS = 8
 # Largura reservada a esquerda para a classificacao; a pista e desenhada so no
-# espaco restante, para que tabela e tracado nao se sobreponham.
+# espaco restante, para que tabela e tracado nao se sobreponham. As colunas de
+# combustivel alargam a tabela apenas nas corridas que as tem.
 STANDINGS_WIDTH = 440
+FUEL_STANDINGS_WIDTH = 510
 
 _MENU_BG = (16, 22, 30)
 _ROW_BG = (30, 41, 53)
@@ -290,6 +302,13 @@ class TrackView(arcade.View):
             for i, car in enumerate(self._playback.cars)
         }
         self._race_len_ms = self._playback.duration_ms
+        # Corridas sem o modelo de massa (salvas antes dele ou rodadas sem
+        # ``fuel-v1.json``) mantem a tabela de antes, sem colunas vazias.
+        self._show_fuel = self._playback.has_fuel
+        self._standings_width = (
+            FUEL_STANDINGS_WIDTH if self._show_fuel else STANDINGS_WIDTH
+        )
+        self._fuel_scale_kg = _fuel_scale_kg(self._playback)
         self._feed = RaceControlFeed(
             race, {car.driver_id: car.name for car in self._playback.cars}
         )
@@ -436,7 +455,7 @@ class TrackView(arcade.View):
         """Projete a geometria normalizada no tamanho atual da janela."""
 
         width, height = self.window.width, self.window.height
-        area_left = STANDINGS_WIDTH
+        area_left = self._standings_width
         usable_w = max(1.0, width - area_left - MARGIN)
         usable_h = max(1.0, height - 2 * MARGIN)
         if usable_w / usable_h > self._aspect:
@@ -581,10 +600,12 @@ class TrackView(arcade.View):
         text.draw()
 
     def _draw_standings(self, height: int) -> None:
-        """Classificacao ao vivo com pneu, paradas e posicoes ganhas.
+        """Classificacao ao vivo com pneu, paradas, posicoes ganhas e combustivel.
 
         O composto e a idade sao os do ultimo retrato do carro; "BOX" marca a
-        volta que termina com parada; quem abandonou mostra a causa.
+        volta que termina com parada; quem abandonou mostra a causa. O
+        combustivel e interpolado dentro da volta, e "L&C" marca a volta feita
+        em lift-and-coast.
         """
 
         left = 20
@@ -592,6 +613,8 @@ class TrackView(arcade.View):
         top = height - 96
         line_h = 20
         for key, text in self._header_texts.items():
+            if key in _FUEL_COLUMNS and not self._show_fuel:
+                continue
             text.x = left + _STANDING_COLUMNS[key][1]
             text.y = header_y
             text.draw()
@@ -605,10 +628,10 @@ class TrackView(arcade.View):
                         0,
                         0,
                         PRIMARY_TEXT_COLOR,
-                        9 if key == "tyre" else 12,
+                        9 if key in ("tyre", "saving") else 12,
                         anchor_x=anchor,
                         anchor_y="center",
-                        bold=key == "tyre",
+                        bold=key in ("tyre", "saving"),
                     )
                     for key, (_, _, anchor) in _STANDING_COLUMNS.items()
                 }
@@ -618,7 +641,11 @@ class TrackView(arcade.View):
             y = top - i * line_h
             car_color = self._color_by_driver.get(row.driver_id, PRIMARY_TEXT_COLOR)
             cells = self._standing_cells(row, car_color)
+            if self._show_fuel and row.fuel_kg is not None and not row.retired:
+                self._draw_fuel_gauge(left, y, row.fuel_kg, row.lift_and_coast)
             for key, (value, color) in cells.items():
+                if key in _FUEL_COLUMNS and not self._show_fuel:
+                    continue
                 text = texts[key]
                 text.text = value
                 text.color = color
@@ -627,6 +654,26 @@ class TrackView(arcade.View):
                 if key == "tyre" and value:
                     arcade.draw_circle_outline(text.x, y, _TYRE_RADIUS, color, 2)
                 text.draw()
+
+    def _draw_fuel_gauge(
+        self, left: float, y: float, fuel_kg: float, lift_and_coast: bool
+    ) -> None:
+        """Barra horizontal do tanque, cheia em ``_fuel_scale_kg``."""
+
+        if self._fuel_scale_kg is None:
+            return
+        offset, gauge_w, gauge_h = _FUEL_GAUGE
+        gauge_left = left + offset
+        bottom = y - gauge_h / 2
+        fraction = max(0.0, min(fuel_kg / self._fuel_scale_kg, 1.0))
+        if fraction > 0.0:
+            color = _LIFT_COAST_COLOR if lift_and_coast else _FUEL_COLOR
+            arcade.draw_lbwh_rectangle_filled(
+                gauge_left, bottom, gauge_w * fraction, gauge_h, color
+            )
+        arcade.draw_lbwh_rectangle_outline(
+            gauge_left, bottom, gauge_w, gauge_h, _HEADER_COLOR, 1
+        )
 
     def _standing_cells(self, row, car_color) -> dict[str, tuple[str, tuple]]:
         """Texto e cor de cada coluna de uma linha da classificacao."""
@@ -664,6 +711,13 @@ class TrackView(arcade.View):
         else:
             delta = ("=", _HEADER_COLOR)
 
+        fuel_text = ""
+        saving = ("", car_color)
+        if row.fuel_kg is not None and not row.retired:
+            fuel_text = f"{row.fuel_kg:.1f}"
+            if row.lift_and_coast:
+                saving = ("L&C", _LIFT_COAST_COLOR)
+
         return {
             "position": (str(row.position), car_color),
             "name": (row.name[:18], car_color),
@@ -672,6 +726,8 @@ class TrackView(arcade.View):
             "age": (age_text, car_color),
             "stops": (stops_text, car_color),
             "delta": delta,
+            "fuel": (fuel_text, car_color),
+            "saving": saving,
         }
 
     def _draw_race_control(self, status, width: int, height: int) -> None:
@@ -713,6 +769,20 @@ def _format_clock(ms: float) -> str:
 
 def _format_gap(ms: float) -> str:
     return f"+{ms / 1000.0:.3f}"
+
+
+def _fuel_scale_kg(playback: RacePlayback) -> float | None:
+    """Massa que enche o medidor: o teto regulamentar ou, sem ele, a maior
+    carga de largada. ``None`` quando nao ha escala positiva para desenhar.
+    """
+
+    if playback.max_fuel_kg is not None:
+        return playback.max_fuel_kg
+    largest = max(
+        (car.fuel_states[0].kg for car in playback.cars if car.fuel_states),
+        default=0.0,
+    )
+    return largest if largest > 0.0 else None
 
 
 def _weather_segments(race: dict) -> list[dict]:
