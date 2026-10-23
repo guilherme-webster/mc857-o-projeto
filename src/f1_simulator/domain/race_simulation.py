@@ -1,7 +1,8 @@
 """Nucleo da simulacao de corrida, em dois niveis.
 
 ``simulate_detailed_race`` -- o modelo do motor calibrado (issue #40), com
-combustivel, pneus por composto, trafego, paradas, disputas de posicao, abandono
+combustivel (linear por voltas restantes, ou massa por carro quando um
+``FuelPlan`` e informado), pneus por composto, trafego, paradas, disputas de posicao, abandono
 e ruido, descrito em ``domain/lap_time.py`` e ``domain/disputes.py``. Consome
 parametros versionados e uma fonte aleatoria injetada; a mesma semente reproduz
 a mesma corrida.
@@ -33,6 +34,7 @@ from f1_simulator.domain.disputes import (
     resolve_disputes,
 )
 from f1_simulator.domain.driver_attributes import DriverAttributes
+from f1_simulator.domain.fuel import FuelLap, FuelPlan, RefuelStops, fuel_lap
 from f1_simulator.domain.lap_time import compute_lap_time
 from f1_simulator.domain.model_parameters import ModelParameters, TrackParameters
 from f1_simulator.domain.race_control import (
@@ -46,7 +48,12 @@ from f1_simulator.domain.race_control import (
     step,
 )
 from f1_simulator.domain.random_source import RandomSource
-from f1_simulator.domain.strategy import StrategyState, TyreStrategy
+from f1_simulator.domain.strategy import (
+    FuelStatus,
+    PitDecision,
+    StrategyState,
+    TyreStrategy,
+)
 from f1_simulator.domain.tyres import TyreSet
 from f1_simulator.domain.weather import (
     ASSUMED_WEATHER_EFFECT,
@@ -63,6 +70,10 @@ RETIRED = "RETIRED"
 MECHANICAL = "MECHANICAL"
 CONTACT = "CONTACT"
 CRASH = "CRASH"
+#: O tanque esvaziou antes da bandeirada. So existe com o modelo de massa de
+#: combustivel e so acontece quando a carga nao cobre a corrida (corrida alem
+#: do alcance de 110 kg ou carga de largada reduzida de proposito).
+FUEL = "FUEL"
 
 #: Volta de referencia nominal assumida (ms), usada pelo motor detalhado como
 #: ultima reserva quando a corrida nao tem pista nem comprimento informados.
@@ -82,6 +93,16 @@ class Entrant:
     combustivel baixo, ar livre) -- a mesma condicao assumida pelas penalidades
     de ``domain/lap_time.py``. ``reliability_factor`` multiplica o risco base de
     abandono: 1.0 e o carro medio da era calibrada.
+
+    ``start_fuel_kg`` e a carga de largada, usada apenas quando a corrida
+    recebe um ``FuelPlan``. ``None`` usa a carga planejada pelo plano (corrida
+    inteira mais a reserva); um valor menor representa a estrategia de largar
+    leve e economizar depois.
+
+    ``refuel_stops`` e a perda de tempo de cada parada de reabastecimento
+    deste carro, sorteada antes da corrida a partir do tempo de parada real
+    da equipe. ``None`` usa a perda de boxes do circuito. So vale quando o
+    plano permite reabastecer.
     """
 
     driver_id: str
@@ -92,6 +113,8 @@ class Entrant:
     starting_compound: str
     team_id: str | None = None
     reliability_factor: float = 1.0
+    start_fuel_kg: float | None = None
+    refuel_stops: RefuelStops | None = None
 
     def __post_init__(self) -> None:
         if self.reference_lap_time_ms <= 0:
@@ -102,6 +125,12 @@ class Entrant:
             raise ValueError(f"grid_position deve ser positivo para {self.driver_id}")
         if self.reliability_factor < 0:
             raise ValueError("reliability_factor nao pode ser negativo")
+        if self.start_fuel_kg is not None and (
+            isinstance(self.start_fuel_kg, bool)
+            or not isinstance(self.start_fuel_kg, (int, float))
+            or not self.start_fuel_kg >= 0
+        ):
+            raise ValueError(f"start_fuel_kg invalido para {self.driver_id}")
 
 
 @dataclass(slots=True)
@@ -125,6 +154,15 @@ class CarState:
     #: Voltas em que o carro terminou preso atras de outro. Distingue um
     #: carro lento de um carro rapido que nao conseguiu passar.
     blocked_laps: int = 0
+    #: Massa de combustivel (kg) ao fim da ultima volta. ``None`` quando a
+    #: corrida usa o combustivel linear legado, que nao tem estado por carro;
+    #: nesse caso o retrato nao ganha campos novos.
+    fuel_kg: float | None = None
+    #: Voltas em que o carro precisou economizar (lift-and-coast).
+    fuel_saving_laps: int = 0
+    #: Paradas so de reabastecimento. Separadas de ``stops_made`` porque a
+    #: estrategia de pneus conta apenas as suas proprias paradas.
+    refuels_made: int = 0
 
 
 def _detailed_classification(states: list[CarState]) -> list[dict]:
@@ -145,7 +183,7 @@ def _detailed_classification(states: list[CarState]) -> list[dict]:
             s.driver_id,
         ),
     )
-    return [
+    rows = [
         {
             "position": index,
             "driver_id": state.driver_id,
@@ -169,6 +207,14 @@ def _detailed_classification(states: list[CarState]) -> list[dict]:
         }
         for index, state in enumerate(ordered, start=1)
     ]
+    # Campos de combustivel apenas com o modelo de massa: o retrato legado e
+    # parte do hash de reproducao e nao pode ganhar chaves.
+    for row, state in zip(rows, ordered):
+        if state.fuel_kg is not None:
+            row["fuel_kg"] = round(state.fuel_kg, 3)
+            row["fuel_saving_laps"] = state.fuel_saving_laps
+            row["refuels_made"] = state.refuels_made
+    return rows
 
 
 def simulate_detailed_race(
@@ -186,6 +232,7 @@ def simulate_detailed_race(
     race_control: RaceControlParameters | None = None,
     lap_surface_water: Sequence[float] | None = None,
     weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
+    fuel: FuelPlan | None = None,
 ) -> dict:
     """Simule uma corrida detalhada, com extensoes opt-in e caminho neutro fiel.
 
@@ -199,6 +246,15 @@ def simulate_detailed_race(
     degradacao; o modelo de pressao recebe perfis de disputa; e o controle de
     prova modifica tempo, paradas, disputas e incidentes volta a volta. Todos os
     sorteios adicionais existem exclusivamente nesse caminho opt-in.
+
+    ``fuel`` liga o modelo de massa de combustivel (``domain/fuel.py``): cada
+    carro carrega sua massa, queima uma volta de combustivel por volta (menos
+    sob SC/VSC/vermelha), economiza quando falta e abandona com causa ``FUEL``
+    se o tanque esvaziar. Se o plano permite reabastecer, toda parada troca
+    pneus e reabastece, e a estrategia de cada piloto decide quando parar e
+    quanto colocar (``StrategyState.fuel``). O modelo nao sorteia nada, entao
+    a sequencia aleatoria so muda se um carro ficar sem combustivel sob
+    controle de prova (o carro parado vira um incidente).
     """
 
     if dispute_model not in ("legacy", "pressure"):
@@ -208,6 +264,7 @@ def simulate_detailed_race(
         or dispute_model == "pressure"
         or race_control is not None
         or lap_surface_water is not None
+        or fuel is not None
     )
     if not enhanced:
         return _simulate_detailed_race_legacy(
@@ -233,6 +290,7 @@ def simulate_detailed_race(
         race_control=race_control,
         lap_surface_water=lap_surface_water,
         weather_effect=weather_effect,
+        fuel=fuel,
     )
 
 
@@ -433,6 +491,7 @@ def _simulate_detailed_race_enhanced(
     race_control: RaceControlParameters | None,
     lap_surface_water: Sequence[float] | None = None,
     weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
+    fuel: FuelPlan | None = None,
 ) -> dict:
     """Execute a composicao opt-in de atributos, disputas e controle de prova.
 
@@ -448,6 +507,19 @@ def _simulate_detailed_race_enhanced(
     Sem controle de prova, o unico sorteio posterior as disputas continua sendo
     o abandono mecanico legado, sem rotulo. Assim atributos isolados nao criam
     fontes novas de acaso.
+
+    Com ``fuel``, a massa de cada carro e consumida em todas as voltas, apos a
+    decisao de parada e antes do tempo da volta. Pane seca e verificada depois
+    dos sorteios de abandono e nao consome aleatoriedade.
+
+    Reabastecimento: a queima da volta e calculada antes da decisao e
+    entregue a estrategia junto com a massa a bordo. Uma parada decidida vira
+    a volta de entrada: soma a perda de parada propria do carro mais o tempo
+    de abastecer alem da troca de pneus, sai das disputas e, no commit, recebe
+    pneus novos e o combustivel decidido (``PitDecision.refuel_kg``; ``None``
+    enche para terminar). Estrategias que nao olham o combustivel ficam
+    protegidas por uma rede de seguranca: se o carro nao chegaria a proxima
+    entrada dos boxes, o motor o chama para os boxes com o mesmo composto.
     """
 
     ordered_entrants, by_id, used_attributes = _prepare_enhanced_race(
@@ -476,6 +548,18 @@ def _simulate_detailed_race_enhanced(
     compounds_used = {
         entrant.driver_id: [entrant.starting_compound] for entrant in ordered_entrants
     }
+    start_fuel: dict[str, float] = {}
+    refuel_events: list[dict] = []
+    if fuel is not None:
+        for entrant in ordered_entrants:
+            load = (
+                fuel.start_fuel_kg(total_laps)
+                if entrant.start_fuel_kg is None
+                else float(entrant.start_fuel_kg)
+            )
+            fuel.validate_start_fuel(load, entrant.driver_id)
+            start_fuel[entrant.driver_id] = load
+            states[entrant.driver_id].fuel_kg = load
 
     control_state = RaceControlState()
     control_events: list[dict[str, object]] = []
@@ -515,6 +599,10 @@ def _simulate_detailed_race_enhanced(
         # O quarto item indica troca gratuita sob vermelha. Nela o jogo novo
         # estreia nesta propria volta e nao representa passagem pelo pit lane.
         proposals: dict[str, tuple[float, bool, str | None, bool]] = {}
+        fuel_laps: dict[str, FuelLap] = {}
+        # Paradas com reabastecimento ligado: (kg, perda aplicada ms, quem
+        # decidiu). Toda parada nesse modo troca pneus e pode abastecer.
+        refuelling: dict[str, tuple[float, float, str]] = {}
         for state in running:
             entrant = by_id[state.driver_id]
             driver_attributes = used_attributes.get(state.driver_id)
@@ -523,6 +611,31 @@ def _simulate_detailed_race_enhanced(
                 if control_state.status in (SC, VSC)
                 else None
             )
+            lap_fuel: FuelLap | None = None
+            fuel_status: FuelStatus | None = None
+            refuel_mode = fuel is not None and fuel.parameters.refuelling_allowed
+            if fuel is not None:
+                assert state.fuel_kg is not None
+                # A queima depende so do estado da pista, nao da decisao: e
+                # calculada antes para o piloto decidir sabendo quanto sobra.
+                lap_fuel = fuel_lap(
+                    fuel,
+                    fuel_kg=state.fuel_kg,
+                    laps_remaining=total_laps - lap + 1,
+                    status=control_state.status.value,
+                )
+                fuel_laps[state.driver_id] = lap_fuel
+                if refuel_mode:
+                    fuel_status = FuelStatus(
+                        plan=fuel,
+                        fuel_kg=state.fuel_kg,
+                        lap_burn_kg=lap_fuel.burn_kg,
+                        stop_loss_ms=(
+                            entrant.refuel_stops.mean_ms
+                            if entrant.refuel_stops is not None
+                            else track.pit_loss_ms
+                        ),
+                    )
             decision = entrant.strategy.decide(
                 StrategyState(
                     lap_number=lap,
@@ -533,8 +646,21 @@ def _simulate_detailed_race_enhanced(
                     pit_loss_factor=lap_effects.pit_loss_factor,
                     compounds_used=tuple(compounds_used[state.driver_id]),
                     free_tyre_change=lap_effects.free_tyre_change,
+                    fuel=fuel_status,
                 )
             )
+            # Rede de seguranca: a estrategia nao olhou o combustivel e o carro
+            # nao chegaria a proxima entrada dos boxes. Vale tambem para quem
+            # nao completaria a volta inteira: ele ainda pode chegar a entrada
+            # desta volta, que e mais curta (ver abaixo).
+            boxed_by_engine = (
+                refuel_mode
+                and not decision.pit
+                and lap_fuel is not None
+                and fuel.must_pit(lap_fuel.end_kg, lap, total_laps)
+            )
+            if boxed_by_engine:
+                decision = PitDecision(True, state.tyre.compound)
             free_change = decision.pit and lap_effects.free_tyre_change
             lap_tyre = (
                 TyreSet(decision.compound, 0)
@@ -554,6 +680,40 @@ def _simulate_detailed_race_enhanced(
                 if surface_water > 0.0
                 else 0.0
             )
+            in_pit_lane = decision.pit and not free_change
+            if refuel_mode and in_pit_lane and lap_fuel is not None:
+                assert fuel is not None and state.fuel_kg is not None
+                # A volta de entrada so queima ate a entrada dos boxes; no pit
+                # lane, a 80 km/h, o consumo e desprezivel. E a mesma distancia
+                # que ``must_pit`` exigiu para a decisao.
+                lap_fuel = fuel_lap(
+                    fuel,
+                    fuel_kg=state.fuel_kg,
+                    laps_remaining=total_laps - lap + 1,
+                    status=control_state.status.value,
+                    distance_fraction=min(1.0, fuel.pit_entry_fraction),
+                )
+                fuel_laps[state.driver_id] = lap_fuel
+            fill_kg = 0.0
+            stop_ms = None
+            if refuel_mode and decision.pit:
+                assert fuel is not None and lap_fuel is not None
+                wanted_kg = (
+                    decision.refuel_kg
+                    if decision.refuel_kg is not None
+                    else fuel.refuel_target_kg(total_laps - lap) - lap_fuel.end_kg
+                )
+                fill_kg = min(
+                    max(0.0, wanted_kg),
+                    fuel.parameters.max_fuel_kg - lap_fuel.end_kg,
+                )
+                if in_pit_lane:
+                    base_ms = (
+                        entrant.refuel_stops.loss_ms(state.stops_made)
+                        if entrant.refuel_stops is not None
+                        else track.pit_loss_ms
+                    )
+                    stop_ms = base_ms + fuel.stationary_extra_ms(fill_kg)
             breakdown = compute_lap_time(
                 reference_ms=lap_reference_ms,
                 parameters=parameters,
@@ -562,7 +722,7 @@ def _simulate_detailed_race_enhanced(
                 lap_number=lap,
                 total_laps=total_laps,
                 gap_ahead_ms=gaps.get(state.driver_id),
-                pitting=decision.pit and not free_change,
+                pitting=in_pit_lane,
                 rng=rng,
                 noise_scale=consistency_scale(driver_attributes),
                 degradation_factor=detailed_degradation_factor(driver_attributes),
@@ -571,32 +731,46 @@ def _simulate_detailed_race_enhanced(
                 lap_time_loss_ms=lap_effects.lap_time_loss_ms,
                 weather_ms=lap_weather_ms,
                 noise_label=(f"detailed-race:lap:{lap}:{state.driver_id}:lap-noise"),
+                fuel_ms=lap_fuel.fuel_ms if lap_fuel is not None else None,
+                pit_ms=stop_ms,
             )
+            if refuel_mode and decision.pit:
+                refuelling[state.driver_id] = (
+                    fill_kg,
+                    breakdown.pit_ms,
+                    "engine" if boxed_by_engine else "strategy",
+                )
             proposals[state.driver_id] = (
                 state.total_time_ms + breakdown.total_ms,
-                decision.pit and not free_change,
+                in_pit_lane,
                 decision.compound,
                 free_change,
             )
 
             if collect_breakdowns:
-                breakdowns.append(
-                    {
-                        "lap": lap,
-                        "driver_id": state.driver_id,
-                        "reference_ms": round(breakdown.reference_ms, 1),
-                        "fuel_ms": round(breakdown.fuel_ms, 1),
-                        "tyre_ms": round(breakdown.tyre_ms, 1),
-                        "traffic_ms": round(breakdown.traffic_ms, 1),
-                        "weather_ms": round(breakdown.weather_ms, 1),
-                        "pit_ms": round(breakdown.pit_ms, 1),
-                        "noise_ms": round(breakdown.noise_ms, 1),
-                        "lap_time_factor": breakdown.lap_time_factor,
-                        "lap_time_loss_ms": breakdown.lap_time_loss_ms,
-                        "total_ms": round(breakdown.total_ms, 1),
-                    }
-                )
+                row = {
+                    "lap": lap,
+                    "driver_id": state.driver_id,
+                    "reference_ms": round(breakdown.reference_ms, 1),
+                    "fuel_ms": round(breakdown.fuel_ms, 1),
+                    "tyre_ms": round(breakdown.tyre_ms, 1),
+                    "traffic_ms": round(breakdown.traffic_ms, 1),
+                    "weather_ms": round(breakdown.weather_ms, 1),
+                    "pit_ms": round(breakdown.pit_ms, 1),
+                    "noise_ms": round(breakdown.noise_ms, 1),
+                    "lap_time_factor": breakdown.lap_time_factor,
+                    "lap_time_loss_ms": breakdown.lap_time_loss_ms,
+                    "total_ms": round(breakdown.total_ms, 1),
+                }
+                if lap_fuel is not None:
+                    row["fuel_start_kg"] = round(lap_fuel.start_kg, 3)
+                    row["fuel_burn_kg"] = round(lap_fuel.burn_kg, 4)
+                    row["fuel_saved_kg"] = round(lap_fuel.saved_kg, 4)
+                    row["fuel_saving_ms"] = round(lap_fuel.saving_ms, 1)
+                    row["refuel_kg"] = round(fill_kg, 3)
+                breakdowns.append(row)
 
+        # Quem esta nos boxes, para pneu ou combustivel, nao disputa posicao.
         contenders = [
             (state.driver_id, state.total_time_ms, proposals[state.driver_id][0])
             for state in running
@@ -648,6 +822,29 @@ def _simulate_detailed_race_enhanced(
             else:
                 state.tyre = state.tyre.aged()
 
+            lap_fuel = fuel_laps.get(state.driver_id)
+            if lap_fuel is not None:
+                assert fuel is not None
+                state.fuel_kg = lap_fuel.end_kg
+                if lap_fuel.saved_kg > 0.0:
+                    state.fuel_saving_laps += 1
+                stop = refuelling.get(state.driver_id)
+                if stop is not None and stop[0] > 0.0:
+                    fill_kg, stop_ms, decided_by = stop
+                    refuel_events.append(
+                        {
+                            "lap": lap,
+                            "driver_id": state.driver_id,
+                            "fuel_before_kg": round(lap_fuel.end_kg, 3),
+                            "added_kg": round(fill_kg, 3),
+                            "stop_ms": round(stop_ms, 1),
+                            "compound": compound,
+                            "decided_by": decided_by,
+                        }
+                    )
+                    state.fuel_kg = lap_fuel.end_kg + fill_kg
+                    state.refuels_made += 1
+
         if lap_effects.freeze_order:
             _freeze_order(states, start_order, parameters.minimum_gap_ms)
 
@@ -669,6 +866,19 @@ def _simulate_detailed_race_enhanced(
                     state.retirement_cause = (
                         CONTACT if outcome and outcome.collided else MECHANICAL
                     )
+            # Pane seca depois do sorteio mecanico: nao desloca a sequencia
+            # aleatoria e nao sobrescreve uma causa ja atribuida.
+            for state in running:
+                lap_fuel = fuel_laps.get(state.driver_id)
+                if (
+                    lap_fuel is not None
+                    and lap_fuel.ran_dry
+                    and state.status == RUNNING
+                    and lap < total_laps
+                ):
+                    state.status = RETIRED
+                    state.retired_on_lap = lap
+                    state.retirement_cause = FUEL
         else:
             retirement_causes: dict[str, str] = {}
             contact_pairs = _contact_pairs(contenders, outcomes)
@@ -699,6 +909,19 @@ def _simulate_detailed_race_enhanced(
                 if draw < hazard:
                     incidents.append(Incident(lap, "mechanical", (state.driver_id,)))
                     retirement_causes.setdefault(state.driver_id, MECHANICAL)
+
+            # Carro sem combustivel para na pista como uma quebra: vira
+            # incidente "mechanical" para o controle de prova poder neutralizar.
+            for state in running:
+                lap_fuel = fuel_laps.get(state.driver_id)
+                if (
+                    lap_fuel is not None
+                    and lap_fuel.ran_dry
+                    and lap < total_laps
+                    and state.driver_id not in retirement_causes
+                ):
+                    incidents.append(Incident(lap, "mechanical", (state.driver_id,)))
+                    retirement_causes[state.driver_id] = FUEL
 
             for driver_id, cause in retirement_causes.items():
                 state = states[driver_id]
@@ -732,8 +955,12 @@ def _simulate_detailed_race_enhanced(
             dispute_model,
             dispute_heuristics,
             race_control,
+            fuel,
         ),
     }
+    if fuel is not None:
+        result["fuel"] = _fuel_summary(fuel, total_laps, start_fuel)
+        result["fuel"]["refuel_stops"] = refuel_events
     if collect_breakdowns:
         result["breakdowns"] = breakdowns
     return result
@@ -887,6 +1114,7 @@ def _detailed_assumptions(
     dispute_model: Literal["legacy", "pressure"],
     dispute_heuristics: DisputeHeuristics,
     race_control: RaceControlParameters | None,
+    fuel: FuelPlan | None = None,
 ) -> list[dict]:
     """Exponha somente heuristicas e atributos realmente ativados."""
 
@@ -923,4 +1151,76 @@ def _detailed_assumptions(
                 },
             }
         )
+    if fuel is not None:
+        parameters = fuel.parameters
+        assumptions.append(
+            {
+                "kind": "fuel",
+                "parameter_version": parameters.version,
+                "calibrated": {
+                    "lap_time_fraction_per_fuel_km": (
+                        parameters.lap_time_fraction_per_fuel_km
+                    ),
+                    "origin": parameters.origin,
+                    "seasons": list(parameters.provenance.seasons),
+                },
+                "regulation": {"max_fuel_kg": parameters.max_fuel_kg},
+                "assumed": {
+                    "burn_kg_per_km": parameters.burn_kg_per_km,
+                    "finish_reserve_kg": parameters.finish_reserve_kg,
+                    "vsc_burn_factor": parameters.vsc_burn_factor,
+                    "sc_burn_factor": parameters.sc_burn_factor,
+                    "red_flag_burn_factor": parameters.red_flag_burn_factor,
+                    "lift_coast_max_saving_fraction": (
+                        parameters.lift_coast_max_saving_fraction
+                    ),
+                    "lift_coast_ms_per_kg_saved": (
+                        parameters.lift_coast_ms_per_kg_saved
+                    ),
+                },
+                "lap_length_source": fuel.lap_length_source,
+                "scenario": {
+                    "refuelling_allowed": parameters.refuelling_allowed,
+                    "origin": "assumed",
+                },
+                "refuel_stops": _refuel_stops_assumption(parameters.refuel_stops),
+            }
+        )
     return assumptions
+
+
+def _refuel_stops_assumption(stops) -> dict | None:
+    """Origem do tempo de parada por equipe, quando calibrado."""
+
+    if stops is None:
+        return None
+    return {
+        "origin": stops.origin,
+        "seasons": list(stops.provenance.seasons),
+        "persistence": stops.persistence,
+        "stop_sigma_ms": stops.stop_sigma_ms,
+        "stop_skew": stops.stop_skew,
+        "teams": len(stops.team_offsets),
+    }
+
+
+def _fuel_summary(
+    fuel: FuelPlan, total_laps: int, start_fuel: Mapping[str, float]
+) -> dict:
+    """Numeros do plano de combustivel para a interface e para auditoria."""
+
+    return {
+        "burn_kg_per_lap": round(fuel.burn_kg_per_lap, 4),
+        "ms_per_kg": round(fuel.ms_per_kg, 2),
+        "lap_length_km": round(fuel.lap_length_km, 3),
+        "lap_length_source": fuel.lap_length_source,
+        "reference_lap_ms": fuel.reference_lap_ms,
+        "max_fuel_kg": fuel.parameters.max_fuel_kg,
+        "finish_reserve_kg": fuel.parameters.finish_reserve_kg,
+        "range_laps_at_max_fuel": round(fuel.range_laps_at_max_fuel, 1),
+        "race_exceeds_fuel_range": total_laps > fuel.range_laps_at_max_fuel,
+        "refuelling_allowed": fuel.parameters.refuelling_allowed,
+        "start_fuel_kg": {
+            driver_id: round(load, 3) for driver_id, load in sorted(start_fuel.items())
+        },
+    }

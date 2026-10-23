@@ -68,3 +68,27 @@ class TrackGeometry:
         """Return the source lap distance, not a length measured in normalized XY."""
 
         return self.track_points[-1].cumulative_distance_m
+
+
+def pit_entry_lap_fraction(geometry: TrackGeometry) -> float:
+    """Where the pit entry sits along the lap, as a fraction of its length.
+
+    Only the layout position is used: the first pit-lane sample is matched to
+    the nearest centreline point, whose cumulative distance gives the
+    fraction. Pit-lane timing still comes from measured pit losses, because
+    these mock paths run a few metres beside the track and do not resolve the
+    real pit-lane length (ADR 0003 keeps them out of race physics). An entry
+    found in the first half of the lap lies past the start line, so a full lap
+    is added: the car must cross the line before it can turn in.
+    """
+
+    if not geometry.pit_lane_points or not geometry.track_points:
+        raise ValueError("geometry needs both track and pit-lane points")
+    entry = min(geometry.pit_lane_points, key=lambda point: point.sequence)
+    nearest = min(
+        geometry.track_points,
+        key=lambda point: (point.x_normalized - entry.x_normalized) ** 2
+        + (point.y_normalized - entry.y_normalized) ** 2,
+    )
+    fraction = nearest.cumulative_distance_m / geometry.lap_length_m
+    return fraction if fraction >= 0.5 else 1.0 + fraction

@@ -1,0 +1,662 @@
+{
+  "schema_version": 1,
+  "method_version": "fuel-mass-two-clock-v1",
+  "version": "fuel-trotman-v128-2022-2023",
+  "provenance": {
+    "source_name": "jtrotman/formula-1-race-data",
+    "source_version": 128,
+    "seasons": [
+      2022,
+      2023
+    ],
+    "races": 43,
+    "clean_laps": 38904,
+    "calibrated_at": "2026-10-21"
+  },
+  "calibrated": {
+    "origin": "calibrated",
+    "lap_time_fraction_per_fuel_km": 0.000127114,
+    "rationale": "Fracao do tempo de volta perdida por carregar o combustivel de 1 km; regressao de dois relogios com regressor volta*T*L."
+  },
+  "regulation": {
+    "origin": "regulation",
+    "max_fuel_kg": 110.0,
+    "rationale": "Regulamento tecnico 2022-2025: no maximo 110 kg por corrida. O regulamento proibe reabastecer desde 2010; ver 'scenario'."
+  },
+  "scenario": {
+    "origin": "assumed",
+    "refuelling_allowed": true,
+    "rationale": "Decisao do grupo: o piloto para e reabastece ao fim da volta em que percebe que nao completa a seguinte; a parada nao troca pneu. Desligado, vale a regra 2010+ (economia e pane)."
+  },
+  "assumed": {
+    "origin": "assumed",
+    "burn_kg_per_km": 0.3443,
+    "finish_reserve_kg": 1.0,
+    "vsc_burn_factor": 0.6,
+    "sc_burn_factor": 0.5,
+    "red_flag_burn_factor": 0.5,
+    "lift_coast_max_saving_fraction": 0.08,
+    "lift_coast_ms_per_kg_saved": 1500.0,
+    "rationale": "Nao observavel no Trotman. Consumo de 105 kg em 305 km; reserva para a amostra de 1 L da FIA; queima reduzida sob SC/VSC; lift-and-coast limitado e caro."
+  },
+  "refuel_stops": {
+    "origin": "calibrated",
+    "provenance": {
+      "source_name": "jtrotman/formula-1-race-data",
+      "source_version": 128,
+      "seasons": [
+        2023,
+        2024
+      ],
+      "races": 45,
+      "clean_laps": 1571,
+      "calibrated_at": "2026-10-21"
+    },
+    "persistence": 0.754,
+    "stop_sigma_ms": 1726.3,
+    "stop_skew": 0.697,
+    "rationale": "Perda media do carro = pit_loss_ms do circuito + offset_ms da equipe x persistence. offset_ms e a mediana de (duracao no pit lane - mediana da corrida) nas paradas reais; persistence e a fracao desse desvio que se repete na temporada seguinte.",
+    "team_offsets": [
+      {
+        "team_id": "team:1",
+        "name": "McLaren",
+        "offset_ms": -235,
+        "stops": 159
+      },
+      {
+        "team_id": "team:117",
+        "name": "Aston Martin",
+        "offset_ms": 67,
+        "stops": 159
+      },
+      {
+        "team_id": "team:131",
+        "name": "Mercedes",
+        "offset_ms": -214.0,
+        "stops": 157
+      },
+      {
+        "team_id": "team:15",
+        "name": "Sauber",
+        "offset_ms": 397.0,
+        "stops": 76
+      },
+      {
+        "team_id": "team:210",
+        "name": "Haas F1 Team",
+        "offset_ms": 387.5,
+        "stops": 171
+      },
+      {
+        "team_id": "team:213",
+        "name": "AlphaTauri",
+        "offset_ms": -310,
+        "stops": 83
+      },
+      {
+        "team_id": "team:214",
+        "name": "Alpine F1 Team",
+        "offset_ms": 39.0,
+        "stops": 146
+      },
+      {
+        "team_id": "team:215",
+        "name": "RB F1 Team",
+        "offset_ms": -83.5,
+        "stops": 72
+      },
+      {
+        "team_id": "team:3",
+        "name": "Williams",
+        "offset_ms": 183.5,
+        "stops": 148
+      },
+      {
+        "team_id": "team:51",
+        "name": "Alfa Romeo",
+        "offset_ms": 368.5,
+        "stops": 89
+      },
+      {
+        "team_id": "team:6",
+        "name": "Ferrari",
+        "offset_ms": -268.0,
+        "stops": 144
+      },
+      {
+        "team_id": "team:9",
+        "name": "Red Bull",
+        "offset_ms": -392.0,
+        "stops": 167
+      }
+    ]
+  },
+  "refuel_stops_validation": {
+    "seasons": [
+      2025
+    ],
+    "teams": [
+      {
+        "team_id": "team:1",
+        "name": "McLaren",
+        "stops": 83,
+        "observed_offset_ms": -80,
+        "predicted_offset_ms": -177.2
+      },
+      {
+        "team_id": "team:117",
+        "name": "Aston Martin",
+        "stops": 81,
+        "observed_offset_ms": 49.5,
+        "predicted_offset_ms": 50.5
+      },
+      {
+        "team_id": "team:131",
+        "name": "Mercedes",
+        "stops": 88,
+        "observed_offset_ms": -52.0,
+        "predicted_offset_ms": -161.4
+      },
+      {
+        "team_id": "team:15",
+        "name": "Sauber",
+        "stops": 80,
+        "observed_offset_ms": -1.2,
+        "predicted_offset_ms": 299.3
+      },
+      {
+        "team_id": "team:210",
+        "name": "Haas F1 Team",
+        "stops": 81,
+        "observed_offset_ms": 456,
+        "predicted_offset_ms": 292.2
+      },
+      {
+        "team_id": "team:214",
+        "name": "Alpine F1 Team",
+        "stops": 78,
+        "observed_offset_ms": 171.5,
+        "predicted_offset_ms": 29.4
+      },
+      {
+        "team_id": "team:215",
+        "name": "RB F1 Team",
+        "stops": 74,
+        "observed_offset_ms": -149.8,
+        "predicted_offset_ms": -63.0
+      },
+      {
+        "team_id": "team:3",
+        "name": "Williams",
+        "stops": 82,
+        "observed_offset_ms": 0.0,
+        "predicted_offset_ms": 138.4
+      },
+      {
+        "team_id": "team:6",
+        "name": "Ferrari",
+        "stops": 87,
+        "observed_offset_ms": -198,
+        "predicted_offset_ms": -202.1
+      },
+      {
+        "team_id": "team:9",
+        "name": "Red Bull",
+        "stops": 87,
+        "observed_offset_ms": -25.5,
+        "predicted_offset_ms": -295.6
+      }
+    ],
+    "model_mae_ms": 131.3,
+    "raw_offset_mae_ms": 162.0,
+    "zero_offset_mae_ms": 118.3,
+    "p10_p90_coverage": 0.8,
+    "stops": 821
+  },
+  "diagnostics": {
+    "clean_laps": 38904,
+    "races": 43,
+    "skipped_races": [
+      "race:1085"
+    ],
+    "collinearity": 0.5271,
+    "lap_time_fraction_per_fuel_km": 0.00012711377919206703,
+    "tyre_ms_per_lap": 32.81,
+    "implied_ms_per_kg_at_90s": 33.23
+  },
+  "validation": {
+    "seasons": [
+      2024,
+      2025
+    ],
+    "mass_weighted_mae_ms": 16.1,
+    "linear_weighted_mae_ms": 22.3,
+    "mass_median_ae_ms": 6.1,
+    "linear_median_ae_ms": 11.1,
+    "races": [
+      {
+        "race_id": "race:1121",
+        "name": "Bahrain Grand Prix",
+        "season": 2024,
+        "laps_used": 1024,
+        "observed_ms_per_lap": 75.3,
+        "mass_model_ms_per_lap": 64.9,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1122",
+        "name": "Saudi Arabian Grand Prix",
+        "season": 2024,
+        "laps_used": 811,
+        "observed_ms_per_lap": 83.5,
+        "mass_model_ms_per_lap": 71.3,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1123",
+        "name": "Australian Grand Prix",
+        "season": 2024,
+        "laps_used": 853,
+        "observed_ms_per_lap": 49.8,
+        "mass_model_ms_per_lap": 54.0,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1124",
+        "name": "Japanese Grand Prix",
+        "season": 2024,
+        "laps_used": 774,
+        "observed_ms_per_lap": 94.1,
+        "mass_model_ms_per_lap": 69.7,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1125",
+        "name": "Chinese Grand Prix",
+        "season": 2024,
+        "laps_used": 753,
+        "observed_ms_per_lap": 80.8,
+        "mass_model_ms_per_lap": 68.5,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1126",
+        "name": "Miami Grand Prix",
+        "season": 2024,
+        "laps_used": 944,
+        "observed_ms_per_lap": 53.8,
+        "mass_model_ms_per_lap": 62.1,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1127",
+        "name": "Emilia Romagna Grand Prix",
+        "season": 2024,
+        "laps_used": 1164,
+        "observed_ms_per_lap": 31.0,
+        "mass_model_ms_per_lap": 50.1,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1129",
+        "name": "Canadian Grand Prix",
+        "season": 2024,
+        "laps_used": 935,
+        "observed_ms_per_lap": 230.5,
+        "mass_model_ms_per_lap": 42.1,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1130",
+        "name": "Spanish Grand Prix",
+        "season": 2024,
+        "laps_used": 1205,
+        "observed_ms_per_lap": 57.1,
+        "mass_model_ms_per_lap": 46.3,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1131",
+        "name": "Austrian Grand Prix",
+        "season": 2024,
+        "laps_used": 1276,
+        "observed_ms_per_lap": 24.6,
+        "mass_model_ms_per_lap": 38.0,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1132",
+        "name": "British Grand Prix",
+        "season": 2024,
+        "laps_used": 646,
+        "observed_ms_per_lap": 54.3,
+        "mass_model_ms_per_lap": 66.4,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1133",
+        "name": "Hungarian Grand Prix",
+        "season": 2024,
+        "laps_used": 1255,
+        "observed_ms_per_lap": 46.0,
+        "mass_model_ms_per_lap": 45.5,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1134",
+        "name": "Belgian Grand Prix",
+        "season": 2024,
+        "laps_used": 749,
+        "observed_ms_per_lap": 100.0,
+        "mass_model_ms_per_lap": 94.6,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1135",
+        "name": "Dutch Grand Prix",
+        "season": 2024,
+        "laps_used": 1353,
+        "observed_ms_per_lap": 43.9,
+        "mass_model_ms_per_lap": 40.3,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1136",
+        "name": "Italian Grand Prix",
+        "season": 2024,
+        "laps_used": 922,
+        "observed_ms_per_lap": 61.8,
+        "mass_model_ms_per_lap": 60.7,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1137",
+        "name": "Azerbaijan Grand Prix",
+        "season": 2024,
+        "laps_used": 872,
+        "observed_ms_per_lap": 75.5,
+        "mass_model_ms_per_lap": 80.8,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1138",
+        "name": "Singapore Grand Prix",
+        "season": 2024,
+        "laps_used": 1098,
+        "observed_ms_per_lap": 46.2,
+        "mass_model_ms_per_lap": 60.4,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1139",
+        "name": "United States Grand Prix",
+        "season": 2024,
+        "laps_used": 935,
+        "observed_ms_per_lap": 69.2,
+        "mass_model_ms_per_lap": 68.0,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1140",
+        "name": "Mexico City Grand Prix",
+        "season": 2024,
+        "laps_used": 1054,
+        "observed_ms_per_lap": 46.0,
+        "mass_model_ms_per_lap": 43.5,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1141",
+        "name": "São Paulo Grand Prix",
+        "season": 2024,
+        "laps_used": 901,
+        "observed_ms_per_lap": 15.7,
+        "mass_model_ms_per_lap": 44.2,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1142",
+        "name": "Las Vegas Grand Prix",
+        "season": 2024,
+        "laps_used": 828,
+        "observed_ms_per_lap": 88.2,
+        "mass_model_ms_per_lap": 75.3,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1143",
+        "name": "Qatar Grand Prix",
+        "season": 2024,
+        "laps_used": 718,
+        "observed_ms_per_lap": 59.8,
+        "mass_model_ms_per_lap": 57.5,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1144",
+        "name": "Abu Dhabi Grand Prix",
+        "season": 2024,
+        "laps_used": 925,
+        "observed_ms_per_lap": 52.5,
+        "mass_model_ms_per_lap": 58.5,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1145",
+        "name": "Australian Grand Prix",
+        "season": 2025,
+        "laps_used": 581,
+        "observed_ms_per_lap": 83.8,
+        "mass_model_ms_per_lap": 56.5,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1146",
+        "name": "Chinese Grand Prix",
+        "season": 2025,
+        "laps_used": 993,
+        "observed_ms_per_lap": 71.2,
+        "mass_model_ms_per_lap": 65.8,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1147",
+        "name": "Japanese Grand Prix",
+        "season": 2025,
+        "laps_used": 997,
+        "observed_ms_per_lap": 77.7,
+        "mass_model_ms_per_lap": 67.2,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1148",
+        "name": "Bahrain Grand Prix",
+        "season": 2025,
+        "laps_used": 972,
+        "observed_ms_per_lap": 61.8,
+        "mass_model_ms_per_lap": 66.3,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1149",
+        "name": "Saudi Arabian Grand Prix",
+        "season": 2025,
+        "laps_used": 810,
+        "observed_ms_per_lap": 60.3,
+        "mass_model_ms_per_lap": 71.8,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1150",
+        "name": "Miami Grand Prix",
+        "season": 2025,
+        "laps_used": 870,
+        "observed_ms_per_lap": 58.4,
+        "mass_model_ms_per_lap": 61.6,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1151",
+        "name": "Emilia Romagna Grand Prix",
+        "season": 2025,
+        "laps_used": 969,
+        "observed_ms_per_lap": 45.9,
+        "mass_model_ms_per_lap": 49.6,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1152",
+        "name": "Monaco Grand Prix",
+        "season": 2025,
+        "laps_used": 1262,
+        "observed_ms_per_lap": 47.5,
+        "mass_model_ms_per_lap": 31.3,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1153",
+        "name": "Spanish Grand Prix",
+        "season": 2025,
+        "laps_used": 1005,
+        "observed_ms_per_lap": 51.5,
+        "mass_model_ms_per_lap": 45.9,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1154",
+        "name": "Canadian Grand Prix",
+        "season": 2025,
+        "laps_used": 1197,
+        "observed_ms_per_lap": 41.2,
+        "mass_model_ms_per_lap": 40.9,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1155",
+        "name": "Austrian Grand Prix",
+        "season": 2025,
+        "laps_used": 1000,
+        "observed_ms_per_lap": 32.2,
+        "mass_model_ms_per_lap": 38.0,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1156",
+        "name": "British Grand Prix",
+        "season": 2025,
+        "laps_used": 515,
+        "observed_ms_per_lap": 380.2,
+        "mass_model_ms_per_lap": 67.2,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1157",
+        "name": "Belgian Grand Prix",
+        "season": 2025,
+        "laps_used": 607,
+        "observed_ms_per_lap": 126.3,
+        "mass_model_ms_per_lap": 94.0,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1158",
+        "name": "Hungarian Grand Prix",
+        "season": 2025,
+        "laps_used": 1289,
+        "observed_ms_per_lap": 50.6,
+        "mass_model_ms_per_lap": 44.6,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1159",
+        "name": "Dutch Grand Prix",
+        "season": 2025,
+        "laps_used": 1046,
+        "observed_ms_per_lap": 36.1,
+        "mass_model_ms_per_lap": 39.8,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1160",
+        "name": "Italian Grand Prix",
+        "season": 2025,
+        "laps_used": 915,
+        "observed_ms_per_lap": 60.1,
+        "mass_model_ms_per_lap": 59.8,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1161",
+        "name": "Azerbaijan Grand Prix",
+        "season": 2025,
+        "laps_used": 852,
+        "observed_ms_per_lap": 76.5,
+        "mass_model_ms_per_lap": 78.6,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1162",
+        "name": "Singapore Grand Prix",
+        "season": 2025,
+        "laps_used": 1161,
+        "observed_ms_per_lap": 42.5,
+        "mass_model_ms_per_lap": 59.5,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1163",
+        "name": "United States Grand Prix",
+        "season": 2025,
+        "laps_used": 963,
+        "observed_ms_per_lap": 52.4,
+        "mass_model_ms_per_lap": 68.3,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1164",
+        "name": "Mexico City Grand Prix",
+        "season": 2025,
+        "laps_used": 1161,
+        "observed_ms_per_lap": 43.5,
+        "mass_model_ms_per_lap": 43.7,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1165",
+        "name": "São Paulo Grand Prix",
+        "season": 2025,
+        "laps_used": 1049,
+        "observed_ms_per_lap": 32.6,
+        "mass_model_ms_per_lap": 39.4,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1166",
+        "name": "Las Vegas Grand Prix",
+        "season": 2025,
+        "laps_used": 774,
+        "observed_ms_per_lap": 79.9,
+        "mass_model_ms_per_lap": 73.8,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1167",
+        "name": "Qatar Grand Prix",
+        "season": 2025,
+        "laps_used": 918,
+        "observed_ms_per_lap": 80.5,
+        "mass_model_ms_per_lap": 57.7,
+        "linear_model_ms_per_lap": 52.3
+      },
+      {
+        "race_id": "race:1168",
+        "name": "Abu Dhabi Grand Prix",
+        "season": 2025,
+        "laps_used": 1082,
+        "observed_ms_per_lap": 54.1,
+        "mass_model_ms_per_lap": 58.4,
+        "linear_model_ms_per_lap": 52.3
+      }
+    ]
+  }
+}

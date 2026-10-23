@@ -48,3 +48,15 @@ REFERENCE_LAPS = (
     if _CONTAINER_REFERENCE_LAPS.exists()
     else _REPOSITORY_REFERENCE_LAPS
 )
+
+# Modelo de massa de combustivel, gerado por scripts/calibrate_fuel.py. Mesma
+# regra de busca; ausente, o motor volta ao combustivel linear legado.
+_CONTAINER_FUEL_PARAMETERS = DATA_DIR.parent / "parameters" / "fuel-v1.json"
+_REPOSITORY_FUEL_PARAMETERS = (
+    Path(__file__).resolve().parents[2] / "data" / "parameters" / "fuel-v1.json"
+)
+FUEL_PARAMETERS = (
+    _CONTAINER_FUEL_PARAMETERS
+    if _CONTAINER_FUEL_PARAMETERS.exists()
+    else _REPOSITORY_FUEL_PARAMETERS
+)

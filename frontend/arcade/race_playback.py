@@ -26,7 +26,14 @@ Hipoteses de exibicao (nao fazem parte do modelo de corrida):
   dela, porque o motor decide o abandono depois de contabilizar a volta;
 - o pneu mostrado e o do ultimo retrato do proprio carro: o motor troca o jogo
   ao fim da volta da parada, entao o composto novo aparece quando o carro
-  fecha essa volta. Durante a volta da parada a tabela mostra ``in_pit``.
+  fecha essa volta. Durante a volta da parada a tabela mostra ``in_pit``;
+- o combustivel, quando a corrida traz o modelo de massa, cai em linha reta
+  entre dois fins de volta, como a posicao. A economia (lift-and-coast) e
+  decidida pelo motor para a volta inteira e aparece na volta inteira;
+- numa volta de reabastecimento o medidor desce ate a massa de chegada aos
+  boxes (``fuel.refuel_stops[].fuel_before_kg``) e sobe de uma vez no fim da
+  volta, quando o motor aplica o reabastecimento. A volta inteira e marcada
+  como ``in_pit``, como uma parada de pneus.
 """
 
 from __future__ import annotations
@@ -54,6 +61,24 @@ class TyreState:
 
 
 @dataclass(frozen=True, slots=True)
+class FuelState:
+    """Combustivel de um carro num retrato.
+
+    ``kg`` e a massa a bordo; ``saving_laps`` conta as voltas ja fechadas em
+    lift-and-coast (``fuel_saving_laps`` do motor). O estado da largada vem de
+    ``starting_grid[].fuel_kg`` e comeca com zero voltas de economia.
+    """
+
+    kg: float
+    saving_laps: int
+    #: Paradas de reabastecimento ja feitas (``refuels_made`` do motor).
+    refuels: int = 0
+    #: Massa ao chegar aos boxes, antes de reabastecer, quando esta volta
+    #: termina num reabastecimento; ``None`` nas demais.
+    before_refuel_kg: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class CarTimeline:
     """Instantes em que um carro terminou cada volta.
 
@@ -75,6 +100,9 @@ class CarTimeline:
     tyre_states: tuple[TyreState, ...] = ()
     retirement_cause: str | None = None
     grid_position: int | None = None
+    # ``fuel_states[k]`` e o combustivel depois da volta ``k``; ``[0]`` e a
+    # largada. Vazio quando a corrida nao traz o modelo de massa.
+    fuel_states: tuple[FuelState, ...] = ()
 
     @property
     def laps_completed(self) -> int:
@@ -140,7 +168,54 @@ class CarTimeline:
             return False
         before = self.tyre_states[completed]
         after = self.tyre_states[completed + 1]
-        return after.stops > before.stops
+        if after.stops > before.stops:
+            return True
+        fuel = self.fuel_states
+        return (
+            completed + 1 < len(fuel)
+            and fuel[completed + 1].refuels > fuel[completed].refuels
+        )
+
+    def fuel_at(self, t_ms: float) -> float | None:
+        """Combustivel a bordo (kg) no instante ``t_ms``; ``None`` sem dados.
+
+        Interpola linearmente na fracao da volta entre dois fins de volta,
+        como ``laps_at`` faz com a posicao. Nao e uma aproximacao a mais: o
+        motor queima uma massa unica por volta, e a exibicao ja supoe
+        velocidade constante dentro da volta, entao a massa cai em linha reta
+        com a distancia que o carro desenhado percorreu. Depois da chegada ou
+        do abandono, vale o ultimo retrato.
+        """
+
+        states = self.fuel_states
+        if not states:
+            return None
+        laps = self.laps_at(t_ms)
+        completed = floor(laps)
+        if completed >= len(states) - 1:
+            return states[-1].kg
+        start = states[completed].kg
+        following = states[completed + 1]
+        end = (
+            following.kg
+            if following.before_refuel_kg is None
+            else following.before_refuel_kg
+        )
+        return start + (laps - completed) * (end - start)
+
+    def lift_and_coast_at(self, t_ms: float) -> bool:
+        """Se a volta em andamento e feita economizando combustivel.
+
+        O motor decide a economia no inicio da volta e soma uma volta a
+        ``fuel_saving_laps`` ao fecha-la; como em ``in_pit_lap_at``, a volta
+        inteira e marcada.
+        """
+
+        states = self.fuel_states
+        completed = floor(self.laps_at(t_ms))
+        if completed >= self.laps_completed or completed + 1 >= len(states):
+            return False
+        return states[completed + 1].saving_laps > states[completed].saving_laps
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +239,10 @@ class StandingRow:
     retirement_cause: str | None = None
     # Largada menos posicao atual: positivo quando ganhou posicoes.
     positions_gained: int | None = None
+    # Combustivel a bordo e volta de lift-and-coast; ``None`` e ``False`` em
+    # corridas sem o modelo de massa.
+    fuel_kg: float | None = None
+    lift_and_coast: bool = False
 
 
 class RacePlayback:
@@ -182,14 +261,25 @@ class RacePlayback:
             )
         self.total_laps = total_laps
         self._cars = _build_timelines(
-            history, total_laps, _starting_grid(race.get("starting_grid"))
+            history,
+            total_laps,
+            _starting_grid(race.get("starting_grid")),
+            _refuel_levels(race.get("fuel")),
         )
         self._by_id = {car.driver_id: car for car in self._cars}
         self.duration_ms = max(car.finish_time_ms for car in self._cars)
+        # Teto regulamentar do bloco ``fuel`` (kg), escala natural do medidor.
+        self.max_fuel_kg = _max_fuel_kg(race.get("fuel"))
 
     @property
     def cars(self) -> tuple[CarTimeline, ...]:
         return self._cars
+
+    @property
+    def has_fuel(self) -> bool:
+        """Se algum carro tem combustivel; falso em corridas sem o modelo."""
+
+        return any(car.fuel_states for car in self._cars)
 
     def car(self, driver_id: str) -> CarTimeline:
         return self._by_id[driver_id]
@@ -274,6 +364,8 @@ class RacePlayback:
                         if car.grid_position is not None
                         else None
                     ),
+                    fuel_kg=car.fuel_at(t_ms),
+                    lift_and_coast=car.lift_and_coast_at(t_ms),
                 )
             )
         for car in retired:
@@ -287,28 +379,79 @@ class RacePlayback:
                     gap_ms=None,
                     tyre=car.tyre_at(t_ms),
                     retirement_cause=car.retirement_cause,
+                    fuel_kg=car.fuel_at(t_ms),
                 )
             )
         return rows
 
 
-def _starting_grid(value: object) -> dict[str, tuple[int, str]]:
-    """``driver_id -> (posicao, composto)`` de ``starting_grid``, se houver."""
+def _starting_grid(value: object) -> dict[str, tuple[int, str, float | None]]:
+    """``driver_id -> (posicao, composto, combustivel)`` de ``starting_grid``.
+
+    O combustivel e ``None`` quando a largada nao traz ``fuel_kg``: corridas
+    salvas antes do modelo de massa ou um backend sem ``fuel-v1.json``.
+    """
 
     if value is None:
         return {}
     if not isinstance(value, Sequence):
         raise ValueError("starting_grid deveria ser uma lista")
-    grid: dict[str, tuple[int, str]] = {}
+    grid: dict[str, tuple[int, str, float | None]] = {}
     for entry in value:
         try:
+            fuel = entry.get("fuel_kg")
             grid[str(entry["driver_id"])] = (
                 int(entry["position"]),
                 str(entry["compound"]),
+                float(fuel) if fuel is not None else None,
             )
-        except (KeyError, TypeError, ValueError) as error:
+        except (AttributeError, KeyError, TypeError, ValueError) as error:
             raise ValueError(f"starting_grid malformado: {error!r}") from error
     return grid
+
+
+def _refuel_levels(value: object) -> dict[tuple[str, int], float]:
+    """``(driver_id, volta) -> massa antes de reabastecer`` do bloco ``fuel``.
+
+    Corridas sem reabastecimento, ou salvas antes dele, nao trazem a lista;
+    o resultado e vazio e o medidor interpola entre fins de volta como antes.
+    """
+
+    if not isinstance(value, Mapping):
+        return {}
+    events = value.get("refuel_stops")
+    if events is None:
+        return {}
+    if not isinstance(events, Sequence):
+        raise ValueError("fuel.refuel_stops deveria ser uma lista")
+    levels = {}
+    for event in events:
+        try:
+            levels[(str(event["driver_id"]), int(event["lap"]))] = float(
+                event["fuel_before_kg"]
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"fuel.refuel_stops malformado: {error!r}") from error
+    return levels
+
+
+def _max_fuel_kg(value: object) -> float | None:
+    """``max_fuel_kg`` do bloco ``fuel``; ``None`` se a corrida nao o traz."""
+
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ValueError("bloco fuel deveria ser um objeto")
+    max_fuel = value.get("max_fuel_kg")
+    if max_fuel is None:
+        return None
+    try:
+        max_fuel = float(max_fuel)
+    except (TypeError, ValueError) as error:
+        raise ValueError(f"fuel.max_fuel_kg malformado: {error!r}") from error
+    if not max_fuel > 0.0:
+        raise ValueError("fuel.max_fuel_kg deve ser positivo")
+    return max_fuel
 
 
 def _tyre_state(car: Mapping[str, object]) -> TyreState:
@@ -321,10 +464,25 @@ def _tyre_state(car: Mapping[str, object]) -> TyreState:
     )
 
 
+def _fuel_state(
+    car: Mapping[str, object], before_refuel_kg: float | None = None
+) -> FuelState | None:
+    fuel = car.get("fuel_kg")
+    if fuel is None:
+        return None
+    return FuelState(
+        kg=float(fuel),
+        saving_laps=int(car.get("fuel_saving_laps") or 0),
+        refuels=int(car.get("refuels_made") or 0),
+        before_refuel_kg=before_refuel_kg,
+    )
+
+
 def _build_timelines(
     history: Sequence[object],
     total_laps: int,
-    starting_grid: Mapping[str, tuple[int, str]],
+    starting_grid: Mapping[str, tuple[int, str, float | None]],
+    refuel_levels: Mapping[tuple[str, int], float] | None = None,
 ) -> tuple[CarTimeline, ...]:
     """Monte as linhas do tempo validando o contrato do ``history``.
 
@@ -333,6 +491,10 @@ def _build_timelines(
     retrato; um carro que abandonou repete o ultimo valor. Qualquer outra
     coisa indica um JSON de outra versao do motor, e o erro e explicito em vez
     de virar uma animacao plausivel e errada.
+
+    O combustivel e opcional e vale por carro, tudo ou nada: sem a carga da
+    largada ou sem ``fuel_kg`` em alguma volta nao ha de onde interpolar, e o
+    carro fica sem combustivel em vez de ter um trecho adivinhado.
     """
 
     order: list[str] = []
@@ -340,6 +502,8 @@ def _build_timelines(
     times: dict[str, list[float]] = {}
     statuses: dict[str, str] = {}
     tyres: dict[str, list[TyreState]] = {}
+    # ``None`` assim que falta um retrato de combustivel do carro.
+    fuels: dict[str, list[FuelState] | None] = {}
     causes: dict[str, str | None] = {}
     for snapshot in history:
         cars = snapshot.get("cars") if isinstance(snapshot, Mapping) else None
@@ -360,6 +524,10 @@ def _build_timelines(
                 tyres[driver_id] = [
                     TyreState(start[1], 0, 0) if start else TyreState(None, None, 0)
                 ]
+                start_fuel = start[2] if start else None
+                fuels[driver_id] = (
+                    [FuelState(start_fuel, 0)] if start_fuel is not None else None
+                )
             lap_times = times[driver_id]
             if laps == len(lap_times) + 1:
                 previous = lap_times[-1] if lap_times else 0.0
@@ -370,6 +538,21 @@ def _build_timelines(
                     raise ValueError(
                         f"{driver_id}: pneu malformado no history: {error!r}"
                     ) from error
+                fuel_states = fuels[driver_id]
+                if fuel_states is not None:
+                    try:
+                        fuel = _fuel_state(
+                            car, (refuel_levels or {}).get((driver_id, laps))
+                        )
+                    except (TypeError, ValueError) as error:
+                        raise ValueError(
+                            f"{driver_id}: combustivel malformado no history: "
+                            f"{error!r}"
+                        ) from error
+                    if fuel is None:
+                        fuels[driver_id] = None
+                    else:
+                        fuel_states.append(fuel)
             elif laps != len(lap_times):
                 raise ValueError(
                     f"{driver_id}: laps_completed salta de {len(lap_times)} para {laps}"
@@ -400,6 +583,7 @@ def _build_timelines(
                 tyre_states=tuple(tyres[driver_id]),
                 retirement_cause=causes[driver_id] if retired else None,
                 grid_position=start[0] if start else None,
+                fuel_states=tuple(fuels[driver_id] or ()),
             )
         )
     if not timelines:

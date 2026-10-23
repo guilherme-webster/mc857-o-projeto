@@ -7,6 +7,9 @@ valores e onde mudá-las**. O plano e o histórico das decisões estão no
 
 Valores conferidos no código em 2026-10-16 (branch `6-reproducao-volta-a-volta`;
 os valores não mudaram desde a branch `67-modelagem-pilotos`, de 2026-10-03).
+Combustível e reabastecimento (§6 e tabelas) conferidos em 2026-10-23, branch
+`97-modelagem-combustivel`; decisão no
+[ADR 0009](adr/0009-combustivel-por-massa-e-reabastecimento.md).
 Se um número aqui divergir do código, **vale o código**: atualize este arquivo.
 
 ## 1. Princípios
@@ -34,6 +37,10 @@ Se um número aqui divergir do código, **vale o código**: atualize este arquiv
 | Disputa de posição | `domain/disputes.py` | `DEFAULT_DISPUTE_HEURISTICS` (`dispute-pressure-v1`) |
 | SC, VSC e bandeiras | `domain/race_control.py` | `HEURISTIC_RACE_CONTROL` (`heuristic-race-control-v2`) |
 | Paradas | `domain/strategy.py` (`HeuristicPitStrategy`) | `DEFAULT_HEURISTIC_PIT_PARAMETERS` (`heuristic-pit-v1`) |
+| Combustível por massa | `domain/fuel.py` (`FuelModelParameters`, `FuelPlan`, `fuel_lap`), `data/parameters/fuel-v1.json` | `fuel-trotman-v128-2022-2023` (coeficiente calibrado; consumo, reserva e fatores `assumed`) |
+| Reabastecimento estratégico | `domain/strategy.py` (`HeuristicPitStrategy` com `FuelStatus`, `FuelStrategyTraits`, `draw_fuel_traits`) | `heuristic-fuel-strategy-v1`; `DEFAULT_FUEL_TRAIT_HEURISTICS` (`heuristic-fuel-traits-v1`) |
+| Tempo de parada por carro | `domain/fuel.py` (`RefuelStopParameters`, `sample_refuel_stops`), bloco `refuel_stops` do `fuel-v1.json` | calibrado nas paradas do Trotman 2023–2024 |
+| Entrada dos boxes | `domain/track_geometry.py` (`pit_entry_lap_fraction`) | geometria FastF1 (só a posição na volta) |
 | Volta de referência | `application/reference_laps.py`, `data/parameters/reference-laps-v1.json` | `historical-median-fastest-laps-v1` |
 | Clima no tempo de volta | `domain/weather.py` (`simulate_weather`, `weather_penalty_ms`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`), `ASSUMED_WEATHER_EFFECT` (`assumed-weather-effect-v1`) |
 | Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
@@ -145,6 +152,57 @@ retardatários (a compressão do SC já os traz para perto do pelotão).
 Composto inicial: MEDIUM para todos (hipótese). Próximo composto: o mais macio
 cuja vida típica cobre o restante da corrida.
 
+### Com reabastecimento ligado (combustível por massa)
+
+Quando a corrida usa o modelo de massa (`fuel-v1.json`) com
+`refuelling_allowed`, toda parada troca pneus **e** reabastece, e a mesma
+`HeuristicPitStrategy` decide as duas coisas juntas. A cada volta o piloto
+conhece a massa a bordo, a queima da volta, quanto cada kg custa e a perda
+média da sua parada:
+
+1. **Tanque cobre o fim:** valem só as regras de pneus acima; uma parada, se
+   houver, não abastece.
+2. **Limite físico:** se não chegaria à próxima entrada dos boxes com a sua
+   folga, para agora. A posição da entrada vem da geometria (89–99,6% da
+   volta), e a volta de entrada só queima até ela.
+3. **Regra econômica:** compara parar agora com parar na última volta
+   possível. Cada cenário soma, até o fim, o desgaste do pneu atual, o peso do
+   combustível, a parada (perda do carro × fator do SC/VSC, mais o tempo de
+   abastecer além da troca de pneus) e um plano do resto da corrida. Para se
+   agora for mais barato pela margem de 1,5 s. Sob SC/VSC a parada fica mais
+   barata e tende a ser antecipada, sem regra separada.
+4. **Plano do resto (`_plan_rest`):** escolhe entre o mínimo de stints que o
+   tanque permite e até duas paradas a mais, com stints quase iguais; daí
+   saem o composto e quanto abastecer. A carga de largada é a do primeiro
+   stint desse mesmo plano.
+5. **Rede de segurança do motor:** estratégias que não olham o combustível
+   são chamadas aos boxes antes de não alcançarem a entrada; enchem para
+   terminar e repetem o composto.
+
+Preferências por piloto (`FuelStrategyTraits`), sorteadas no fluxo
+`strategy:fuel:<piloto>` a partir de `aggression`, com z₁, z₂, z₃ normais
+padrão (`heuristic-fuel-traits-v1`):
+
+| Preferência | Fórmula | Faixa | Efeito |
+|---|---|---|---|
+| `margin_laps` | 0,5 − 0,5 × (agressividade − 1) + 0,2 × z₁ | 0,2 a 1,5 volta | Folga ao chegar aos boxes; maior = para antes |
+| `stop_cost_bias` | 1 − 0,5 × (agressividade − 1) + 0,15 × z₂ | 0,5 a 1,5 | Peso das paradas futuras; menor = carro leve e mais paradas |
+| `stint_shift` | −0,2 × (agressividade − 1) + 0,12 × z₃ | −30% a +30% | Encurta (undercut) ou alonga (overcut) o próximo stint |
+
+Parâmetros do combustível (`fuel-v1.json`):
+
+| Parâmetro | Valor | Origem |
+|---|---|---|
+| Fração do tempo de volta por km de combustível | 1,271 × 10⁻⁴ (≈ 33 ms/kg numa volta de 90 s) | calibrado (Trotman 2022–2023) |
+| Carga máxima | 110 kg | regulamento 2022–2025 |
+| Consumo em bandeira verde | 0,3443 kg/km (105 kg em 305 km) | assumido |
+| Reserva na bandeirada | 1,0 kg (amostra de 1 L da FIA) | assumido |
+| Queima relativa sob VSC / SC / vermelha | 0,6 / 0,5 / 0,5 | assumido |
+| Vazão do reabastecimento | 9 kg/s (~12 L/s) | assumido |
+| Troca de pneus parada | 2,5 s (já contida na perda medida) | assumido |
+| Lift-and-coast (só com reabastecimento desligado) | até 8% da queima, 1,5 s por kg economizado | assumido |
+| Tempo de parada por equipe | perda do circuito + deslocamento × 0,754; variação σ 1,73 s, assimetria 0,697 | calibrado (paradas Trotman 2023–2024) |
+
 ## 7. Volta de referência por circuito
 
 `data/parameters/reference-laps-v1.json`: por corrida, a mediana das voltas
@@ -166,6 +224,10 @@ Ordem de uso: tabela → comprimento da pista × 17.000 ms/km (reserva) → 90 s
 | Dificuldade de ultrapassar | `resistance_scale` em `domain/disputes.py`, ou a dificuldade por circuito no `model-v1.json` |
 | Frequência de SC/VSC/vermelha | `RaceControlParameters` em `domain/race_control.py`; depois meça com `scripts/race_control_frequency.py` |
 | Quando os carros param | `HeuristicPitParameters` em `domain/strategy.py` |
+| Se os carros podem reabastecer | `scenario.refuelling_allowed` no `fuel-v1.json` (ou `--no-refuelling` em `scripts/calibrate_fuel.py`) |
+| Consumo, reserva, vazão e troca de pneus | bloco `assumed` do `fuel-v1.json` (padrões em `FuelModelParameters`, `domain/fuel.py`) |
+| Como os pilotos tratam o combustível | `FuelTraitHeuristics` em `domain/strategy.py` |
+| O efeito do combustível no tempo de volta | `scripts/calibrate_fuel.py --database ... --seasons 2022 2023 --validate-seasons 2024 2025` |
 | Tempos de volta das pistas | `scripts/build_reference_laps.py --database ... --seasons ...` |
 
 Ao mudar um valor: incremente o `parameter_version`, atualize o `rationale` e
@@ -179,6 +241,19 @@ próprios parâmetros, não números fixos.
   (mas termina em média em 5,7º). Candidatos a ajuste: a penalidade calibrada
   de grid (782 ms por posição) e `resistance_scale`.
 - A ultrapassagem é decidida por volta, não em um ponto da pista.
+- **Reabastecimento não é o regulamento atual.** Fica ligado por padrão como
+  regra do cenário (ADR 0009): corridas de distância real têm 2–3 paradas
+  combinadas, como em 2009. `refuelling_allowed = false` volta à regra 2010+
+  (lift-and-coast e pane seca).
+- **Estratégia de reabastecimento sem validação histórica.** O Trotman só
+  registra paradas a partir de 2011; a era 1994–2009 não foi confrontada.
+- **Consumo igual por km em todos os traçados.** O consumo real depende do
+  tempo em aceleração plena (Monza gasta mais por km que Mônaco); aqui só a
+  extensão da volta muda a queima.
+- **Mônaco para pouco.** A perda de boxes calibrada (41,9 s) está
+  contaminada por corridas atípicas, então a estratégia prefere uma parada.
+- **Deslocamento por equipe fraco em 2025.** Previu as paradas de 2025 pior
+  que tratar todas as equipes iguais (131 contra 118 ms).
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
 - **Clima só no tempo de volta.** A água na pista ao fim de cada volta
   (`domain/weather.py`, #69) acrescenta até 40% ao tempo de referência

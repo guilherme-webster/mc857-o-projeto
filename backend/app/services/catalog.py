@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from app.config import (
     CURRENT_GRID_JSON,
     CURRENT_RACE_JSON,
+    FUEL_PARAMETERS,
     HISTORY_DB,
     MODEL_PARAMETERS,
     REFERENCE_LAPS,
@@ -255,6 +256,60 @@ def _reference_lap(track_id):
     return table.get(track_id)
 
 
+def _fuel_parameters():
+    """Modelo de massa de combustivel, ou ``None`` se o artefato nao existe.
+
+    Ausencia nao e erro: o motor usa o combustivel linear de ``model-v1.json``
+    e o resultado simplesmente nao traz o bloco ``fuel``. Artefato presente
+    porem invalido e erro de implantacao e vira 503.
+    """
+
+    from f1_simulator.adapters.fuel_parameters_json import (
+        FuelParametersError,
+        read_fuel_parameters,
+    )
+
+    try:
+        return read_fuel_parameters(FUEL_PARAMETERS)
+    except FileNotFoundError:
+        return None
+    except (OSError, FuelParametersError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"parametros de combustivel invalidos: {error}",
+        ) from error
+
+
+def _pit_entry_fraction(track_id):
+    """Posicao da entrada dos boxes na volta, pela geometria; ``None`` sem ela.
+
+    Geometria ausente ou invalida nao impede a corrida: o caso de uso supoe a
+    entrada na linha de chegada.
+    """
+
+    if track_id is None:
+        return None
+    from app.services.track_geometry import geometry_dataset
+
+    from f1_simulator.adapters.datasets.mock_track_geometry import (
+        MockTrackDatasetError,
+    )
+    from f1_simulator.domain.track_geometry import pit_entry_lap_fraction
+    from f1_simulator.factories.track_geometry_factory import (
+        TrackGeometryFactory,
+        TrackGeometryValidationError,
+    )
+
+    try:
+        dataset = geometry_dataset()
+        if dataset is None:
+            return None
+        geometry = TrackGeometryFactory.build(dataset.load_geometry(track_id))
+        return pit_entry_lap_fraction(geometry)
+    except (OSError, ValueError, MockTrackDatasetError, TrackGeometryValidationError):
+        return None
+
+
 def run_grid(*, total_laps, track_id, weather):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
@@ -293,6 +348,8 @@ def run_grid(*, total_laps, track_id, weather):
             lap_length_m=lap_length_m,
             rng=rng,
             reference_lap=_reference_lap(canonical_track_id),
+            fuel_parameters=_fuel_parameters(),
+            pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
         )
     except ValueError as error:
         raise HTTPException(
