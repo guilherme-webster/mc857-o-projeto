@@ -113,6 +113,7 @@ _STANDING_COLUMNS = {
     "delta": ("+/-", 392, "right"),
     "fuel": ("COMB (kg)", 472, "right"),
     "saving": ("", 478, "left"),
+    "speed": ("KM/H", 560, "right"),
 }
 # Colunas que so existem quando a corrida traz o modelo de massa.
 _FUEL_COLUMNS = ("fuel", "saving")
@@ -123,8 +124,8 @@ _TYRE_RADIUS = 8
 # Largura reservada a esquerda para a classificacao; a pista e desenhada so no
 # espaco restante, para que tabela e tracado nao se sobreponham. As colunas de
 # combustivel alargam a tabela apenas nas corridas que as tem.
-STANDINGS_WIDTH = 440
-FUEL_STANDINGS_WIDTH = 510
+STANDINGS_WIDTH = 510
+FUEL_STANDINGS_WIDTH = 580
 
 _MENU_BG = (16, 22, 30)
 _ROW_BG = (30, 41, 53)
@@ -145,6 +146,49 @@ def _normalize(points):
     return [((x - min_x) / span_x, (y - min_y) / span_y) for x, y in points], (
         span_x / span_y
     )
+
+
+def _build_time_to_distance(cum, physical=None):
+    """Mapa fracao-de-tempo-da-volta -> distancia, pelo perfil fisico do motor.
+
+    Usa o tempo acumulado de cada ponto, de modo que a posicao na tela e a
+    velocidade exibida saem da mesma fonte. Sem perfil, o mapa e linear.
+    """
+
+    lap_length = cum[-1]
+    if not physical or len(physical) < 2:
+        return lambda t: max(0.0, min(1.0, t)) * lap_length
+
+    total_time = physical[-1]["time_s"] or 1.0
+    time_marks = [p["time_s"] / total_time for p in physical]
+    dists = [p["distance_m"] for p in physical]
+    marks = len(time_marks) - 1
+
+    def mapper(t: float) -> float:
+        t = max(0.0, min(1.0, t))
+        i = max(0, min(bisect_right(time_marks, t) - 1, marks - 1))
+        t0, t1 = time_marks[i], time_marks[i + 1]
+        f = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
+        return dists[i] + (dists[i + 1] - dists[i]) * f
+
+    return mapper
+
+
+def _build_speed_lookup(profile):
+    if not profile:
+        return None
+    dists = [p["distance_m"] for p in profile]
+    speeds_kmh = [p["speed_ms"] * 3.6 for p in profile]
+    lap_length = dists[-1] or 1.0
+
+    def lookup(distance_m: float) -> float:
+        d = distance_m % lap_length
+        i = max(1, min(bisect_right(dists, d), len(dists) - 1))
+        d0, d1 = dists[i - 1], dists[i]
+        f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
+        return speeds_kmh[i - 1] + (speeds_kmh[i] - speeds_kmh[i - 1]) * f
+
+    return lookup
 
 
 def _load_race_view(saved_id: str | None) -> TrackView:
@@ -294,6 +338,7 @@ class TrackView(arcade.View):
         self._cum = [p["cumulative_distance_m"] for p in pts]
         self._unit, self._aspect = _normalize([(p["x"], p["y"]) for p in pts])
         self._lap_length = track["lap_length_m"]
+        track_physical = track.get("speed_profile_physical")
 
         self._playback = RacePlayback(race)
         self._total_laps = self._playback.total_laps
@@ -302,6 +347,18 @@ class TrackView(arcade.View):
             for i, car in enumerate(self._playback.cars)
         }
         self._race_len_ms = self._playback.duration_ms
+        # Perfil fisico por piloto (ADR da modelagem de pista): converte a
+        # fracao de volta do RacePlayback em distancia na pista (reta rapida,
+        # curva lenta) e em velocidade km/h. Sem perfil, cai no linear.
+        per_driver = race.get("speed_profiles") or {}
+        self._time_to_dist = {}
+        self._speed_lookup = {}
+        for car in self._playback.cars:
+            profile = per_driver.get(car.driver_id, track_physical)
+            self._time_to_dist[car.driver_id] = _build_time_to_distance(
+                self._cum, profile
+            )
+            self._speed_lookup[car.driver_id] = _build_speed_lookup(profile)
         # Corridas sem o modelo de massa (salvas antes dele ou rodadas sem
         # ``fuel-v1.json``) mantem a tabela de antes, sem colunas vazias.
         self._show_fuel = self._playback.has_fuel
@@ -316,6 +373,7 @@ class TrackView(arcade.View):
 
         self._elapsed = 0.0
         self._speed = 1.0
+        self._speed_kmh: dict[str, float] = {}
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
         self._circuit = (
@@ -550,9 +608,19 @@ class TrackView(arcade.View):
         )
         arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
         # Carros que abandonaram nao sao desenhados; os demais param na linha
-        # de chegada, onde ``laps`` vale ``total_laps``.
+        # de chegada, onde ``laps`` vale ``total_laps``. O RacePlayback decide
+        # a volta e a fracao dela; o perfil fisico converte essa fracao em
+        # distancia na pista (reta rapida, curva lenta) e em velocidade km/h.
+        self._speed_kmh = {}
         for driver_id, laps in self._playback.on_track(self._elapsed):
-            x, y = self._pos_at(screen, laps * self._lap_length)
+            whole = int(laps)
+            fraction = laps - whole
+            to_dist = self._time_to_dist[driver_id]
+            dist = whole * self._lap_length + to_dist(fraction)
+            lookup = self._speed_lookup[driver_id]
+            if lookup is not None:
+                self._speed_kmh[driver_id] = lookup(dist)
+            x, y = self._pos_at(screen, dist)
             arcade.draw_circle_filled(
                 x, y, CAR_RADIUS, self._color_by_driver[driver_id]
             )
@@ -718,6 +786,9 @@ class TrackView(arcade.View):
             if row.lift_and_coast:
                 saving = ("L&C", _LIFT_COAST_COLOR)
 
+        speed = self._speed_kmh.get(row.driver_id)
+        speed_text = "" if speed is None or row.retired else f"{speed:.0f}"
+
         return {
             "position": (str(row.position), car_color),
             "name": (row.name[:18], car_color),
@@ -728,6 +799,7 @@ class TrackView(arcade.View):
             "delta": delta,
             "fuel": (fuel_text, car_color),
             "saving": saving,
+            "speed": (speed_text, car_color),
         }
 
     def _draw_race_control(self, status, width: int, height: int) -> None:

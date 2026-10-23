@@ -33,9 +33,20 @@ def geometry_dataset():
 
 
 def _geometry_payload(geometry) -> dict:
+    from f1_simulator.domain.speed_dynamics import steady_lap
+
+    samples = steady_lap(geometry)
     return {
         "circuit_id": geometry.circuit_id,
         "lap_length_m": geometry.lap_length_m,
+        "speed_profile_physical": [
+            {
+                "distance_m": s.distance_m,
+                "speed_ms": s.speed_ms,
+                "time_s": s.time_s,
+            }
+            for s in samples
+        ],
         "track_points": [
             {
                 "sequence": p.sequence,
@@ -86,7 +97,9 @@ def list_available_tracks() -> dict:
     return {"count": len(tracks), "tracks": tracks}
 
 
-def track_geometry_for(circuit_id: str) -> dict:
+def geometry_object(circuit_id: str):
+    """Monte a TrackGeometry de dominio para a pista, ou sinalize indisponibilidade."""
+
     from f1_simulator.adapters.datasets.mock_track_geometry import (
         MockTrackDatasetAdapter,
         MockTrackDatasetError,
@@ -110,11 +123,13 @@ def track_geometry_for(circuit_id: str) -> dict:
     adapter = MockTrackDatasetAdapter(*artifacts)
     try:
         normalized = adapter.load_geometry(canonical)
-        geometry = TrackGeometryFactory.build(normalized)
+        return TrackGeometryFactory.build(normalized)
     except (MockTrackDatasetError, TrackGeometryValidationError) as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"geometry unavailable for {canonical}: {error}",
         ) from error
 
-    return _geometry_payload(geometry)
+
+def track_geometry_for(circuit_id: str) -> dict:
+    return _geometry_payload(geometry_object(circuit_id))

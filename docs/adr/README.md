@@ -22,6 +22,7 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | [0007](0007-nao-determinismo-controlado-com-parametros-assumidos.md) | proposta, nao implementada; contexto a revisar pelo 0008 | Variancia reproduzivel por semente, com pneus e ruido assumidos e rotulados. |
 | [0008](0008-modelagem-heuristica-sobre-o-motor-calibrado.md) | aceita | Perfis, disputa, SC/VSC/bandeiras e paradas heuristicos sobre o motor calibrado da #40. |
 | [0009](0009-combustivel-por-massa-e-reabastecimento.md) | proposta | Combustivel por massa por carro e reabastecimento como regra do cenario, com paradas estrategicas por piloto. |
+| [0010](0010-motor-fisico-de-velocidade-por-trecho.md) | aceita; atualiza o 0008 | Motor fisico de velocidade por trecho: o tempo de volta emerge da velocidade derivada da curvatura. |
 
 ## Modelo
 
