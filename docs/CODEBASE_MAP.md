@@ -34,6 +34,7 @@ O que existe **hoje** e o que não existe:
 | Torneio | Sequência de etapas montada no frontend; cada etapa é um `POST /catalog/grid/run` sobre o grid atual. Classificação do campeonato por `POST /championship/standings` (`domain/championship.py`). A rota de série livre do ADR 0006 foi removida (PRD v3 da modelagem heurística). |
 | Frontend | Configuração do torneio, configuração de etapa (sessão e clima), pilotos e grid, reprodução volta a volta com controle de prova e classificação rica, resultado do torneio. "Confirmar torneio" roda as etapas no backend. |
 | Perfis de pilotos orientados a dados | Estudos offline (ritmo por contexto, ranking, companheiros, avaliação entre eventos). Um adaptador alimenta o experimento de **uma volta**; o motor da corrida usa os atributos heurísticos, não esses perfis. |
+| Combustível | Massa por carro e reabastecimento estratégico (`domain/fuel.py`, `HeuristicPitStrategy`), calibrado e validado em `data/parameters/fuel-v1.json` (ADR 0009). Sem o artefato, o backend usa o combustível linear da #40. |
 | Pneus | Coeficientes do motor calibrado (#40, `data/parameters/model-v1.json`). Os estudos exploratórios da #63 não exportaram coeficientes. `tyre_severity` por circuito tem valores nos limites de corte (ver `docs/modelagem-heuristica.md`, §9). |
 
 ## 2. Arquitetura
@@ -140,11 +141,12 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `race_simulation.py` | `simulate_detailed_race`: o motor da corrida. Devolve `history` (retrato por volta), `classification`, `race_control_events`, `race_control_by_lap` e `assumptions`. **Fonte de verdade da classificação.** | Sem os recursos opcionais, reproduz exatamente o motor calibrado da #40 (teste com hashes). Os recursos novos são só por palavra-chave. A compressão do SC reescreve o tempo acumulado (`tempo_lider + k*700 ms`). |
 | `lap_time.py`, `tyres.py`, `model_parameters.py` | Decomposição auditável do tempo de volta (referência, combustível, pneu, tráfego, clima, boxes, ruído), penalidade por composto × `tyre_severity` e parâmetros versionados. | Só a degradação é escalada pela severidade do circuito. |
 | `weather.py` | Umidade e água na pista por volta, `WeatherSegment`, `weather_penalty_ms`. | Afeta só o tempo de volta; parâmetros `assumed`. |
+| `fuel.py` | Massa de combustível por carro (`FuelPlan`, `fuel_lap`), limite físico do reabastecimento (`must_pit`) e tempo de parada por equipe (`RefuelStops`). | Só ativo com `FuelPlan`; sem ele o motor legado não muda (hashes). Não sorteia nada. |
 | `random_source.py` | `RandomSource` (protocolo) e `SeededRandomSource`, com `spawn` por chave via SHA-256. | Nunca `random` global; a semente é escolhida na borda. |
 | `championship.py` | `championship_standings`: pontos F1 25-18-…-1, abandono não pontua, desempate por média ou vitórias. | Sem ponto de volta mais rápida. |
 | `disputes.py` | Bloqueio, ultrapassagem e contato; modelos `legacy` e `pressure` (P/(P+R)) e bandeira azul. | Neutro por padrão; contato retira um dos dois no `pressure`. |
 | `race_control.py` | Autômato de SC, VSC, amarela, vermelha e relargada. | Voltas sem incidente não consomem aleatoriedade. |
-| `strategy.py` | Estratégias de parada, inclusive `HeuristicPitStrategy`. | `decide()` determinístico; variação por piloto sorteada fora. |
+| `strategy.py` | Estratégias de parada, inclusive `HeuristicPitStrategy`, que com reabastecimento decide pneus e combustível juntos (`FuelStatus`, `FuelStrategyTraits`). | `decide()` determinístico; variação por piloto (offset e preferências de combustível) sorteada fora. |
 | `driver_attributes.py`, `attribute_effects.py` | Atributos por arquétipo (`aggression`, `composure`) e seus efeitos. | Gestão de pneus amortecida no motor detalhado. |
 | `driver_parameters.py` | `DriverPaceParameters`, `deterministic_lap_time`. | `variability_mode` só `"disabled"`. Arredonda **uma vez** com `ROUND_HALF_UP`. MAD e bootstrap não entram no tempo (evita contar carro duas vezes). |
 | `driver_profile.py` | `METHOD_VERSION = "contextual-pace-v1"`, `ProfileConfig`, `PaceContext`, `assess_session`, `estimate_profiles`. | `ProfileConfig` não tem defaults. Cada volta é auditada com todas as razões de exclusão. Consistência é MAD, não sigma. |
@@ -176,6 +178,7 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `catalog.py`, `build_grid.py`, `generate_attributes.py` | Catálogo piloto@equipe e corridas do histórico, `starting_grid_pair_ids` (largada histórica), grid manual/aleatório, atributos por arquétipo, presets fictícios e overrides manuais. |
 | `run_grid_simulation.py` | `run_detailed_grid_simulation`: liga grid, atributos, pista, clima e volta de referência ao motor; publica `setup`, `starting_grid` e `assumptions`. |
 | `calibrate_model.py`, `backtest_model.py`, `reference_laps.py`, `pace_profiles.py` | Calibração do motor (#40), backtest contra a ordem de largada, voltas de referência por circuito e ritmo fora da amostra. |
+| `calibrate_fuel.py` | Calibração e validação do combustível por massa (regressão de dois relógios com regressor volta × T × L) e do tempo de parada por equipe. |
 
 ### 4.3 `src/f1_simulator/factories/`
 
@@ -198,7 +201,7 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `persistence/sqlite_race_data_repository.py` | Lê ambos os formatos (via views `race_entries` e `source_ids`). |
 | `persistence/sqlite_track_geometry.py` | Geometria dentro do mesmo banco da corrida. |
 | `profile_parameters.py` | `ProfileParametersAdapter`: `ProfileRun` → parâmetros por contexto exato. |
-| `driver_presets_json.py`, `model_parameters_json.py`, `reference_laps_json.py` | JSON versionados: perfis fictícios (com o aviso), parâmetros do motor e voltas de referência. |
+| `driver_presets_json.py`, `model_parameters_json.py`, `reference_laps_json.py`, `fuel_parameters_json.py` | JSON versionados: perfis fictícios (com o aviso), parâmetros do motor, voltas de referência e combustível (agrupado por origem). |
 | `persistence/sqlite_calibration.py`, `sqlite_race_scenario.py`, `sqlite_inspection.py`, `sqlite_trotman_profiles.py` | Leitura para calibração e backtest, inspeção somente leitura e ponte com os perfis. |
 
 ### 4.4.1 `scripts/` (composition roots das CLIs)
@@ -206,7 +209,7 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 - **ETL:** `download_trotman.py`, `list_races.py`, `ingest_trotman.py` (`--race-id` ou `--all-tables`), `ingest_fastf1.py` (`--base`, `--season`, `--rounds`, `--sessions`, `--strict`, `--without-telemetry`).
 - **Pilotos:** `profile_drivers.py`, `rank_drivers.py`, `evaluate_profiles.py`, `analyze_profile_development.py`, `analyze_profile_contexts.py`, `analyze_teammates.py`.
 - **Pneus:** `analyze_tyres.py`, `analyze_tyre_restarts.py`, `compare_tyre_estimators.py`.
-- **Motor:** `calibrate_model.py`, `backtest_model.py`, `build_reference_laps.py`, `race_control_frequency.py`, `race_report.py` (corrida explicada, `--html` com visualizador).
+- **Motor:** `calibrate_model.py`, `calibrate_fuel.py`, `backtest_model.py`, `build_reference_laps.py`, `race_control_frequency.py`, `race_report.py` (corrida explicada, `--html` com visualizador).
 - **Geometria:** `rebuild_fastf1_geometry.py`.
 - **Manutenção:** `sync_github_backlog.py` (gera `docs/backlog.md`; requer `gh` autenticado).
 - Todos inserem `src/` no `sys.path`. Resultados são publicados em pasta nova com sufixo uuid (rename atômico), nunca sobrescrevem, e recusam escrever em `data/raw`.
