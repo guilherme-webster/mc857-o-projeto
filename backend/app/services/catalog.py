@@ -326,7 +326,7 @@ def _pit_entry_fraction(track_id):
         return None
 
 
-def run_grid(*, total_laps, track_id, weather):
+def run_grid(*, total_laps, track_id, weather, engine="detailed"):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
         run_detailed_grid_simulation,
@@ -368,6 +368,7 @@ def run_grid(*, total_laps, track_id, weather):
             geometry=geometry,
             fuel_parameters=_fuel_parameters(),
             pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
+            engine=engine,
         )
     except ValueError as error:
         raise HTTPException(

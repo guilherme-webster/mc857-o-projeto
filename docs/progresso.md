@@ -577,3 +577,74 @@ esportivo da FIA: menor número de voltas completas acima de 305 km (Mônaco,
 erra por uma ou duas voltas em algumas pistas (Yas Marina: 5.240 m no fixture
 contra 5.281 m oficiais, 59 voltas em vez de 58). O valor seria só o padrão; o
 usuário continua editando.
+
+## 2026-10-01 — motor 2D de posicao continua (ADR 0011)
+
+Sem issue no GitHub ainda; candidata a issue nova sob o tema de motor de
+corrida. Trabalho feito nesta sessao sobre a `develop` apos o merge do PR #98
+(combustivel) e #96 (reproducao/telas). Decisao registrada no ADR 0011
+(aceito nesta sessao): motor 2D sub-volta onde a posicao x,y evolui por passos
+de tempo e ultrapassagem e colisao emergem da proximidade espacial, em vez do
+sorteio por volta do motor detalhado. O motor detalhado continua sendo o
+**padrao**; o 2D e selecionavel por `engine="2d"`.
+
+### O que foi feito
+
+- **ADR 0010 (velocidade por trecho), aceito e integrado** antes do 2D: o tempo
+  de volta passa a emergir da velocidade derivada da curvatura quando ha
+  geometria; envelope fisico por piloto a partir dos atributos (`speed_dynamics.py`).
+- **Merge da branch `95-modelagem-da-pista` na `develop`** resolvendo conflitos
+  com combustivel (#98) e reproducao/telas (#96); o ADR de velocidade foi
+  renumerado de 0009 para 0010 (o 0009 e o combustivel).
+- **Motor 2D, fatias 1-5** em `src/f1_simulator/domain/track_space.py`:
+  geometria da pista em faixa com largura e normais (`build_track_space`,
+  `TrackSpace`, `LateralBounds`); estado espacial do carro (`CarSpaceState`);
+  integrador sub-volta de um carro (`integrate_single_car`), validado contra o
+  tempo por distancia do ADR 0010; integrador multi-carro com exclusao espacial
+  e posicao lateral (`integrate_field`); ultrapassagem emergente por troca de
+  faixa com compromisso de manobra; colisao por sobreposicao lateral com culpa
+  ponderada pela agressividade e taxa por segundo (independente de `dt`).
+- **Motor 2D, fatia 6** em `src/f1_simulator/domain/race_simulation_2d.py`:
+  converte a trajetoria continua no mesmo `history`/`classification`/
+  `starting_grid` por volta do motor detalhado (lido pelo `RacePlayback` do
+  frontend sem mudanca). Pneu (degradacao por idade), combustivel (massa que
+  custa tempo e diminui ao queimar), clima (agua penalizando a volta) e
+  abandono mecanico reexpressos como reducao fracionaria da velocidade
+  (`CarSpaceState.speed_scale`) ou sorteio por volta. Todos opt-in.
+- **Motor 2D, fatia 7**: `engine` selecionavel em `run_detailed_grid_simulation`
+  (`_run_2d`), subindo pela cadeia ate `POST /catalog/grid/run` (campo
+  `setup.engine`, schema `RaceSetupRequest`). Padrao continua `"detailed"`.
+
+### Verificacoes
+
+- `tests/test_track_space.py`: 17 testes cobrindo as fatias 1-5 (geometria,
+  ponte com o ADR 0010, exclusao espacial, ultrapassagem, colisao,
+  reprodutibilidade). Passaram.
+- Fatias 6-7 exercitadas por verificacoes manuais (scripts efemeros, ja
+  apagados): degradacao de pneu SOFT>HARD, combustivel acelerando o carro ao
+  queimar, clima ~40% mais lento, abandono mecanico reproduzivel, e a cadeia
+  `run_detailed_grid_simulation(engine="2d")` completa lida pelo `RacePlayback`.
+- `py_compile` em todos os modulos tocados.
+
+### Limitacoes e pendencias (declaradas em `assumptions`, `kind: engine_2d`)
+
+Features que o motor detalhado tem e o 2D **ainda nao converteu**: pit stop,
+reabastecimento, Safety Car, VSC, bandeiras (amarela/vermelha/relargada),
+estrategia de parada por piloto, lift-and-coast e bandeira azul. Enquanto isso,
+o 2D e menos completo que o detalhado e seu resultado e cenario hipotetico, nao
+comparavel ao historico. Limitacao conhecida do integrador: na entrada de curva
+a folga entre carros em fila pode encolher por um ou dois passos (sem
+car-following com frenagem antecipada). Codigo morto confirmado: `speed_at` em
+`speed_dynamics.py` (sem consumidor).
+
+### Estado e proximo passo
+
+**Nada foi commitado e a suite completa do projeto nao foi executada** desde o
+merge da branch 95. Acumulado sem verificacao de suite: o merge 95, as 5 fatias
+do motor 2D, o `race_simulation_2d.py` (sem testes permanentes), as mudancas na
+cadeia backend e os testes do `track_space`. Proximo passo recomendado, em
+ordem: rodar `pytest` completo e corrigir regressoes; escrever testes
+permanentes para `race_simulation_2d.py`; fechar o commit; so entao decidir se
+completa as features que faltam no 2D ou se promove o 2D a padrao (novo ADR).
+O motor detalhado **nao deve** ser aposentado antes da paridade de features e
+de uma decisao de ADR. Levar este registro a uma issue quando houver acesso.

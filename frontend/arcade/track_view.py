@@ -25,6 +25,10 @@ SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 800
 MARGIN = 80
 CAR_RADIUS = 7
+# Largura visivel da faixa 2D (px), quando a corrida traz trajetoria espacial.
+# E so apresentacao: a largura fisica real vem de ``track_space_2d.width_m``.
+_TRACK_LANE_MIN_PX = 14.0
+_TRACK_LANE_MAX_PX = 34.0
 BASE_PLAYBACK_SPEED = 1_000.0  # 1x = tempo real (1 s de simulacao por 1 s de tela)
 MIN_SPEED = 1.0 / 256.0  # ~0,004x: permite camera lenta extrema
 SPEED_FACTOR = 2.0  # cada toque em up/down dobra ou divide a velocidade
@@ -146,6 +150,28 @@ def _normalize(points):
     return [((x - min_x) / span_x, (y - min_y) / span_y) for x, y in points], (
         span_x / span_y
     )
+
+
+def _unit_normals(unit):
+    """Normal unitaria (para a esquerda do sentido) em cada ponto da centerline.
+
+    Mesma construcao de ``build_track_space`` no motor: a tangente vem dos
+    vizinhos no anel fechado e e girada 90 graus. ``unit`` sao os pontos ja
+    normalizados; a normal fica no mesmo plano, para o offset lateral do carro
+    casar com o desenho da pista.
+    """
+
+    n = len(unit)
+    unique = n - 1  # o ultimo ponto repete o primeiro
+    normals = []
+    for i in range(n):
+        prev_i = (i - 1) % unique
+        next_i = (i + 1) % unique if i < unique else 1 % unique
+        tx = unit[next_i][0] - unit[prev_i][0]
+        ty = unit[next_i][1] - unit[prev_i][1]
+        length = (tx * tx + ty * ty) ** 0.5 or 1.0
+        normals.append((-ty / length, tx / length))
+    return normals
 
 
 def _build_time_to_distance(cum, physical=None):
@@ -359,6 +385,21 @@ class TrackView(arcade.View):
                 self._cum, profile
             )
             self._speed_lookup[car.driver_id] = _build_speed_lookup(profile)
+        # Motor 2D: a corrida traz a trajetoria espacial (distancia + lateral por
+        # instante). Com ela os carros andam lado a lado e ganham hitbox; sem
+        # ela (motor detalhado ou corrida antiga) o desenho cai no circulo sobre
+        # a linha de centro, como antes.
+        self._trajectories = race.get("trajectories_2d") or {}
+        self._space_2d = race.get("track_space_2d") or {}
+        self._is_2d = bool(self._trajectories and self._space_2d)
+        self._normals = _unit_normals(self._unit) if self._is_2d else []
+        # Cache da faixa 2D: a geometria (bordas + asfalto) vai para a GPU uma
+        # vez por tamanho de janela, num ShapeElementList desenhado em batch.
+        # Recalcular e re-triangular a faixa (centenas de vertices) a cada frame
+        # travava a animacao; o batch resolve isso.
+        self._lane_cache_key: tuple[int, int, tuple] | None = None
+        self._lane_shapes: arcade.shape_list.ShapeElementList | None = None
+        self._lane_px = 1.0
         # Corridas sem o modelo de massa (salvas antes dele ou rodadas sem
         # ``fuel-v1.json``) mantem a tabela de antes, sem colunas vazias.
         self._show_fuel = self._playback.has_fuel
@@ -591,6 +632,204 @@ class TrackView(arcade.View):
         f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
         return (x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)
 
+    def _spatial_at(self, driver_id: str, t_ms: float):
+        """``(distance_m, lateral_m, speed_kmh)`` interpolados da trajetoria 2D.
+
+        Cada ponto da serie e ``[t_ms, distance_m, lateral_m, speed_kmh]``.
+        ``None`` quando o carro nao tem trajetoria (corrida nao-2D). Antes do
+        primeiro e depois do ultimo ponto, vale a borda (grid de largada /
+        chegada ou abandono).
+        """
+
+        series = self._trajectories.get(driver_id)
+        if not series:
+            return None
+        if t_ms <= series[0][0]:
+            p = series[0]
+            return (p[1], p[2], p[3])
+        if t_ms >= series[-1][0]:
+            p = series[-1]
+            return (p[1], p[2], p[3])
+        lo, hi = 0, len(series) - 1
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if series[mid][0] < t_ms:
+                lo = mid + 1
+            else:
+                hi = mid
+        a, b = series[lo - 1], series[lo]
+        span = b[0] - a[0]
+        f = (t_ms - a[0]) / span if span > 0 else 0.0
+        return (
+            a[1] + (b[1] - a[1]) * f,
+            a[2] + (b[2] - a[2]) * f,
+            a[3] + (b[3] - a[3]) * f,
+        )
+
+    def _lane_scale_px(self, screen) -> float:
+        """Metros laterais -> pixels, pela escala do desenho projetado atual.
+
+        Converte o deslocamento lateral do motor (metros) para pixels usando a
+        mesma razao perimetro-em-px / perimetro-em-metros do traçado desenhado,
+        de modo que a faixa acompanhe o zoom da janela.
+        """
+
+        perimeter_px = sum(
+            (
+                (screen[i + 1][0] - screen[i][0]) ** 2
+                + (screen[i + 1][1] - screen[i][1]) ** 2
+            )
+            ** 0.5
+            for i in range(len(screen) - 1)
+        )
+        lap_m = self._space_2d.get("lap_length_m") or self._lap_length or 1.0
+        return perimeter_px / lap_m
+
+    def _space_pos_at(self, screen, lane_px: float, distance_m: float, lateral_m: float):
+        """``(x, y)`` de tela a ``distance_m`` com deslocamento ``lateral_m``.
+
+        Interpola o ponto da centerline e a normal projetada, e aplica o offset
+        lateral em pixels. E a versao de tela de ``TrackSpace.position``.
+        """
+
+        d = distance_m % self._lap_length
+        i = max(0, min(bisect_right(self._cum, d) - 1, len(self._cum) - 2))
+        d0, d1 = self._cum[i], self._cum[i + 1]
+        (x0, y0), (x1, y1) = screen[i], screen[i + 1]
+        f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
+        cx, cy = x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
+        (nx0, ny0), (nx1, ny1) = self._normals[i], self._normals[i + 1]
+        nx, ny = nx0 + (nx1 - nx0) * f, ny0 + (ny1 - ny0) * f
+        nlen = (nx * nx + ny * ny) ** 0.5 or 1.0
+        offset = lateral_m * lane_px
+        return (cx + nx / nlen * offset, cy + ny / nlen * offset, nx / nlen, ny / nlen)
+
+    def _draw_cars(self, screen) -> None:
+        """Desenho legado: circulo sobre a linha de centro (motor detalhado).
+
+        Carros que abandonaram nao sao desenhados; os demais param na linha de
+        chegada. O RacePlayback decide a volta e a fracao dela; o perfil fisico
+        converte a fracao em distancia (reta rapida, curva lenta) e em km/h.
+        """
+
+        self._speed_kmh = {}
+        for driver_id, laps in self._playback.on_track(self._elapsed):
+            whole = int(laps)
+            fraction = laps - whole
+            to_dist = self._time_to_dist[driver_id]
+            dist = whole * self._lap_length + to_dist(fraction)
+            lookup = self._speed_lookup[driver_id]
+            if lookup is not None:
+                self._speed_kmh[driver_id] = lookup(dist)
+            x, y = self._pos_at(screen, dist)
+            arcade.draw_circle_filled(
+                x, y, CAR_RADIUS, self._color_by_driver[driver_id]
+            )
+
+    def _ensure_lane_geometry(self, screen, track_color) -> None:
+        """Monte a faixa num ShapeElementList, recriando so quando preciso.
+
+        A faixa (asfalto como triangle strip + duas bordas) so muda quando a
+        janela redimensiona ou a cor da bandeira troca. Enquanto a chave de
+        cache nao muda, o batch ja na GPU e reaproveitado.
+        """
+
+        key = (self.window.width, self.window.height, tuple(track_color))
+        if self._lane_cache_key == key and self._lane_shapes is not None:
+            return
+        lane_px = self._lane_scale_px(screen)
+        half_px = self._space_2d.get("width_m", 12.0) / 2.0 * lane_px
+        half_px = max(_TRACK_LANE_MIN_PX, min(_TRACK_LANE_MAX_PX, half_px)) / 2.0
+        left_edge = []
+        right_edge = []
+        for i, (cx, cy) in enumerate(screen):
+            nx, ny = self._normals[i]
+            left_edge.append((cx + nx * half_px, cy + ny * half_px))
+            right_edge.append((cx - nx * half_px, cy - ny * half_px))
+
+        # Triangle strip intercalando as duas bordas: cada par de pontos vira
+        # um quad (dois triangulos), sem o problema de concavidade de um unico
+        # poligono grande. Fecha o anel repetindo o primeiro par.
+        strip = []
+        for lp, rp in zip([*left_edge, left_edge[0]], [*right_edge, right_edge[0]]):
+            strip.append(lp)
+            strip.append(rp)
+        asphalt = (26, 28, 32, 255)
+        edge = (*track_color[:3], 255)
+
+        shapes = arcade.shape_list.ShapeElementList()
+        shapes.append(
+            arcade.shape_list.create_triangles_strip_filled_with_colors(
+                strip, [asphalt] * len(strip)
+            )
+        )
+        shapes.append(
+            arcade.shape_list.create_line_strip([*left_edge, left_edge[0]], edge, 1.5)
+        )
+        shapes.append(
+            arcade.shape_list.create_line_strip(
+                [*right_edge, right_edge[0]], edge, 1.5
+            )
+        )
+        self._lane_shapes = shapes
+        self._lane_px = lane_px
+        self._lane_cache_key = key
+
+    def _draw_track_2d(self, screen, track_color) -> None:
+        """Pista como faixa com largura, desenhada em batch pela GPU.
+
+        A geometria vai para um ShapeElementList criado uma vez
+        (``_ensure_lane_geometry``) e so e recriada ao redimensionar ou trocar a
+        cor da bandeira; o desenho por frame e so um ``draw()`` em batch.
+        """
+
+        self._ensure_lane_geometry(screen, track_color)
+        assert self._lane_shapes is not None
+        self._lane_shapes.draw()
+
+    def _draw_cars_2d(self, screen) -> None:
+        """Carro como retangulo orientado (hitbox) na posicao espacial real.
+
+        Posicao longitudinal e lateral vem da trajetoria 2D exportada pelo
+        motor, nao do tempo de volta: assim o grid de largada escalonado, a
+        largada parada e os carros lado a lado aparecem como na fisica. O
+        retangulo tem o tamanho fisico do carro, alinhado a tangente da pista.
+        """
+
+        lane_px = self._lane_px
+        length_m = self._space_2d.get("car_length_m", 5.0)
+        width_m = self._space_2d.get("car_width_m", 2.0)
+        half_len = max(4.0, length_m * lane_px / 2.0)
+        half_wid = max(2.5, width_m * lane_px / 2.0)
+        self._speed_kmh = {}
+        for driver_id, laps in self._playback.on_track(self._elapsed):
+            spatial = self._spatial_at(driver_id, self._elapsed)
+            if spatial is None:
+                whole = int(laps)
+                to_dist = self._time_to_dist[driver_id]
+                dist = whole * self._lap_length + to_dist(laps - whole)
+                lateral = 0.0
+                self._speed_kmh[driver_id] = (
+                    lookup(dist) if (lookup := self._speed_lookup[driver_id]) else 0.0
+                )
+            else:
+                dist, lateral, speed_kmh = spatial
+                # Velocidade vem da propria trajetoria do motor (campo exportado),
+                # para refletir a largada parada e o ritmo real por instante.
+                self._speed_kmh[driver_id] = speed_kmh
+            x, y, nx, ny = self._space_pos_at(screen, lane_px, dist, lateral)
+            # Tangente = perpendicular da normal; orienta o retangulo na pista.
+            tx, ty = -ny, nx
+            corners = [
+                (x + tx * half_len + nx * half_wid, y + ty * half_len + ny * half_wid),
+                (x + tx * half_len - nx * half_wid, y + ty * half_len - ny * half_wid),
+                (x - tx * half_len - nx * half_wid, y - ty * half_len - ny * half_wid),
+                (x - tx * half_len + nx * half_wid, y - ty * half_len + ny * half_wid),
+            ]
+            color = self._color_by_driver[driver_id]
+            arcade.draw_polygon_filled(corners, color)
+            arcade.draw_polygon_outline(corners, (12, 14, 18), 1.0)
+
     def on_draw(self) -> None:
         self.clear()
         width, height = self.window.width, self.window.height
@@ -606,24 +845,12 @@ class TrackView(arcade.View):
             if status
             else TRACK_EDGE_COLOR
         )
-        arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
-        # Carros que abandonaram nao sao desenhados; os demais param na linha
-        # de chegada, onde ``laps`` vale ``total_laps``. O RacePlayback decide
-        # a volta e a fracao dela; o perfil fisico converte essa fracao em
-        # distancia na pista (reta rapida, curva lenta) e em velocidade km/h.
-        self._speed_kmh = {}
-        for driver_id, laps in self._playback.on_track(self._elapsed):
-            whole = int(laps)
-            fraction = laps - whole
-            to_dist = self._time_to_dist[driver_id]
-            dist = whole * self._lap_length + to_dist(fraction)
-            lookup = self._speed_lookup[driver_id]
-            if lookup is not None:
-                self._speed_kmh[driver_id] = lookup(dist)
-            x, y = self._pos_at(screen, dist)
-            arcade.draw_circle_filled(
-                x, y, CAR_RADIUS, self._color_by_driver[driver_id]
-            )
+        if self._is_2d:
+            self._draw_track_2d(screen, track_color)
+            self._draw_cars_2d(screen)
+        else:
+            arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
+            self._draw_cars(screen)
 
         rain = self._current_rain()
         label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))

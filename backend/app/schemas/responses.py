@@ -102,6 +102,7 @@ class RaceSetupRequest(BaseModel):
     total_laps: int = Field(ge=1, le=200)
     track_id: str | None = None
     weather: list[WeatherSegmentRequest] = Field(default_factory=list)
+    engine: Literal["detailed", "2d"] = "detailed"
 
     @model_validator(mode="after")
     def _validate_weather(self) -> RaceSetupRequest:
