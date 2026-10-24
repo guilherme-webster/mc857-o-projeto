@@ -121,6 +121,7 @@ def _run_2d(
     rng,
     fuel_plan,
     reference_lap_time_ms,
+    race_control,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) e complete o resultado como o detalhado."""
 
@@ -154,11 +155,14 @@ def _run_2d(
         rng=rng.spawn("race-2d"),  # type: ignore[attr-defined]
         compounds=compounds,
         track_params=track,
+        model_parameters=parameters,
         fuel=fuel_plan,
         lap_surface_water=lap_surface_water,
         reliability_by_id=reliability_by_id,
         mechanical_hazard_per_lap=parameters.mechanical_hazard_per_lap(),
+        race_control=race_control,
     )
+    result["speed_profiles"] = _speed_profiles_by_driver(geometry, grid, attributes)
     result["setup"] = {
         "total_laps": setup.total_laps,
         "track_id": setup.track_id,
@@ -328,6 +332,7 @@ def run_detailed_grid_simulation(
             rng=rng,
             fuel_plan=fuel_plan,
             reference_lap_time_ms=reference_lap_time_ms,
+            race_control=race_control,
         )
 
     amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps

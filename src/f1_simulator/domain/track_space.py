@@ -343,6 +343,7 @@ def integrate_field(
     aggression_by_id: dict[str, float] | None = None,
     rng: RandomSource | None = None,
     on_lap_complete=None,
+    neutralized_lap=None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
@@ -359,6 +360,14 @@ def integrate_field(
     mais provavel de ser o culpado que sai. Sem ``rng``, nao ha colisao (fatias
     anteriores). A ordem de sorteio e fixa (pares por ``driver_id``), para o
     resultado reproduzir por semente.
+
+    ``neutralized_lap(lap)`` (ADR 0011, controle de prova) informa se a volta em
+    curso esta sob neutralizacao (SC/VSC/vermelha). Em volta neutralizada nao ha
+    disputa por faixa nem sorteio de colisao: os carros seguem a fila no ritmo
+    reduzido que o orquestrador impoe via ``speed_scale``, como numa corrida
+    real atras do Safety Car. ``None`` preserva o comportamento sem controle de
+    prova. A volta de cada carro e a sua propria (``distance_m // lap_length``),
+    o que mantem o gancho local ao carro.
     """
 
     if dt_s <= 0:
@@ -394,17 +403,25 @@ def integrate_field(
                 continue
             cum, ceiling = ceilings[car.driver_id]
             physics = physics_by_id[car.driver_id]
+            car_lap = int(car.distance_m // lap_length) + 1
+            neutralized = neutralized_lap is not None and neutralized_lap(car_lap)
 
             # (1) decisao de faixa: tenta passar quem segura, senao volta ao centro.
-            car.target_lateral_m = _lane_decision(
-                car,
-                by_id,
-                by_distance,
-                ceilings,
-                race_distance,
-                usable,
-                aggression_by_id.get(car.driver_id, 1.0),
-            )
+            # Sob neutralizacao a fila se mantem: o carro converge ao centro e
+            # nao busca ultrapassagem, como atras do Safety Car.
+            if neutralized:
+                car.overtaking = None
+                car.target_lateral_m = 0.0
+            else:
+                car.target_lateral_m = _lane_decision(
+                    car,
+                    by_id,
+                    by_distance,
+                    ceilings,
+                    race_distance,
+                    usable,
+                    aggression_by_id.get(car.driver_id, 1.0),
+                )
             # (2) move a lateral em direcao ao alvo, limitada pela velocidade lateral.
             max_step_lat = ASSUMED_LANE_CHANGE_MS * dt_s
             delta = car.target_lateral_m - car.lateral_m
@@ -443,7 +460,13 @@ def integrate_field(
                     on_lap_complete(car, completed)
 
         # (5) colisao: pares lado a lado com corpos rocando podem se tocar.
-        if rng is not None:
+        # Sob neutralizacao nao ha contato de disputa: o pelotao anda em fila.
+        field_neutralized = neutralized_lap is not None and any(
+            neutralized_lap(int(c.distance_m // lap_length) + 1)
+            for c in cars
+            if not c.retired and c.distance_m < race_distance
+        )
+        if rng is not None and not field_neutralized:
             _resolve_collisions(cars, race_distance, aggression_by_id, rng, dt_s)
 
         order = sorted(cars, key=lambda c: c.driver_id)
