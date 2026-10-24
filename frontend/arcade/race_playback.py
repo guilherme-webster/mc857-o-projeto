@@ -325,14 +325,16 @@ class RacePlayback:
                 running.append((car, car.laps_at(t_ms)))
 
         # Empate exato so ocorre com zero voltas (largada) ou com todos ja na
-        # chegada; desempata quem fecha antes a volta atual (ou a ultima).
-        running.sort(
-            key=lambda item: (
-                -item[1],
-                _next_lap_end(item[0], item[1]),
-                item[0].driver_id,
-            )
-        )
+        # chegada. Na largada (ninguem completou volta) a ordem e o grid, para a
+        # tabela refletir a posicao de partida e nao a chegada projetada da
+        # volta 1; passado o inicio, desempata quem fecha antes a volta atual.
+        def _rank(item):
+            car, laps = item
+            if laps <= 0.0 and car.grid_position is not None:
+                return (-laps, float(car.grid_position), car.driver_id)
+            return (-laps, _next_lap_end(car, laps), car.driver_id)
+
+        running.sort(key=_rank)
         retired.sort(
             key=lambda car: (-car.laps_completed, car.finish_time_ms, car.driver_id)
         )

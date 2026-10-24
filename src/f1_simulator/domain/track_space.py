@@ -56,6 +56,13 @@ ASSUMED_RUBBING_MARGIN_M = 0.3
 #: versionado quando o motor 2D consumir larguras por circuito.
 ASSUMED_TRACK_WIDTH_M = 12.0
 
+#: Distancia (m) a partir da largada em que a colisao fica suprimida numa
+#: largada parada. O grid parte com os carros emparelhados e lentos; sem esta
+#: zona neutra eles se tocariam ao se desenrolar do grid, gerando abandonos
+#: irreais na largada. Cobre a aceleracao inicial ate o pelotao se espalhar;
+#: depois dela a colisao volta. Hipotese de apresentacao, nao calibrada.
+ASSUMED_START_ZONE_M = 500.0
+
 #: Dimensões assumidas de um carro (m), para a exclusão espacial e a colisão das
 #: fatias seguintes. Não calibradas; ordem de grandeza de um F1 moderno.
 ASSUMED_CAR_LENGTH_M = 5.0
@@ -344,6 +351,7 @@ def integrate_field(
     rng: RandomSource | None = None,
     on_lap_complete=None,
     neutralized_lap=None,
+    standing_start: bool = False,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
@@ -368,6 +376,11 @@ def integrate_field(
     real atras do Safety Car. ``None`` preserva o comportamento sem controle de
     prova. A volta de cada carro e a sua propria (``distance_m // lap_length``),
     o que mantem o gancho local ao carro.
+
+    ``standing_start`` (ADR 0011) faz o pelotao largar parado: cada carro parte
+    de ``speed_ms=0`` e acelera pela propria fisica, como um grid real. O default
+    ``False`` preserva a largada de regime do ADR 0010 (inicia no teto do ponto
+    de partida), usada por ``integrate_single_car`` e pelos testes das fatias.
     """
 
     if dt_s <= 0:
@@ -381,7 +394,11 @@ def integrate_field(
         physics = physics_by_id[car.driver_id]
         ceilings[car.driver_id] = speed_ceiling(track.geometry, physics)
         car.clamp_lateral(track.bounds)
-        if car.speed_ms == 0.0:
+        # Largada parada (opt-in): o carro parte de zero e acelera pela propria
+        # fisica, como um grid real. Sem ela, mantem-se a largada de regime do
+        # ADR 0010, que inicia no teto do ponto de partida para o tempo de volta
+        # emergir de um giro continuo comparavel ao ``steady_lap``.
+        if not standing_start and car.speed_ms == 0.0:
             car.speed_ms = ceilings[car.driver_id][1][0]
 
     race_distance = total_laps * track.lap_length_m
@@ -461,13 +478,21 @@ def integrate_field(
 
         # (5) colisao: pares lado a lado com corpos rocando podem se tocar.
         # Sob neutralizacao nao ha contato de disputa: o pelotao anda em fila.
+        # Na zona de largada parada tambem nao: o grid parte emparelhado e lento,
+        # e os carros se tocariam ao se desenrolar, gerando abandonos irreais.
+        # A supressao e por par (dentro de ``_resolve_collisions``): vale
+        # enquanto QUALQUER dos dois ainda esta na zona, para um retardatario
+        # agrupado nao colidir so porque o lider ja saiu dela.
         field_neutralized = neutralized_lap is not None and any(
             neutralized_lap(int(c.distance_m // lap_length) + 1)
             for c in cars
             if not c.retired and c.distance_m < race_distance
         )
+        start_zone_m = ASSUMED_START_ZONE_M if standing_start else 0.0
         if rng is not None and not field_neutralized:
-            _resolve_collisions(cars, race_distance, aggression_by_id, rng, dt_s)
+            _resolve_collisions(
+                cars, race_distance, aggression_by_id, rng, dt_s, start_zone_m
+            )
 
         order = sorted(cars, key=lambda c: c.driver_id)
         samples.append(FieldSample(time_s, tuple(_frozen(c) for c in order)))
@@ -494,6 +519,7 @@ def _resolve_collisions(
     aggression_by_id: dict[str, float],
     rng: RandomSource,
     dt_s: float,
+    start_zone_m: float = 0.0,
 ) -> None:
     """Sorteie contato entre pares que rocam; um dos dois abandona.
 
@@ -502,6 +528,10 @@ def _resolve_collisions(
     das agressividades, de modo que a frequencia de colisao nao dependa de
     ``dt``. No contato, o culpado que abandona e sorteado com peso na
     agressividade: atacar demais custa. Um carro ja retirado nao participa.
+
+    ``start_zone_m`` suprime o contato de um par enquanto qualquer dos dois ainda
+    esta nos primeiros metros da largada parada: o grid se desenrola emparelhado
+    e lento, e o contato ali seria artefato da partida, nao disputa.
     """
 
     active = sorted(
@@ -512,6 +542,8 @@ def _resolve_collisions(
         for j in range(i + 1, len(active)):
             a, b = active[i], active[j]
             if a.retired or b.retired:
+                continue
+            if a.distance_m < start_zone_m or b.distance_m < start_zone_m:
                 continue
             if not _rubbing(a, b):
                 continue
@@ -557,17 +589,17 @@ def _lane_decision(
         )
         if done:
             car.overtaking = None
-            return 0.0
+            return _safe_center(car, by_distance, race_distance_m, usable_m)
         side = 1.0 if car.lateral_m >= 0 else -1.0
         reach = car.width_m * (0.8 + 0.4 * aggression)
         return max(-usable_m, min(usable_m, target.lateral_m + side * reach))
 
     ahead = _nearest_ahead_same_lane(car, by_distance, race_distance_m)
     if ahead is None:
-        return 0.0
+        return _safe_center(car, by_distance, race_distance_m, usable_m)
     gap = ahead.distance_m - car.distance_m
     if gap > ASSUMED_FOLLOW_TRIGGER_M:
-        return 0.0
+        return _safe_center(car, by_distance, race_distance_m, usable_m)
     if car.speed_ms <= ahead.speed_ms:
         return car.lateral_m
     my_ceiling = _ceiling_at(*ceilings[car.driver_id], car.distance_m)
@@ -583,6 +615,41 @@ def _lane_decision(
             car.overtaking = ahead.driver_id
             return candidate
     return car.lateral_m
+
+
+def _safe_center(
+    car: CarSpaceState,
+    by_distance: list[CarSpaceState],
+    race_distance_m: float,
+    usable_m: float,
+) -> float:
+    """Alvo lateral mais proximo do centro sem invadir um carro emparelhado.
+
+    Um carro livre tende ao centro (``0``), mas se outro carro esta emparelhado
+    longitudinalmente entre ele e o centro, parar junto a esse carro em vez de
+    atravessa-lo evita o contato irreal da largada (dois carros da mesma fileira
+    indo ao centro ao mesmo tempo). Mantem o deslocamento atual quando o caminho
+    ao centro nao esta livre.
+    """
+
+    min_gap = (car.width_m + ASSUMED_CAR_WIDTH_M) / 2.0 + ASSUMED_RUBBING_MARGIN_M
+    target = 0.0
+    for other in by_distance:
+        if other.driver_id == car.driver_id or other.retired:
+            continue
+        if other.distance_m >= race_distance_m:
+            continue
+        if not _side_by_side(car, other):
+            continue
+        # Outro carro entre a posicao atual e o centro, do lado do movimento.
+        if car.lateral_m > 0 and other.lateral_m < car.lateral_m:
+            target = max(target, other.lateral_m + min_gap)
+        elif car.lateral_m < 0 and other.lateral_m > car.lateral_m:
+            target = min(target, other.lateral_m - min_gap)
+    # Nao ultrapassa a borda nem volta para longe do centro alem de onde esta.
+    if car.lateral_m >= 0:
+        return max(0.0, min(car.lateral_m, min(usable_m, target)))
+    return min(0.0, max(car.lateral_m, max(-usable_m, target)))
 
 
 def _side_is_clear(

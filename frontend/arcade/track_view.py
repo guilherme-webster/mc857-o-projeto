@@ -632,20 +632,24 @@ class TrackView(arcade.View):
         f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
         return (x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)
 
-    def _lateral_at(self, driver_id: str, t_ms: float) -> float:
-        """Deslocamento lateral (m) interpolado da trajetoria 2D no tempo.
+    def _spatial_at(self, driver_id: str, t_ms: float):
+        """``(distance_m, lateral_m, speed_kmh)`` interpolados da trajetoria 2D.
 
-        Cada ponto da serie e ``[t_ms, lateral_m]``. Zero quando o carro nao tem
-        trajetoria. Antes do primeiro e depois do ultimo ponto, vale a borda.
+        Cada ponto da serie e ``[t_ms, distance_m, lateral_m, speed_kmh]``.
+        ``None`` quando o carro nao tem trajetoria (corrida nao-2D). Antes do
+        primeiro e depois do ultimo ponto, vale a borda (grid de largada /
+        chegada ou abandono).
         """
 
         series = self._trajectories.get(driver_id)
         if not series:
-            return 0.0
+            return None
         if t_ms <= series[0][0]:
-            return series[0][1]
+            p = series[0]
+            return (p[1], p[2], p[3])
         if t_ms >= series[-1][0]:
-            return series[-1][1]
+            p = series[-1]
+            return (p[1], p[2], p[3])
         lo, hi = 0, len(series) - 1
         while lo < hi:
             mid = (lo + hi) // 2
@@ -656,7 +660,11 @@ class TrackView(arcade.View):
         a, b = series[lo - 1], series[lo]
         span = b[0] - a[0]
         f = (t_ms - a[0]) / span if span > 0 else 0.0
-        return a[1] + (b[1] - a[1]) * f
+        return (
+            a[1] + (b[1] - a[1]) * f,
+            a[2] + (b[2] - a[2]) * f,
+            a[3] + (b[3] - a[3]) * f,
+        )
 
     def _lane_scale_px(self, screen) -> float:
         """Metros laterais -> pixels, pela escala do desenho projetado atual.
@@ -780,12 +788,12 @@ class TrackView(arcade.View):
         self._lane_shapes.draw()
 
     def _draw_cars_2d(self, screen) -> None:
-        """Carro como retangulo orientado (hitbox) na posicao lateral real.
+        """Carro como retangulo orientado (hitbox) na posicao espacial real.
 
-        A posicao longitudinal vem do tempo de volta (como no modo legado) e o
-        deslocamento lateral vem da trajetoria 2D exportada pelo motor, de modo
-        que dois carros podem aparecer lado a lado. O retangulo tem o tamanho
-        fisico do carro, alinhado a tangente da pista.
+        Posicao longitudinal e lateral vem da trajetoria 2D exportada pelo
+        motor, nao do tempo de volta: assim o grid de largada escalonado, a
+        largada parada e os carros lado a lado aparecem como na fisica. O
+        retangulo tem o tamanho fisico do carro, alinhado a tangente da pista.
         """
 
         lane_px = self._lane_px
@@ -795,15 +803,20 @@ class TrackView(arcade.View):
         half_wid = max(2.5, width_m * lane_px / 2.0)
         self._speed_kmh = {}
         for driver_id, laps in self._playback.on_track(self._elapsed):
-            # Distancia longitudinal vem do tempo de volta + perfil (como no
-            # modo legado); so o deslocamento lateral vem da trajetoria 2D.
-            whole = int(laps)
-            to_dist = self._time_to_dist[driver_id]
-            dist = whole * self._lap_length + to_dist(laps - whole)
-            lateral = self._lateral_at(driver_id, self._elapsed)
-            lookup = self._speed_lookup[driver_id]
-            if lookup is not None:
-                self._speed_kmh[driver_id] = lookup(dist)
+            spatial = self._spatial_at(driver_id, self._elapsed)
+            if spatial is None:
+                whole = int(laps)
+                to_dist = self._time_to_dist[driver_id]
+                dist = whole * self._lap_length + to_dist(laps - whole)
+                lateral = 0.0
+                self._speed_kmh[driver_id] = (
+                    lookup(dist) if (lookup := self._speed_lookup[driver_id]) else 0.0
+                )
+            else:
+                dist, lateral, speed_kmh = spatial
+                # Velocidade vem da propria trajetoria do motor (campo exportado),
+                # para refletir a largada parada e o ritmo real por instante.
+                self._speed_kmh[driver_id] = speed_kmh
             x, y, nx, ny = self._space_pos_at(screen, lane_px, dist, lateral)
             # Tangente = perpendicular da normal; orienta o retangulo na pista.
             tx, ty = -ny, nx

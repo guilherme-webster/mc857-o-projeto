@@ -49,7 +49,6 @@ from f1_simulator.domain.speed_dynamics import (
     steady_lap,
 )
 from f1_simulator.domain.strategy import (
-    FuelStatus,
     HeuristicPitStrategy,
     StrategyState,
 )
@@ -70,9 +69,17 @@ CONTACT = "CONTACT"
 MECHANICAL = "MECHANICAL"
 FUEL = "FUEL"
 
-#: Espacamento longitudinal (m) entre posicoes de largada no grid 2D. Hipotese
-#: nao calibrada; so evita que os carros nascam sobrepostos na linha.
-GRID_SPACING_M = 8.0
+#: Espacamento longitudinal (m) entre posicoes de largada no grid 2D. Cada
+#: carro fica numa posicao longitudinal distinta (fila escalonada, nao 2x2),
+#: com folga maior que o comprimento do carro para nunca largarem emparelhados
+#: -- o que evitaria o contato artificial da largada. Hipotese de apresentacao.
+GRID_ROW_SPACING_M = 10.0
+
+#: Deslocamento lateral (m) alternado por posicao, so para o visual de grid
+#: (um carro mais a um lado, o proximo ao outro). Pequeno o bastante para caber
+#: na pista; como os carros ja estao separados longitudinalmente, nao chegam a
+#: roçar. Hipotese de apresentacao.
+GRID_LATERAL_OFFSET_M = 2.0
 
 
 def _lap_crossing_times_ms(
@@ -112,45 +119,72 @@ def _lap_crossing_times_ms(
     return times_ms, retired, retired_on, retired_at_ms
 
 
-#: Resolucao minima de reamostragem (ms) da faixa lateral. Mais esparso que o
-#: passo de integracao (50 ms); o frontend interpola entre pontos.
-TRAJECTORY_SAMPLE_MS = 250.0
+#: So emite um ponto de trajetoria quando a distancia percorrida avancou mais
+#: que isto (m) OU o deslocamento lateral mudou mais que o limiar lateral desde
+#: o ultimo ponto. A distancia avanca sempre, entao este limiar e quem controla
+#: o volume: o frontend interpola entre os pontos, e a distancia e quase linear
+#: no tempo, de modo que pontos esparsos reconstroem bem o movimento.
+TRAJECTORY_DISTANCE_EPS_M = 60.0
 
-#: So emite um ponto quando o deslocamento lateral mudou mais que isto (m) desde
-#: o ultimo emitido. Como o carro anda no centro quase o tempo todo
-#: (``lateral_m ~= 0``), o limiar corta a imensa maioria dos pontos e deixa so
-#: as manobras (ultrapassagem, retorno ao centro), onde o lado a lado importa.
-TRAJECTORY_LATERAL_EPS_M = 0.15
+#: Limiar lateral (m): uma manobra (troca de faixa) gera um ponto mesmo sem
+#: avancar muito, para o lado a lado da ultrapassagem nao ser perdido.
+TRAJECTORY_LATERAL_EPS_M = 0.3
+
+#: Limiar de velocidade (km/h): emite um ponto quando a velocidade mudou mais
+#: que isto desde o ultimo, para a aceleracao da largada e as freadas fortes
+#: terem pontos densos o bastante (a velocidade exibida interpola entre eles).
+#: No cruzeiro, com velocidade quase constante, nao dispara.
+TRAJECTORY_SPEED_EPS_KMH = 15.0
+
+#: Intervalo minimo (ms) entre dois pontos do mesmo carro. Mesmo numa manobra
+#: rapida ou na largada parada (onde a distancia quase nao avanca mas o lateral
+#: oscila), nao emite mais que um ponto por este intervalo; o frontend
+#: interpola. Corta a rajada de pontos da largada sem perder o movimento.
+TRAJECTORY_MIN_INTERVAL_MS = 150.0
 
 
 def _trajectories_2d(
     samples: tuple[FieldSample, ...],
     driver_ids: list[str],
 ) -> dict[str, list[list[float]]]:
-    """Faixa lateral por carro ao longo do tempo, comprimida para o frontend.
+    """Trajetoria espacial por carro ao longo do tempo, comprimida p/ o frontend.
 
-    Cada ponto e ``[t_ms, lateral_m]``: so o deslocamento lateral, porque a
-    posicao longitudinal o frontend ja reconstroi do tempo de volta. A serie e
-    reamostrada a ``TRAJECTORY_SAMPLE_MS`` e comprimida por limiar
-    (``TRAJECTORY_LATERAL_EPS_M``): so vira ponto quando o lateral muda o
-    bastante, mais o primeiro e o ultimo instante. Assim um carro que corre no
-    centro a corrida toda gera pouquissimos pontos, e o payload nao explode com
-    a duracao. O frontend interpola linearmente entre os pontos.
+    Cada ponto e ``[t_ms, distance_m, lateral_m, speed_kmh]``: a posicao
+    longitudinal real (que reflete largada parada, grid escalonado,
+    neutralizacao), o deslocamento lateral e a velocidade escalar do motor
+    naquele instante (km/h), para o frontend exibir a velocidade real sem
+    derivar de segmentos. A serie e comprimida por limiar: so vira ponto quando
+    a distancia avancou ``TRAJECTORY_DISTANCE_EPS_M`` ou o lateral mudou
+    ``TRAJECTORY_LATERAL_EPS_M``, respeitando um intervalo minimo, mais o
+    primeiro e o ultimo instante. O frontend interpola linearmente entre pontos.
 
-    Formato de lista (``[t, lat]``) em vez de dict por ponto para encolher ainda
-    mais o JSON; o frontend le por indice.
+    Formato de lista (``[t, d, lat, v]``) em vez de dict por ponto para encolher
+    o JSON; o frontend le por indice. O primeiro ponto (t=0) fixa o grid de
+    largada; o ultimo fecha a serie na chegada ou no abandono.
     """
 
     series: dict[str, list[list[float]]] = {did: [] for did in driver_ids}
-    last_emit_ms: dict[str, float] = {did: -TRAJECTORY_SAMPLE_MS for did in driver_ids}
+    last_d: dict[str, float] = {did: 0.0 for did in driver_ids}
     last_lat: dict[str, float] = {did: 0.0 for did in driver_ids}
+    last_v: dict[str, float] = {did: 0.0 for did in driver_ids}
+    last_t: dict[str, float] = {did: -TRAJECTORY_MIN_INTERVAL_MS for did in driver_ids}
     pending: dict[str, list[float] | None] = {did: None for did in driver_ids}
     done: set[str] = set()
 
-    def _push(did: str, t_ms: float, lat: float) -> None:
-        series[did].append([round(t_ms, 1), round(lat, 3)])
-        last_emit_ms[did] = t_ms
-        last_lat[did] = lat
+    def _point(t_ms: float, car) -> list[float]:
+        return [
+            round(t_ms, 1),
+            round(car.distance_m, 2),
+            round(car.lateral_m, 3),
+            round(car.speed_ms * 3.6, 1),
+        ]
+
+    def _push(did: str, point: list[float]) -> None:
+        series[did].append(point)
+        last_d[did] = point[1]
+        last_lat[did] = point[2]
+        last_v[did] = point[3]
+        last_t[did] = point[0]
 
     for sample in samples:
         t_ms = sample.time_s * 1000.0
@@ -158,26 +192,32 @@ def _trajectories_2d(
             did = car.driver_id
             if did in done:
                 continue
-            lat = car.lateral_m
+            d, lat, v_kmh = car.distance_m, car.lateral_m, car.speed_ms * 3.6
             if not series[did]:
-                _push(did, t_ms, lat)  # primeiro ponto sempre entra
-            elif car.retired:
-                _push(did, t_ms, lat)
+                _push(did, _point(t_ms, car))  # grid de largada (t=0)
+                continue
+            if car.retired:
+                _push(did, _point(t_ms, car))
                 done.add(did)
-            elif t_ms - last_emit_ms[did] >= TRAJECTORY_SAMPLE_MS:
-                if abs(lat - last_lat[did]) >= TRAJECTORY_LATERAL_EPS_M:
-                    # Fecha o patamar anterior antes do novo valor, para a
-                    # interpolacao nao "cortar caminho" na manobra.
-                    if pending[did] is not None:
-                        _push(did, *pending[did])
-                        pending[did] = None
-                    _push(did, t_ms, lat)
-                else:
-                    pending[did] = [t_ms, lat]
-    # Garante o ultimo instante de quem nao abandonou, para a serie cobrir o fim.
+                continue
+            changed = (
+                d - last_d[did] >= TRAJECTORY_DISTANCE_EPS_M
+                or abs(lat - last_lat[did]) >= TRAJECTORY_LATERAL_EPS_M
+                or abs(v_kmh - last_v[did]) >= TRAJECTORY_SPEED_EPS_KMH
+            )
+            if not changed:
+                continue
+            # Houve mudanca relevante, mas respeita o intervalo minimo: guarda
+            # como pendente e so emite quando o intervalo passa.
+            if t_ms - last_t[did] < TRAJECTORY_MIN_INTERVAL_MS:
+                pending[did] = _point(t_ms, car)
+                continue
+            pending[did] = None
+            _push(did, _point(t_ms, car))
+    # Ultimo instante de quem nao abandonou, para a serie cobrir o fim.
     for did in driver_ids:
         if pending[did] is not None and did not in done:
-            _push(did, *pending[did])
+            _push(did, pending[did])
     return series
 
 
@@ -233,6 +273,7 @@ def simulate_2d_race(
     reliability_by_id: dict[str, float] | None = None,
     mechanical_hazard_per_lap: float = 0.0,
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
+    standing_start: bool = True,
     width_m: float | None = None,
     dt_s: float = 0.05,
 ) -> dict:
@@ -261,6 +302,12 @@ def simulate_2d_race(
     da corrida (lider) e neutraliza o pelotao sob SC/VSC/vermelha, modulando o
     ritmo de todos; a relargada acelera a volta seguinte. Incidentes de contato
     (abandono por toque no integrador) e falhas mecanicas alimentam o automato.
+
+    O grid de largada e escalonado 2x2 (``GRID_ROW_SPACING_M``,
+    ``GRID_LATERAL_OFFSET_M``): a pole na frente, cada fileira recuada, os dois
+    carros de uma fileira em lados opostos da pista. Com ``standing_start`` (o
+    default), o pelotao larga parado e acelera pela propria fisica; ``False``
+    mantem a largada de regime do ADR 0010.
 
     Cada efeito ausente simplesmente nao atua.
     """
@@ -321,8 +368,17 @@ def simulate_2d_race(
         if pit_active:
             assert model_parameters is not None and track_params is not None
             strategy_by_id[did] = HeuristicPitStrategy(model_parameters, track_params)
-        offset = (len(entrants) - entry["grid_position"]) * GRID_SPACING_M
-        cars.append(CarSpaceState(did, distance_m=offset, lateral_m=0.0))
+        # Grid escalonado em fila: cada carro numa posicao longitudinal distinta
+        # (a pole na frente, cada um ``GRID_ROW_SPACING_M`` atras), com lateral
+        # alternado so para o visual de grid. Separados longitudinalmente, os
+        # carros nao largam emparelhados e nao roçam na partida.
+        pos = entry["grid_position"]
+        slot = len(entrants) - pos  # 0 = fundo do grid (na linha); maior = pole
+        side = 1.0 if pos % 2 == 1 else -1.0
+        usable = track.bounds.usable_m
+        lateral = max(-usable, min(usable, side * GRID_LATERAL_OFFSET_M))
+        offset = slot * GRID_ROW_SPACING_M
+        cars.append(CarSpaceState(did, distance_m=offset, lateral_m=lateral))
 
     # Retrato do estado de pneu/combustivel/paradas ao fim de cada volta de cada
     # carro, para o history refletir a evolucao e nao apenas o estado final.
@@ -441,14 +497,11 @@ def simulate_2d_race(
         did = car.driver_id
         strategy = strategy_by_id[did]
         eff = _lap_effects(completed_lap)
-        status_obj = None
-        if fuel is not None:
-            burn = fuel.burn_kg_per_lap * fuel.burn_factor(
-                _status_for_lap(completed_lap)
-            )
-            status_obj = FuelStatus(
-                fuel, fuel_kg[did], burn, track_params.pit_loss_ms
-            )
+        # Decisao de parada SO por pneu (``fuel=None``). O modelo de
+        # reabastecimento do motor por volta planeja stints e carga de largada;
+        # porta-lo pela metade fazia a estrategia pedir parada toda volta para
+        # reabastecer sem nunca completar o abastecimento. Aqui o combustivel
+        # ainda atua como massa no ``speed_scale``; a parada troca so o pneu.
         state = StrategyState(
             lap_number=completed_lap,
             total_laps=total_laps,
@@ -458,7 +511,7 @@ def simulate_2d_race(
             pit_loss_factor=eff.pit_loss_factor,
             compounds_used=compounds_used[did],
             free_tyre_change=eff.free_tyre_change,
-            fuel=status_obj,
+            fuel=None,
         )
         decision = strategy.decide(state)
         if not decision.pit:
@@ -466,25 +519,6 @@ def simulate_2d_race(
             return 0.0
         assert decision.compound is not None
         pit_ms = track_params.pit_loss_ms * eff.pit_loss_factor
-        if refuel_mode and decision.refuel_kg is not None:
-            fill_kg = min(
-                max(0.0, decision.refuel_kg),
-                fuel.parameters.max_fuel_kg - fuel_kg[did],
-            )
-            if fill_kg > 0.0:
-                before_kg = fuel_kg[did]
-                pit_ms += fuel.stationary_extra_ms(fill_kg) * eff.pit_loss_factor
-                fuel_kg[did] += fill_kg
-                refuels_made[did] += 1
-                refuel_events.append(
-                    {
-                        "lap": completed_lap,
-                        "driver_id": did,
-                        "fuel_before_kg": round(before_kg, 3),
-                        "added_kg": round(fill_kg, 3),
-                        "compound": decision.compound,
-                    }
-                )
         if eff.free_tyre_change:
             # Troca gratis de bandeira vermelha: estreia ja com uma volta de uso
             # e nao conta como parada, como no motor por volta.
@@ -585,6 +619,7 @@ def simulate_2d_race(
         rng=rng,
         on_lap_complete=on_lap_complete,
         neutralized_lap=_neutralized_lap if race_control is not None else None,
+        standing_start=standing_start,
     )
 
     per_car: dict[str, list[float]] = {}
