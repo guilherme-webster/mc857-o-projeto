@@ -109,6 +109,26 @@ def _brake_limited(targets: list[float], cum: list[float], brake_ms2: float) -> 
     return capped
 
 
+def speed_ceiling(
+    geometry: TrackGeometry,
+    physics: CarPhysics = ASSUMED_CAR_PHYSICS,
+) -> tuple[list[float], list[float]]:
+    """Distancias e velocidade maxima permitida em cada ponto (alvo + freada).
+
+    E a velocidade-alvo da curvatura ja limitada pela frenagem antecipada, o
+    teto que tanto ``simulate_lap_speed`` (integracao por distancia, ADR 0010)
+    quanto o integrador 2D por tempo (ADR 0011) consomem, sem duplicar a
+    curvatura nem a freada.
+    """
+
+    points = geometry.track_points
+    if len(points) < 2:
+        raise ValueError("geometria precisa de pelo menos dois pontos")
+    cum = [p.cumulative_distance_m for p in points]
+    targets = _target_speeds(geometry, physics)
+    return cum, _brake_limited(targets, cum, physics.brake_ms2)
+
+
 def simulate_lap_speed(
     geometry: TrackGeometry,
     physics: CarPhysics = ASSUMED_CAR_PHYSICS,
@@ -119,9 +139,7 @@ def simulate_lap_speed(
     points = geometry.track_points
     if len(points) < 2:
         raise ValueError("geometria precisa de pelo menos dois pontos")
-    cum = [p.cumulative_distance_m for p in points]
-    targets = _target_speeds(geometry, physics)
-    ceiling = _brake_limited(targets, cum, physics.brake_ms2)
+    cum, ceiling = speed_ceiling(geometry, physics)
 
     speed = min(max(initial_speed_ms, 0.0), ceiling[0])
     time_s = 0.0

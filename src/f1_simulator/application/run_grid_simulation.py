@@ -110,6 +110,71 @@ def _weather_echo(setup: RaceSetup) -> list[dict]:
     ]
 
 
+def _run_2d(
+    grid,
+    attributes,
+    setup,
+    *,
+    parameters,
+    geometry,
+    track,
+    rng,
+    fuel_plan,
+    reference_lap_time_ms,
+) -> dict:
+    """Execute o grid no motor 2D (ADR 0011) e complete o resultado como o detalhado."""
+
+    from f1_simulator.domain.race_simulation_2d import simulate_2d_race
+    from f1_simulator.domain.weather import expand_segments, simulate_weather
+
+    compounds = {c.name: c for c in parameters.compounds}
+    entrants = [
+        {
+            "driver_id": entry.driver_id,
+            "name": entry.driver_name,
+            "grid_position": position,
+            "attributes": attributes[entry.driver_id],
+            "aggression": attributes[entry.driver_id].aggression,
+            "compound": "MEDIUM",
+        }
+        for position, entry in enumerate(grid, start=1)
+    ]
+    reliability_by_id = {
+        entry.driver_id: parameters.reliability_factor(entry.team_id) for entry in grid
+    }
+    lap_surface_water = None
+    if setup.weather:
+        lap_weather = simulate_weather(expand_segments(setup.weather, setup.total_laps))
+        lap_surface_water = [item.state.surface_water for item in lap_weather]
+
+    result = simulate_2d_race(
+        entrants,
+        geometry,
+        total_laps=setup.total_laps,
+        rng=rng.spawn("race-2d"),  # type: ignore[attr-defined]
+        compounds=compounds,
+        track_params=track,
+        fuel=fuel_plan,
+        lap_surface_water=lap_surface_water,
+        reliability_by_id=reliability_by_id,
+        mechanical_hazard_per_lap=parameters.mechanical_hazard_per_lap(),
+    )
+    result["setup"] = {
+        "total_laps": setup.total_laps,
+        "track_id": setup.track_id,
+        "weather": _weather_echo(setup),
+    }
+    result["reference_lap_time_ms"] = reference_lap_time_ms
+    result["track_reference"] = {
+        "requested_track_id": setup.track_id,
+        "model_track_id": track.circuit_id,
+        "model_track_name": track.name,
+        "model_track_origin": track.origin,
+        "lap_length_m": geometry.lap_length_m,
+    }
+    return result
+
+
 def _speed_profiles_by_driver(geometry, grid, attributes):
     """Perfil fisico de velocidade por piloto, para a tela mostrar carros distintos."""
 
@@ -141,6 +206,7 @@ def run_detailed_grid_simulation(
     geometry: TrackGeometry | None = None,
     fuel_parameters: FuelModelParameters | None = None,
     pit_entry_fraction: float | None = None,
+    engine: Literal["detailed", "2d"] = "detailed",
 ) -> dict:
     """Execute o grid no motor detalhado sem conhecer arquivo, HTTP ou banco.
 
@@ -248,6 +314,21 @@ def run_detailed_grid_simulation(
     ]
     if missing_attributes:
         raise ValueError(f"attributes ausentes para pilotos: {missing_attributes}")
+
+    if engine == "2d":
+        if geometry is None:
+            raise ValueError("o motor 2D exige geometria da pista")
+        return _run_2d(
+            grid,
+            attributes,
+            setup,
+            parameters=parameters,
+            geometry=geometry,
+            track=track,
+            rng=rng,
+            fuel_plan=fuel_plan,
+            reference_lap_time_ms=reference_lap_time_ms,
+        )
 
     amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
     known_team_ids = {candidate.team_id for candidate in parameters.team_reliability}
