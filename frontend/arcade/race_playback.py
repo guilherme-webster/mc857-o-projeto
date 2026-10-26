@@ -15,7 +15,11 @@ Fronteiras:
 - o progresso e medido em **voltas** (fracionarias). Converter voltas em metros
   e em pontos da pista e responsabilidade de quem conhece a geometria.
 
-Hipoteses de exibicao (nao fazem parte do modelo de corrida):
+No motor 2D, posições vêm da trajetória exportada, inclusive durante o serviço
+parado na pit lane. Eventos de serviço atualizam o composto no instante da
+troca. Os pontos HTTP antigos (quatro campos) continuam legíveis.
+
+Hipoteses da reprodução por volta, quando não há trajetória 2D:
 
 - todos os carros partem da linha no instante zero; a penalidade de largada por
   posicao ja esta embutida no tempo da primeira volta;
@@ -38,12 +42,22 @@ Hipoteses de exibicao (nao fazem parte do modelo de corrida):
 
 from __future__ import annotations
 
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import floor
 
 RETIRED = "RETIRED"
+
+
+@dataclass(frozen=True, slots=True)
+class SpatialPosition:
+    """Amostra interpolada do motor; pit_distance_m é nulo na pista principal."""
+
+    distance_m: float
+    lateral_m: float
+    speed_kmh: float
+    pit_distance_m: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +117,29 @@ class CarTimeline:
     # ``fuel_states[k]`` e o combustivel depois da volta ``k``; ``[0]`` e a
     # largada. Vazio quando a corrida nao traz o modelo de massa.
     fuel_states: tuple[FuelState, ...] = ()
+    trajectory: tuple[Sequence, ...] = ()
+    lap_length_m: float | None = None
+    pit_events: tuple[Mapping, ...] = ()
+
+    def spatial_at(self, t_ms: float) -> SpatialPosition | None:
+        """Leia os pontos HTTP 2D de 4 ou 5 campos, sem reconstruir a física.
+
+        O quinto campo opcional é o progresso nos boxes. Transições entre
+        caminhos são discretas; dentro de um caminho a interpolação é linear.
+        """
+
+        series = self.trajectory
+        if not series:
+            return None
+        index = bisect_right(series, t_ms, key=lambda p: p[0])
+        a = series[max(0, index - 1)]
+        b = series[min(index, len(series) - 1)]
+        span = b[0] - a[0]
+        f = max(0.0, min(1.0, (t_ms - a[0]) / span)) if span else 0.0
+        pa = a[4] if len(a) > 4 else None
+        pb = b[4] if len(b) > 4 else None
+        pit = pa + (pb - pa) * f if pa is not None and pb is not None else pa
+        return SpatialPosition(*(a[i] + (b[i] - a[i]) * f for i in (1, 2, 3)), pit)
 
     @property
     def laps_completed(self) -> int:
@@ -118,10 +155,18 @@ class CarTimeline:
         """Voltas percorridas no instante ``t_ms``, entre 0 e ``laps_completed``."""
 
         times = self.lap_end_times_ms
+        # O history arredonda instantes para 0,1 ms; a trajetória arredonda
+        # distâncias separadamente. Na chegada vale o fim oficial da volta,
+        # sem deixar o carro em 3,99999 voltas por erro de arredondamento.
+        if times and t_ms >= times[-1]:
+            return float(len(times))
+        spatial = self.spatial_at(t_ms)
+        if spatial is not None and self.lap_length_m:
+            return max(
+                0.0, min(float(len(times)), spatial.distance_m / self.lap_length_m)
+            )
         if not times or t_ms <= 0.0:
             return 0.0
-        if t_ms >= times[-1]:
-            return float(len(times))
         # bisect_right escolhe o ultimo de varios fins de volta iguais, o que
         # aplica o degrau do desdobramento no proprio instante do empate.
         lap_index = bisect_right(times, t_ms)
@@ -137,6 +182,18 @@ class CarTimeline:
             return 0.0
         if laps > len(times):
             return None
+        if laps == len(times):
+            return times[-1]
+        if self.trajectory and self.lap_length_m:
+            distance = laps * self.lap_length_m
+            index = bisect_left(self.trajectory, distance, key=lambda p: p[1])
+            if index == 0:
+                return self.trajectory[0][0]
+            if index == len(self.trajectory):
+                return None
+            a, b = self.trajectory[index - 1], self.trajectory[index]
+            f = (distance - a[1]) / (b[1] - a[1]) if b[1] > a[1] else 0.0
+            return a[0] + f * (b[0] - a[0])
         lap_index = int(laps)
         if lap_index == laps:
             return times[lap_index - 1]
@@ -153,15 +210,27 @@ class CarTimeline:
         if not self.tyre_states:
             return None
         completed = min(floor(self.laps_at(t_ms)), len(self.tyre_states) - 1)
+        boundary = self.lap_end_times_ms[completed - 1] if completed else 0.0
+        changes = [
+            event
+            for event in self.pit_events
+            if event["type"] == "service_completed"
+            and boundary < event["time_ms"] <= t_ms
+        ]
+        if changes:
+            event = changes[-1]
+            return TyreState(event["compound"], 0, event["stops_made"])
         return self.tyre_states[completed]
 
     def in_pit_lap_at(self, t_ms: float) -> bool:
-        """Se a volta em andamento termina com uma parada nos boxes.
+        """Se o carro está nos boxes, ou na volta de parada no formato legado.
 
-        O motor nao modela a entrada no pit lane: a perda da parada esta
-        diluida na volta inteira, e por isso a volta inteira e marcada.
+        Trajetórias novas informam o caminho efetivo. No motor por volta, a
+        perda está diluída na volta inteira, então a volta inteira é marcada.
         """
 
+        if self.trajectory and len(self.trajectory[0]) > 4:
+            return self.spatial_at(t_ms).pit_distance_m is not None
         laps = self.laps_at(t_ms)
         completed = floor(laps)
         if completed >= self.laps_completed or completed + 1 >= len(self.tyre_states):
@@ -265,6 +334,20 @@ class RacePlayback:
             total_laps,
             _starting_grid(race.get("starting_grid")),
             _refuel_levels(race.get("fuel")),
+        )
+        trajectories = race.get("trajectories_2d") or {}
+        space = race.get("track_space_2d") or {}
+        pit_events = race.get("pit_stop_events") or []
+        self._cars = tuple(
+            replace(
+                car,
+                trajectory=tuple(trajectories.get(car.driver_id, ())),
+                lap_length_m=space.get("lap_length_m"),
+                pit_events=tuple(
+                    e for e in pit_events if e["driver_id"] == car.driver_id
+                ),
+            )
+            for car in self._cars
         )
         self._by_id = {car.driver_id: car for car in self._cars}
         self.duration_ms = max(car.finish_time_ms for car in self._cars)
@@ -548,8 +631,7 @@ def _build_timelines(
                         )
                     except (TypeError, ValueError) as error:
                         raise ValueError(
-                            f"{driver_id}: combustivel malformado no history: "
-                            f"{error!r}"
+                            f"{driver_id}: combustivel malformado no history: {error!r}"
                         ) from error
                     if fuel is None:
                         fuels[driver_id] = None

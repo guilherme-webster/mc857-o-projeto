@@ -138,6 +138,17 @@ retardatários (a compressão do SC já os traz para perto do pelotão).
 
 ## 6. Paradas
 
+No motor 2D, o [ADR 0012](adr/0012-percurso-espacial-de-pit-lane.md) substitui
+a perda diluída por um percurso físico hipotético dos boxes. O carro entra
+na próxima passagem pela entrada, percorre a polilinha a até 80 km/h, para
+2,5 s no ponto de serviço e aguarda folga para retornar. Limite, serviço e
+folga são injetáveis em `PitLaneParameters` e declarados como `assumed` no
+resultado. A extensão em metros vem da escala do mock, não de uma medição
+oficial da pit lane. `pit_loss_ms` só orienta a estratégia nesse modo: o
+relógio cobra o deslocamento e o serviço, sem somar outra perda nem aplicar
+desconto artificial de SC/VSC. A estratégia do 2D continua só de pneus;
+o reabastecimento descrito abaixo pertence ao motor por volta.
+
 `HeuristicPitStrategy` decide no início de cada volta:
 
 1. **Regra econômica:** para se o custo de continuar no jogo atual até o fim
@@ -273,7 +284,7 @@ próprios parâmetros, não números fixos.
   (a parada vira obrigação da regra de dois compostos, perto do fim); em Suzuka
   (2,46) os carros fazem 3–4 paradas. `observed_stops` não entra na
   calibração. Revisão a combinar com a #40.
-- A interface Arcade reproduz a corrida volta a volta a partir do `history`
-  (`frontend/arcade/race_playback.py`): dentro de cada volta a velocidade é
-  constante, então paradas e SC aparecem como voltas mais lentas, não como
-  entrada no pit lane ou carro de segurança desenhado.
+- A interface Arcade lê trajetórias no modo 2D, inclusive o caminho dos boxes
+  e o serviço parado. Para corridas por volta ou antigas, mantém a interpolação
+  de `history`, com paradas diluídas na volta. Não há carro de segurança
+  físico desenhado.
