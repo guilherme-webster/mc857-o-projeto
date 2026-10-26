@@ -16,7 +16,14 @@ está em metros, como em ``cumulative_distance_m``.
 from __future__ import annotations
 
 from bisect import bisect_right
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+
+from f1_simulator.domain.pit_lane import (
+    PitLaneParameters,
+    PitLanePath,
+    PitLaneState,
+    PitStopRequest,
+)
 
 from f1_simulator.domain.random_source import RandomSource
 from f1_simulator.domain.speed_dynamics import (
@@ -236,6 +243,10 @@ class CarSpaceState:
     #: por onde pneu, combustivel e clima reduzem o ritmo do carro no motor 2D,
     #: atualizado volta a volta por quem orquestra a corrida. 1.0 e neutro.
     speed_scale: float = 1.0
+    #: Pedido ainda em pista e estado no caminho aberto dos boxes. A distância
+    #: classificatória continua em ``distance_m``; não é a extensão do atalho.
+    pit_request: PitStopRequest | None = None
+    pit_state: PitLaneState | None = None
 
     def clamp_lateral(self, bounds: LateralBounds) -> None:
         """Mantenha o carro dentro da pista, sem estourar a borda."""
@@ -337,7 +348,109 @@ class FieldSample:
 def _same_lane(a: CarSpaceState, b: CarSpaceState) -> bool:
     """Duas faixas se sobrepoem se os corpos se cruzam lateralmente."""
 
-    return abs(a.lateral_m - b.lateral_m) < (a.width_m + b.width_m) / 2.0
+    return (
+        a.pit_state is None
+        and b.pit_state is None
+        and abs(a.lateral_m - b.lateral_m) < (a.width_m + b.width_m) / 2.0
+    )
+
+
+def _advance_pit_lane(
+    car: CarSpaceState,
+    cars: list[CarSpaceState],
+    path: PitLanePath,
+    parameters: PitLaneParameters,
+    dt_s: float,
+    time_s: float,
+    on_event,
+    race_distance_m: float,
+) -> None:
+    """Consuma movimento e serviço sem custo temporal adicional por volta.
+
+    Carros em boxes fazem fila no mesmo caminho. Na saída, aguardam uma folga
+    na pista principal (inclusive de retardatários) antes de se reinserir.
+    A espera e o serviço mantêm a distância de corrida constante.
+    """
+
+    assert car.pit_request is not None and car.pit_state is not None
+    request = car.pit_request
+    remaining = dt_s
+
+    def event(name: str) -> None:
+        if on_event is not None:
+            on_event(car, name, time_s - remaining)
+
+    while remaining > 1e-10:
+        state = car.pit_state
+        assert state is not None
+        if (
+            not state.serviced
+            and state.path_distance_m >= path.service_distance_m - 1e-9
+        ):
+            if state.service_remaining_s == 0:
+                state = replace(state, service_remaining_s=request.service_time_s)
+                car.pit_state = state
+                car.speed_ms = 0.0
+                event("service_started")
+            used = min(remaining, state.service_remaining_s)
+            remaining -= used
+            car.speed_ms = 0.0
+            car.pit_state = replace(
+                state, service_remaining_s=state.service_remaining_s - used
+            )
+            if car.pit_state.service_remaining_s <= 1e-9:
+                car.pit_state = replace(
+                    car.pit_state, serviced=True, service_remaining_s=0.0
+                )
+                event("service_completed")
+            continue
+
+        if state.path_distance_m >= path.length_m - 1e-9:
+            exit_at = path.race_distance(request.entry_distance_m, path.length_m)
+            blocked = any(
+                other is not car
+                and not other.retired
+                and other.pit_state is None
+                and other.distance_m < race_distance_m
+                and abs(
+                    (other.distance_m - exit_at + path.lap_length_m / 2)
+                    % path.lap_length_m
+                    - path.lap_length_m / 2
+                )
+                < (car.length_m + other.length_m) / 2 + parameters.merge_gap_m
+                for other in cars
+            )
+            car.speed_ms = 0.0 if blocked else parameters.speed_limit_kmh / 3.6
+            if not blocked:
+                car.pit_state = None
+                car.pit_request = None
+                car.lateral_m = car.target_lateral_m = 0.0
+                event("exit")
+            break
+
+        target = path.length_m if state.serviced else path.service_distance_m
+        for other in cars:
+            if other is car or other.retired or other.pit_state is None:
+                continue
+            ahead = other.pit_state.path_distance_m
+            if ahead > state.path_distance_m:
+                target = min(target, ahead - (car.length_m + other.length_m) / 2)
+        step = max(
+            0.0,
+            min(
+                target - state.path_distance_m,
+                remaining * parameters.speed_limit_kmh / 3.6,
+            ),
+        )
+        if step <= 1e-10:
+            car.speed_ms = 0.0
+            break
+        remaining -= step / (parameters.speed_limit_kmh / 3.6)
+        car.speed_ms = parameters.speed_limit_kmh / 3.6
+        car.pit_state = replace(state, path_distance_m=state.path_distance_m + step)
+        car.distance_m = path.race_distance(
+            request.entry_distance_m, car.pit_state.path_distance_m
+        )
 
 
 def integrate_field(
@@ -352,6 +465,9 @@ def integrate_field(
     on_lap_complete=None,
     neutralized_lap=None,
     standing_start: bool = False,
+    pit_lane: PitLanePath | None = None,
+    pit_parameters: PitLaneParameters = PitLaneParameters(),
+    on_pit_event=None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
@@ -381,6 +497,11 @@ def integrate_field(
     de ``speed_ms=0`` e acelera pela propria fisica, como um grid real. O default
     ``False`` preserva a largada de regime do ADR 0010 (inicia no teto do ponto
     de partida), usada por ``integrate_single_car`` e pelos testes das fatias.
+
+    Com ``pit_lane``, um ``pit_request`` reserva a entrada absoluta do carro.
+    Os boxes têm movimento separado, fila, serviço e reinserção por folga. O
+    callback ``on_pit_event(car, tipo, time_s)`` informa os instantes de entrada,
+    início/fim de serviço e saída; ele permite aplicar pneus sem usar a janela.
     """
 
     if dt_s <= 0:
@@ -398,7 +519,7 @@ def integrate_field(
         # fisica, como um grid real. Sem ela, mantem-se a largada de regime do
         # ADR 0010, que inicia no teto do ponto de partida para o tempo de volta
         # emergir de um giro continuo comparavel ao ``steady_lap``.
-        if not standing_start and car.speed_ms == 0.0:
+        if not standing_start and car.speed_ms == 0.0 and car.pit_state is None:
             car.speed_ms = ceilings[car.driver_id][1][0]
 
     race_distance = total_laps * track.lap_length_m
@@ -414,9 +535,27 @@ def integrate_field(
         c.distance_m < race_distance and not c.retired for c in cars
     ):
         time_s += dt_s
-        by_distance = sorted(cars, key=lambda c: c.distance_m)
+        by_distance = sorted((c for c in cars if c.pit_state is None), key=lambda c: c.distance_m)
         for car in sorted(cars, key=lambda c: c.driver_id):
             if car.retired or car.distance_m >= race_distance:
+                continue
+            if car.pit_state is not None:
+                assert pit_lane is not None
+                _advance_pit_lane(
+                    car,
+                    cars,
+                    pit_lane,
+                    pit_parameters,
+                    dt_s,
+                    time_s,
+                    on_pit_event,
+                    race_distance,
+                )
+                completed = int(car.distance_m // lap_length)
+                if on_lap_complete is not None and completed > laps_done[car.driver_id]:
+                    laps_done[car.driver_id] = completed
+                    if completed <= total_laps:
+                        on_lap_complete(car, completed)
                 continue
             cum, ceiling = ceilings[car.driver_id]
             physics = physics_by_id[car.driver_id]
@@ -466,7 +605,50 @@ def integrate_field(
                 if proposed > limit:
                     proposed = max(car.distance_m, limit)
                     car.speed_ms = min(car.speed_ms, ahead.speed_ms)
-            car.distance_m = proposed
+            request = car.pit_request
+            if request is not None and proposed >= request.entry_distance_m:
+                if pit_lane is None:
+                    raise ValueError("pedido de parada sem geometria de pit lane")
+                # A entrada também faz fila: dois pedidos no mesmo passo não
+                # podem criar dois carros na mesma posição do caminho aberto.
+                entry_blocked = any(
+                    other is not car
+                    and not other.retired
+                    and other.pit_state is not None
+                    and other.pit_state.path_distance_m
+                    < (car.length_m + other.length_m) / 2
+                    for other in cars
+                )
+                if entry_blocked:
+                    car.distance_m = max(
+                        car.distance_m, request.entry_distance_m - 1e-6
+                    )
+                    car.speed_ms = 0.0
+                    continue
+                travel_s = max(
+                    0.0,
+                    (request.entry_distance_m - car.distance_m)
+                    / max(car.speed_ms, 1e-9),
+                )
+                car.distance_m = request.entry_distance_m
+                car.lateral_m = car.target_lateral_m = 0.0
+                car.overtaking = None
+                car.pit_state = PitLaneState()
+                car.speed_ms = min(car.speed_ms, pit_parameters.speed_limit_kmh / 3.6)
+                if on_pit_event is not None:
+                    on_pit_event(car, "entry", time_s - dt_s + travel_s)
+                _advance_pit_lane(
+                    car,
+                    cars,
+                    pit_lane,
+                    pit_parameters,
+                    max(0.0, dt_s - travel_s),
+                    time_s,
+                    on_pit_event,
+                    race_distance,
+                )
+            else:
+                car.distance_m = proposed
 
             # Volta concluida: avisa o orquestrador (pneu, combustivel, clima
             # atualizam ``speed_scale`` do carro para a proxima volta).
@@ -535,7 +717,7 @@ def _resolve_collisions(
     """
 
     active = sorted(
-        (c for c in cars if not c.retired and c.distance_m < race_distance_m),
+        (c for c in cars if not c.retired and c.pit_state is None and c.distance_m < race_distance_m),
         key=lambda c: c.driver_id,
     )
     for i in range(len(active)):
@@ -584,6 +766,7 @@ def _lane_decision(
         )
         done = (
             target is None
+            or target.pit_state is not None
             or target.distance_m >= race_distance_m
             or car.distance_m >= target.distance_m + clearance
         )
@@ -721,4 +904,6 @@ def _frozen(car: CarSpaceState) -> CarSpaceState:
         overtaking=car.overtaking,
         retired=car.retired,
         speed_scale=car.speed_scale,
+        pit_request=car.pit_request,
+        pit_state=car.pit_state,
     )

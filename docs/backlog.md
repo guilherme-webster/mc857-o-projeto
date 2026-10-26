@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-10-16T20:24:01Z
-- **Abertas:** 42
-- **Fechadas:** 15
+- **Ultima atividade registrada:** 2026-10-26T22:30:41Z
+- **Abertas:** 43
+- **Fechadas:** 16
 
 ## Issues abertas
 
@@ -229,7 +229,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18), [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19), [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21)
+- **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18), [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19), [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21), [#101 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/101)
 - **Criada:** 2026-08-28T23:06:03Z
 - **Atualizada:** 2026-10-16T20:24:01Z
 - **Fechada:** —
@@ -244,6 +244,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-10-26T22:30:35Z — sub-issue adicionada: #101 por @Jmvjr
 - 2026-10-16T20:24:01Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-08-28T23:39:04Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
 - 2026-08-28T23:36:19Z — sub-issue adicionada: #21 por @ViniciusFCoracin
@@ -624,35 +625,6 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 <summary>Historico de estado</summary>
 
 - 2026-08-28T23:37:02Z — label adicionada: Task por @ViniciusFCoracin
-
-</details>
-
-### [#22 — teste](https://github.com/guilherme-webster/mc857-o-projeto/issues/22)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:45:38Z
-- **Atualizada:** 2026-09-04T22:15:18Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-04T22:15:18Z — responsavel removido: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
-- 2026-09-03T23:50:41Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 
 </details>
 
@@ -1162,7 +1134,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** [#64 — Consumo do backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/64), [#65 — Modelagem posterior](https://github.com/guilherme-webster/mc857-o-projeto/issues/65)
+- **Sub-issues:** [#64 — Consumo do backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/64), [#65 — Modelagem posterior](https://github.com/guilherme-webster/mc857-o-projeto/issues/65), [#97 — Modelagem do combustível](https://github.com/guilherme-webster/mc857-o-projeto/issues/97)
 - **Criada:** 2026-09-11T22:18:57Z
 - **Atualizada:** 2026-09-11T22:36:33Z
 - **Fechada:** —
@@ -1186,6 +1158,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-10-22T23:41:51Z — sub-issue adicionada: #97 por @DaviGabrielBC
 - 2026-09-11T22:27:12Z — sub-issue adicionada: #65 por @guilherme-webster
 - 2026-09-11T22:26:46Z — sub-issue adicionada: #64 por @guilherme-webster
 - 2026-09-11T22:25:05Z — label adicionada: História por @guilherme-webster
@@ -1565,6 +1538,55 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 </details>
 
+### [#97 — Modelagem do combustível](https://github.com/guilherme-webster/mc857-o-projeto/issues/97)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
+- **Sub-issues:** —
+- **Criada:** 2026-10-22T23:41:50Z
+- **Atualizada:** 2026-10-22T23:41:50Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Fazer modelagem do consumo de combustível e implementar o reabastecimento (junto com troca de pneus)</pre>
+
+</details>
+
+### [#101 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/101)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-10-26T22:30:33Z
+- **Atualizada:** 2026-10-26T22:30:41Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-26T22:30:41Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
 ## Issues fechadas
 
 ### [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13)
@@ -1660,6 +1682,36 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 - 2026-09-05T00:04:59Z — fechada por @ViniciusFCoracin
 - 2026-08-28T23:36:37Z — label adicionada: Task por @ViniciusFCoracin
+
+</details>
+
+### [#22 — teste](https://github.com/guilherme-webster/mc857-o-projeto/issues/22)
+
+- **Estado:** fechada
+- **Motivo do estado:** not_planned
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:45:38Z
+- **Atualizada:** 2026-10-23T21:58:53Z
+- **Fechada:** 2026-10-23T21:58:53Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-23T21:58:53Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-04T22:15:18Z — responsavel removido: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-09-03T23:50:41Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 
 </details>
 

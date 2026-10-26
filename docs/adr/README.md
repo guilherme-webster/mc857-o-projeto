@@ -24,6 +24,7 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | [0009](0009-combustivel-por-massa-e-reabastecimento.md) | proposta | Combustivel por massa por carro e reabastecimento como regra do cenario, com paradas estrategicas por piloto. |
 | [0010](0010-motor-fisico-de-velocidade-por-trecho.md) | aceita; atualiza o 0008 | Motor fisico de velocidade por trecho: o tempo de volta emerge da velocidade derivada da curvatura. |
 | [0011](0011-motor-2d-posicao-continua-ultrapassagem-e-colisao.md) | aceita; atualiza o 0002, 0003 e 0010 | Motor 2D sub-volta: posicao x,y continua; ultrapassagem e colisao emergem da proximidade espacial. |
+| [0012](0012-percurso-espacial-de-pit-lane.md) | aceita; atualiza o 0011 | Pit lane espacial no 2D: entrada, fila, serviço e saída; tempo efetivo sem duplicar a perda de boxes. |
 
 ## Modelo
 
