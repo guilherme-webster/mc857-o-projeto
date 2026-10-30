@@ -34,6 +34,23 @@ MODEL_PARAMETERS = (
     _CONTAINER_PARAMETERS if _CONTAINER_PARAMETERS.exists() else _REPOSITORY_PARAMETERS
 )
 
+# Atenuacao heuristica da penalidade calibrada de largada. Fica em artefato
+# proprio para uma recalibracao de model-v1.json nao apagar a escolha da #108.
+_CONTAINER_GRID_START_PARAMETERS = (
+    DATA_DIR.parent / "parameters" / "grid-start-v1.json"
+)
+_REPOSITORY_GRID_START_PARAMETERS = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "parameters"
+    / "grid-start-v1.json"
+)
+GRID_START_PARAMETERS = (
+    _CONTAINER_GRID_START_PARAMETERS
+    if _CONTAINER_GRID_START_PARAMETERS.exists()
+    else _REPOSITORY_GRID_START_PARAMETERS
+)
+
 # Volta de referencia por circuito (mediana historica), gerada por
 # scripts/build_reference_laps.py. Mesma regra de busca do MODEL_PARAMETERS.
 _CONTAINER_REFERENCE_LAPS = DATA_DIR.parent / "parameters" / "reference-laps-v1.json"

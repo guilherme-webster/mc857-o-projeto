@@ -13,6 +13,7 @@ from app.config import (
     CURRENT_GRID_JSON,
     CURRENT_RACE_JSON,
     FUEL_PARAMETERS,
+    GRID_START_PARAMETERS,
     HISTORY_DB,
     MODEL_PARAMETERS,
     REFERENCE_LAPS,
@@ -247,6 +248,27 @@ def _model_parameters():
         ) from error
 
 
+def _grid_start_parameters():
+    """Carregue a heuristica versionada de largada ou devolva 503.
+
+    Diferente de um recurso opcional, o fator muda o resultado padrao do motor
+    detalhado. Ausencia ou corrupcao nao pode cair silenciosamente em 1,0.
+    """
+
+    from f1_simulator.adapters.grid_start_parameters_json import (
+        GridStartParametersError,
+        read_grid_start_parameters,
+    )
+
+    try:
+        return read_grid_start_parameters(GRID_START_PARAMETERS)
+    except (OSError, GridStartParametersError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"parametros de largada invalidos: {error}",
+        ) from error
+
+
 def _reference_lap(track_id):
     """Entrada da tabela historica para a pista, ou ``None`` se nao houver.
 
@@ -401,6 +423,7 @@ def run_grid(
             fuel_parameters=_fuel_parameters(),
             pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
             engine=engine,
+            grid_start=_grid_start_parameters(),
         )
     except ValueError as error:
         raise HTTPException(

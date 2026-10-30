@@ -18,6 +18,10 @@ from f1_simulator.domain.fuel import (
     RefuelStops,
     sample_refuel_stops,
 )
+from f1_simulator.domain.grid_start import (
+    GridStartParameters,
+    LEGACY_GRID_START_PARAMETERS,
+)
 from f1_simulator.domain.model_parameters import ModelParameters
 from f1_simulator.domain.race_control import (
     HEURISTIC_RACE_CONTROL,
@@ -237,6 +241,7 @@ def run_detailed_grid_simulation(
     fuel_parameters: FuelModelParameters | None = None,
     pit_entry_fraction: float | None = None,
     engine: Literal["detailed", "2d"] = "detailed",
+    grid_start: GridStartParameters = LEGACY_GRID_START_PARAMETERS,
 ) -> dict:
     """Execute o grid no motor detalhado sem conhecer arquivo, HTTP ou banco.
 
@@ -282,6 +287,10 @@ def run_detailed_grid_simulation(
     estrategia: o primeiro stint do plano de paradas, nao a corrida inteira.
     ``pit_entry_fraction`` e a posicao da entrada dos boxes na volta, tirada
     da geometria do pit lane; ``None`` supoe a entrada na linha.
+
+    ``grid_start`` atenua o atraso temporal apenas no motor por volta. O 2D
+    representa o grid em metros e recebe os carros em filas de dois; repassar o
+    fator a ele cobraria duas vezes a mesma vantagem da posicao de largada.
     """
 
     if (
@@ -462,6 +471,7 @@ def run_detailed_grid_simulation(
         lap_surface_water=lap_surface_water,
         geometry=geometry,
         fuel=fuel_plan,
+        grid_start=grid_start,
     )
     if geometry is not None:
         result["speed_profiles"] = _speed_profiles_by_driver(
