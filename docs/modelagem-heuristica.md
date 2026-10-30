@@ -5,8 +5,8 @@ valores e onde mudá-las**. O plano e o histórico das decisões estão no
 [PRD](prds/modelagem-pilotos-heuristica.md); a decisão arquitetural está no
 [ADR 0008](adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md).
 
-Valores conferidos no código em 2026-10-16 (branch `6-reproducao-volta-a-volta`;
-os valores não mudaram desde a branch `67-modelagem-pilotos`, de 2026-10-03).
+Valores conferidos no código em 2026-10-30. A modelagem original foi integrada
+na branch `67-modelagem-pilotos`, de 2026-10-03.
 Combustível e reabastecimento (§6 e tabelas) conferidos em 2026-10-23, branch
 `97-modelagem-combustivel`; decisão no
 [ADR 0009](adr/0009-combustivel-por-massa-e-reabastecimento.md).
@@ -44,6 +44,7 @@ Se um número aqui divergir do código, **vale o código**: atualize este arquiv
 | Volta de referência | `application/reference_laps.py`, `data/parameters/reference-laps-v1.json` | `historical-median-fastest-laps-v1` |
 | Clima no tempo de volta | `domain/weather.py` (`simulate_weather`, `weather_penalty_ms`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`), `ASSUMED_WEATHER_EFFECT` (`assumed-weather-effect-v1`) |
 | Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
+| Impacto temporal do grid | `domain/grid_start.py`, aplicado por `domain/race_simulation.py` | `data/parameters/grid-start-v1.json` (`heuristic-grid-start-v1`) |
 | Ligação ao grid | `application/run_grid_simulation.py` (`run_detailed_grid_simulation`) | ritmo de reserva `ASSUMED_REFERENCE_PACE_MS_PER_KM` |
 | Motor | `domain/race_simulation.py` (`simulate_detailed_race`) | — |
 | Física calibrada (colega, #40) | `data/parameters/model-v1.json` | `trotman-v128-2022-2023` |
@@ -224,6 +225,52 @@ heurístico, mas só fixa a escala de tempo da pista: não descreve pilotos.
 Ordem de uso: tabela → comprimento da pista × 17.000 ms/km (reserva) → 90 s
 (sem pista). A origem usada aparece em `assumptions`.
 
+### 7.1 Impacto da posição de largada (#108)
+
+O coeficiente `grid_penalty_ms_per_position = 782,4 ms` continua sendo o valor
+**calibrado** de `model-v1.json`. O motor detalhado multiplica esse coeficiente
+uma única vez pelo fator **heurístico** 0,015 de `grid-start-v1.json`: o efeito
+usado é 11,736 ms por posição (P20 começa 222,984 ms atrás da pole). A resposta
+publica os três valores em `assumptions`; fator 1,0 reproduz os tempos e os
+sorteios anteriores. O motor 2D não recebe a penalidade temporal: larga em
+filas de dois, com 10 m assumidos entre filas e ±2 m laterais.
+
+Análise reproduzível:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
+  scripts/analyze_grid_start_sensitivity.py --races-per-track 40
+```
+
+Protocolo `grid-start-sensitivity-v1`: mesmas sementes (`1082026` em diante)
+para cada fator; Spa (44 voltas), Interlagos (71) e Mônaco (78); três grids
+sintéticos fixos de 20 carros (ritmo na ordem, top 5 misturado e P8 mais rápido).
+São 360 corridas por fator. A média de P8 usa as 120 corridas do terceiro grid,
+em que ele é exatamente 500 ms/volta mais rápido que a pole. “Ganha/igual/perde”
+compara posição de largada e posição final para os 7.200 carros, inclusive
+abandonos. É sensibilidade de uma hipótese, não calibração histórica.
+
+| Fator | ms/posição | Vitória da pole | P8 médio final | Ganha | Igual | Perde |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 782,40 | 73,89% | 7,74 | 56,61% | 30,85% | 12,54% |
+| 0,750 | 586,80 | 71,11% | 7,31 | 57,15% | 29,38% | 13,47% |
+| 0,500 | 391,20 | 66,94% | 7,30 | 55,33% | 25,08% | 19,58% |
+| 0,350 | 273,84 | 67,22% | 6,93 | 53,24% | 20,96% | 25,81% |
+| 0,250 | 195,60 | 59,44% | 6,45 | 52,24% | 18,33% | 29,43% |
+| 0,150 | 117,36 | 55,56% | 7,27 | 51,74% | 14,97% | 33,29% |
+| 0,100 | 78,24 | 50,83% | 5,86 | 50,54% | 14,64% | 34,82% |
+| 0,075 | 58,68 | 53,33% | 5,81 | 50,72% | 13,72% | 35,56% |
+| 0,050 | 39,12 | 51,39% | 6,28 | 50,82% | 12,79% | 36,39% |
+| 0,025 | 19,56 | 46,67% | 5,86 | 50,68% | 12,42% | 36,90% |
+| **0,015** | **11,74** | **43,33%** | **5,96** | **51,00%** | **11,46%** | **37,54%** |
+| 0,000 | 0,00 | 46,39% | 5,33 | 50,13% | 11,60% | 38,28% |
+
+O fator 0,015 foi escolhido por levar a pole a 43,33%, dentro do alvo hipotético
+de 40–45%, sem apagar por completo o efeito temporal da ordem. A
+não monotonicidade é esperada: mudanças de ordem alteram disputas, contatos e
+neutralizações apesar das sementes pareadas. O resultado caracteriza este
+protocolo sintético e não transforma o fator em coeficiente calibrado.
+
 ## 8. Como reajustar
 
 | Quero mudar... | Onde |
@@ -240,6 +287,7 @@ Ordem de uso: tabela → comprimento da pista × 17.000 ms/km (reserva) → 90 s
 | Como os pilotos tratam o combustível | `FuelTraitHeuristics` em `domain/strategy.py` |
 | O efeito do combustível no tempo de volta | `scripts/calibrate_fuel.py --database ... --seasons 2022 2023 --validate-seasons 2024 2025` |
 | Tempos de volta das pistas | `scripts/build_reference_laps.py --database ... --seasons ...` |
+| Impacto temporal da posição de largada | `grid_start_penalty_factor` em `data/parameters/grid-start-v1.json`; depois rode `scripts/analyze_grid_start_sensitivity.py` |
 
 Ao mudar um valor: incremente o `parameter_version`, atualize o `rationale` e
 esta página, e rode a suíte. Testes que dependem de valores exatos usam os
@@ -247,10 +295,10 @@ próprios parâmetros, não números fixos.
 
 ## 9. Limitações conhecidas
 
-- **A pole vence muito.** Em Spa, quem larga em 1º venceu 21 de 40 corridas de
-  teste, e um carro 0,5 s/volta mais rápido largando em 8º raramente vence
-  (mas termina em média em 5,7º). Candidatos a ajuste: a penalidade calibrada
-  de grid (782 ms por posição) e `resistance_scale`.
+- **A taxa da pole depende do protocolo.** Depois da atenuação da #108, venceu
+  43,33% da amostra sintética representativa (§7.1), dentro da hipótese de
+  40–45%, mas isso não é uma calibração histórica. Ritmo, bloqueio e disputas
+  continuam contribuindo para o resultado.
 - A ultrapassagem é decidida por volta, não em um ponto da pista.
 - **Reabastecimento não é o regulamento atual.** Fica ligado por padrão como
   regra do cenário (ADR 0009): corridas de distância real têm 2–3 paradas
