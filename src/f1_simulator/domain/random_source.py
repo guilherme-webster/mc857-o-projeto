@@ -28,6 +28,12 @@ MAX_TRUNCATED_STANDARD_NORMAL_ATTEMPTS = 10_000
 MAX_UNIFORM_INDEX_ATTEMPTS = 10_000
 """Numero maximo de sorteios antes de declarar o sorteio de indice inviavel."""
 
+MAX_JSON_SAFE_SEED = 2**53 - 1
+"""Maior semente inteira preservada exatamente por clientes JSON com ``double``."""
+
+TOURNAMENT_STAGE_STREAM_VERSION = "tournament-stage-v1"
+"""Versao da derivacao publica do fluxo pseudoaleatorio de uma etapa."""
+
 
 class RandomSource(Protocol):
     """Contrato minimo de aleatoriedade consumido pelo dominio.
@@ -87,6 +93,12 @@ class SeededRandomSource:
 
         return tuple(self._draws)
 
+    @property
+    def seed(self) -> int:
+        """Devolva a semente efetiva do fluxo para registro de proveniencia."""
+
+        return self._seed
+
     def standard_normal(self, label: str = "") -> float:
         """Sorteie uma normal padrao e, se habilitado, registre-a em ordem."""
 
@@ -131,6 +143,50 @@ class SeededRandomSource:
         material = b"f1-random-source-v1\x00" + seed_bytes + b"\x00" + key_bytes
         child_seed = int.from_bytes(sha256(material).digest(), byteorder="big")
         return SeededRandomSource(child_seed, record_draws=self._record_draws)
+
+
+def derive_tournament_stage_seed(tournament_seed: int, stage_index: int) -> int:
+    """Derive a semente estavel de uma etapa do torneio.
+
+    A entrada e o par ``(tournament_seed, stage_index)``. A serializacao usa
+    separadores, inteiros decimais canonicos e um prefixo de versao antes do
+    SHA-256; assim nao depende de ``hash()``, ordem de execucao ou sorteios de
+    outras etapas. Os 53 bits menos significativos do digest mantem a semente
+    derivada exatamente representavel no JSON consumido pelo frontend.
+
+    O indice e zero-based e nao tem limite superior artificial no nucleo. Seeds
+    e indices diferentes produzem fluxos independentes na pratica criptografica
+    do SHA-256; a versao faz qualquer mudanca futura da regra ser explicita.
+    """
+
+    if (
+        type(tournament_seed) is not int
+        or not 0 <= tournament_seed <= MAX_JSON_SAFE_SEED
+    ):
+        raise ValueError(
+            f"tournament_seed deve estar entre 0 e {MAX_JSON_SAFE_SEED}"
+        )
+    if type(stage_index) is not int or stage_index < 0:
+        raise ValueError("stage_index deve ser um inteiro maior ou igual a zero")
+
+    material = (
+        f"{TOURNAMENT_STAGE_STREAM_VERSION}\x00"
+        f"{tournament_seed}\x00{stage_index}"
+    ).encode("ascii")
+    return (
+        int.from_bytes(sha256(material).digest(), byteorder="big")
+        & MAX_JSON_SAFE_SEED
+    )
+
+
+def derive_tournament_stage_random_source(
+    tournament_seed: int, stage_index: int
+) -> SeededRandomSource:
+    """Crie o RNG da etapa usando a derivacao publica e versionada de seed."""
+
+    return SeededRandomSource(
+        derive_tournament_stage_seed(tournament_seed, stage_index)
+    )
 
 
 def truncated_standard_normal(

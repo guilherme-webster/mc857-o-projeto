@@ -8,9 +8,12 @@ import unittest
 from dataclasses import FrozenInstanceError
 
 from f1_simulator.domain.random_source import (
+    MAX_JSON_SAFE_SEED,
     MAX_TRUNCATED_STANDARD_NORMAL_ATTEMPTS,
     RandomDraw,
     SeededRandomSource,
+    derive_tournament_stage_random_source,
+    derive_tournament_stage_seed,
     truncated_standard_normal,
 )
 
@@ -145,6 +148,31 @@ print(json.dumps([source.standard_normal("lap_noise") for _ in range(12)]))
             source.standard_normal(1)  # type: ignore[arg-type]
         with self.assertRaises(ValueError):
             source.spawn(1)  # type: ignore[arg-type]
+
+    def test_tournament_stage_derivation_is_stable_distinct_and_json_safe(self) -> None:
+        first = derive_tournament_stage_seed(987_654_321, 0)
+        repeated = derive_tournament_stage_seed(987_654_321, 0)
+        next_stage = derive_tournament_stage_seed(987_654_321, 1)
+
+        self.assertEqual(first, repeated)
+        self.assertNotEqual(first, next_stage)
+        self.assertLessEqual(first, MAX_JSON_SAFE_SEED)
+        self.assertEqual(
+            derive_tournament_stage_random_source(987_654_321, 0).seed,
+            first,
+        )
+
+    def test_tournament_stage_derivation_rejects_invalid_inputs(self) -> None:
+        for tournament_seed, stage_index in (
+            (-1, 0),
+            (MAX_JSON_SAFE_SEED + 1, 0),
+            (True, 0),
+            (1, -1),
+            (1, True),
+        ):
+            with self.subTest(seed=tournament_seed, stage=stage_index):
+                with self.assertRaises(ValueError):
+                    derive_tournament_stage_seed(tournament_seed, stage_index)
 
 
 class TruncatedStandardNormalTest(unittest.TestCase):

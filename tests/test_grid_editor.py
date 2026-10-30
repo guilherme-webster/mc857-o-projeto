@@ -153,6 +153,10 @@ class GridSourcesTest(unittest.TestCase):
         self.assertEqual(
             sources[0].request(), {"mode": "random", "size": RANDOM_GRID_SIZE}
         )
+        self.assertEqual(
+            sources[0].request(105),
+            {"mode": "random", "size": RANDOM_GRID_SIZE, "seed": 105},
+        )
         self.assertEqual(sources[1].request(), {"mode": "race", "race_id": "race:1"})
 
     def test_without_history_only_random_is_offered(self) -> None:

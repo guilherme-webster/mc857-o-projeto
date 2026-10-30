@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from datetime import date
 from unittest.mock import patch
 
 from f1_simulator.application.build_grid import GridEntry, reorder_grid
@@ -15,6 +16,12 @@ from f1_simulator.domain.driver_attributes import ATTRIBUTE_FIELDS, DriverAttrib
 from f1_simulator.domain.race_control import HEURISTIC_RACE_CONTROL
 from f1_simulator.domain.random_source import SeededRandomSource
 from f1_simulator.domain.strategy import HeuristicPitStrategy
+from f1_simulator.domain.track_geometry import (
+    GeometryProvenance,
+    PitLanePoint,
+    TrackGeometry,
+    TrackPoint,
+)
 from tests.model_support import parameters
 
 
@@ -46,6 +53,40 @@ def attribute(driver_id: str, **overrides: float) -> DriverAttributes:
         sources={name: "generated" for name in ATTRIBUTE_FIELDS},
         **values,
     )
+
+
+def small_geometry() -> TrackGeometry:
+    """Quadrado sintetico curto para exercitar o motor 2D sem fixture externa."""
+
+    provenance = GeometryProvenance(
+        source_name="test",
+        source_version="1",
+        source_year=2026,
+        generated_on=date(2026, 1, 1),
+        upstream=None,
+        upstream_data_license="CC0",
+        artifact_sha256="a" * 64,
+        manifest_sha256="b" * 64,
+        transformation="synthetic square",
+    )
+    points = tuple(
+        TrackPoint(index, x, y, distance)
+        for index, (x, y, distance) in enumerate(
+            (
+                (0.0, 0.0, 0.0),
+                (100.0, 0.0, 100.0),
+                (100.0, 100.0, 200.0),
+                (0.0, 100.0, 300.0),
+                (0.0, 0.0, 400.0),
+            )
+        )
+    )
+    pit_lane = (
+        PitLanePoint(0, 0.0, 90.0, 0.0, False),
+        PitLanePoint(1, -5.0, 50.0, 0.5, True),
+        PitLanePoint(2, 0.0, 10.0, 1.0, False),
+    )
+    return TrackGeometry("circuit:1", points, pit_lane, provenance, provenance)
 
 
 class DetailedGridSimulationTest(unittest.TestCase):
@@ -259,6 +300,46 @@ class DetailedGridSimulationTest(unittest.TestCase):
             faster["classification"][0]["total_time_ms"],
             slower["classification"][0]["total_time_ms"],
         )
+
+    def _run_tournament_stage(
+        self, engine: str, tournament_seed: int, stage_index: int
+    ) -> dict:
+        geometry = small_geometry() if engine == "2d" else None
+        return run_detailed_grid_simulation(
+            self.grid,
+            self.attributes,
+            RaceSetup(
+                3,
+                track_id="circuit:1",
+                tournament_seed=tournament_seed,
+                stage_index=stage_index,
+            ),
+            parameters=parameters(dnf_hazard_per_lap=0.35),
+            lap_length_m=400.0 if geometry is not None else 4_000.0,
+            rng=SeededRandomSource(999),
+            geometry=geometry,
+            engine=engine,  # type: ignore[arg-type]
+        )
+
+    def test_tournament_seed_reproduces_and_separates_detailed_stages(self) -> None:
+        first = self._run_tournament_stage("detailed", 105, 0)
+        repeated = self._run_tournament_stage("detailed", 105, 0)
+        different_seed = self._run_tournament_stage("detailed", 106, 0)
+        repeated_track_next_stage = self._run_tournament_stage("detailed", 105, 1)
+
+        self.assertEqual(first, repeated)
+        self.assertNotEqual(first, different_seed)
+        self.assertNotEqual(first, repeated_track_next_stage)
+
+    def test_tournament_seed_reproduces_and_separates_2d_stages(self) -> None:
+        first = self._run_tournament_stage("2d", 105, 0)
+        repeated = self._run_tournament_stage("2d", 105, 0)
+        different_seed = self._run_tournament_stage("2d", 106, 0)
+        repeated_track_next_stage = self._run_tournament_stage("2d", 105, 1)
+
+        self.assertEqual(first, repeated)
+        self.assertNotEqual(first, different_seed)
+        self.assertNotEqual(first, repeated_track_next_stage)
 
 
 if __name__ == "__main__":

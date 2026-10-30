@@ -76,7 +76,13 @@ class LaunchOutcome:
     rules: TournamentRules = TournamentRules()
 
 
-def run_setup(planned: PlannedRace, rules: TournamentRules) -> dict:
+def run_setup(
+    planned: PlannedRace,
+    rules: TournamentRules,
+    *,
+    tournament_seed: int | None = None,
+    stage_index: int = 0,
+) -> dict:
     """``setup`` do ``POST /catalog/grid/run`` para uma etapa.
 
     O clima vai como faixas contiguas, inclusive as secas, para que o
@@ -98,11 +104,15 @@ def run_setup(planned: PlannedRace, rules: TournamentRules) -> dict:
             }
             for item in configuration.weather_schedule.ranges()
         ]
-    return {
+    setup = {
         "total_laps": configuration.laps,
         "track_id": planned.circuit_id,
         "weather": weather,
     }
+    if tournament_seed is not None:
+        setup["tournament_seed"] = tournament_seed
+        setup["stage_index"] = stage_index
+    return setup
 
 
 def unsupported_options(planned: PlannedRace) -> tuple[str, ...]:
@@ -143,10 +153,17 @@ def launch_plan(
     total = len(plan.races)
     launched = []
     warnings: list[str] = []
-    for index, planned in enumerate(plan.races, start=1):
+    for stage_index, planned in enumerate(plan.races):
         warnings.extend(unsupported_options(planned))
-        progress(f"Simulando etapa {index}/{total}: {planned.name}…")
-        race = client.run_grid(run_setup(planned, plan.rules))
+        progress(f"Simulando etapa {stage_index + 1}/{total}: {planned.name}…")
+        race = client.run_grid(
+            run_setup(
+                planned,
+                plan.rules,
+                tournament_seed=plan.tournament_seed,
+                stage_index=stage_index,
+            )
+        )
         track = client.fetch_track(planned.circuit_id)
         launched.append(LaunchedRace(planned, race, track))
     return LaunchOutcome(tuple(launched), grid_note, tuple(warnings), plan.rules)

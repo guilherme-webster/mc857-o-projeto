@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -54,6 +55,7 @@ class CatalogGridRunRouteTest(unittest.TestCase):
             total_laps=5,
             track_id="circuit:1",
             weather=[],
+            engine="detailed",
         )
 
 
@@ -61,33 +63,42 @@ class CatalogGridRunServiceTest(unittest.TestCase):
     def test_detailed_engine_loads_model_track_length_and_keeps_seed(self) -> None:
         model = parameters()
         detailed_result = {"total_laps": 5, "history": [], "classification": []}
-        with (
-            patch.object(
-                catalog_service, "read_current_grid", return_value=current_grid()
-            ),
-            patch.object(catalog_service, "_model_parameters", return_value=model),
-            patch.object(
-                catalog_service,
-                "_track_reference",
-                return_value=("circuit:1", 4_000.0),
-            ),
-            patch(
-                "f1_simulator.application.run_grid_simulation.run_detailed_grid_simulation",
-                return_value=detailed_result,
-            ) as run,
-            patch.object(catalog_service, "_write_json") as write,
-        ):
-            result = catalog_service.run_grid(
-                total_laps=5,
-                track_id="circuit:1",
-                weather=[],
-            )
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory)
+            with (
+                patch.object(
+                    catalog_service, "read_current_grid", return_value=current_grid()
+                ),
+                patch.object(catalog_service, "_model_parameters", return_value=model),
+                patch.object(
+                    catalog_service,
+                    "_track_reference",
+                    return_value=("circuit:1", 4_000.0),
+                ),
+                patch.object(
+                    catalog_service, "CURRENT_RACE_JSON", output_dir / "current-race.json"
+                ),
+                patch.object(
+                    catalog_service, "SAVED_RACES_DIR", output_dir / "saved-races"
+                ),
+                patch(
+                    "f1_simulator.application.run_grid_simulation.run_detailed_grid_simulation",
+                    return_value=detailed_result,
+                ) as run,
+            ):
+                result = catalog_service.run_grid(
+                    total_laps=5,
+                    track_id="circuit:1",
+                    weather=[],
+                )
+
+            self.assertTrue((output_dir / "current-race.json").is_file())
+            self.assertEqual(len(tuple((output_dir / "saved-races").glob("*.json"))), 1)
 
         self.assertEqual(result["seed"], 42)
         self.assertIs(run.call_args.kwargs["parameters"], model)
         self.assertEqual(run.call_args.kwargs["lap_length_m"], 4_000.0)
         self.assertEqual(run.call_args.args[2].track_id, "circuit:1")
-        write.assert_called_once()
 
     def test_missing_model_parameters_returns_503(self) -> None:
         missing = ROOT / "tmp" / "model-parameters-inexistentes.json"
@@ -104,7 +115,7 @@ class CatalogGridRunServiceTest(unittest.TestCase):
             catalog_service.run_grid(
                 total_laps=5,
                 track_id=None,
-                weather=None,
+                weather=[],
             )
 
         self.assertEqual(raised.exception.status_code, 503)
