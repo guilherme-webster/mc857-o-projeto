@@ -262,8 +262,11 @@ O coeficiente `grid_penalty_ms_per_position = 782,4 ms` continua sendo o valor
 uma única vez pelo fator **heurístico** 0,10 de `grid-start-v1.json`: o efeito
 usado é 78,24 ms por posição (P20 começa 1.486,56 ms atrás da pole). A resposta
 publica os três valores em `assumptions`; fator 1,0 reproduz os tempos e os
-sorteios anteriores. O motor 2D não recebe a penalidade temporal: larga em
-filas de dois, com 10 m assumidos entre filas e ±2 m laterais.
+sorteios anteriores. O motor 2D não recebe a penalidade temporal: mantém o
+grid escalonado (cada posição 10 m atrás da anterior, lados alternados), como
+no grid real da F1. Filas lado a lado foram testadas e descartadas: geravam
+contato artificial na largada (34 abandonos em 15 corridas de 2 voltas, contra
+0 no escalonado).
 
 Análise reproduzível:
 
