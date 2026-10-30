@@ -1,6 +1,8 @@
 # Controles do usuário sobre a simulação: largada, grid, voltas, seed e torneio salvo
 
-**Status:** aprovado pelo usuário em 2026-10-30; em implementação.
+**Status:** aprovado pelo usuário em 2026-10-30; implementado nas branches das
+issues (PRs empilhados). Fator de largada final: 0,10, por decisão do usuário
+(ver #108 e #110).
 **Origem:** lista de pendências do usuário (a pit lane já foi entregue no PR #103).
 **Issues:** #105, #106, #107, #108 e #109 (ver seção 7).
 
