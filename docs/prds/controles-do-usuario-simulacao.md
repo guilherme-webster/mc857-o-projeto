@@ -73,6 +73,11 @@ desconhecidos (HTTP 422). Escreve `current-grid.json` atomicamente.
 `default_laps_source` (`latest_observed_race` | `assumed_distance_rule`) e, no
 primeiro caso, a corrida de origem (ID, temporada, rodada).
 
+A observação mais recente é usada como fato, inclusive quando uma bandeira
+vermelha encurtou a corrida. Na reserva assumida, o comprimento vem da geometria
+reduzida FastF1 e pode ser impreciso; por essas duas limitações, o padrão pode
+divergir em uma ou duas voltas da distância oficialmente programada.
+
 ### 3.4 Torneio salvo (item 4)
 
 Formato JSON versionado (`schema_version`) em diretório de dados do backend,
