@@ -13,12 +13,15 @@ from threading import Thread
 
 import arcade
 
+from frontend.arcade.saved_tournaments import save_request
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
+    ERROR_COLOR,
     PRIMARY_TEXT_COLOR,
     SECONDARY_TEXT_COLOR,
+    SUCCESS_COLOR,
 )
-from frontend.arcade.track_client import fetch_championship_standings
+from frontend.arcade.track_client import fetch_championship_standings, save_tournament
 from frontend.arcade.tournament_session import (
     StandingLine,
     TournamentSession,
@@ -47,9 +50,13 @@ class TournamentResultView(arcade.View):
         tournament: TournamentSession,
         return_view: arcade.View | None = None,
         standings_loader: Callable[[dict], dict] = fetch_championship_standings,
+        tournament_saver: Callable[[dict], dict] = save_tournament,
     ) -> None:
         super().__init__()
         self._tournament = tournament
+        self._tournament_saver = tournament_saver
+        self._saving = False
+        self._save_status = arcade.Text("", 40, 70, SECONDARY_TEXT_COLOR, 12)
         self._return_view = return_view
         self._rows: list[StandingLine] = []
         self._names = tournament.driver_names()
@@ -78,6 +85,8 @@ class TournamentResultView(arcade.View):
         self._hover: str | None = None
         self._buttons = {
             "back": "Voltar à última etapa",
+            "save": "Salvar torneio",
+            "tournaments": "Torneios salvos",
             "saved": "Corridas salvas",
             "new": "Nova simulação",
         }
@@ -176,6 +185,18 @@ class TournamentResultView(arcade.View):
             outcome, payload = self._results.get_nowait()
         except Empty:
             return
+        if outcome in ("saved", "save_error"):
+            self._saving = False
+            if outcome == "saved":
+                self._save_status.text = (
+                    f"Torneio salvo como “{payload['name']}” ({payload['id']}). "
+                    "Abra em “Torneios salvos” para rever ou reexecutar."
+                )
+                self._save_status.color = SUCCESS_COLOR
+            else:
+                self._save_status.text = f"Não foi possível salvar: {payload}"
+                self._save_status.color = ERROR_COLOR
+            return
         if outcome == "error":
             self._message.text = f"Não foi possível calcular o campeonato: {payload}"
             self._message.color = _RETIRED_COLOR
@@ -185,11 +206,36 @@ class TournamentResultView(arcade.View):
         # vertical a partir do topo, e cada quadro so os reposiciona.
         self._cells = self._build_cells()
 
+    def save(self) -> None:
+        """Salve o torneio no backend numa thread; o aviso aparece na tela.
+
+        O backend congela o grid atual junto das corridas; se ele mudou depois
+        da simulacao, o pedido volta com 409 e a mensagem explica o motivo.
+        """
+
+        if self._saving:
+            return
+        self._saving = True
+        self._save_status.text = "Salvando o torneio…"
+        self._save_status.color = SECONDARY_TEXT_COLOR
+        request = save_request(self._tournament)
+        results = self._results
+
+        def run() -> None:
+            try:
+                meta = self._tournament_saver(request)
+            except (RuntimeError, OSError, ValueError) as error:
+                results.put(("save_error", str(error)))
+            else:
+                results.put(("saved", meta))
+
+        Thread(target=run, name="save-tournament", daemon=True).start()
+
     def _button_rects(self) -> dict[str, tuple[int, int, int, int]]:
-        width, height, gap = 210, 36, 12
+        width, height, gap = 180, 36, 10
         right = self.window.width - 40
         rects = {}
-        for key in ("new", "saved", "back"):
+        for key in ("new", "saved", "tournaments", "save", "back"):
             if key == "back" and self._return_view is None:
                 continue
             rects[key] = (right - width, 24, width, height)
@@ -208,6 +254,14 @@ class TournamentResultView(arcade.View):
                 continue
             if key == "back":
                 self.window.show_view(self._return_view)
+            elif key == "save":
+                self.save()
+            elif key == "tournaments":
+                from frontend.arcade.saved_tournaments_view import (
+                    SavedTournamentsView,
+                )
+
+                self.window.show_view(SavedTournamentsView(return_view=self))
             elif key == "saved":
                 from frontend.arcade.track_view import MenuView
 
@@ -243,6 +297,8 @@ class TournamentResultView(arcade.View):
             text.y = y
             text.draw()
 
+        if self._save_status.text:
+            self._save_status.draw()
         for key, rect in self._button_rects().items():
             left, bottom, w, h = rect
             hover = self._hover == key

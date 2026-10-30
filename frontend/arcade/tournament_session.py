@@ -30,6 +30,8 @@ class TournamentSession:
     races: tuple[LaunchedRace, ...]
     rules: TournamentRules
     notices: tuple[str, ...] = ()
+    # Seed usada nas etapas (#105); vai para o torneio salvo (#109).
+    tournament_seed: int | None = None
 
     def __post_init__(self) -> None:
         if not self.races:

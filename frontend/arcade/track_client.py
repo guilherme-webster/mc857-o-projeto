@@ -158,3 +158,33 @@ def fetch_championship_standings(request: dict, base_url: str = BASE_URL) -> dic
     """Tabela do campeonato calculada pelo backend para as etapas enviadas."""
 
     return _post("/championship/standings", request, base_url)
+
+
+def save_tournament(payload: dict, base_url: str = BASE_URL) -> dict:
+    """Salve um torneio ja simulado (``POST /tournaments``); devolve o resumo."""
+
+    return _post("/tournaments", payload, base_url)
+
+
+def fetch_saved_tournaments(base_url: str = BASE_URL) -> dict:
+    """Resumo dos torneios salvos, do mais recente ao mais antigo."""
+
+    try:
+        return _get("/tournaments", base_url)
+    except urllib.error.HTTPError as error:
+        raise BackendError(error.code, _error_detail(error)) from error
+
+
+def fetch_saved_tournament(tournament_id: str, base_url: str = BASE_URL) -> dict:
+    """Registro completo de um torneio salvo, com as corridas de cada etapa."""
+
+    try:
+        return _get(f"/tournaments/{tournament_id}", base_url)
+    except urllib.error.HTTPError as error:
+        raise BackendError(error.code, _error_detail(error)) from error
+
+
+def restore_tournament_grid(tournament_id: str, base_url: str = BASE_URL) -> dict:
+    """Torne o grid congelado do torneio o grid atual, antes de reexecuta-lo."""
+
+    return _post(f"/tournaments/{tournament_id}/restore-grid", {}, base_url)

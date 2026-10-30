@@ -60,6 +60,7 @@ REMOVE_TRACK_BOUNDS = (956, 236, 268, 38)
 AUTOMATIC_BOUNDS = (956, 186, 268, 38)
 # Abaixo do painel de regras, que termina em y=230.
 DRIVERS_BOUNDS = (28, 176, 268, 38)
+SAVED_TOURNAMENTS_BOUNDS = (28, 128, 268, 38)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
 CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 36)
 SAVE_RULES_BOUNDS = (916, 13, 138, 36)
@@ -664,7 +665,9 @@ class ParametersView(UIView):
         first = outcome.races[0]
         notices = (outcome.grid_note, *outcome.warnings)
         try:
-            tournament = TournamentSession(outcome.races, outcome.rules, notices)
+            tournament = TournamentSession(
+                outcome.races, outcome.rules, notices, outcome.tournament_seed
+            )
             view = TrackView(
                 first.track,
                 first.race,
@@ -900,6 +903,7 @@ class ParametersView(UIView):
         self._draw_remove_button()
         self._draw_automatic_button()
         self._draw_drivers_button()
+        self._draw_saved_tournaments_button()
         self._draw_confirmation_button()
         self._draw_track_navigation()
         self._draw_preview()
@@ -996,6 +1000,9 @@ class ParametersView(UIView):
             return
         if self._contains(DRIVERS_BOUNDS, x, y):
             self.open_grid_view()
+            return
+        if self._contains(SAVED_TOURNAMENTS_BOUNDS, x, y):
+            self.open_saved_tournaments()
             return
         if self._contains(CONFIRM_SERIES_BOUNDS, x, y):
             self.submit_configuration()
@@ -1134,6 +1141,36 @@ class ParametersView(UIView):
             9,
             anchor_y="center",
         ).draw()
+
+    def _draw_saved_tournaments_button(self) -> None:
+        left, bottom, width, height = SAVED_TOURNAMENTS_BOUNDS
+        self._draw_rounded_panel(
+            left, bottom, width, height, 8, (26, 36, 48), PANEL_BORDER_COLOR
+        )
+        self._native_text(
+            "Torneios salvos",
+            left + width / 2,
+            bottom + height / 2,
+            PRIMARY_TEXT_COLOR,
+            11,
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+        self._native_text(
+            "Reabrir sem simular ou reexecutar com o grid salvo.",
+            left + width + 14,
+            bottom + height / 2,
+            SECONDARY_TEXT_COLOR,
+            9,
+            anchor_y="center",
+        ).draw()
+
+    def open_saved_tournaments(self) -> None:
+        """Abra a lista de torneios salvos; "Voltar" retorna a esta tela."""
+
+        from frontend.arcade.saved_tournaments_view import SavedTournamentsView
+
+        self.window.show_view(SavedTournamentsView(return_view=self))
 
     def open_grid_view(self) -> None:
         """Abra a tela de pilotos; ela volta para esta mesma configuração."""
