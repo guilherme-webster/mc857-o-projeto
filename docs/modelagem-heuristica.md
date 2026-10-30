@@ -229,8 +229,8 @@ Ordem de uso: tabela → comprimento da pista × 17.000 ms/km (reserva) → 90 s
 
 O coeficiente `grid_penalty_ms_per_position = 782,4 ms` continua sendo o valor
 **calibrado** de `model-v1.json`. O motor detalhado multiplica esse coeficiente
-uma única vez pelo fator **heurístico** 0,015 de `grid-start-v1.json`: o efeito
-usado é 11,736 ms por posição (P20 começa 222,984 ms atrás da pole). A resposta
+uma única vez pelo fator **heurístico** 0,10 de `grid-start-v1.json`: o efeito
+usado é 78,24 ms por posição (P20 começa 1.486,56 ms atrás da pole). A resposta
 publica os três valores em `assumptions`; fator 1,0 reproduz os tempos e os
 sorteios anteriores. O motor 2D não recebe a penalidade temporal: larga em
 filas de dois, com 10 m assumidos entre filas e ±2 m laterais.
@@ -258,15 +258,19 @@ abandonos. É sensibilidade de uma hipótese, não calibração histórica.
 | 0,350 | 273,84 | 67,22% | 6,93 | 53,24% | 20,96% | 25,81% |
 | 0,250 | 195,60 | 59,44% | 6,45 | 52,24% | 18,33% | 29,43% |
 | 0,150 | 117,36 | 55,56% | 7,27 | 51,74% | 14,97% | 33,29% |
-| 0,100 | 78,24 | 50,83% | 5,86 | 50,54% | 14,64% | 34,82% |
+| **0,100** | **78,24** | **50,83%** | **5,86** | **50,54%** | **14,64%** | **34,82%** |
 | 0,075 | 58,68 | 53,33% | 5,81 | 50,72% | 13,72% | 35,56% |
 | 0,050 | 39,12 | 51,39% | 6,28 | 50,82% | 12,79% | 36,39% |
 | 0,025 | 19,56 | 46,67% | 5,86 | 50,68% | 12,42% | 36,90% |
-| **0,015** | **11,74** | **43,33%** | **5,96** | **51,00%** | **11,46%** | **37,54%** |
+| 0,015 | 11,74 | 43,33% | 5,96 | 51,00% | 11,46% | 37,54% |
 | 0,000 | 0,00 | 46,39% | 5,33 | 50,13% | 11,60% | 38,28% |
 
-O fator 0,015 foi escolhido por levar a pole a 43,33%, dentro do alvo hipotético
-de 40–45%, sem apagar por completo o efeito temporal da ordem. A
+O alvo hipotético inicial era a pole vencer 40–45%. A tabela mostra que ele só
+é atingido praticamente zerando a penalidade: com 360 corridas por fator, o erro
+padrão é de cerca de 2,6 p.p., e os fatores de 0 a 0,10 ficam no mesmo patamar
+(43–53%). O fator 0,10 foi escolhido pelo usuário em 2026-10-30 por manter um
+efeito de largada perceptível (P20 a ~1,5 s) e já tirar a pole de 74% para ~51%;
+a vantagem restante vem do modelo de ultrapassagem, tratado na issue #110. A
 não monotonicidade é esperada: mudanças de ordem alteram disputas, contatos e
 neutralizações apesar das sementes pareadas. O resultado caracteriza este
 protocolo sintético e não transforma o fator em coeficiente calibrado.
@@ -295,10 +299,10 @@ próprios parâmetros, não números fixos.
 
 ## 9. Limitações conhecidas
 
-- **A taxa da pole depende do protocolo.** Depois da atenuação da #108, venceu
-  43,33% da amostra sintética representativa (§7.1), dentro da hipótese de
-  40–45%, mas isso não é uma calibração histórica. Ritmo, bloqueio e disputas
-  continuam contribuindo para o resultado.
+- **A pole ainda vence muito.** Depois da atenuação da #108 (fator 0,10), venceu
+  ~51% da amostra sintética (§7.1); mesmo sem penalidade venceria ~46%. A causa
+  restante é a ultrapassagem (bloqueio, disputas, `resistance_scale`), a revisar
+  na issue #110. Nada disso é calibração histórica.
 - A ultrapassagem é decidida por volta, não em um ponto da pista.
 - **Reabastecimento não é o regulamento atual.** Fica ligado por padrão como
   regra do cenário (ADR 0009): corridas de distância real têm 2–3 paradas

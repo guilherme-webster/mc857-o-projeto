@@ -46,7 +46,7 @@ class GridStartParametersTest(unittest.TestCase):
         )
         self.assertEqual(configured.origin, "heuristic")
         self.assertEqual(configured.parameter_version, "heuristic-grid-start-v1")
-        self.assertEqual(configured.penalty_factor, 0.015)
+        self.assertEqual(configured.penalty_factor, 0.1)
 
     def test_rejects_negative_boolean_and_non_finite_without_clamp(self) -> None:
         for invalid in (-0.01, True, math.inf, math.nan):
