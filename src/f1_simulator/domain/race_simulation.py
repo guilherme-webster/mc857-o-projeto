@@ -35,6 +35,11 @@ from f1_simulator.domain.disputes import (
 )
 from f1_simulator.domain.driver_attributes import DriverAttributes
 from f1_simulator.domain.fuel import FuelLap, FuelPlan, RefuelStops, fuel_lap
+from f1_simulator.domain.grid_start import (
+    GridStartParameters,
+    LEGACY_GRID_START_PARAMETERS,
+    initial_grid_delay_ms,
+)
 from f1_simulator.domain.lap_time import compute_lap_time
 from f1_simulator.domain.model_parameters import ModelParameters, TrackParameters
 from f1_simulator.domain.race_control import (
@@ -243,6 +248,7 @@ def simulate_detailed_race(
     geometry: TrackGeometry | None = None,
     car_physics: CarPhysics = ASSUMED_CAR_PHYSICS,
     fuel: FuelPlan | None = None,
+    grid_start: GridStartParameters | None = None,
 ) -> dict:
     """Simule uma corrida detalhada, com extensoes opt-in e caminho neutro fiel.
 
@@ -265,6 +271,10 @@ def simulate_detailed_race(
     quanto colocar (``StrategyState.fuel``). O modelo nao sorteia nada, entao
     a sequencia aleatoria so muda se um carro ficar sem combustivel sob
     controle de prova (o carro parado vira um incidente).
+    ``grid_start`` atenua somente o atraso inicial derivado da posicao. ``None``
+    preserva integralmente o contrato anterior, inclusive a forma da resposta;
+    um objeto explicito publica a origem heuristica em ``assumptions``. O fator
+    neutro 1,0 mantem os mesmos tempos e sorteios do motor anterior.
     """
 
     if dispute_model not in ("legacy", "pressure"):
@@ -286,6 +296,7 @@ def simulate_detailed_race(
             rng=rng,
             collect_breakdowns=collect_breakdowns,
             resolve_position_disputes=resolve_position_disputes,
+            grid_start=grid_start,
         )
     return _simulate_detailed_race_enhanced(
         entrants,
@@ -304,6 +315,7 @@ def simulate_detailed_race(
         geometry=geometry,
         car_physics=car_physics,
         fuel=fuel,
+        grid_start=grid_start,
     )
 
 
@@ -316,6 +328,7 @@ def _simulate_detailed_race_legacy(
     rng: RandomSource,
     collect_breakdowns: bool = False,
     resolve_position_disputes: bool = True,
+    grid_start: GridStartParameters | None = None,
 ) -> dict:
     """Simule a corrida com o modelo completo e retorne retrato por volta.
 
@@ -349,14 +362,18 @@ def _simulate_detailed_race_legacy(
     ordered_entrants = sorted(entrants, key=lambda e: e.driver_id)
     by_id = {e.driver_id: e for e in ordered_entrants}
 
+    effective_grid_start = grid_start or LEGACY_GRID_START_PARAMETERS
     states: dict[str, CarState] = {
         e.driver_id: CarState(
             driver_id=e.driver_id,
             name=e.name,
             # A posicao de largada vira atraso inicial de relogio: quem larga
             # atras ja comeca a corrida devendo tempo ao lider.
-            total_time_ms=parameters.grid_penalty_ms_per_position
-            * (e.grid_position - 1),
+            total_time_ms=initial_grid_delay_ms(
+                parameters.grid_penalty_ms_per_position,
+                e.grid_position,
+                effective_grid_start,
+            ),
             tyre=TyreSet(e.starting_compound),
         )
         for e in ordered_entrants
@@ -486,6 +503,10 @@ def _simulate_detailed_race_legacy(
     }
     if collect_breakdowns:
         result["breakdowns"] = breakdowns
+    if grid_start is not None:
+        result["assumptions"] = [
+            _grid_start_assumption(parameters.grid_penalty_ms_per_position, grid_start)
+        ]
     return result
 
 
@@ -507,6 +528,7 @@ def _simulate_detailed_race_enhanced(
     geometry: TrackGeometry | None = None,
     car_physics: CarPhysics = ASSUMED_CAR_PHYSICS,
     fuel: FuelPlan | None = None,
+    grid_start: GridStartParameters | None = None,
 ) -> dict:
     """Execute a composicao opt-in de atributos, disputas e controle de prova.
 
@@ -561,12 +583,15 @@ def _simulate_detailed_race_enhanced(
         for driver_id, item in used_attributes.items()
     }
 
+    effective_grid_start = grid_start or LEGACY_GRID_START_PARAMETERS
     states: dict[str, CarState] = {
         entrant.driver_id: CarState(
             driver_id=entrant.driver_id,
             name=entrant.name,
-            total_time_ms=(
-                parameters.grid_penalty_ms_per_position * (entrant.grid_position - 1)
+            total_time_ms=initial_grid_delay_ms(
+                parameters.grid_penalty_ms_per_position,
+                entrant.grid_position,
+                effective_grid_start,
             ),
             tyre=TyreSet(entrant.starting_compound),
         )
@@ -991,6 +1016,8 @@ def _simulate_detailed_race_enhanced(
             dispute_heuristics,
             race_control,
             fuel,
+            grid_start,
+            parameters.grid_penalty_ms_per_position,
         ),
     }
     if fuel is not None:
@@ -1155,12 +1182,20 @@ def _detailed_assumptions(
     dispute_heuristics: DisputeHeuristics,
     race_control: RaceControlParameters | None,
     fuel: FuelPlan | None = None,
+    grid_start: GridStartParameters | None = None,
+    calibrated_grid_penalty_ms_per_position: float = 0.0,
 ) -> list[dict]:
     """Exponha somente heuristicas e atributos realmente ativados."""
 
     assumptions = [
         attributes_assumption(attributes[driver_id]) for driver_id in sorted(attributes)
     ]
+    if grid_start is not None:
+        assumptions.append(
+            _grid_start_assumption(
+                calibrated_grid_penalty_ms_per_position, grid_start
+            )
+        )
     if attributes:
         assumptions.append(
             {
@@ -1227,6 +1262,24 @@ def _detailed_assumptions(
             }
         )
     return assumptions
+
+
+def _grid_start_assumption(
+    calibrated_ms_per_position: float, parameters: GridStartParameters
+) -> dict:
+    """Publique lado a lado o coeficiente medido e a atenuacao escolhida."""
+
+    return {
+        "kind": "grid_start_penalty",
+        "calibrated_ms_per_position": calibrated_ms_per_position,
+        "factor": parameters.penalty_factor,
+        "effective_ms_per_position": (
+            calibrated_ms_per_position * parameters.penalty_factor
+        ),
+        "origin": parameters.origin,
+        "parameter_version": parameters.parameter_version,
+        "rationale": parameters.rationale,
+    }
 
 
 def _refuel_stops_assumption(stops) -> dict | None:

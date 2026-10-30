@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "origin": "heuristic",
+  "parameter_version": "heuristic-grid-start-v1",
+  "rationale": "Atenua a penalidade calibrada da posicao de largada para aproximar a taxa simulada de vitoria da pole da faixa hipotetica de 40% a 45%; escolha por analise de sensibilidade com sementes fixas, nao calibracao historica.",
+  "grid_start_penalty_factor": 0.015
+}
