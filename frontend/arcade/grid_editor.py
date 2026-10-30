@@ -143,16 +143,24 @@ class GridDraft:
     payload: dict
     edits: dict[str, dict[str, float]] = field(default_factory=dict)
     _index: dict[str, dict] = field(init=False, repr=False, default_factory=dict)
+    _original_order: tuple[str, ...] = field(init=False, repr=False, default=())
+    _order: list[str] = field(init=False, repr=False, default_factory=list)
 
     def __post_init__(self) -> None:
         grid = self.payload.get("grid")
         if not isinstance(grid, list):
             raise ValueError("resposta de grid sem lista de pilotos")
         self._index = {str(entry["driver_id"]): entry for entry in grid}
+        if len(self._index) != len(grid):
+            raise ValueError("resposta de grid com driver_id duplicado")
+        self._original_order = tuple(str(entry["driver_id"]) for entry in grid)
+        self._order = list(self._original_order)
 
     @property
     def entries(self) -> list[dict]:
-        return self.payload["grid"]
+        """Entradas na ordem pendente, usada diretamente pela tabela."""
+
+        return [self._index[driver_id] for driver_id in self._order]
 
     @property
     def seed(self) -> int | None:
@@ -164,7 +172,7 @@ class GridDraft:
 
     @property
     def has_changes(self) -> bool:
-        return any(self.edits.values())
+        return any(self.edits.values()) or tuple(self._order) != self._original_order
 
     def value(self, driver_id: str, name: str) -> float:
         pending = self.edits.get(driver_id, {})
@@ -194,8 +202,28 @@ class GridDraft:
             pending[name] = value
         return self.value(driver_id, name)
 
+    def move(self, driver_id: str, delta: int) -> bool:
+        """Mova um piloto na ordem pendente, sem ultrapassar topo ou fundo.
+
+        ``delta`` e medido em posicoes da tabela. O retorno distingue um
+        movimento efetivo de um clique no limite, util para a mensagem da view.
+        """
+
+        if type(delta) is not int:
+            raise ValueError("delta da ordem deve ser inteiro")
+        try:
+            current = self._order.index(driver_id)
+        except ValueError as error:
+            raise KeyError(f"piloto fora do grid: {driver_id}") from error
+        target = min(max(current + delta, 0), len(self._order) - 1)
+        if target == current:
+            return False
+        self._order.insert(target, self._order.pop(current))
+        return True
+
     def discard(self) -> None:
         self.edits.clear()
+        self._order = list(self._original_order)
 
     def overrides(self) -> list[dict]:
         """Corpo ``overrides`` de ``PATCH /catalog/grid``."""
@@ -205,3 +233,14 @@ class GridDraft:
             for driver_id, fields in self.edits.items()
             if fields
         ]
+
+    def patch(self) -> dict:
+        """Payload minimo de ``PATCH /catalog/grid`` para as mudancas locais."""
+
+        payload = {}
+        overrides = self.overrides()
+        if overrides:
+            payload["overrides"] = overrides
+        if tuple(self._order) != self._original_order:
+            payload["order"] = list(self._order)
+        return payload
