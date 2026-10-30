@@ -150,6 +150,43 @@ class SavedRacesResponse(BaseModel):
     saved: list[SavedRaceMeta]
 
 
+class SavedTournamentStageRequest(BaseModel):
+    """Uma etapa ja simulada: plano da tela, setup enviado e corrida devolvida.
+
+    ``setup`` e validado com o mesmo schema de ``POST /catalog/grid/run`` para
+    que a reexecucao reenvie exatamente um corpo aceito por essa rota.
+    """
+
+    name: str = Field(min_length=1, max_length=120)
+    circuit_id: str = Field(min_length=1, max_length=40)
+    plan: dict
+    setup: RaceSetupRequest
+    race: dict
+
+
+class SaveTournamentRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    rules: dict
+    tournament_seed: int | None = Field(default=None, ge=0, le=2**53 - 1)
+    stages: list[SavedTournamentStageRequest] = Field(min_length=1, max_length=24)
+
+
+class SavedTournamentMeta(BaseModel):
+    id: str
+    name: str
+    saved_at: str
+    stage_count: int
+    circuits: list[str]
+    tournament_seed: int | None = None
+    grid_seed: int
+    car_count: int
+
+
+class SavedTournamentsResponse(BaseModel):
+    count: int
+    saved: list[SavedTournamentMeta]
+
+
 class HistoryRaceResponse(BaseModel):
     race_id: str
     name: str

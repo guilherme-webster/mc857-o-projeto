@@ -12,8 +12,9 @@
 > o frontend roda cada etapa em `POST /catalog/grid/run` sobre o grid do
 > catálogo, e `POST /championship/standings` calcula a pontuação acumulada que
 > este ADR deixava para depois. O ritmo vem do motor do
-> [ADR 0008](0008-modelagem-heuristica-sobre-o-motor-calibrado.md). Falta um ADR
-> que registre a substituição do mecanismo.
+> [ADR 0008](0008-modelagem-heuristica-sobre-o-motor-calibrado.md). O
+> [ADR 0013](0013-torneio-salvo-e-reexecucao.md) registra esse mecanismo e o
+> torneio salvo.
 
 ## Contexto
 

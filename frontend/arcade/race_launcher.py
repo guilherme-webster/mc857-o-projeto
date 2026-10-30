@@ -74,6 +74,7 @@ class LaunchOutcome:
     grid_note: str
     warnings: tuple[str, ...]
     rules: TournamentRules = TournamentRules()
+    tournament_seed: int | None = None
 
 
 def run_setup(
@@ -166,7 +167,13 @@ def launch_plan(
         )
         track = client.fetch_track(planned.circuit_id)
         launched.append(LaunchedRace(planned, race, track))
-    return LaunchOutcome(tuple(launched), grid_note, tuple(warnings), plan.rules)
+    return LaunchOutcome(
+        tuple(launched),
+        grid_note,
+        tuple(warnings),
+        plan.rules,
+        plan.tournament_seed,
+    )
 
 
 def _ensure_grid(client: RaceClient) -> str:

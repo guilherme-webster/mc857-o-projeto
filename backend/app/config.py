@@ -9,6 +9,7 @@ CURRENT_RACE_DB = DATA_DIR / "current-race.sqlite"
 CURRENT_RACE_JSON = SIMULATION_DIR / "current-race.json"
 CURRENT_GRID_JSON = SIMULATION_DIR / "current-grid.json"
 SAVED_RACES_DIR = SIMULATION_DIR / "saved-races"
+SAVED_TOURNAMENTS_DIR = SIMULATION_DIR / "saved-tournaments"
 
 DEFAULT_RACE_DB = CURRENT_RACE_DB
 
