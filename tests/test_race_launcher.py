@@ -45,6 +45,7 @@ class FakeClient:
     def __init__(self, grid: dict | None | Exception = None) -> None:
         self.grid = grid
         self.calls: list[tuple] = []
+        self.setups: list[dict] = []
 
     def fetch_current_grid(self) -> dict | None:
         self.calls.append(("fetch_current_grid",))
@@ -58,6 +59,7 @@ class FakeClient:
 
     def run_grid(self, setup: dict) -> dict:
         self.calls.append(("run_grid", setup["track_id"]))
+        self.setups.append(setup)
         return {"total_laps": setup["total_laps"], "setup": setup}
 
     def fetch_track(self, circuit_id: str) -> dict:
@@ -90,6 +92,14 @@ class RunSetupTest(unittest.TestCase):
         self.assertEqual(
             setup["weather"], [{"from_lap": 1, "to_lap": 10, "rain": "dry"}]
         )
+
+    def test_tournament_seed_and_stage_index_are_sent_when_present(self) -> None:
+        setup = run_setup(
+            planned(), TournamentRules(), tournament_seed=2026, stage_index=3
+        )
+
+        self.assertEqual(setup["tournament_seed"], 2026)
+        self.assertEqual(setup["stage_index"], 3)
 
 
 class UnsupportedOptionsTest(unittest.TestCase):
@@ -150,6 +160,27 @@ class LaunchPlanTest(unittest.TestCase):
             ["circuit:24", "circuit:18"],
         )
         self.assertIn("Simulando etapa 2/2: Interlagos…", messages)
+
+    def test_sends_same_tournament_seed_and_distinct_zero_based_stage_indices(self) -> None:
+        client = FakeClient(grid={"size": 20, "seed": 1})
+        plan = SimulationPlan(
+            (
+                planned("circuit:24", "Yas Marina"),
+                planned("circuit:18", "Interlagos"),
+            ),
+            TournamentRules(total_stages=2),
+            tournament_seed=9876,
+        )
+
+        launch_plan(plan, client)
+
+        self.assertEqual(
+            [
+                (setup["tournament_seed"], setup["stage_index"])
+                for setup in client.setups
+            ],
+            [(9876, 0), (9876, 1)],
+        )
 
     def test_collects_warnings_of_every_stage(self) -> None:
         client = FakeClient(grid={"size": 20, "seed": 1})

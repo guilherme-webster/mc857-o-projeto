@@ -3,12 +3,15 @@ from __future__ import annotations
 import unittest
 
 from frontend.arcade.configuration_state import (
+    MAX_SEED,
     ConfigurationFormData,
     ConfigurationFormError,
     PlannedRace,
     SimulationPlan,
     WeatherRange,
     WeatherSchedule,
+    automatic_track_order,
+    parse_optional_seed,
 )
 
 
@@ -102,6 +105,26 @@ class ConfigurationFormDataTest(unittest.TestCase):
                 "Seco",
             ),
         )
+
+    def test_optional_seed_parser_accepts_blank_and_json_safe_integers(self) -> None:
+        self.assertIsNone(parse_optional_seed("  "))
+        self.assertEqual(parse_optional_seed("0"), 0)
+        self.assertEqual(parse_optional_seed(str(MAX_SEED)), MAX_SEED)
+
+        for value in ("texto", "-1", str(MAX_SEED + 1)):
+            with self.subTest(value=value), self.assertRaises(ConfigurationFormError):
+                parse_optional_seed(value)
+
+    def test_automatic_track_order_depends_only_on_tournament_seed(self) -> None:
+        ids = ("circuit:3", "circuit:1", "circuit:4", "circuit:2")
+        first = automatic_track_order(ids, 4, 105, allow_repeats=False)
+        repeated = automatic_track_order(
+            tuple(reversed(ids)), 4, 105, allow_repeats=False
+        )
+        different = automatic_track_order(ids, 4, 106, allow_repeats=False)
+
+        self.assertEqual(first, repeated)
+        self.assertNotEqual(first, different)
 
 
 if __name__ == "__main__":

@@ -27,6 +27,23 @@ Se um número aqui divergir do código, **vale o código**: atualize este arquiv
 - **Sem zero silencioso.** Ausência vira erro explícito ou valor de reserva
   declarado, nunca zero.
 
+### 1.1 Seeds de grid e torneio
+
+`grid_seed` controla apenas a seleção do grid aleatório e a geração dos
+atributos. `tournament_seed`, quando informada, controla as corridas: cada
+etapa recebe uma seed derivada no núcleo por SHA-256 versionado
+(`tournament-stage-v1`) sobre `(tournament_seed, stage_index)`. O índice começa
+em zero, portanto repetir a mesma pista em etapas diferentes não reutiliza o
+mesmo fluxo. A ordem automática das pistas usa a própria `tournament_seed`.
+
+Seeds digitáveis ficam em `[0, 2**53 - 1]`, intervalo preservado exatamente
+por clientes JSON que representam números como `double`. A resposta de
+`POST /catalog/grid/run` registra `grid_seed`, `tournament_seed`, `stage_index`,
+`race_seed` (texto decimal para também representar o fluxo legado de 256 bits)
+e `race_stream_id`. Sem `tournament_seed`, permanece o comportamento anterior:
+`SeededRandomSource(grid_seed).spawn("race")`. A reprodução é garantida com a
+mesma versão de código, Python, parâmetros e dados, não entre versões.
+
 ## 2. Onde está cada coisa
 
 | Tema | Código | Parâmetros (versão) |

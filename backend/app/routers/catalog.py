@@ -115,9 +115,13 @@ def edit_grid_attributes(request: EditGridAttributesRequest) -> BuildGridRespons
 
 @router.post("/grid/run")
 def run_grid(request: RunGridRequest) -> dict:
-    return catalog.run_grid(
-        total_laps=request.setup.total_laps,
-        track_id=request.setup.track_id,
-        weather=request.setup.weather,
-        engine=request.setup.engine,
-    )
+    arguments = {
+        "total_laps": request.setup.total_laps,
+        "track_id": request.setup.track_id,
+        "weather": request.setup.weather,
+        "engine": request.setup.engine,
+    }
+    if request.setup.tournament_seed is not None or request.setup.stage_index != 0:
+        arguments["tournament_seed"] = request.setup.tournament_seed
+        arguments["stage_index"] = request.setup.stage_index
+    return catalog.run_grid(**arguments)
