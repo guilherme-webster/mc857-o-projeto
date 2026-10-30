@@ -27,6 +27,23 @@ Se um número aqui divergir do código, **vale o código**: atualize este arquiv
 - **Sem zero silencioso.** Ausência vira erro explícito ou valor de reserva
   declarado, nunca zero.
 
+### 1.1 Seeds de grid e torneio
+
+`grid_seed` controla apenas a seleção do grid aleatório e a geração dos
+atributos. `tournament_seed`, quando informada, controla as corridas: cada
+etapa recebe uma seed derivada no núcleo por SHA-256 versionado
+(`tournament-stage-v1`) sobre `(tournament_seed, stage_index)`. O índice começa
+em zero, portanto repetir a mesma pista em etapas diferentes não reutiliza o
+mesmo fluxo. A ordem automática das pistas usa a própria `tournament_seed`.
+
+Seeds digitáveis ficam em `[0, 2**53 - 1]`, intervalo preservado exatamente
+por clientes JSON que representam números como `double`. A resposta de
+`POST /catalog/grid/run` registra `grid_seed`, `tournament_seed`, `stage_index`,
+`race_seed` (texto decimal para também representar o fluxo legado de 256 bits)
+e `race_stream_id`. Sem `tournament_seed`, permanece o comportamento anterior:
+`SeededRandomSource(grid_seed).spawn("race")`. A reprodução é garantida com a
+mesma versão de código, Python, parâmetros e dados, não entre versões.
+
 ## 2. Onde está cada coisa
 
 | Tema | Código | Parâmetros (versão) |
@@ -42,6 +59,7 @@ Se um número aqui divergir do código, **vale o código**: atualize este arquiv
 | Tempo de parada por carro | `domain/fuel.py` (`RefuelStopParameters`, `sample_refuel_stops`), bloco `refuel_stops` do `fuel-v1.json` | calibrado nas paradas do Trotman 2023–2024 |
 | Entrada dos boxes | `domain/track_geometry.py` (`pit_entry_lap_fraction`) | geometria FastF1 (só a posição na volta) |
 | Volta de referência | `application/reference_laps.py`, `data/parameters/reference-laps-v1.json` | `historical-median-fastest-laps-v1` |
+| Voltas padrão por pista | `application/default_laps.py` | corrida mais recente ou `assumed-distance-rule-v1` |
 | Clima no tempo de volta | `domain/weather.py` (`simulate_weather`, `weather_penalty_ms`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`), `ASSUMED_WEATHER_EFFECT` (`assumed-weather-effect-v1`) |
 | Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
 | Impacto temporal do grid | `domain/grid_start.py`, aplicado por `domain/race_simulation.py` | `data/parameters/grid-start-v1.json` (`heuristic-grid-start-v1`) |
@@ -225,7 +243,19 @@ heurístico, mas só fixa a escala de tempo da pista: não descreve pilotos.
 Ordem de uso: tabela → comprimento da pista × 17.000 ms/km (reserva) → 90 s
 (sem pista). A origem usada aparece em `assumptions`.
 
-### 7.1 Impacto da posição de largada (#108)
+### 7.1 Voltas padrão da interface
+
+O catálogo usa o máximo de voltas completadas na corrida mais recente do
+circuito (`latest_observed_race`). Sem observação disponível, a regra
+`assumed-distance-rule-v1` escolhe o menor inteiro de voltas cuja distância
+excede 305 km, ou 260 km para o circuito Trotman `circuit:6` (Mônaco). Essa
+origem é exposta como `assumed_distance_rule`; não é um valor calibrado.
+
+Uma corrida recente encurtada por bandeira vermelha continua sendo a observação
+escolhida. No fallback, o comprimento aproximado da geometria FastF1 também
+pode deslocar o resultado em uma ou duas voltas.
+
+### 7.2 Impacto da posição de largada (#108)
 
 O coeficiente `grid_penalty_ms_per_position = 782,4 ms` continua sendo o valor
 **calibrado** de `model-v1.json`. O motor detalhado multiplica esse coeficiente
@@ -300,7 +330,7 @@ próprios parâmetros, não números fixos.
 ## 9. Limitações conhecidas
 
 - **A pole ainda vence muito.** Depois da atenuação da #108 (fator 0,10), venceu
-  ~51% da amostra sintética (§7.1); mesmo sem penalidade venceria ~46%. A causa
+  ~51% da amostra sintética (§7.2); mesmo sem penalidade venceria ~46%. A causa
   restante é a ultrapassagem (bloqueio, disputas, `resistance_scale`), a revisar
   na issue #110. Nada disso é calibração histórica.
 - A ultrapassagem é decidida por volta, não em um ponto da pista.

@@ -123,10 +123,20 @@ def build_grid(
     return _post("/catalog/grid", payload, base_url)
 
 
-def edit_grid(overrides: list[dict], base_url: str = BASE_URL) -> dict:
-    """Edite atributos do grid atual (``PATCH /catalog/grid``)."""
+def edit_grid(
+    overrides: list[dict] | None = None,
+    base_url: str = BASE_URL,
+    *,
+    order: list[str] | None = None,
+) -> dict:
+    """Edite atributos e/ou a ordem do grid atual em um unico ``PATCH``."""
 
-    return _post("/catalog/grid", {"overrides": overrides}, base_url, method="PATCH")
+    payload = {}
+    if overrides is not None:
+        payload["overrides"] = overrides
+    if order is not None:
+        payload["order"] = order
+    return _post("/catalog/grid", payload, base_url, method="PATCH")
 
 
 def fetch_history_races(season: int, base_url: str = BASE_URL) -> dict:

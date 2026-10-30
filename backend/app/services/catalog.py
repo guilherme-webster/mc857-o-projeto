@@ -170,10 +170,27 @@ def read_current_grid():
     return _deserialize_grid(state)
 
 
-def edit_current_grid(overrides):
+def edit_current_grid(*, overrides=None, order=None):
+    """Aplique atributos e/ou uma permutacao e publique o grid uma unica vez.
+
+    Todas as validacoes acontecem antes da escrita atomica. Reordenar reutiliza
+    os mesmos ``GridEntry`` e o mesmo mapa de atributos, preservando tambem a
+    seed; os perfis expostos pela rota continuam derivados dessas origens.
+    """
+
+    from f1_simulator.application.build_grid import GridOrderError, reorder_grid
     from f1_simulator.application.generate_attributes import apply_overrides
 
     pairs, attributes, seed = read_current_grid()
+    if order is not None:
+        try:
+            pairs = reorder_grid(pairs, order)
+        except GridOrderError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+            ) from error
+    if overrides is None:
+        overrides = ()
     patch = {
         item.driver_id: {
             field: value
@@ -188,13 +205,14 @@ def edit_current_grid(overrides):
         }
         for item in overrides
     }
-    try:
-        edited = apply_overrides(list(attributes.values()), patch)
-    except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
-        ) from error
-    attributes = {item.driver_id: item for item in edited}
+    if patch:
+        try:
+            edited = apply_overrides(list(attributes.values()), patch)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+            ) from error
+        attributes = {item.driver_id: item for item in edited}
     _write_current_grid(pairs, attributes, seed)
     return pairs, attributes, seed
 
@@ -348,12 +366,24 @@ def _pit_entry_fraction(track_id):
         return None
 
 
-def run_grid(*, total_laps, track_id, weather, engine="detailed"):
+def run_grid(
+    *,
+    total_laps,
+    track_id,
+    weather,
+    engine="detailed",
+    tournament_seed=None,
+    stage_index=0,
+):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
         run_detailed_grid_simulation,
     )
-    from f1_simulator.domain.random_source import SeededRandomSource
+    from f1_simulator.domain.random_source import (
+        TOURNAMENT_STAGE_STREAM_VERSION,
+        SeededRandomSource,
+        derive_tournament_stage_seed,
+    )
     from f1_simulator.domain.weather import RainLevel, WeatherSegment
 
     pairs, attributes, seed = read_current_grid()
@@ -376,6 +406,8 @@ def run_grid(*, total_laps, track_id, weather, engine="detailed"):
         total_laps=total_laps,
         track_id=canonical_track_id,
         weather=segments,
+        tournament_seed=tournament_seed,
+        stage_index=stage_index,
     )
     rng = SeededRandomSource(seed).spawn("race")
     try:
@@ -398,6 +430,22 @@ def run_grid(*, total_laps, track_id, weather, engine="detailed"):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
         ) from error
     result["seed"] = seed
+    result["grid_seed"] = seed
+    result["tournament_seed"] = tournament_seed
+    result["stage_index"] = stage_index
+    if tournament_seed is None:
+        # O filho legado de ``spawn('race')`` tem 256 bits. Texto decimal evita
+        # perda silenciosa em clientes JSON baseados em ``double``; a derivacao
+        # nova cabe em 53 bits, mas usa o mesmo formato estavel na resposta.
+        result["race_seed"] = str(rng.seed)
+        result["race_stream_id"] = "grid-seed-v1:race"
+    else:
+        result["race_seed"] = str(
+            derive_tournament_stage_seed(tournament_seed, stage_index)
+        )
+        result["race_stream_id"] = (
+            f"{TOURNAMENT_STAGE_STREAM_VERSION}:{stage_index}"
+        )
     _write_json(CURRENT_RACE_JSON, result)
     _persist_saved_race(result, _default_race_name(result))
     return result
