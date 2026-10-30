@@ -70,17 +70,40 @@ CONTACT = "CONTACT"
 MECHANICAL = "MECHANICAL"
 FUEL = "FUEL"
 
-#: Espacamento longitudinal (m) entre posicoes de largada no grid 2D. Cada
-#: carro fica numa posicao longitudinal distinta (fila escalonada, nao 2x2),
-#: com folga maior que o comprimento do carro para nunca largarem emparelhados
-#: -- o que evitaria o contato artificial da largada. Hipotese de apresentacao.
+#: Espacamento longitudinal assumido (m) entre filas de dois carros no grid 2D.
+#: Os dois carros da mesma fila compartilham a coordenada longitudinal e ficam
+#: em lados opostos. Dez metros deixam mais de um comprimento de carro ate a
+#: fila seguinte sem fingir que o mock contem marcas oficiais de largada.
 GRID_ROW_SPACING_M = 10.0
 
-#: Deslocamento lateral (m) alternado por posicao, so para o visual de grid
-#: (um carro mais a um lado, o proximo ao outro). Pequeno o bastante para caber
-#: na pista; como os carros ja estao separados longitudinalmente, nao chegam a
-#: roçar. Hipotese de apresentacao.
+#: Deslocamento lateral assumido (m) de cada lado da linha de centro. Quatro
+#: metros entre os centros superam a largura assumida dos carros e evitam
+#: contato artificial entre companheiros de fila no instante inicial.
 GRID_LATERAL_OFFSET_M = 2.0
+
+
+def _grid_coordinates(
+    grid_position: int, entrant_count: int, usable_half_width_m: float
+) -> tuple[float, float]:
+    """Devolva distancia e lateral para um grid em filas de dois.
+
+    A pista fechada usa distancia crescente ate a linha de chegada. Por isso a
+    ultima fila fica em zero e a pole na maior distancia inicial. ``row`` conta
+    a partir da frente conforme o contrato da #108; inverter pelo total de filas
+    e apenas a conversao para essa coordenada crescente.
+    """
+
+    if type(grid_position) is not int or not 1 <= grid_position <= entrant_count:
+        raise ValueError("grid_position deve pertencer ao grid")
+    row = (grid_position - 1) // 2
+    row_count = (entrant_count + 1) // 2
+    distance_m = (row_count - 1 - row) * GRID_ROW_SPACING_M
+    side = 1.0 if grid_position % 2 == 1 else -1.0
+    lateral_m = max(
+        -usable_half_width_m,
+        min(usable_half_width_m, side * GRID_LATERAL_OFFSET_M),
+    )
+    return distance_m, lateral_m
 
 
 def _lap_crossing_times_ms(
@@ -395,16 +418,10 @@ def simulate_2d_race(
         if pit_active:
             assert model_parameters is not None and track_params is not None
             strategy_by_id[did] = entry.get("strategy") or HeuristicPitStrategy(model_parameters, track_params)
-        # Grid escalonado em fila: cada carro numa posicao longitudinal distinta
-        # (a pole na frente, cada um ``GRID_ROW_SPACING_M`` atras), com lateral
-        # alternado so para o visual de grid. Separados longitudinalmente, os
-        # carros nao largam emparelhados e nao roçam na partida.
         pos = entry["grid_position"]
-        slot = len(entrants) - pos  # 0 = fundo do grid (na linha); maior = pole
-        side = 1.0 if pos % 2 == 1 else -1.0
-        usable = track.bounds.usable_m
-        lateral = max(-usable, min(usable, side * GRID_LATERAL_OFFSET_M))
-        offset = slot * GRID_ROW_SPACING_M
+        offset, lateral = _grid_coordinates(
+            pos, len(entrants), track.bounds.usable_m
+        )
         cars.append(CarSpaceState(did, distance_m=offset, lateral_m=lateral))
 
     # Retrato do estado de pneu/combustivel/paradas ao fim de cada volta de cada
@@ -767,7 +784,7 @@ def simulate_2d_race(
             {
                 "kind": "engine_2d",
                 "origin": "assumed",
-                "parameter_version": "motor-2d-v3",
+                "parameter_version": "motor-2d-v4",
                 "rationale": (
                     "ADR 0011: motor 2D de posicao continua. Velocidade, "
                     "ultrapassagem e colisao emergem da fisica espacial; pneu, "
@@ -785,6 +802,9 @@ def simulate_2d_race(
                 "weather_active": bool(lap_surface_water),
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
+                "grid_layout": "two_by_two",
+                "grid_row_spacing_m": GRID_ROW_SPACING_M,
+                "grid_lateral_offset_m": GRID_LATERAL_OFFSET_M,
             }
         ],
     }

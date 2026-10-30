@@ -13,6 +13,10 @@ import unittest
 from datetime import date
 
 from f1_simulator.domain.random_source import SeededRandomSource
+from f1_simulator.domain.race_simulation_2d import (
+    GRID_ROW_SPACING_M,
+    _grid_coordinates,
+)
 from f1_simulator.domain.speed_dynamics import (
     CarPhysics,
     lap_time_ms,
@@ -117,6 +121,22 @@ class TrackSpaceGeometryTest(unittest.TestCase):
     def test_rejects_non_positive_width(self):
         with self.assertRaises(ValueError):
             build_track_space(_square(), width_m=0.0)
+
+    def test_starting_grid_uses_two_cars_per_row_on_opposite_sides(self):
+        p1 = _grid_coordinates(1, 20, 5.0)
+        p2 = _grid_coordinates(2, 20, 5.0)
+        p3 = _grid_coordinates(3, 20, 5.0)
+        p4 = _grid_coordinates(4, 20, 5.0)
+        p19 = _grid_coordinates(19, 20, 5.0)
+        p20 = _grid_coordinates(20, 20, 5.0)
+
+        self.assertEqual(p1[0], p2[0])
+        self.assertEqual(p3[0], p4[0])
+        self.assertEqual(p1[0] - p3[0], GRID_ROW_SPACING_M)
+        self.assertEqual(p19[0], p20[0])
+        self.assertEqual(p19[0], 0.0)
+        self.assertEqual(p1[1], -p2[1])
+        self.assertEqual(p3[1], -p4[1])
 
 
 class SingleCarIntegratorTest(unittest.TestCase):
