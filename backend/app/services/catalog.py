@@ -169,10 +169,27 @@ def read_current_grid():
     return _deserialize_grid(state)
 
 
-def edit_current_grid(overrides):
+def edit_current_grid(*, overrides=None, order=None):
+    """Aplique atributos e/ou uma permutacao e publique o grid uma unica vez.
+
+    Todas as validacoes acontecem antes da escrita atomica. Reordenar reutiliza
+    os mesmos ``GridEntry`` e o mesmo mapa de atributos, preservando tambem a
+    seed; os perfis expostos pela rota continuam derivados dessas origens.
+    """
+
+    from f1_simulator.application.build_grid import GridOrderError, reorder_grid
     from f1_simulator.application.generate_attributes import apply_overrides
 
     pairs, attributes, seed = read_current_grid()
+    if order is not None:
+        try:
+            pairs = reorder_grid(pairs, order)
+        except GridOrderError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+            ) from error
+    if overrides is None:
+        overrides = ()
     patch = {
         item.driver_id: {
             field: value
@@ -187,13 +204,14 @@ def edit_current_grid(overrides):
         }
         for item in overrides
     }
-    try:
-        edited = apply_overrides(list(attributes.values()), patch)
-    except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
-        ) from error
-    attributes = {item.driver_id: item for item in edited}
+    if patch:
+        try:
+            edited = apply_overrides(list(attributes.values()), patch)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+            ) from error
+        attributes = {item.driver_id: item for item in edited}
     _write_current_grid(pairs, attributes, seed)
     return pairs, attributes, seed
 
