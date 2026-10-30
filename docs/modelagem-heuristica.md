@@ -59,6 +59,7 @@ mesma versão de código, Python, parâmetros e dados, não entre versões.
 | Tempo de parada por carro | `domain/fuel.py` (`RefuelStopParameters`, `sample_refuel_stops`), bloco `refuel_stops` do `fuel-v1.json` | calibrado nas paradas do Trotman 2023–2024 |
 | Entrada dos boxes | `domain/track_geometry.py` (`pit_entry_lap_fraction`) | geometria FastF1 (só a posição na volta) |
 | Volta de referência | `application/reference_laps.py`, `data/parameters/reference-laps-v1.json` | `historical-median-fastest-laps-v1` |
+| Voltas padrão por pista | `application/default_laps.py` | corrida mais recente ou `assumed-distance-rule-v1` |
 | Clima no tempo de volta | `domain/weather.py` (`simulate_weather`, `weather_penalty_ms`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`), `ASSUMED_WEATHER_EFFECT` (`assumed-weather-effect-v1`) |
 | Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
 | Ligação ao grid | `application/run_grid_simulation.py` (`run_detailed_grid_simulation`) | ritmo de reserva `ASSUMED_REFERENCE_PACE_MS_PER_KM` |
@@ -240,6 +241,18 @@ heurístico, mas só fixa a escala de tempo da pista: não descreve pilotos.
 
 Ordem de uso: tabela → comprimento da pista × 17.000 ms/km (reserva) → 90 s
 (sem pista). A origem usada aparece em `assumptions`.
+
+### 7.1 Voltas padrão da interface
+
+O catálogo usa o máximo de voltas completadas na corrida mais recente do
+circuito (`latest_observed_race`). Sem observação disponível, a regra
+`assumed-distance-rule-v1` escolhe o menor inteiro de voltas cuja distância
+excede 305 km, ou 260 km para o circuito Trotman `circuit:6` (Mônaco). Essa
+origem é exposta como `assumed_distance_rule`; não é um valor calibrado.
+
+Uma corrida recente encurtada por bandeira vermelha continua sendo a observação
+escolhida. No fallback, o comprimento aproximado da geometria FastF1 também
+pode deslocar o resultado em uma ou duas voltas.
 
 ## 8. Como reajustar
 

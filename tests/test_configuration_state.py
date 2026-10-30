@@ -11,6 +11,7 @@ from frontend.arcade.configuration_state import (
     WeatherRange,
     WeatherSchedule,
     automatic_track_order,
+    configuration_for_track,
     parse_optional_seed,
 )
 
@@ -125,6 +126,25 @@ class ConfigurationFormDataTest(unittest.TestCase):
 
         self.assertEqual(first, repeated)
         self.assertNotEqual(first, different)
+
+    def test_track_default_sets_laps_and_weather_without_overwriting_edits(self) -> None:
+        track = {"circuit_id": "circuit:18", "default_laps": 71}
+
+        configured = configuration_for_track(track)
+        edited = ConfigurationFormData(
+            laps=72,
+            weather_schedule=WeatherSchedule.dry(72).apply(10, 12, "Chuva leve"),
+        )
+
+        self.assertEqual(configured.laps, 71)
+        self.assertEqual(configured.weather_schedule, WeatherSchedule.dry(71))
+        self.assertIs(configuration_for_track(track, edited), edited)
+
+    def test_track_default_keeps_legacy_fallback_when_api_omits_field(self) -> None:
+        configured = configuration_for_track({"circuit_id": "circuit:18"})
+
+        self.assertEqual(configured.laps, 69)
+        self.assertEqual(configured.weather_schedule.total_laps, 69)
 
 
 if __name__ == "__main__":

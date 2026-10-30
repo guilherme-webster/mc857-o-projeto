@@ -272,6 +272,40 @@ class ParametersViewTest(unittest.TestCase):
             WeatherSchedule.dry(69),
         )
 
+    def test_applies_track_default_and_preserves_edited_laps_after_navigation(self) -> None:
+        catalog = {
+            "count": 2,
+            "tracks": [
+                {
+                    "circuit_id": "circuit:18",
+                    "name": "Interlagos",
+                    "lap_length_m": 4232.0,
+                    "default_laps": 71,
+                    "default_laps_source": "latest_observed_race",
+                },
+                {
+                    "circuit_id": "circuit:6",
+                    "name": "Monaco",
+                    "lap_length_m": 3337.0,
+                    "default_laps": 78,
+                    "default_laps_source": "latest_observed_race",
+                },
+            ],
+        }
+        view = ParametersView(track_catalog_loader=lambda: catalog)
+        view._catalog_results.put(("success", catalog))
+        view.on_update(0)
+
+        self.assertEqual(view.laps_input.text, "71")
+        self.assertEqual(view.configuration.weather_schedule.total_laps, 71)
+        view.laps_input.text = "72"
+        view._change_track(1)
+        self.assertEqual(view.laps_input.text, "78")
+        self.assertEqual(view.configuration.weather_schedule.total_laps, 78)
+        view._change_track(-1)
+        self.assertEqual(view.laps_input.text, "72")
+        self.assertEqual(view.configuration.weather_schedule.total_laps, 72)
+
     def test_opens_climate_tab_in_the_same_race_view(self) -> None:
         view = self.ready_view()
         self.window.show_view(view)
