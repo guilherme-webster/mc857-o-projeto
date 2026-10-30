@@ -109,7 +109,10 @@ def view_grid() -> BuildGridResponse:
 
 @router.patch("/grid", response_model=BuildGridResponse)
 def edit_grid_attributes(request: EditGridAttributesRequest) -> BuildGridResponse:
-    pairs, attributes, seed = catalog.edit_current_grid(request.overrides)
+    pairs, attributes, seed = catalog.edit_current_grid(
+        overrides=request.overrides,
+        order=request.order,
+    )
     return _grid_response(pairs, attributes, seed)
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from f1_simulator.application.build_grid import GridEntry
+from f1_simulator.application.build_grid import GridEntry, reorder_grid
 from f1_simulator.application.run_grid_simulation import (
     ASSUMED_REFERENCE_PACE_MS_PER_KM,
     RaceSetup,
@@ -106,6 +106,41 @@ class DetailedGridSimulationTest(unittest.TestCase):
                 {"position": 1, "driver_id": "driver:2", "compound": "MEDIUM"},
                 {"position": 2, "driver_id": "driver:1", "compound": "MEDIUM"},
             ],
+        )
+
+    def test_reordered_grid_reaches_the_engine_as_starting_positions(self) -> None:
+        reordered = reorder_grid(self.grid, ["driver:1", "driver:2"])
+        captured = {}
+
+        def fake_simulation(entrants, **kwargs):
+            captured["entrants"] = entrants
+            return {
+                "total_laps": kwargs["total_laps"],
+                "history": [],
+                "classification": [],
+                "assumptions": [],
+            }
+
+        with patch(
+            "f1_simulator.application.run_grid_simulation.simulate_detailed_race",
+            side_effect=fake_simulation,
+        ):
+            result = run_detailed_grid_simulation(
+                reordered,
+                self.attributes,
+                RaceSetup(1, track_id="circuit:1"),
+                parameters=self.parameters,
+                lap_length_m=4_000.0,
+                rng=SeededRandomSource(42),
+            )
+
+        self.assertEqual(
+            [(item.driver_id, item.grid_position) for item in captured["entrants"]],
+            [("driver:1", 1), ("driver:2", 2)],
+        )
+        self.assertEqual(
+            [(item["driver_id"], item["position"]) for item in result["starting_grid"]],
+            [("driver:1", 1), ("driver:2", 2)],
         )
 
     def test_uses_calibrated_track_and_geometry_reference(self) -> None:

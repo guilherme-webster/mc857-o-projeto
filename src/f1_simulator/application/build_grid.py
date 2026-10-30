@@ -17,8 +17,74 @@ class GridEntry:
     team_name: str
 
 
+class GridOrderError(ValueError):
+    """A ordem pedida nao e uma permutacao exata do grid atual."""
+
+
 def _pair_id(driver_id: str, team_id: str) -> str:
     return f"{driver_id}@{team_id}"
+
+
+def reorder_grid(
+    grid: Sequence[GridEntry], order: Sequence[str]
+) -> tuple[GridEntry, ...]:
+    """Reordene o grid pelos IDs de piloto sem reconstruir suas entradas.
+
+    ``driver_id`` e a identidade publica e estavel nesta operacao: o grid ja
+    garante um unico carro por piloto, usa esse ID como chave dos atributos e o
+    expoe no contrato HTTP. A ordem precisa ser uma permutacao exata do estado
+    atual; assim, nenhuma edicao pode inserir, remover ou duplicar competidores
+    por acidente.
+
+    Raises:
+        GridOrderError: se o grid atual tiver IDs repetidos ou se ``order``
+            mudar o conjunto ou a cardinalidade de pilotos.
+    """
+
+    current_ids = tuple(entry.driver_id for entry in grid)
+    if len(set(current_ids)) != len(current_ids):
+        raise GridOrderError("grid atual contem driver_id duplicado")
+
+    requested_ids = tuple(order)
+    duplicates = _duplicates(requested_ids)
+    current = set(current_ids)
+    requested = set(requested_ids)
+    unknown = tuple(
+        driver_id for driver_id in requested_ids if driver_id not in current
+    )
+    missing = tuple(
+        driver_id for driver_id in current_ids if driver_id not in requested
+    )
+
+    problems = []
+    if len(requested_ids) != len(current_ids):
+        problems.append(
+            "tamanho diferente "
+            f"(esperado {len(current_ids)}, recebido {len(requested_ids)})"
+        )
+    if duplicates:
+        problems.append(f"IDs duplicados: {list(duplicates)}")
+    if unknown:
+        problems.append(f"IDs desconhecidos: {list(unknown)}")
+    if missing:
+        problems.append(f"IDs ausentes: {list(missing)}")
+    if problems:
+        raise GridOrderError("ordem do grid invalida: " + "; ".join(problems))
+
+    by_driver_id = {entry.driver_id: entry for entry in grid}
+    return tuple(by_driver_id[driver_id] for driver_id in requested_ids)
+
+
+def _duplicates(values: Sequence[str]) -> tuple[str, ...]:
+    """IDs repetidos, uma vez cada e na ordem da primeira repeticao."""
+
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for value in values:
+        if value in seen and value not in duplicates:
+            duplicates.append(value)
+        seen.add(value)
+    return tuple(duplicates)
 
 
 def build_grid(

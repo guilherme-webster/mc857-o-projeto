@@ -89,7 +89,18 @@ class AttributeOverride(BaseModel):
 
 
 class EditGridAttributesRequest(BaseModel):
-    overrides: list[AttributeOverride] = Field(min_length=1, max_length=40)
+    """Edicoes atomicas dos atributos e/ou da ordem do grid atual."""
+
+    overrides: list[AttributeOverride] | None = Field(
+        default=None, min_length=1, max_length=40
+    )
+    order: list[str] | None = Field(default=None, min_length=1, max_length=40)
+
+    @model_validator(mode="after")
+    def _require_change(self) -> EditGridAttributesRequest:
+        if self.overrides is None and self.order is None:
+            raise ValueError("at least one of overrides or order is required")
+        return self
 
 
 class WeatherSegmentRequest(BaseModel):
