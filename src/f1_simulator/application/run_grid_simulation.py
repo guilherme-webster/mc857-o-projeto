@@ -28,7 +28,12 @@ from f1_simulator.domain.race_simulation import (
     Entrant,
     simulate_detailed_race,
 )
-from f1_simulator.domain.random_source import RandomSource, uniform_index
+from f1_simulator.domain.random_source import (
+    MAX_JSON_SAFE_SEED,
+    RandomSource,
+    derive_tournament_stage_random_source,
+    uniform_index,
+)
 from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.strategy import (
     DEFAULT_FUEL_TRAIT_HEURISTICS,
@@ -95,12 +100,23 @@ class RaceSetup:
     total_laps: int
     track_id: str | None = None
     weather: tuple[WeatherSegment, ...] = ()
+    tournament_seed: int | None = None
+    stage_index: int = 0
 
     def __post_init__(self) -> None:
         if type(self.total_laps) is not int or self.total_laps <= 0:
             raise ValueError("total_laps must be a positive integer")
         if not isinstance(self.weather, tuple):
             raise ValueError("weather must be a tuple of WeatherSegment")
+        if self.tournament_seed is not None and (
+            type(self.tournament_seed) is not int
+            or not 0 <= self.tournament_seed <= MAX_JSON_SAFE_SEED
+        ):
+            raise ValueError(
+                f"tournament_seed deve estar entre 0 e {MAX_JSON_SAFE_SEED}"
+            )
+        if type(self.stage_index) is not int or self.stage_index < 0:
+            raise ValueError("stage_index deve ser um inteiro maior ou igual a zero")
 
 
 def _weather_echo(setup: RaceSetup) -> list[dict]:
@@ -108,6 +124,20 @@ def _weather_echo(setup: RaceSetup) -> list[dict]:
         {"from_lap": s.from_lap, "to_lap": s.to_lap, "rain": s.rain.value}
         for s in setup.weather
     ]
+
+
+def _setup_echo(setup: RaceSetup) -> dict:
+    """Ecoe o contrato novo sem alterar a representacao de corridas legadas."""
+
+    payload = {
+        "total_laps": setup.total_laps,
+        "track_id": setup.track_id,
+        "weather": _weather_echo(setup),
+    }
+    if setup.tournament_seed is not None:
+        payload["tournament_seed"] = setup.tournament_seed
+        payload["stage_index"] = setup.stage_index
+    return payload
 
 
 def _run_2d(
@@ -163,11 +193,7 @@ def _run_2d(
         race_control=race_control,
     )
     result["speed_profiles"] = _speed_profiles_by_driver(geometry, grid, attributes)
-    result["setup"] = {
-        "total_laps": setup.total_laps,
-        "track_id": setup.track_id,
-        "weather": _weather_echo(setup),
-    }
+    result["setup"] = _setup_echo(setup)
     result["reference_lap_time_ms"] = reference_lap_time_ms
     result["track_reference"] = {
         "requested_track_id": setup.track_id,
@@ -272,6 +298,14 @@ def run_detailed_grid_simulation(
         or lap_length_m <= 0
     ):
         raise ValueError("lap_length_m deve ser positivo e finito quando informado")
+
+    # O caso de uso, e nao o adaptador HTTP nem o frontend, define qual fluxo
+    # alimenta ambos os motores. Sem seed de torneio, ``rng`` permanece intacto
+    # e conserva exatamente o caminho legado ``grid_seed -> spawn('race')``.
+    if setup.tournament_seed is not None:
+        rng = derive_tournament_stage_random_source(
+            setup.tournament_seed, setup.stage_index
+        )
 
     known_track_ids = {candidate.circuit_id for candidate in parameters.tracks}
     track = (
@@ -433,11 +467,7 @@ def run_detailed_grid_simulation(
         result["speed_profiles"] = _speed_profiles_by_driver(
             geometry, grid, attributes
         )
-    result["setup"] = {
-        "total_laps": setup.total_laps,
-        "track_id": setup.track_id,
-        "weather": _weather_echo(setup),
-    }
+    result["setup"] = _setup_echo(setup)
     # O history so tem retratos ao fim de cada volta; sem a largada, quem
     # consome o resultado (a TrackView, por exemplo) nao sabe a posicao de
     # partida nem o pneu da primeira volta.
