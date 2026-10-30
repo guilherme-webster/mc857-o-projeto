@@ -3,15 +3,64 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from random import Random
+from secrets import randbelow
 
 PRESET_OPTIONS = ("Corrida livre", "GP de São Paulo 2024")
 WEATHER_OPTIONS = ("Seco", "Chuva leve", "Chuva intensa")
 MIN_LAPS = 1
 MAX_LAPS = 200
+MAX_SEED = 2**53 - 1
 
 
 class ConfigurationFormError(ValueError):
     """Raised when form values cannot create a valid scenario."""
+
+
+def parse_optional_seed(value: str) -> int | None:
+    """Leia uma seed decimal opcional no intervalo exato aceito pela API."""
+
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        seed = int(text)
+    except ValueError as error:
+        raise ConfigurationFormError("a semente deve ser um número inteiro") from error
+    if not 0 <= seed <= MAX_SEED:
+        raise ConfigurationFormError(f"a semente deve estar entre 0 e {MAX_SEED}")
+    return seed
+
+
+def generate_seed() -> int:
+    """Gere na borda uma seed JSON-safe; o núcleo nunca escolhe a própria seed."""
+
+    return randbelow(MAX_SEED + 1)
+
+
+def automatic_track_order(
+    circuit_ids: tuple[str, ...],
+    total_stages: int,
+    tournament_seed: int,
+    *,
+    allow_repeats: bool,
+) -> tuple[str, ...]:
+    """Monte a ordem automática exclusivamente a partir da seed do torneio."""
+
+    ids = tuple(sorted(circuit_ids))
+    if not ids:
+        raise ConfigurationFormError("não há pistas disponíveis")
+    if type(total_stages) is not int or total_stages < 1:
+        raise ConfigurationFormError("o torneio deve ter pelo menos uma etapa")
+    if not allow_repeats and total_stages > len(ids):
+        raise ConfigurationFormError("não há pistas únicas suficientes")
+    if type(tournament_seed) is not int or not 0 <= tournament_seed <= MAX_SEED:
+        raise ConfigurationFormError(f"a semente deve estar entre 0 e {MAX_SEED}")
+
+    chooser = Random(tournament_seed)
+    if allow_repeats:
+        return tuple(chooser.choice(ids) for _ in range(total_stages))
+    return tuple(chooser.sample(ids, total_stages))
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +247,7 @@ class SimulationPlan:
 
     races: tuple[PlannedRace, ...]
     rules: TournamentRules = TournamentRules()
+    tournament_seed: int | None = None
 
     def __post_init__(self) -> None:
         """Não permita sequência vazia nem a mesma pista duas vezes."""
@@ -209,6 +259,11 @@ class SimulationPlan:
             raise ConfigurationFormError("pista sem identificação")
         if not self.rules.allow_repeats and len(ids) != len(set(ids)):
             raise ConfigurationFormError("pistas duplicadas na sequência")
+        if self.tournament_seed is not None and not (
+            type(self.tournament_seed) is int
+            and 0 <= self.tournament_seed <= MAX_SEED
+        ):
+            raise ConfigurationFormError(f"a semente deve estar entre 0 e {MAX_SEED}")
 
 
 @dataclass(frozen=True, slots=True)

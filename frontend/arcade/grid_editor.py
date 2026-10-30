@@ -99,12 +99,15 @@ class GridSource:
     mode: str
     race_id: str | None = None
 
-    def request(self) -> dict:
+    def request(self, seed: int | None = None) -> dict:
         """Argumentos de ``track_client.build_grid`` para esta opcao."""
 
         if self.mode == "race":
             return {"mode": "race", "race_id": self.race_id}
-        return {"mode": "random", "size": RANDOM_GRID_SIZE}
+        request = {"mode": "random", "size": RANDOM_GRID_SIZE}
+        if seed is not None:
+            request["seed"] = seed
+        return request
 
 
 def grid_sources(races_payload: dict | None, season: int) -> tuple[GridSource, ...]:

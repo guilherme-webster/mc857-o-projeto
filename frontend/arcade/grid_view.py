@@ -14,6 +14,10 @@ from threading import Thread
 import arcade
 
 from frontend.arcade import track_client
+from frontend.arcade.configuration_state import (
+    ConfigurationFormError,
+    parse_optional_seed,
+)
 from frontend.arcade.grid_editor import (
     ARCHETYPE_LABELS,
     ATTRIBUTES,
@@ -75,6 +79,8 @@ class GridView(arcade.View):
         self._selected: str | None = None
         self._busy = False
         self._hover: str | None = None
+        self._grid_seed_text = ""
+        self._editing_grid_seed = False
         self._status = "Carregando o grid atual…"
         self._status_color = SECONDARY_TEXT_COLOR
         self._row_texts: list[dict[str, arcade.Text]] = []
@@ -138,6 +144,8 @@ class GridView(arcade.View):
                 self._draft.entries[0]["driver_id"] if self._draft.entries else None
             )
         self._row_texts = []
+        if self._draft.seed is not None:
+            self._grid_seed_text = str(self._draft.seed)
         message = {
             "load-grid": "Grid atual carregado.",
             "build": "Grid montado. O Iniciar da configuração usará este grid.",
@@ -158,9 +166,19 @@ class GridView(arcade.View):
             )
             return
         source = self._sources[self._source_index]
+        try:
+            seed = (
+                parse_optional_seed(self._grid_seed_text)
+                if source.mode == "random"
+                else None
+            )
+        except ConfigurationFormError as error:
+            self._set_status(str(error), ERROR_COLOR)
+            return
+        request = source.request(seed)
         self._start(
             "build",
-            lambda: self._client.build_grid(**source.request()),
+            lambda: self._client.build_grid(**request),
             f"Montando: {source.label}…",
         )
 
@@ -232,6 +250,11 @@ class GridView(arcade.View):
         )
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        self._editing_grid_seed = (
+            button == arcade.MOUSE_BUTTON_LEFT
+            and self._sources[self._source_index].mode == "random"
+            and _inside(x, y, self._seed_bounds())
+        )
         for key, rect in self._buttons().items():
             if _inside(x, y, rect):
                 self._click(key)
@@ -263,6 +286,12 @@ class GridView(arcade.View):
             self.step_attribute(name, -1 if action == "minus" else 1)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if self._editing_grid_seed:
+            if symbol == arcade.key.BACKSPACE:
+                self._grid_seed_text = self._grid_seed_text[:-1]
+            elif symbol in (arcade.key.ENTER, arcade.key.ESCAPE):
+                self._editing_grid_seed = False
+            return
         if self._draft is None or not self._draft.entries:
             return
         ids = [entry["driver_id"] for entry in self._draft.entries]
@@ -271,6 +300,10 @@ class GridView(arcade.View):
             self._selected = ids[min(index + 1, len(ids) - 1)]
         elif symbol == arcade.key.UP:
             self._selected = ids[max(index - 1, 0)]
+
+    def on_text(self, text: str) -> None:
+        if self._editing_grid_seed and text.isprintable():
+            self._grid_seed_text += text
 
     # -- desenho -----------------------------------------------------------------
 
@@ -348,6 +381,39 @@ class GridView(arcade.View):
             11,
             anchor_y="center",
         ).draw()
+        if self._sources[self._source_index].mode == "random":
+            left, bottom, width, field_height = self._seed_bounds()
+            arcade.draw_lbwh_rectangle_filled(
+                left, bottom, width, field_height, PANEL_COLOR
+            )
+            arcade.draw_lbwh_rectangle_outline(
+                left,
+                bottom,
+                width,
+                field_height,
+                (111, 127, 148) if self._editing_grid_seed else PANEL_BORDER_COLOR,
+                1,
+            )
+            self._text(
+                "grid-seed-label",
+                "Semente do grid aleatório",
+                left,
+                bottom + field_height + 5,
+                _HEADER_COLOR,
+                9,
+            ).draw()
+            self._text(
+                "grid-seed",
+                self._grid_seed_text or "Vazio: backend gera",
+                left + 10,
+                bottom + field_height / 2,
+                PRIMARY_TEXT_COLOR if self._grid_seed_text else SECONDARY_TEXT_COLOR,
+                11,
+                anchor_y="center",
+            ).draw()
+
+    def _seed_bounds(self) -> tuple[float, float, float, float]:
+        return (800, self.window.height - 150, 245, 34)
 
     def _draw_table(self, height: int) -> None:
         if self._draft is None:
