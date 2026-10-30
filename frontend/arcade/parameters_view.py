@@ -6,7 +6,6 @@ from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 from queue import Empty, SimpleQueue
-from random import Random
 from threading import Thread
 
 import arcade
@@ -28,8 +27,11 @@ from frontend.arcade.configuration_state import (
     TournamentRules,
     WEATHER_MODE_OPTIONS,
     WeatherSchedule,
+    automatic_track_order,
     configuration_for_track,
     default_laps_from_track,
+    generate_seed,
+    parse_optional_seed,
 )
 from frontend.arcade.race_launcher import HttpRaceClient, LaunchOutcome, launch_plan
 from frontend.arcade.track_client import fetch_track, fetch_tracks
@@ -50,6 +52,7 @@ TRACK_CARD_BOUNDS = (586, 76, 666, 500)
 SCHEDULER_BOUNDS = (600, 91, 638, 418)
 TRACK_PREVIEW_BOUNDS = (614, 115, 320, 188)
 NAME_INPUT_BOUNDS = (230, 459, 322, 32)
+SEED_INPUT_BOUNDS = (232, 230, 320, 30)
 PREVIOUS_TRACK_BOUNDS = (622, 382, 34, 31)
 NEXT_TRACK_BOUNDS = (816, 382, 34, 31)
 TOGGLE_TRACK_BOUNDS = (956, 286, 268, 38)
@@ -162,6 +165,7 @@ class ParametersView(UIView):
         self._configure_hovered = False
         self._dragged_sequence_index: int | None = None
         self._editing_name = False
+        self._editing_seed = False
         self._screen_camera: arcade.Camera2D | None = None
         self._native_labels: list[arcade.Text] = []
         name_style = deepcopy(UIInputText.DEFAULT_STYLE)
@@ -180,6 +184,20 @@ class ParametersView(UIView):
             )
         )
         self.tournament_name_input.visible = False
+        self.tournament_seed_input = self.add_widget(
+            UIInputText(
+                x=SEED_INPUT_BOUNDS[0],
+                y=SEED_INPUT_BOUNDS[1],
+                width=SEED_INPUT_BOUNDS[2],
+                height=SEED_INPUT_BOUNDS[3],
+                text="",
+                font_size=12,
+                text_color=PRIMARY_TEXT_COLOR,
+                caret_color=PRIMARY_TEXT_COLOR,
+                style=name_style,
+            )
+        )
+        self.tournament_seed_input.visible = False
         self._logo_texture = arcade.load_texture(LOGO_PATH)
         self._status_text = arcade.Text(
             self._status_message,
@@ -411,7 +429,7 @@ class ParametersView(UIView):
         )
 
     def generate_automatic_sequence(self) -> None:
-        """Build a reproducible fixture-independent order from the catalog."""
+        """Build a reproducible order controlled by the visible tournament seed."""
 
         if not self._tracks:
             self._set_status("Aguarde o catálogo de pistas carregar.", ERROR_COLOR)
@@ -421,14 +439,19 @@ class ParametersView(UIView):
                 "Não há pistas únicas suficientes para as etapas.", ERROR_COLOR
             )
             return
-        ids = sorted(track["circuit_id"] for track in self._tracks)
-        chooser = Random(self.rules.name.strip())
-        if self.rules.allow_repeats:
-            self._selected_track_ids = [
-                chooser.choice(ids) for _ in range(self.rules.total_stages)
-            ]
-        else:
-            self._selected_track_ids = chooser.sample(ids, self.rules.total_stages)
+        try:
+            seed = self._tournament_seed()
+            self._selected_track_ids = list(
+                automatic_track_order(
+                    tuple(track["circuit_id"] for track in self._tracks),
+                    self.rules.total_stages,
+                    seed,
+                    allow_repeats=self.rules.allow_repeats,
+                )
+            )
+        except ConfigurationFormError as error:
+            self._set_status(str(error), ERROR_COLOR)
+            return
         catalog = {track["circuit_id"]: track for track in self._tracks}
         for circuit_id in self._selected_track_ids:
             self._track_configurations.setdefault(
@@ -436,6 +459,15 @@ class ParametersView(UIView):
             )
         self._sequence_scroll_index = 0
         self._set_status("Sequência automática gerada.", SUCCESS_COLOR)
+
+    def _tournament_seed(self) -> int:
+        """Leia a seed ou gere uma vez, mantendo o valor visível para reuso."""
+
+        seed = parse_optional_seed(self.tournament_seed_input.text)
+        if seed is None:
+            seed = generate_seed()
+            self.tournament_seed_input.text = str(seed)
+        return seed
 
     def _update_rules(self, **changes: object) -> bool:
         """Validate general rules and preserve already selected races."""
@@ -467,6 +499,7 @@ class ParametersView(UIView):
             raise ConfigurationFormError(
                 f"Selecione {self.rules.total_stages} pista(s) para confirmar o torneio."
             )
+        tournament_seed = self._tournament_seed()
         return SimulationPlan(
             tuple(
                 PlannedRace(
@@ -483,6 +516,7 @@ class ParametersView(UIView):
                 for circuit_id in self._selected_track_ids
             ),
             self.rules,
+            tournament_seed,
         )
 
     def _add_input(self, identifier: str, value: str) -> UIInputText:
@@ -660,6 +694,7 @@ class ParametersView(UIView):
         self._session_configurations.clear()
         self.rules = TournamentRules()
         self.tournament_name_input.text = self.rules.name
+        self.tournament_seed_input.text = ""
         self.preset_dropdown.value = self.initial.preset
         self.laps_input.text = str(self.configuration.laps)
         self._update_weather_summary()
@@ -893,6 +928,7 @@ class ParametersView(UIView):
         x, y = self._logical_pointer(x, y)
         if button == arcade.MOUSE_BUTTON_LEFT:
             self._editing_name = self._contains(NAME_INPUT_BOUNDS, x, y)
+            self._editing_seed = self._contains(SEED_INPUT_BOUNDS, x, y)
         if button == arcade.MOUSE_BUTTON_LEFT and self.selected_track is not None:
             self._configure_pressed = self._contains(CONFIGURE_TRACK_BOUNDS, x, y)
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -1002,14 +1038,19 @@ class ParametersView(UIView):
 
         if self._editing_name and text.isprintable():
             self.tournament_name_input.text += text
+        elif self._editing_seed and text.isprintable():
+            self.tournament_seed_input.text += text
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
-        if not self._editing_name:
+        if not self._editing_name and not self._editing_seed:
             return
-        if symbol == arcade.key.BACKSPACE:
+        if symbol == arcade.key.BACKSPACE and self._editing_name:
             self.tournament_name_input.text = self.tournament_name_input.text[:-1]
+        elif symbol == arcade.key.BACKSPACE and self._editing_seed:
+            self.tournament_seed_input.text = self.tournament_seed_input.text[:-1]
         elif symbol in (arcade.key.ENTER, arcade.key.ESCAPE):
             self._editing_name = False
+            self._editing_seed = False
 
     def _sequence_index_at(self, x: int, y: int) -> int | None:
         for slot, bounds in enumerate(SEQUENCE_ROW_BOUNDS):
@@ -1180,6 +1221,29 @@ class ParametersView(UIView):
             anchor_y="center",
             width=width - 20,
         ).draw()
+        seed_left, seed_bottom, seed_width, seed_height = SEED_INPUT_BOUNDS
+        self._draw_rounded_panel(
+            seed_left,
+            seed_bottom,
+            seed_width,
+            seed_height,
+            7,
+            (20, 30, 40),
+            (111, 127, 148) if self._editing_seed else PANEL_BORDER_COLOR,
+        )
+        self._native_text(
+            self.tournament_seed_input.text or "Vazio: gerar automaticamente",
+            seed_left + 10,
+            seed_bottom + seed_height / 2,
+            (
+                PRIMARY_TEXT_COLOR
+                if self.tournament_seed_input.text
+                else SECONDARY_TEXT_COLOR
+            ),
+            11,
+            anchor_y="center",
+            width=seed_width - 20,
+        ).draw()
         labels = (
             ("Nome do torneio", 467),
             ("Sistema de pontuação", 429),
@@ -1187,6 +1251,7 @@ class ParametersView(UIView):
             ("Clima", 354),
             ("Permitir repetição de pista", 315),
             ("Critério de desempate", 277),
+            ("Semente", 239),
         )
         for label, y in labels:
             self._native_text(

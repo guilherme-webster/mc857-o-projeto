@@ -219,8 +219,8 @@ class ParametersViewTest(unittest.TestCase):
                 self.calls.append(("build", request))
                 return grid_payload()
 
-            def edit_grid(self, overrides):
-                self.calls.append(("edit", overrides))
+            def edit_grid(self, **payload):
+                self.calls.append(("edit", payload))
                 return grid_payload()
 
         client = FakeGridClient()
@@ -235,6 +235,7 @@ class ParametersViewTest(unittest.TestCase):
             view.on_update(0)
             time.sleep(0.01)
         view.step_attribute("aggression", 1)
+        view.move_selected(1)
         view.save_changes()
         while view._busy and time.monotonic() < deadline:
             view.on_update(0)
@@ -245,7 +246,15 @@ class ParametersViewTest(unittest.TestCase):
             client.calls,
             [
                 ("build", {"mode": "race", "race_id": "race:1141"}),
-                ("edit", [{"driver_id": "driver:830", "aggression": 1.53}]),
+                (
+                    "edit",
+                    {
+                        "overrides": [
+                            {"driver_id": "driver:830", "aggression": 1.53}
+                        ],
+                        "order": ["driver:844", "driver:830"],
+                    },
+                ),
             ],
         )
         self.assertIn("salvas", view._status)

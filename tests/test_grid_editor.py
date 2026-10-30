@@ -14,7 +14,7 @@ from frontend.arcade.grid_editor import (
 
 def grid_payload() -> dict:
     return {
-        "size": 1,
+        "size": 2,
         "seed": 8,
         "profiles_disclaimer": "Caracterizacoes ficticias.",
         "grid": [
@@ -39,7 +39,29 @@ def grid_payload() -> dict:
                     },
                 },
                 "profile": {"characterization": "x", "parameter_version": "v1"},
-            }
+            },
+            {
+                "driver_id": "driver:844",
+                "driver_name": "Charles Leclerc",
+                "team_id": "team:6",
+                "team_name": "Ferrari",
+                "attributes": {
+                    "archetype": "balanced",
+                    "pace_offset_pct": -0.25,
+                    "consistency_factor": 1.05,
+                    "tyre_management_factor": 0.95,
+                    "aggression": 1.10,
+                    "composure": 1.15,
+                    "sources": {
+                        "pace_offset_pct": "generated",
+                        "consistency_factor": "generated",
+                        "tyre_management_factor": "generated",
+                        "aggression": "generated",
+                        "composure": "generated",
+                    },
+                },
+                "profile": None,
+            },
         ],
     }
 
@@ -75,8 +97,41 @@ class GridDraftTest(unittest.TestCase):
 
     def test_discard_drops_pending_edits(self) -> None:
         self.draft.step("driver:830", "aggression", 1)
+        self.draft.move("driver:844", -1)
         self.draft.discard()
         self.assertEqual(self.draft.value("driver:830", "aggression"), 1.48)
+        self.assertEqual(
+            [entry["driver_id"] for entry in self.draft.entries],
+            ["driver:830", "driver:844"],
+        )
+        self.assertFalse(self.draft.has_changes)
+        self.assertEqual(self.draft.patch(), {})
+
+    def test_move_updates_pending_order_and_displayed_positions(self) -> None:
+        self.assertTrue(self.draft.move("driver:844", -1))
+
+        self.assertEqual(
+            [entry["driver_id"] for entry in self.draft.entries],
+            ["driver:844", "driver:830"],
+        )
+        self.assertTrue(self.draft.has_changes)
+
+    def test_move_does_not_cross_top_or_bottom_limits(self) -> None:
+        self.assertFalse(self.draft.move("driver:830", -1))
+        self.assertFalse(self.draft.move("driver:844", 1))
+        self.assertFalse(self.draft.has_changes)
+
+    def test_patch_includes_order_and_overrides_only_when_pending(self) -> None:
+        self.draft.move("driver:844", -1)
+        self.draft.step("driver:830", "aggression", 1)
+
+        self.assertEqual(
+            self.draft.patch(),
+            {
+                "overrides": [{"driver_id": "driver:830", "aggression": 1.53}],
+                "order": ["driver:844", "driver:830"],
+            },
+        )
 
     def test_rejects_payload_without_grid(self) -> None:
         with self.assertRaises(ValueError):
@@ -97,6 +152,10 @@ class GridSourcesTest(unittest.TestCase):
         self.assertEqual([s.race_id for s in sources[1:]], ["race:1", "race:2"])
         self.assertEqual(
             sources[0].request(), {"mode": "random", "size": RANDOM_GRID_SIZE}
+        )
+        self.assertEqual(
+            sources[0].request(105),
+            {"mode": "random", "size": RANDOM_GRID_SIZE, "seed": 105},
         )
         self.assertEqual(sources[1].request(), {"mode": "race", "race_id": "race:1"})
 

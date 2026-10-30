@@ -14,6 +14,10 @@ from threading import Thread
 import arcade
 
 from frontend.arcade import track_client
+from frontend.arcade.configuration_state import (
+    ConfigurationFormError,
+    parse_optional_seed,
+)
 from frontend.arcade.grid_editor import (
     ARCHETYPE_LABELS,
     ATTRIBUTES,
@@ -75,6 +79,8 @@ class GridView(arcade.View):
         self._selected: str | None = None
         self._busy = False
         self._hover: str | None = None
+        self._grid_seed_text = ""
+        self._editing_grid_seed = False
         self._status = "Carregando o grid atual…"
         self._status_color = SECONDARY_TEXT_COLOR
         self._row_texts: list[dict[str, arcade.Text]] = []
@@ -138,6 +144,8 @@ class GridView(arcade.View):
                 self._draft.entries[0]["driver_id"] if self._draft.entries else None
             )
         self._row_texts = []
+        if self._draft.seed is not None:
+            self._grid_seed_text = str(self._draft.seed)
         message = {
             "load-grid": "Grid atual carregado.",
             "build": "Grid montado. O Iniciar da configuração usará este grid.",
@@ -158,9 +166,19 @@ class GridView(arcade.View):
             )
             return
         source = self._sources[self._source_index]
+        try:
+            seed = (
+                parse_optional_seed(self._grid_seed_text)
+                if source.mode == "random"
+                else None
+            )
+        except ConfigurationFormError as error:
+            self._set_status(str(error), ERROR_COLOR)
+            return
+        request = source.request(seed)
         self._start(
             "build",
-            lambda: self._client.build_grid(**source.request()),
+            lambda: self._client.build_grid(**request),
             f"Montando: {source.label}…",
         )
 
@@ -168,9 +186,9 @@ class GridView(arcade.View):
         if self._draft is None or not self._draft.has_changes:
             self._set_status("Nenhuma alteração para salvar.", SECONDARY_TEXT_COLOR)
             return
-        overrides = self._draft.overrides()
+        patch = self._draft.patch()
         self._start(
-            "save", lambda: self._client.edit_grid(overrides), "Salvando alterações…"
+            "save", lambda: self._client.edit_grid(**patch), "Salvando alterações…"
         )
 
     def discard_changes(self) -> None:
@@ -182,6 +200,22 @@ class GridView(arcade.View):
         if self._draft is None or self._selected is None:
             return
         self._draft.step(self._selected, name, direction)
+
+    def move_selected(self, delta: int) -> None:
+        """Mova o piloto selecionado sem reutilizar as setas de navegacao."""
+
+        if self._draft is None or self._selected is None:
+            return
+        if self._draft.move(self._selected, delta):
+            position = next(
+                index
+                for index, entry in enumerate(self._draft.entries, start=1)
+                if entry["driver_id"] == self._selected
+            )
+            self._set_status(
+                f"Piloto movido para P{position}; salve para confirmar a ordem.",
+                SECONDARY_TEXT_COLOR,
+            )
 
     def _set_status(self, message: str, color) -> None:
         self._status = message
@@ -204,6 +238,8 @@ class GridView(arcade.View):
             "discard": (width - 430, 20, 190, 36),
         }
         panel = self._panel_left() + 24
+        rects["move-up"] = (panel + 330, height - 332, 70, 30)
+        rects["move-down"] = (panel + 410, height - 332, 70, 30)
         for i, spec in enumerate(ATTRIBUTES):
             y = height - 380 - i * 64
             rects[f"minus:{spec.name}"] = (panel + 330, y - 6, 34, 30)
@@ -232,6 +268,11 @@ class GridView(arcade.View):
         )
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        self._editing_grid_seed = (
+            button == arcade.MOUSE_BUTTON_LEFT
+            and self._sources[self._source_index].mode == "random"
+            and _inside(x, y, self._seed_bounds())
+        )
         for key, rect in self._buttons().items():
             if _inside(x, y, rect):
                 self._click(key)
@@ -250,6 +291,10 @@ class GridView(arcade.View):
             self.save_changes()
         elif key == "discard":
             self.discard_changes()
+        elif key == "move-up":
+            self.move_selected(-1)
+        elif key == "move-down":
+            self.move_selected(1)
         elif key == "back":
             if self._draft is not None and self._draft.has_changes:
                 self._set_status(
@@ -263,6 +308,12 @@ class GridView(arcade.View):
             self.step_attribute(name, -1 if action == "minus" else 1)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if self._editing_grid_seed:
+            if symbol == arcade.key.BACKSPACE:
+                self._grid_seed_text = self._grid_seed_text[:-1]
+            elif symbol in (arcade.key.ENTER, arcade.key.ESCAPE):
+                self._editing_grid_seed = False
+            return
         if self._draft is None or not self._draft.entries:
             return
         ids = [entry["driver_id"] for entry in self._draft.entries]
@@ -271,6 +322,10 @@ class GridView(arcade.View):
             self._selected = ids[min(index + 1, len(ids) - 1)]
         elif symbol == arcade.key.UP:
             self._selected = ids[max(index - 1, 0)]
+
+    def on_text(self, text: str) -> None:
+        if self._editing_grid_seed and text.isprintable():
+            self._grid_seed_text += text
 
     # -- desenho -----------------------------------------------------------------
 
@@ -302,7 +357,7 @@ class GridView(arcade.View):
         ).draw()
         self._text(
             "subtitle",
-            "Monte o grid usado pelo Iniciar, veja os perfis e ajuste atributos. "
+            "Monte o grid usado pelo Iniciar, reordene com ↑/↓ e ajuste atributos. "
             "Cores: sorteado · perfil · editado.",
             40,
             height - 92,
@@ -348,6 +403,39 @@ class GridView(arcade.View):
             11,
             anchor_y="center",
         ).draw()
+        if self._sources[self._source_index].mode == "random":
+            left, bottom, width, field_height = self._seed_bounds()
+            arcade.draw_lbwh_rectangle_filled(
+                left, bottom, width, field_height, PANEL_COLOR
+            )
+            arcade.draw_lbwh_rectangle_outline(
+                left,
+                bottom,
+                width,
+                field_height,
+                (111, 127, 148) if self._editing_grid_seed else PANEL_BORDER_COLOR,
+                1,
+            )
+            self._text(
+                "grid-seed-label",
+                "Semente do grid aleatório",
+                left,
+                bottom + field_height + 5,
+                _HEADER_COLOR,
+                9,
+            ).draw()
+            self._text(
+                "grid-seed",
+                self._grid_seed_text or "Vazio: backend gera",
+                left + 10,
+                bottom + field_height / 2,
+                PRIMARY_TEXT_COLOR if self._grid_seed_text else SECONDARY_TEXT_COLOR,
+                11,
+                anchor_y="center",
+            ).draw()
+
+    def _seed_bounds(self) -> tuple[float, float, float, float]:
+        return (800, self.window.height - 150, 245, 34)
 
     def _draw_table(self, height: int) -> None:
         if self._draft is None:
@@ -457,6 +545,20 @@ class GridView(arcade.View):
             multiline=True,
             anchor_y="top",
         ).draw()
+        position = next(
+            index
+            for index, item in enumerate(self._draft.entries, start=1)
+            if item["driver_id"] == self._selected
+        )
+        self._text(
+            "p:position",
+            f"Posição de largada: P{position}",
+            x,
+            height - 320,
+            PRIMARY_TEXT_COLOR,
+            11,
+            bold=True,
+        ).draw()
         for i, spec in enumerate(ATTRIBUTES):
             y = height - 380 - i * 64
             source = self._draft.source(self._selected, spec.name)
@@ -511,10 +613,12 @@ class GridView(arcade.View):
             "back": "‹ Voltar",
             "save": "Salvar alterações",
             "discard": "Descartar",
+            "move-up": "↑ Subir",
+            "move-down": "↓ Descer",
         }
         for key, rect in self._buttons().items():
             if self._draft is None and key.startswith(
-                ("minus:", "plus:", "save", "discard")
+                ("minus:", "plus:", "save", "discard", "move-")
             ):
                 continue
             left, bottom, w, h = rect
