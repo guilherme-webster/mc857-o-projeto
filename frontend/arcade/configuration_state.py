@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 PRESET_OPTIONS = ("Corrida livre", "GP de São Paulo 2024")
 WEATHER_OPTIONS = ("Seco", "Chuva leve", "Chuva intensa")
 MIN_LAPS = 1
 MAX_LAPS = 200
+
+# Compatibilidade com backends anteriores à issue #107. O catálogo atual é a
+# fonte do padrão por pista; 69 só é usado quando ``default_laps`` não existe.
+DEFAULT_LAPS_FALLBACK = 69
 
 
 class ConfigurationFormError(ValueError):
@@ -133,7 +138,7 @@ def _validate_laps(laps: int) -> None:
         )
 
 
-DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(69)
+DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(DEFAULT_LAPS_FALLBACK)
 
 SCORING_OPTIONS = ("F1 oficial", "Sem pontuação")
 WEATHER_MODE_OPTIONS = ("Configuração por corrida", "Seco em todas")
@@ -216,7 +221,7 @@ class ConfigurationFormData:
     """Validated values collected by the Arcade configuration flow."""
 
     preset: str = PRESET_OPTIONS[0]
-    laps: int = 69
+    laps: int = DEFAULT_LAPS_FALLBACK
     weather_schedule: WeatherSchedule = DEFAULT_WEATHER_SCHEDULE
 
     def __post_init__(self) -> None:
@@ -253,6 +258,32 @@ class ConfigurationFormData:
             laps=parsed_laps,
             weather_schedule=schedule.resize(parsed_laps),
         )
+
+
+def default_laps_from_track(track: Mapping[str, object]) -> int:
+    """Leia o padrão da API, mantendo compatibilidade com o contrato antigo."""
+
+    value = track.get("default_laps", DEFAULT_LAPS_FALLBACK)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ConfigurationFormError("número de voltas padrão da pista inválido")
+    _validate_laps(value)
+    return value
+
+
+def configuration_for_track(
+    track: Mapping[str, object],
+    existing: ConfigurationFormData | None = None,
+) -> ConfigurationFormData:
+    """Crie o formulário de uma pista apenas se o usuário ainda não o editou.
+
+    O clima nasce seco e cobre exatamente o total informado pelo backend. Um
+    objeto ``existing`` é devolvido sem alterações, preservando voltas e clima.
+    """
+
+    if existing is not None:
+        return existing
+    laps = default_laps_from_track(track)
+    return ConfigurationFormData(laps=laps, weather_schedule=WeatherSchedule.dry(laps))
 
 
 def _format_weather_range(weather_range: WeatherRange) -> str:

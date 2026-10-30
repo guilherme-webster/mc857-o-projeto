@@ -28,6 +28,8 @@ from frontend.arcade.configuration_state import (
     TournamentRules,
     WEATHER_MODE_OPTIONS,
     WeatherSchedule,
+    configuration_for_track,
+    default_laps_from_track,
 )
 from frontend.arcade.race_launcher import HttpRaceClient, LaunchOutcome, launch_plan
 from frontend.arcade.track_client import fetch_track, fetch_tracks
@@ -108,6 +110,7 @@ class ParametersView(UIView):
         self._launch_results: SimpleQueue[tuple[str, object]] = SimpleQueue()
         self._launching = False
         self.layout = build_initial_configuration_layout()
+        self._initial_supplied = initial is not None
         self.initial = initial or ConfigurationFormData()
         self.configuration = self.initial
         self._on_start = on_start
@@ -258,6 +261,9 @@ class ParametersView(UIView):
                         "circuit_id": str(entry["circuit_id"]),
                         "name": str(entry["name"]),
                         "lap_length_m": float(entry["lap_length_m"]),
+                        "default_laps": default_laps_from_track(entry),
+                        "default_laps_source": entry.get("default_laps_source"),
+                        "default_laps_race": entry.get("default_laps_race"),
                     }
                     for entry in entries
                 )
@@ -283,6 +289,11 @@ class ParametersView(UIView):
                     ),
                     0,
                 )
+                if not self._initial_supplied:
+                    self.configuration = configuration_for_track(self.selected_track)
+                    self.initial = self.configuration
+                    self.laps_input.text = str(self.configuration.laps)
+                    self._update_weather_summary()
                 self._catalog_error = None
                 self._set_status(
                     f"{len(tracks)} pistas disponíveis. Monte sua sequência.",
@@ -343,11 +354,14 @@ class ParametersView(UIView):
         """Move the selection through the complete catalog, wrapping at ends."""
 
         if self._tracks:
+            if not self._store_current_form_configuration():
+                return
             self._selected_track_index = (self._selected_track_index + step) % len(
                 self._tracks
             )
-            self.configuration = self._track_configurations.get(
-                self.selected_track["circuit_id"], ConfigurationFormData()
+            self.configuration = configuration_for_track(
+                self.selected_track,
+                self._track_configurations.get(self.selected_track["circuit_id"]),
             )
             self.laps_input.text = str(self.configuration.laps)
             self._update_weather_summary()
@@ -365,6 +379,8 @@ class ParametersView(UIView):
             return
         if len(self._selected_track_ids) >= self.rules.total_stages:
             self._set_status("O total de etapas já foi atingido.", ERROR_COLOR)
+            return
+        if not self._store_current_form_configuration():
             return
         self._selected_track_ids.append(circuit_id)
         self._track_configurations.setdefault(circuit_id, self.configuration)
@@ -413,8 +429,11 @@ class ParametersView(UIView):
             ]
         else:
             self._selected_track_ids = chooser.sample(ids, self.rules.total_stages)
+        catalog = {track["circuit_id"]: track for track in self._tracks}
         for circuit_id in self._selected_track_ids:
-            self._track_configurations.setdefault(circuit_id, ConfigurationFormData())
+            self._track_configurations.setdefault(
+                circuit_id, configuration_for_track(catalog[circuit_id])
+            )
         self._sequence_scroll_index = 0
         self._set_status("Sequência automática gerada.", SUCCESS_COLOR)
 
@@ -631,16 +650,39 @@ class ParametersView(UIView):
     def reset_configuration(self) -> None:
         """Restore the values that were supplied when the view was created."""
 
-        self.configuration = self.initial
+        self.configuration = (
+            self.initial
+            if self._initial_supplied or self.selected_track is None
+            else configuration_for_track(self.selected_track)
+        )
         self._selected_track_ids.clear()
         self._track_configurations.clear()
         self._session_configurations.clear()
         self.rules = TournamentRules()
         self.tournament_name_input.text = self.rules.name
         self.preset_dropdown.value = self.initial.preset
-        self.laps_input.text = str(self.initial.laps)
+        self.laps_input.text = str(self.configuration.laps)
         self._update_weather_summary()
         self._set_status("Configuração restaurada.", SECONDARY_TEXT_COLOR)
+
+    def _store_current_form_configuration(self) -> bool:
+        """Congele edições digitadas antes de trocar ou adicionar a pista."""
+
+        track = self.selected_track
+        if track is None:
+            return True
+        try:
+            configuration = ConfigurationFormData.from_text(
+                preset=self.preset_dropdown.value or "",
+                laps=self.laps_input.text,
+                weather_schedule=self.configuration.weather_schedule,
+            )
+        except ConfigurationFormError as error:
+            self._set_status(str(error), ERROR_COLOR)
+            return False
+        self.configuration = configuration
+        self._track_configurations[track["circuit_id"]] = configuration
+        return True
 
     def open_track_configuration(self, stage_index: int | None = None) -> None:
         """Open the configurator for the highlighted circuit."""
