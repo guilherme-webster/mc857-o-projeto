@@ -11,6 +11,7 @@ from threading import Thread
 import arcade
 from arcade.gui import UIDropdown, UIFlatButton, UIInputText, UIView
 
+from frontend.arcade.clipboard import handle_clipboard_shortcut
 from frontend.arcade.canvas_fit import (
     MINIMUM_WINDOW_SIZE,
     CanvasFit,
@@ -1068,6 +1069,16 @@ class ParametersView(UIView):
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if not self._editing_name and not self._editing_seed:
             return
+        if self._editing_seed:
+            pasted = handle_clipboard_shortcut(
+                self.window, symbol, modifiers, self.tournament_seed_input.text
+            )
+            if pasted is not None:
+                self.tournament_seed_input.text = pasted.text
+                self._set_status(
+                    pasted.message, SUCCESS_COLOR if pasted.ok else ERROR_COLOR
+                )
+                return
         if symbol == arcade.key.BACKSPACE and self._editing_name:
             self.tournament_name_input.text = self.tournament_name_input.text[:-1]
         elif symbol == arcade.key.BACKSPACE and self._editing_seed:
@@ -1305,7 +1316,7 @@ class ParametersView(UIView):
             ("Clima", 354),
             ("Permitir repetição de pista", 315),
             ("Critério de desempate", 277),
-            ("Semente", 239),
+            ("Semente · Ctrl+C/V", 239),
         )
         for label, y in labels:
             self._native_text(

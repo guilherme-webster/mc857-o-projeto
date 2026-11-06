@@ -14,6 +14,7 @@ from threading import Thread
 import arcade
 
 from frontend.arcade import track_client
+from frontend.arcade.clipboard import handle_clipboard_shortcut
 from frontend.arcade.configuration_state import (
     ConfigurationFormError,
     parse_optional_seed,
@@ -309,6 +310,15 @@ class GridView(arcade.View):
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if self._editing_grid_seed:
+            pasted = handle_clipboard_shortcut(
+                self.window, symbol, modifiers, self._grid_seed_text
+            )
+            if pasted is not None:
+                self._grid_seed_text = pasted.text
+                self._set_status(
+                    pasted.message, SUCCESS_COLOR if pasted.ok else ERROR_COLOR
+                )
+                return
             if symbol == arcade.key.BACKSPACE:
                 self._grid_seed_text = self._grid_seed_text[:-1]
             elif symbol in (arcade.key.ENTER, arcade.key.ESCAPE):
@@ -418,7 +428,7 @@ class GridView(arcade.View):
             )
             self._text(
                 "grid-seed-label",
-                "Semente do grid aleatório",
+                "Semente do grid aleatório · Ctrl+C / Ctrl+V",
                 left,
                 bottom + field_height + 5,
                 _HEADER_COLOR,

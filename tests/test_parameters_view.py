@@ -202,6 +202,46 @@ class ParametersViewTest(unittest.TestCase):
         self.assertIn("track_id desconhecido", view.status_message)
         self.assertFalse(view._launching)
 
+    def test_seed_fields_copy_and_paste_through_the_clipboard(self) -> None:
+        """Ctrl+V replaces a focused seed and Ctrl+C sends it back (#105)."""
+
+        from frontend.arcade.grid_view import GridView
+        from frontend.arcade.parameters_view import SEED_INPUT_BOUNDS
+
+        accel = arcade.key.MOD_ACCEL
+        view = self.ready_view()
+        self.window.show_view(view)
+        left, bottom, width, height = SEED_INPUT_BOUNDS
+        x, y = self.to_window(view, left + width / 2, bottom + height / 2)
+        view.on_mouse_press(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
+        with patch.object(self.window, "get_clipboard_text", return_value=" 424242\n"):
+            view.on_key_press(arcade.key.V, accel)
+        self.assertEqual(view.tournament_seed_input.text, "424242")
+        self.assertEqual(view._tournament_seed(), 424242)
+        with patch.object(self.window, "set_clipboard_text") as copy:
+            view.on_key_press(arcade.key.C, accel)
+        copy.assert_called_once_with("424242")
+
+        class IdleGridClient:
+            def fetch_current_grid(self):
+                return None
+
+            def fetch_history_races(self, season):
+                return {"races": []}
+
+        grid_view = GridView(client=IdleGridClient())
+        self.window.show_view(grid_view)
+        left, bottom, width, height = grid_view._seed_bounds()
+        grid_view.on_mouse_press(
+            left + width / 2, bottom + height / 2, arcade.MOUSE_BUTTON_LEFT, 0
+        )
+        with patch.object(self.window, "get_clipboard_text", return_value="77"):
+            grid_view.on_key_press(arcade.key.V, accel)
+        self.assertEqual(grid_view._grid_seed_text, "77")
+        with patch.object(self.window, "set_clipboard_text") as copy:
+            grid_view.on_key_press(arcade.key.C, accel)
+        copy.assert_called_once_with("77")
+
     def test_grid_view_builds_edits_and_saves_through_the_client(self) -> None:
         from frontend.arcade.grid_view import GridView
         from tests.test_grid_editor import grid_payload
