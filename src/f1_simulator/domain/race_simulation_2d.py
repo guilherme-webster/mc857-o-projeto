@@ -64,6 +64,7 @@ from f1_simulator.domain.strategy import (
     SpatialPitPlanningParameters,
 )
 from f1_simulator.domain.track_condition import TrackState
+from f1_simulator.domain.wet_tyres import relative_grip, wear_factor
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
@@ -444,6 +445,8 @@ def simulate_2d_race(
                 track_params,
                 offset_laps=offset_laps,
                 compulsory_wear_target_laps=target,
+                reference_lap_ms=entry.get("reference_lap_ms", 90_000.0),
+                weather_switch_bias=entry.get("weather_switch_bias", 1.0),
             )
             strategy_plans[did] = {
                 "mode": "custom" if entry.get("strategy") is not None else "heuristic",
@@ -503,16 +506,25 @@ def simulate_2d_race(
     def _lap_effects(lap_number: int) -> LapEffects:
         return lap_effects_by_lap.get(lap_number) or effects(RaceControlState())
 
-    def _tyre_penalty_ms(did: str) -> float:
+    def _water(lap_number: int) -> float:
+        if not track_states:
+            return 0.0
+        return track_states[min(lap_number - 1, len(track_states) - 1)].surface_water
+
+    def _tyre_penalty_ms(did: str, lap_number: int) -> float:
         if not tyre_active:
             return 0.0
         tyre = tyre_by_id[did]
+        # Desgaste equivalente do movimento (ADR 0014). Pneu de chuva em
+        # pista secando superaquece: so ele tem fator > 1, e o ritmo dele
+        # (pace_offset) e zero, entao escalar a parcela inteira equivale a
+        # escalar so o desgaste.
         return tyre_penalty_ms(
             tyre,
             compounds[tyre.compound],
             track_params,
             wear_laps=cars_by_id[did].tyre_wear_laps,
-        )
+        ) * wear_factor(tyre.compound, _water(lap_number))
 
     def _apply_scale(car: CarSpaceState, lap_number: int) -> None:
         """Converta as penalidades de tempo da volta em fator de velocidade.
@@ -525,12 +537,15 @@ def simulate_2d_race(
         did = car.driver_id
         base = ref_ms[did]
         eff = _lap_effects(lap_number)
-        penalty = _tyre_penalty_ms(did)
+        penalty = _tyre_penalty_ms(did, lap_number)
         if fuel is not None:
             penalty += fuel.ms_per_kg * max(0.0, car.fuel_kg - fuel.parameters.finish_reserve_kg)
         if track_states:
             idx = min(lap_number - 1, len(track_states) - 1)
-            grip_factor = track_states[idx].grip_factor
+            water = track_states[idx].surface_water
+            grip_factor = track_states[idx].grip_factor * relative_grip(
+                tyre_by_id[did].compound, water
+            )
             if grip_factor != 1.0:
                 penalty += grip_laps[did].delta_ms(grip_factor)
         on_track_ms = (base + penalty) * eff.lap_time_factor + eff.lap_time_loss_ms
@@ -643,6 +658,8 @@ def simulate_2d_race(
             free_tyre_change=eff.free_tyre_change,
             fuel=None,
             tyre_wear_laps=car.tyre_wear_laps,
+            # Radar: a agua prevista para a volta que comeca (como no detalhado).
+            surface_water=_water(lap_number) if track_states else None,
         )
         decision = strategy.decide(state)
         if not decision.pit:

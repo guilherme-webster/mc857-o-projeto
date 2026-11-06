@@ -71,6 +71,12 @@ from f1_simulator.domain.track_condition import (
 )
 from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.tyres import TyreSet
+from f1_simulator.domain.wet_tyres import (
+    contact_multiplier,
+    crash_multiplier,
+    relative_grip,
+    wear_factor,
+)
 
 RUNNING = "RUNNING"
 RETIRED = "RETIRED"
@@ -635,6 +641,17 @@ def _simulate_detailed_race_enhanced(
             if race_control
             else effects(control_state)
         )
+        # Agua desta volta (estado ao fim dela, como o resto da pista). E
+        # tambem o que o muro dos boxes usa ao decidir: o radar mostra a chuva
+        # da volta que vai comecar, entao ninguem para por um slick na volta
+        # em que a chuva chega para trocar por intermediario na seguinte.
+        lap_state = (
+            track_states[lap - 1]
+            if track_states is not None and lap - 1 < len(track_states)
+            else None
+        )
+        lap_water = lap_state.surface_water if lap_state is not None else 0.0
+        seen_water = lap_water if lap_state is not None else None
         control_by_lap.append(
             {
                 "lap": lap,
@@ -702,6 +719,7 @@ def _simulate_detailed_race_enhanced(
                     compounds_used=tuple(compounds_used[state.driver_id]),
                     free_tyre_change=lap_effects.free_tyre_change,
                     fuel=fuel_status,
+                    surface_water=seen_water,
                 )
             )
             # Rede de seguranca: a estrategia nao olhou o combustivel e o carro
@@ -729,9 +747,12 @@ def _simulate_detailed_race_enhanced(
                     entrant.reference_lap_time_ms, driver_attributes
                 )
             )
+            # A pista oferece ``grip_factor`` com o pneu adequado; o pneu
+            # montado paga a sua aderencia relativa ao melhor para essa agua.
             grip_factor = (
-                track_states[lap - 1].grip_factor
-                if track_states is not None and lap - 1 < len(track_states)
+                lap_state.grip_factor
+                * relative_grip(lap_tyre.compound, lap_water)
+                if lap_state is not None
                 else 1.0
             )
             if grip_factor == 1.0:
@@ -787,7 +808,10 @@ def _simulate_detailed_race_enhanced(
                 pitting=in_pit_lane,
                 rng=rng,
                 noise_scale=consistency_scale(driver_attributes),
-                degradation_factor=detailed_degradation_factor(driver_attributes),
+                degradation_factor=(
+                    detailed_degradation_factor(driver_attributes)
+                    * wear_factor(lap_tyre.compound, lap_water)
+                ),
                 pit_loss_factor=lap_effects.pit_loss_factor,
                 lap_time_factor=lap_effects.lap_time_factor,
                 lap_time_loss_ms=lap_effects.lap_time_loss_ms,
@@ -862,7 +886,8 @@ def _simulate_detailed_race_enhanced(
                     heuristics=dispute_heuristics,
                     laps_completed=derived_laps,
                     overtake_factor=lap_effects.overtake_factor,
-                    contact_factor=lap_effects.contact_factor,
+                    contact_factor=lap_effects.contact_factor
+                    * contact_multiplier(lap_water),
                 )
             }
 
@@ -960,7 +985,17 @@ def _simulate_detailed_race_enhanced(
                 draw = rng.uniform01(
                     f"race-control:lap:{lap}:{state.driver_id}:solo-crash"
                 )
-                if draw < solo_probability:
+                # Agua e pneu errado aumentam o risco; a compostura do piloto
+                # faz as vezes de habilidade na chuva. Seco: fator 1.
+                driver_composure = (
+                    used_attributes[state.driver_id].composure
+                    if state.driver_id in used_attributes
+                    else 1.0
+                )
+                car_probability = solo_probability * crash_multiplier(
+                    state.tyre.compound, lap_water, driver_composure
+                )
+                if draw < car_probability:
                     incidents.append(Incident(lap, "solo_crash", (state.driver_id,)))
                     retirement_causes.setdefault(state.driver_id, CRASH)
 

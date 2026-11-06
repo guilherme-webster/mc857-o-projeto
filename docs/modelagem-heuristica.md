@@ -247,6 +247,44 @@ Parâmetros do combustível (`fuel-v1.json`):
 | Lift-and-coast (só com reabastecimento desligado) | até 8% da queima, 1,5 s por kg economizado | assumido |
 | Tempo de parada por equipe | perda do circuito + deslocamento × 0,754; variação σ 1,73 s, assimetria 0,697 | calibrado (paradas Trotman 2023–2024) |
 
+### Pista molhada: pneus de chuva (#120)
+
+Código em `domain/wet_tyres.py` (`ASSUMED_WET_TYRES`,
+`assumed-wet-tyres-v1`); decisão em `HeuristicPitStrategy._weather_switch`.
+
+- **Aderência por composto.** Cada classe de pneu tem uma curva de aderência
+  contra a água (slick 1,00 → 0,40; intermediário 0,93 → 0,58 com pico 0,81 na
+  água 0,3; chuva 0,86 → 0,69). O carro paga a aderência da pista (ADR 0015)
+  vezes a do seu pneu dividida pela do melhor composto para aquela água: com o
+  pneu certo, nada a mais; slick em pista saturada tem 58% da aderência do
+  pneu de chuva. Cruzamentos que emergem: slick → intermediário com água
+  ~0,07; intermediário → chuva com ~0,4.
+- **Decisão.** A cada volta o muro vê a água prevista para a volta que começa
+  (radar). Se o pneu montado não é o melhor, a perda por volta
+  (`volta de referência × (aderência relativa ** -0,6 − 1)`) vezes 8 voltas
+  (ou o que resta) é comparada com a perda de boxes, barateada por SC/VSC e
+  multiplicada pelo **viés do piloto** (`draw_weather_switch_bias`: 1 +
+  0,6 × (agressividade − 1) + 0,2 × ruído, entre 0,5 e 2,0; o agressivo aposta
+  mais tempo no pneu atual). Troca gratuita sob vermelha sempre vai para o
+  pneu certo. Paradas por desgaste ou combustível com pista molhada montam o
+  pneu de chuva indicado; com pneu de chuva montado não há parada por
+  desgaste.
+- **Regra de dois compostos** suspensa quando o carro usou intermediário ou
+  chuva, como no regulamento.
+- **Largada.** MEDIUM no seco; se a água prevista ao fim da volta 1 pede pneu
+  de chuva, todos largam com ele.
+- **Desgaste.** Intermediário (20 ms/volta, vida 30) e chuva (15 ms/volta, vida
+  35) são hipóteses no código (`ASSUMED_WET_COMPOUNDS`), fora do artefato
+  calibrado da #40. Abaixo de água 0,1 superaquecem: desgaste até 4× (inter) e
+  7× (chuva) com a pista seca.
+- **Risco.** Acidente individual × (1 + 2 × água ÷ compostura) × (1 + 8 ×
+  (1 − aderência relativa)); contato em disputa × (1 + água). A compostura do
+  piloto serve como habilidade na chuva. Com 20 carros e 8 sementes em Mônaco,
+  40 voltas: 1,6 abandonos por corrida no seco, 1,8 com chuva forte (voltas
+  8-18) e 2,1 com garoa longa; paradas por carro sobem de 0,9 para 1,9.
+- **No 2D** valem a mesma aderência, o mesmo desgaste e a mesma decisão; o
+  contato espacial ainda não depende da água.
+
 ## 7. Volta de referência por circuito
 
 `data/parameters/reference-laps-v1.json`: por corrida, a mediana das voltas
@@ -368,11 +406,11 @@ próprios parâmetros, não números fixos.
 - **Clima só no tempo de volta.** Água e borracha viram um fator de
   aderência (`domain/track_condition.py`, ADR 0015) que o motor físico
   converte em tempo pela geometria: pista saturada custa ~27% em Mônaco e
-  ~19% em Monza. A água descreve a aderência com o pneu adequado, mas o carro
-  continua nos compostos secos: não há pneus intermediários ou de chuva, nem
-  efeito do clima em disputas, incidentes ou paradas (issue #120). A
-  temperatura do asfalto evolui e acelera a secagem, sem efeito direto na
-  aderência.
+  ~19% em Monza com o pneu certo. Pneus de chuva, troca por clima e risco na
+  chuva estão na seção 6 (#120). A temperatura do asfalto evolui e acelera a
+  secagem, mas ainda não altera a aderência nem o desgaste (janela de
+  operação a combinar com a #104); o contato espacial do 2D não depende da
+  água.
 - **Volta física com erro de ~4,7% por pista.** O carro de referência
   (`car-physics-v1.json`) reproduz a mediana das voltas de referência, mas
   Zandvoort (curvas inclinadas) e Losail saem ~11-12% lentas e Monza (chicanes
@@ -382,7 +420,7 @@ próprios parâmetros, não números fixos.
   contato do 2D (`ASSUMED_SIDE_CONTACT_PER_SECOND`) ainda não foi revista para
   isso.
 - **Composto de largada fixo e médio quase sem volta.** Todos largam de MEDIUM
-  (hipótese). Enquanto a regra de dois compostos não foi cumprida, o médio fica
+  no seco (hipótese; com chuva na volta 1, o pneu de chuva indicado). Enquanto a regra de dois compostos não foi cumprida, o médio fica
   fora da escolha; depois vence o mais macio cuja vida típica (macio 14, médio
   22, duro 37 voltas) cobre o restante. Por isso as paradas vão quase sempre
   para HARD, ou para SOFT nas últimas 14 voltas.

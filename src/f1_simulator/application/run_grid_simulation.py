@@ -45,7 +45,14 @@ from f1_simulator.domain.strategy import (
     NEUTRAL_FUEL_TRAITS,
     HeuristicPitStrategy,
     draw_fuel_traits,
+    draw_weather_switch_bias,
 )
+from f1_simulator.domain.wet_tyres import (
+    ASSUMED_WET_TYRES,
+    SLICK,
+    best_tyre_class,
+)
+from f1_simulator.domain.model_parameters import ASSUMED_WET_COMPOUNDS
 from f1_simulator.domain.speed_dynamics import DEFAULT_CAR_PHYSICS
 from f1_simulator.domain.track_condition import (
     ASSUMED_TRACK_CONDITION,
@@ -188,6 +195,29 @@ def _track_states(setup: RaceSetup, reference_lap_time_ms: float) -> tuple[Track
     )
 
 
+def _starting_compound(track_states: tuple[TrackState, ...]) -> str:
+    """Composto de largada: o de chuva se a primeira volta ja estiver molhada.
+
+    O seco continua a hipotese uniforme (MEDIUM). Com chuva desde a largada,
+    todos largam com o pneu que a agua prevista ao fim da volta 1 indica, como
+    uma equipe que olha o radar antes da largada.
+    """
+
+    best = best_tyre_class(track_states[0].surface_water) if track_states else SLICK
+    return "MEDIUM" if best == SLICK else best
+
+
+def _weather_switch_bias(rng, driver_id: str, aggression: float) -> float:
+    """Vies de troca por chuva do piloto, num fluxo proprio.
+
+    O fluxo ``strategy:weather:<piloto>`` e derivado por rotulo, entao sortear
+    aqui nao desloca o ruido da corrida nem as demais preferencias.
+    """
+
+    label = f"strategy:weather:{driver_id}"
+    return draw_weather_switch_bias(aggression, rng.spawn(label), label)
+
+
 def _run_2d(
     grid,
     attributes,
@@ -206,7 +236,10 @@ def _run_2d(
 
     from f1_simulator.domain.race_simulation_2d import simulate_2d_race
 
-    compounds = {c.name: c for c in parameters.compounds}
+    compounds = {
+        c.name: c for c in (*parameters.compounds, *ASSUMED_WET_COMPOUNDS)
+    }
+    starting_compound = _starting_compound(track_states)
     entrants = [
         {
             "driver_id": entry.driver_id,
@@ -214,8 +247,12 @@ def _run_2d(
             "grid_position": position,
             "attributes": attributes[entry.driver_id],
             "aggression": attributes[entry.driver_id].aggression,
-            "compound": "MEDIUM",
+            "compound": starting_compound,
             "strategy_offset_laps": _strategy_offset(rng, entry.driver_id),
+            "reference_lap_ms": reference_lap_time_ms,
+            "weather_switch_bias": _weather_switch_bias(
+                rng, entry.driver_id, attributes[entry.driver_id].aggression
+            ),
         }
         for position, entry in enumerate(grid, start=1)
     ]
@@ -409,6 +446,7 @@ def run_detailed_grid_simulation(
         raise ValueError(f"attributes ausentes para pilotos: {missing_attributes}")
 
     track_states = _track_states(setup, reference_lap_time_ms)
+    starting_compound = _starting_compound(track_states)
 
     if engine == "2d":
         if geometry is None:
@@ -468,12 +506,16 @@ def run_detailed_grid_simulation(
             tyre_management_factor=detailed_degradation_factor(driver_attributes),
             offset_laps=offset_laps,
             fuel_traits=fuel_traits,
+            reference_lap_ms=reference_lap_time_ms,
+            weather_switch_bias=_weather_switch_bias(
+                rng, entry.driver_id, driver_attributes.aggression
+            ),
         )
         start_fuel_kg = None
         if refuel_mode:
             assert fuel_plan is not None and refuel_stops is not None
             start_fuel_kg = strategy.plan_start_fuel_kg(
-                fuel_plan, setup.total_laps, "MEDIUM", refuel_stops.mean_ms
+                fuel_plan, setup.total_laps, starting_compound, refuel_stops.mean_ms
             )
         entrants.append(
             Entrant(
@@ -482,7 +524,7 @@ def run_detailed_grid_simulation(
                 reference_lap_time_ms=reference_lap_time_ms,
                 grid_position=grid_position,
                 strategy=strategy,
-                starting_compound="MEDIUM",
+                starting_compound=starting_compound,
                 team_id=entry.team_id,
                 reliability_factor=reliability_factor,
                 start_fuel_kg=start_fuel_kg,
@@ -567,12 +609,13 @@ def run_detailed_grid_simulation(
         },
         {
             "kind": "starting_compound",
-            "compound": "MEDIUM",
+            "compound": starting_compound,
             "origin": "assumed",
-            "parameter_version": "assumed-grid-starting-compound-v1",
+            "parameter_version": "assumed-grid-starting-compound-v2",
             "rationale": (
                 "Hipotese uniforme para ligar o grid ao modelo de pneus; o "
-                "catalogo atual nao informa o composto de largada."
+                "catalogo atual nao informa o composto de largada. MEDIUM no "
+                "seco; com a primeira volta molhada, o pneu de chuva indicado."
             ),
         },
         {
@@ -671,6 +714,17 @@ def _track_condition_assumption(setup: RaceSetup) -> dict:
             "source_kind": condition.source_kind,
             "parameter_version": condition.parameter_version,
             "rationale": condition.rationale,
+        },
+        "wet_tyres": {
+            "slick_curve": [list(point) for point in ASSUMED_WET_TYRES.slick_curve],
+            "intermediate_curve": [
+                list(point) for point in ASSUMED_WET_TYRES.intermediate_curve
+            ],
+            "wet_curve": [list(point) for point in ASSUMED_WET_TYRES.wet_curve],
+            "switch_horizon_laps": ASSUMED_WET_TYRES.switch_horizon_laps,
+            "source_kind": ASSUMED_WET_TYRES.source_kind,
+            "parameter_version": ASSUMED_WET_TYRES.parameter_version,
+            "rationale": ASSUMED_WET_TYRES.rationale,
         },
     }
 

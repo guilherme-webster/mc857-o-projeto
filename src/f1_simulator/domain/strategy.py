@@ -20,6 +20,16 @@ from f1_simulator.domain.fuel import FuelPlan
 from f1_simulator.domain.model_parameters import ModelParameters, TrackParameters
 from f1_simulator.domain.random_source import RandomSource
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
+from f1_simulator.domain.wet_tyres import (
+    ASSUMED_WET_TYRES,
+    SLICK,
+    WET_COMPOUNDS,
+    WetTyreParameters,
+    best_tyre_class,
+    relative_grip,
+    tyre_class,
+    wet_compound_used,
+)
 
 
 _DEFAULT_DRY_COMPOUNDS = ("SOFT", "MEDIUM", "HARD")
@@ -206,6 +216,31 @@ def draw_fuel_traits(
     )
 
 
+#: Quanto a agressividade e o acaso mudam o vies de troca por chuva (#120).
+WEATHER_SWITCH_BIAS_PER_AGGRESSION = 0.6
+WEATHER_SWITCH_BIAS_NOISE = 0.2
+
+
+def draw_weather_switch_bias(
+    aggression: float, rng: RandomSource, label: str
+) -> float:
+    """Sorteie o vies de troca por chuva de um piloto (um sorteio).
+
+    Multiplica o custo da parada na comparacao com a perda do pneu errado:
+    acima de 1 o piloto aposta e fica mais tempo com o pneu atual (slick na
+    garoa, intermediario na pista secando); abaixo de 1 troca cedo. O
+    agressivo aposta mais; o ruido separa pilotos do mesmo perfil. Heuristica,
+    nao calibrada.
+    """
+
+    bias = (
+        1.0
+        + WEATHER_SWITCH_BIAS_PER_AGGRESSION * (aggression - 1.0)
+        + WEATHER_SWITCH_BIAS_NOISE * rng.standard_normal(f"{label}:switch-bias")
+    )
+    return min(2.0, max(0.5, bias))
+
+
 @dataclass(frozen=True, slots=True)
 class StrategyState:
     """Estado visivel a politica antes de decidir a volta ``lap_number``.
@@ -237,6 +272,10 @@ class StrategyState:
         """Desgaste acumulado no 2D; idade em voltas no caminho por volta."""
 
         return self.tyre.age_laps if self.tyre_wear_laps is None else self.tyre_wear_laps
+
+    #: Agua na pista (0-1) prevista para a volta decidida (o radar da
+    #: equipe); ``None`` desliga a decisao por clima (contrato anterior).
+    surface_water: float | None = None
 
     def __post_init__(self) -> None:
         """Valide somente o contexto novo, preservando o contrato legado.
@@ -271,6 +310,13 @@ class StrategyState:
             or self.tyre_wear_laps < 0
         ):
             raise ValueError("tyre_wear_laps deve ser finito e não negativo")
+        if self.surface_water is not None and (
+            isinstance(self.surface_water, bool)
+            or not isinstance(self.surface_water, (int, float))
+            or not isfinite(self.surface_water)
+            or not 0.0 <= self.surface_water <= 1.0
+        ):
+            raise ValueError("surface_water deve estar em [0, 1]")
 
 
 @dataclass(frozen=True, slots=True)
@@ -536,9 +582,12 @@ class HeuristicPitStrategy:
         "_heuristics",
         "_offset_laps",
         "_parameters",
+        "_reference_lap_ms",
         "_track",
         "_tyre_management_factor",
         "_compulsory_wear_target_laps",
+        "_weather_switch_bias",
+        "_wet_tyres",
     )
 
     def __init__(
@@ -551,8 +600,17 @@ class HeuristicPitStrategy:
         dry_compounds: Sequence[str] = _DEFAULT_DRY_COMPOUNDS,
         fuel_traits: FuelStrategyTraits = NEUTRAL_FUEL_TRAITS,
         compulsory_wear_target_laps: float | None = None,
+        *,
+        wet_tyres: WetTyreParameters = ASSUMED_WET_TYRES,
+        reference_lap_ms: float = 90_000.0,
+        weather_switch_bias: float = 1.0,
     ) -> None:
-        """Construa uma politica pura e valide todo o catalogo antes da corrida."""
+        """Construa uma politica pura e valide todo o catalogo antes da corrida.
+
+        ``reference_lap_ms`` converte a perda de aderencia do pneu errado em
+        tempo por volta na decisao por clima; ``weather_switch_bias`` e o vies
+        do piloto (:func:`draw_weather_switch_bias`).
+        """
 
         if (
             isinstance(tyre_management_factor, bool)
@@ -591,6 +649,21 @@ class HeuristicPitStrategy:
             or compulsory_wear_target_laps < 0
         ):
             raise ValueError("compulsory_wear_target_laps deve ser finito e não negativo")
+        for name, value in (
+            ("reference_lap_ms", reference_lap_ms),
+            ("weather_switch_bias", weather_switch_bias),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not isfinite(value)
+                or value <= 0
+            ):
+                raise ValueError(f"{name} deve ser positivo e finito")
+        if set(compounds) & set(WET_COMPOUNDS):
+            raise ValueError("dry_compounds nao pode conter pneus de chuva")
+        for compound in WET_COMPOUNDS:
+            parameters.compound(compound)
 
         self._parameters = parameters
         self._track = track
@@ -600,18 +673,28 @@ class HeuristicPitStrategy:
         self._dry_compounds = compounds
         self._fuel_traits = fuel_traits
         self._compulsory_wear_target_laps = compulsory_wear_target_laps
+        self._wet_tyres = wet_tyres
+        self._reference_lap_ms = float(reference_lap_ms)
+        self._weather_switch_bias = float(weather_switch_bias)
 
     def decide(self, state: StrategyState) -> PitDecision:
-        """Decida a parada sem sortear nem manter estado interno mutavel."""
+        """Decida a parada sem sortear nem manter estado interno mutavel.
 
-        if state.tyre.compound not in self._dry_compounds:
+        Com ``state.surface_water``, o clima vem primeiro: se o pneu montado
+        nao e o melhor para a agua atual e a perda prevista paga a parada, o
+        carro para para o composto certo (:meth:`_weather_switch`). Paradas
+        por desgaste ou combustivel com a pista molhada montam o pneu de chuva
+        indicado, e nao um slick. Com pneu de chuva montado, nao ha parada por
+        desgaste: a vida tipica cobre o que resta de uma fase molhada.
+        """
+
+        known = (*self._dry_compounds, *WET_COMPOUNDS)
+        if state.tyre.compound not in known:
             raise ValueError(
                 f"composto atual {state.tyre.compound!r} nao pertence a "
-                "dry_compounds"
+                "dry_compounds nem aos pneus de chuva"
             )
-        unknown_used = sorted(
-            set(state.compounds_used).difference(self._dry_compounds)
-        )
+        unknown_used = sorted(set(state.compounds_used).difference(known))
         if unknown_used:
             raise ValueError(
                 f"compounds_used contem compostos fora de dry_compounds: "
@@ -619,15 +702,71 @@ class HeuristicPitStrategy:
             )
         if state.lap_number >= state.total_laps:
             return PitDecision(False)
+        wet_class = None
+        if state.surface_water is not None:
+            switch = self._weather_switch(state)
+            if switch is not None:
+                return switch
+            best = best_tyre_class(state.surface_water, self._wet_tyres)
+            wet_class = None if best == SLICK else best
         if state.fuel is not None:
-            return self._decide_with_fuel(state, state.fuel)
-        return self._decide_tyres(state)
+            decision = self._decide_with_fuel(state, state.fuel)
+        elif state.tyre.compound in WET_COMPOUNDS:
+            decision = PitDecision(False)
+        else:
+            decision = self._decide_tyres(state)
+        if decision.pit and wet_class is not None and decision.compound != wet_class:
+            decision = PitDecision(True, wet_class, decision.refuel_kg)
+        return decision
+
+    def _needs_second_compound(self, state: StrategyState) -> bool:
+        """Regra de dois compostos secos, suspensa se houve pneu de chuva."""
+
+        used = (*state.compounds_used, state.tyre.compound)
+        if wet_compound_used(used):
+            return False
+        return len(frozenset(used)) < 2
+
+    def _weather_switch(self, state: StrategyState) -> PitDecision | None:
+        """Pare para o composto da agua atual quando a perda paga a parada.
+
+        A perda por volta do pneu errado vem da aderencia relativa
+        (``relative_grip``) pela sensibilidade da pista mediana
+        (``aderencia ** -0,6``), vezes a volta de referencia. A decisao supoe
+        que a condicao dura ``switch_horizon_laps`` voltas (ou o que resta) e
+        compara com a perda de boxes do circuito, barateada por SC/VSC e
+        multiplicada pelo vies do piloto. Troca gratuita (vermelha) sempre
+        compensa.
+        """
+
+        assert state.surface_water is not None
+        water = state.surface_water
+        best = best_tyre_class(water, self._wet_tyres)
+        if tyre_class(state.tyre.compound) == best:
+            return None
+        remaining = state.total_laps - state.lap_number
+        if remaining < 1:
+            return None
+        if best == SLICK:
+            target = self._next_compound(remaining, state.tyre.compound, False)
+        else:
+            target = best
+        if state.free_tyre_change:
+            return PitDecision(True, target)
+        grip = relative_grip(state.tyre.compound, water, self._wet_tyres)
+        loss_per_lap_ms = self._reference_lap_ms * (grip ** -0.6 - 1.0)
+        horizon = min(remaining, self._wet_tyres.switch_horizon_laps)
+        stop_cost_ms = (
+            self._track.pit_loss_ms * state.pit_loss_factor * self._weather_switch_bias
+        )
+        if loss_per_lap_ms * horizon > stop_cost_ms:
+            return PitDecision(True, target)
+        return None
 
     def _decide_tyres(self, state: StrategyState) -> PitDecision:
         """Regra so de pneus: e o comportamento sem reabastecimento."""
 
-        used = frozenset((*state.compounds_used, state.tyre.compound))
-        needs_second_compound = len(used) < 2
+        needs_second_compound = self._needs_second_compound(state)
         remaining_after_current = state.total_laps - state.lap_number
         next_compound = self._next_compound(
             remaining_after_current, state.tyre.compound, needs_second_compound
@@ -829,9 +968,7 @@ class HeuristicPitStrategy:
         laps_after = state.total_laps - state.lap_number
         reserve_kg = plan.parameters.finish_reserve_kg
         margin_kg = self._fuel_traits.margin_laps * burn_kg
-        needs_second = (
-            len(frozenset((*state.compounds_used, state.tyre.compound))) < 2
-        )
+        needs_second = self._needs_second_compound(state)
 
         # O tanque ja cobre ate a bandeirada: so o pneu decide, e uma parada
         # eventual nao abastece.

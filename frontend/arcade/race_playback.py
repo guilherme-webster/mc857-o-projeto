@@ -728,3 +728,28 @@ def _next_lap_end(car: CarTimeline, laps: float) -> float:
     if not times:
         return car.finish_time_ms
     return times[min(floor(laps), len(times) - 1)]
+
+
+def track_condition_label(race: Mapping, lap: int) -> str | None:
+    """Agua e temperatura do asfalto na volta ``lap``, para o painel de clima.
+
+    Le ``track_conditions`` do resultado (um registro por volta, ADR 0015);
+    voltas alem do fim usam o ultimo registro. Corridas antigas, sem o bloco,
+    devolvem ``None`` e o painel mostra so a chuva, como antes. A agua sai em
+    porcentagem do indice 0-1 (nao e milimetro de chuva).
+    """
+
+    rows = race.get("track_conditions") if isinstance(race, Mapping) else None
+    if not isinstance(rows, Sequence) or not rows:
+        return None
+    row = rows[min(max(lap, 1), len(rows)) - 1]
+    if not isinstance(row, Mapping):
+        return None
+    water = row.get("surface_water")
+    temp = row.get("track_temp_c")
+    parts = []
+    if isinstance(water, (int, float)) and water > 0:
+        parts.append(f"agua {round(water * 100)}%")
+    if isinstance(temp, (int, float)):
+        parts.append(f"pista {temp:.0f} °C")
+    return " · ".join(parts) or None

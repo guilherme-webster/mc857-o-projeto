@@ -95,6 +95,31 @@ class CompoundParameters:
             raise ValueError("typical_stint_laps deve ser positivo")
 
 
+#: Pneus de chuva (issue #120). O ritmo deles nao vem de ``pace_offset_ms``:
+#: a diferenca para o slick depende da agua e e cobrada pela aderencia
+#: (``domain/wet_tyres.py``). Aqui ficam so o desgaste e a vida tipica, com a
+#: mesma ordem de grandeza dos compostos secos; o superaquecimento em pista
+#: secando multiplica o desgaste no motor. Hipoteses, nao medidas.
+ASSUMED_WET_COMPOUNDS = (
+    CompoundParameters(
+        name="INTERMEDIATE",
+        pace_offset_ms=0.0,
+        degradation_ms_per_lap=20.0,
+        degradation_ms_per_lap2=0.0,
+        typical_stint_laps=30,
+        origin="assumed",
+    ),
+    CompoundParameters(
+        name="WET",
+        pace_offset_ms=0.0,
+        degradation_ms_per_lap=15.0,
+        degradation_ms_per_lap2=0.0,
+        typical_stint_laps=35,
+        origin="assumed",
+    ),
+)
+
+
 @dataclass(frozen=True, slots=True)
 class TrackParameters:
     """Propriedades do circuito que afetam o modelo, nao a geometria desenhada.
@@ -286,6 +311,11 @@ class ModelParameters:
         """
 
         for candidate in self.compounds:
+            if candidate.name == name:
+                return candidate
+        # Pneus de chuva (#120) nao existem no artefato calibrado da #40, que
+        # descreve so compostos secos; seus parametros sao hipoteses do codigo.
+        for candidate in ASSUMED_WET_COMPOUNDS:
             if candidate.name == name:
                 return candidate
         raise KeyError(
