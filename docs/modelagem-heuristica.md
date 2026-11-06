@@ -157,6 +157,19 @@ retardatários (a compressão do SC já os traz para perto do pelotão).
 
 ## 6. Paradas
 
+No 2D, o [ADR 0014](adr/0014-consumo-e-desgaste-por-movimento.md) integra
+combustível e desgaste por movimento. A estratégia recebe o desgaste
+equivalente acumulado, separado da idade real. Não há segunda queima nem
+desgaste adicional ao fechar a volta. Os fatores de consumo SC/VSC da tabela
+abaixo continuam exclusivos do motor por volta; no 2D o esforço menor produz
+a economia. Fórmulas e limites em [consumo-desgaste-dinamicos.md](consumo-desgaste-dinamicos.md).
+
+A primeira troca obrigatória no 2D usa um orçamento de desgaste, com preferência
+individual semeada de ±2 voltas equivalentes (`spatial-pit-planning-v1`). Assim,
+o grid não precisa inteiro aguardar o último prazo comum para usar o segundo
+composto. O prazo de segurança permanece, e decisões coincidentes continuam
+possíveis. O motor por volta conserva sua política anterior.
+
 No motor 2D, o [ADR 0012](adr/0012-percurso-espacial-de-pit-lane.md) substitui
 a perda diluída por um percurso físico hipotético dos boxes. O carro entra
 na próxima passagem pela entrada, percorre a polilinha a até 80 km/h, para

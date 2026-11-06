@@ -1,5 +1,9 @@
 # Modelagem inicial de pneus: estudo e contrato proposto
 
+> Atualização em 26/10/2026: o motor 2D passou a acumular desgaste equivalente
+> por movimento e carga de curva na issue #104. Os pesos são assumidos, não
+> estimados por este estudo. Consulte [consumo-desgaste-dinamicos.md](consumo-desgaste-dinamicos.md).
+
 > Atualização em 16/10/2026: `backend/app/engine/loader.py`, citado no
 > levantamento, foi removido. Os pneus da corrida vêm hoje do motor calibrado
 > da #40 (`data/parameters/model-v1.json`: penalidade por composto e

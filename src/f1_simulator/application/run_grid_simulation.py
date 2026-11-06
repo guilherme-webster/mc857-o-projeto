@@ -151,6 +151,19 @@ def _setup_echo(setup: RaceSetup, engine: str = "detailed") -> dict:
     return payload
 
 
+def _strategy_offset(rng: RandomSource, driver_id: str) -> int:
+    """Preferência por piloto em fluxo isolado, idêntica nos dois motores."""
+
+    amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
+    stream = rng.spawn(f"strategy:offset:{driver_id}")  # type: ignore[attr-defined]
+    return (
+        uniform_index(
+            stream, f"strategy:offset:{driver_id}:uniform-index", 2 * amplitude + 1
+        )
+        - amplitude
+    )
+
+
 def _run_2d(
     grid,
     attributes,
@@ -178,6 +191,7 @@ def _run_2d(
             "attributes": attributes[entry.driver_id],
             "aggression": attributes[entry.driver_id].aggression,
             "compound": "MEDIUM",
+            "strategy_offset_laps": _strategy_offset(rng, entry.driver_id),
         }
         for position, entry in enumerate(grid, start=1)
     ]
@@ -385,26 +399,13 @@ def run_detailed_grid_simulation(
             race_control=race_control,
         )
 
-    amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
     known_team_ids = {candidate.team_id for candidate in parameters.team_reliability}
     entrants = []
     reliability_fallbacks = []
     fuel_traits_by_driver: dict[str, object] = {}
     for grid_position, entry in enumerate(grid, start=1):
         driver_attributes = attributes[entry.driver_id]
-        # O intervalo inclusivo [-amplitude, +amplitude] tem largura impar; o
-        # deslocamento posterior devolve exatamente o offset inteiro esperado.
-        strategy_rng = rng.spawn(  # type: ignore[attr-defined]
-            f"strategy:offset:{entry.driver_id}"
-        )
-        offset_laps = (
-            uniform_index(
-                strategy_rng,
-                f"strategy:offset:{entry.driver_id}:uniform-index",
-                2 * amplitude + 1,
-            )
-            - amplitude
-        )
+        offset_laps = _strategy_offset(rng, entry.driver_id)
         team_is_modeled = entry.team_id in known_team_ids
         reliability_factor = (
             parameters.reliability_factor(entry.team_id) if team_is_modeled else 1.0

@@ -16,6 +16,7 @@ está em metros, como em ``cumulative_distance_m``.
 from __future__ import annotations
 
 from bisect import bisect_right
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from f1_simulator.domain.pit_lane import (
@@ -239,6 +240,7 @@ class CarSpaceState:
     #: ``True`` quando o carro abandonou por contato; para de andar e deixa de
     #: bloquear ou disputar.
     retired: bool = False
+    retired_time_s: float | None = None
     #: Fator (<=1 tipico) aplicado ao teto de velocidade neste trecho. E o gancho
     #: por onde pneu, combustivel e clima reduzem o ritmo do carro no motor 2D,
     #: atualizado volta a volta por quem orquestra a corrida. 1.0 e neutro.
@@ -247,6 +249,10 @@ class CarSpaceState:
     #: classificatória continua em ``distance_m``; não é a extensão do atalho.
     pit_request: PitStopRequest | None = None
     pit_state: PitLaneState | None = None
+    #: Estado de recursos emitido nos snapshots; atualizado pelo domínio a
+    #: cada movimento, inclusive serviço/fila dos boxes.
+    fuel_kg: float | None = None
+    tyre_wear_laps: float | None = None
 
     def clamp_lateral(self, bounds: LateralBounds) -> None:
         """Mantenha o carro dentro da pista, sem estourar a borda."""
@@ -345,6 +351,55 @@ class FieldSample:
     cars: tuple[CarSpaceState, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class MotionIncrement:
+    """Movimento efetivo de um subpasso, antes de serviço ou fim de volta.
+
+    ``distance_m`` é extensão física, distinta do progresso classificatório
+    nos boxes. A velocidade média usa essa distância/tempo; o esforço
+    longitudinal vem da mudança de velocidade, não do teto desejado.
+    """
+
+    start_distance_m: float
+    distance_m: float
+    dt_s: float
+    speed_ms: float
+    acceleration_ms2: float
+    time_s: float
+    in_pit: bool
+
+
+def _notify_motion(
+    car: CarSpaceState,
+    callback: Callable[[CarSpaceState, MotionIncrement], None] | None,
+    start_distance: float,
+    start_speed: float,
+    dt_s: float,
+    time_s: float,
+    physical_distance: float | None = None,
+    in_pit: bool = False,
+) -> None:
+    if callback is None or dt_s <= 1e-10:
+        return
+    distance = (
+        max(0.0, car.distance_m - start_distance)
+        if physical_distance is None
+        else physical_distance
+    )
+    callback(
+        car,
+        MotionIncrement(
+            start_distance,
+            distance,
+            dt_s,
+            distance / dt_s,
+            0.0 if in_pit else (car.speed_ms - start_speed) / dt_s,
+            time_s,
+            in_pit,
+        ),
+    )
+
+
 def _same_lane(a: CarSpaceState, b: CarSpaceState) -> bool:
     """Duas faixas se sobrepoem se os corpos se cruzam lateralmente."""
 
@@ -364,6 +419,7 @@ def _advance_pit_lane(
     time_s: float,
     on_event,
     race_distance_m: float,
+    on_motion=None,
 ) -> None:
     """Consuma movimento e serviço sem custo temporal adicional por volta.
 
@@ -398,6 +454,18 @@ def _advance_pit_lane(
             car.pit_state = replace(
                 state, service_remaining_s=state.service_remaining_s - used
             )
+            _notify_motion(
+                car,
+                on_motion,
+                car.distance_m,
+                0.0,
+                used,
+                time_s - remaining,
+                physical_distance=0.0,
+                in_pit=True,
+            )
+            if car.retired:
+                return
             if car.pit_state.service_remaining_s <= 1e-9:
                 car.pit_state = replace(
                     car.pit_state, serviced=True, service_remaining_s=0.0
@@ -421,6 +489,18 @@ def _advance_pit_lane(
                 for other in cars
             )
             car.speed_ms = 0.0 if blocked else parameters.speed_limit_kmh / 3.6
+            _notify_motion(
+                car,
+                on_motion,
+                car.distance_m,
+                0.0,
+                remaining,
+                time_s,
+                physical_distance=0.0,
+                in_pit=True,
+            )
+            if car.retired:
+                return
             if not blocked:
                 car.pit_state = None
                 car.pit_request = None
@@ -444,13 +524,37 @@ def _advance_pit_lane(
         )
         if step <= 1e-10:
             car.speed_ms = 0.0
+            _notify_motion(
+                car,
+                on_motion,
+                car.distance_m,
+                0.0,
+                remaining,
+                time_s,
+                physical_distance=0.0,
+                in_pit=True,
+            )
             break
-        remaining -= step / (parameters.speed_limit_kmh / 3.6)
+        elapsed = step / (parameters.speed_limit_kmh / 3.6)
+        remaining -= elapsed
+        start_distance = car.distance_m
         car.speed_ms = parameters.speed_limit_kmh / 3.6
         car.pit_state = replace(state, path_distance_m=state.path_distance_m + step)
         car.distance_m = path.race_distance(
             request.entry_distance_m, car.pit_state.path_distance_m
         )
+        _notify_motion(
+            car,
+            on_motion,
+            start_distance,
+            car.speed_ms,
+            elapsed,
+            time_s - remaining,
+            physical_distance=step,
+            in_pit=True,
+        )
+        if car.retired:
+            return
 
 
 def integrate_field(
@@ -468,6 +572,7 @@ def integrate_field(
     pit_lane: PitLanePath | None = None,
     pit_parameters: PitLaneParameters = PitLaneParameters(),
     on_pit_event=None,
+    on_motion=None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
@@ -549,15 +654,16 @@ def integrate_field(
                     dt_s,
                     time_s,
                     on_pit_event,
-                    race_distance,
+                    race_distance, on_motion,
                 )
                 completed = int(car.distance_m // lap_length)
-                if on_lap_complete is not None and completed > laps_done[car.driver_id]:
+                if not car.retired and on_lap_complete is not None and completed > laps_done[car.driver_id]:
                     laps_done[car.driver_id] = completed
                     if completed <= total_laps:
                         on_lap_complete(car, completed)
                 continue
             cum, ceiling = ceilings[car.driver_id]
+            start_distance, start_speed = car.distance_m, car.speed_ms
             physics = physics_by_id[car.driver_id]
             car_lap = int(car.distance_m // lap_length) + 1
             neutralized = neutralized_lap is not None and neutralized_lap(car_lap)
@@ -624,6 +730,7 @@ def integrate_field(
                         car.distance_m, request.entry_distance_m - 1e-6
                     )
                     car.speed_ms = 0.0
+                    _notify_motion(car, on_motion, start_distance, start_speed, dt_s, time_s)
                     continue
                 travel_s = max(
                     0.0,
@@ -631,6 +738,16 @@ def integrate_field(
                     / max(car.speed_ms, 1e-9),
                 )
                 car.distance_m = request.entry_distance_m
+                _notify_motion(
+                    car,
+                    on_motion,
+                    start_distance,
+                    start_speed,
+                    travel_s,
+                    time_s - dt_s + travel_s,
+                )
+                if car.retired:
+                    continue
                 car.lateral_m = car.target_lateral_m = 0.0
                 car.overtaking = None
                 car.pit_state = PitLaneState()
@@ -645,15 +762,16 @@ def integrate_field(
                     max(0.0, dt_s - travel_s),
                     time_s,
                     on_pit_event,
-                    race_distance,
+                    race_distance, on_motion,
                 )
             else:
                 car.distance_m = proposed
+                _notify_motion(car, on_motion, start_distance, start_speed, dt_s, time_s)
 
             # Volta concluida: avisa o orquestrador (pneu, combustivel, clima
             # atualizam ``speed_scale`` do carro para a proxima volta).
             completed = int(car.distance_m // lap_length)
-            if on_lap_complete is not None and completed > laps_done[car.driver_id]:
+            if not car.retired and on_lap_complete is not None and completed > laps_done[car.driver_id]:
                 laps_done[car.driver_id] = completed
                 if completed <= total_laps:
                     on_lap_complete(car, completed)
@@ -903,7 +1021,10 @@ def _frozen(car: CarSpaceState) -> CarSpaceState:
         target_lateral_m=car.target_lateral_m,
         overtaking=car.overtaking,
         retired=car.retired,
+        retired_time_s=car.retired_time_s,
         speed_scale=car.speed_scale,
         pit_request=car.pit_request,
         pit_state=car.pit_state,
+        fuel_kg=car.fuel_kg,
+        tyre_wear_laps=car.tyre_wear_laps,
     )
