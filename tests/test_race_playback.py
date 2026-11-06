@@ -9,7 +9,7 @@ from frontend.arcade.race_playback import RacePlayback
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.driver_attributes import ATTRIBUTE_FIELDS, DriverAttributes
 from f1_simulator.domain.random_source import SeededRandomSource
@@ -452,7 +452,7 @@ def run_engine_race(**options: object) -> dict:
             composure=1.0,
             sources={name: "generated" for name in ATTRIBUTE_FIELDS},
         )
-    return run_detailed_grid_simulation(
+    return run_grid_simulation(
         grid,
         attributes,
         RaceSetup(total_laps=20, track_id="circuit:1"),

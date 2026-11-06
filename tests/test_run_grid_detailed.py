@@ -10,7 +10,7 @@ from f1_simulator.application.build_grid import GridEntry, reorder_grid
 from f1_simulator.application.run_grid_simulation import (
     ASSUMED_REFERENCE_PACE_MS_PER_KM,
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.driver_attributes import ATTRIBUTE_FIELDS, DriverAttributes
 from f1_simulator.domain.race_control import HEURISTIC_RACE_CONTROL
@@ -117,7 +117,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
             "f1_simulator.application.run_grid_simulation.simulate_detailed_race",
             side_effect=fake_simulation,
         ):
-            result = run_detailed_grid_simulation(
+            result = run_grid_simulation(
                 self.grid,
                 self.attributes,
                 RaceSetup(5, track_id="circuit:1"),
@@ -166,7 +166,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
             "f1_simulator.application.run_grid_simulation.simulate_detailed_race",
             side_effect=fake_simulation,
         ):
-            result = run_detailed_grid_simulation(
+            result = run_grid_simulation(
                 reordered,
                 self.attributes,
                 RaceSetup(1, track_id="circuit:1"),
@@ -185,7 +185,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
         )
 
     def test_uses_calibrated_track_and_geometry_reference(self) -> None:
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             self.grid,
             self.attributes,
             RaceSetup(2, track_id="circuit:1"),
@@ -202,7 +202,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
         self.assertEqual(result["track_reference"]["model_track_origin"], "calibrated")
 
     def test_uses_assumed_track_fallback_for_uncalibrated_track(self) -> None:
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             self.grid,
             self.attributes,
             RaceSetup(1, track_id="circuit:999"),
@@ -217,7 +217,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
         self.assertEqual(result["track_reference"]["model_track_origin"], "assumed")
 
     def test_without_track_uses_nominal_lap_and_declares_assumption(self) -> None:
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             self.grid,
             self.attributes,
             RaceSetup(1),
@@ -236,7 +236,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
     def test_same_seed_reproduces_race_including_control_events(self) -> None:
         setup = RaceSetup(12, track_id="circuit:1")
 
-        first = run_detailed_grid_simulation(
+        first = run_grid_simulation(
             self.grid,
             self.attributes,
             setup,
@@ -244,7 +244,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
             lap_length_m=4_000.0,
             rng=SeededRandomSource(67202),
         )
-        repeated = run_detailed_grid_simulation(
+        repeated = run_grid_simulation(
             self.grid,
             self.attributes,
             setup,
@@ -261,7 +261,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
     def test_race_control_events_are_exposed_by_the_use_case(self) -> None:
         grid = (GridEntry("driver:1", "Piloto", "team:solid", "Solida"),)
 
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             grid,
             {"driver:1": attribute("driver:1")},
             RaceSetup(3, track_id="circuit:1"),
@@ -279,7 +279,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
         grid = (GridEntry("driver:1", "Piloto", "team:solid", "Solida"),)
         setup = RaceSetup(3, track_id="circuit:1")
 
-        faster = run_detailed_grid_simulation(
+        faster = run_grid_simulation(
             grid,
             {"driver:1": attribute("driver:1", pace_offset_pct=-1.0)},
             setup,
@@ -287,7 +287,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
             lap_length_m=4_000.0,
             rng=SeededRandomSource(55),
         )
-        slower = run_detailed_grid_simulation(
+        slower = run_grid_simulation(
             grid,
             {"driver:1": attribute("driver:1", pace_offset_pct=1.0)},
             setup,
@@ -305,7 +305,7 @@ class DetailedGridSimulationTest(unittest.TestCase):
         self, engine: str, tournament_seed: int, stage_index: int
     ) -> dict:
         geometry = small_geometry() if engine == "2d" else None
-        return run_detailed_grid_simulation(
+        return run_grid_simulation(
             self.grid,
             self.attributes,
             RaceSetup(

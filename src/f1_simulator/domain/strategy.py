@@ -431,7 +431,7 @@ class HeuristicPitStrategy:
     A regra economica compara dois cenarios de uma unica decisao: continuar com
     o jogo atual ate a bandeirada ou fazer uma parada agora e terminar com um
     jogo novo. Numa parada normal, a volta corrente e a volta de entrada e ainda
-    usa o pneu antigo, exatamente como ``simulate_detailed_race``; o jogo novo
+    usa o pneu antigo, exatamente como ``simulate_2d_race``; o jogo novo
     passa a valer na volta seguinte. Uma troca gratuita por bandeira vermelha
     disponibiliza o jogo novo imediatamente e nao soma perda de boxes.
 

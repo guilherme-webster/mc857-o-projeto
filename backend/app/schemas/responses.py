@@ -113,7 +113,6 @@ class RaceSetupRequest(BaseModel):
     total_laps: int = Field(ge=1, le=200)
     track_id: str | None = None
     weather: list[WeatherSegmentRequest] = Field(default_factory=list)
-    engine: Literal["detailed", "2d"] = "detailed"
     tournament_seed: int | None = Field(default=None, ge=0, le=2**53 - 1)
     stage_index: int = Field(default=0, ge=0)
 

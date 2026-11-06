@@ -176,20 +176,3 @@ def steady_lap(
 
 def lap_time_ms(samples: tuple[SpeedSample, ...]) -> float:
     return samples[-1].time_s * 1000.0
-
-
-def speed_at(samples: tuple[SpeedSample, ...], distance_m: float) -> float:
-    lap_length = samples[-1].distance_m
-    d = distance_m % lap_length if lap_length else 0.0
-    lo, hi = 0, len(samples) - 1
-    while lo < hi:
-        mid = (lo + hi) // 2
-        if samples[mid].distance_m < d:
-            lo = mid + 1
-        else:
-            hi = mid
-    i = max(1, lo)
-    a, b = samples[i - 1], samples[i]
-    span = b.distance_m - a.distance_m
-    f = (d - a.distance_m) / span if span > 0 else 0.0
-    return a.speed_ms + (b.speed_ms - a.speed_ms) * f

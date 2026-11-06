@@ -371,13 +371,12 @@ def run_grid(
     total_laps,
     track_id,
     weather,
-    engine="detailed",
     tournament_seed=None,
     stage_index=0,
 ):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
-        run_detailed_grid_simulation,
+        run_grid_simulation,
     )
     from f1_simulator.domain.random_source import (
         TOURNAMENT_STAGE_STREAM_VERSION,
@@ -411,7 +410,7 @@ def run_grid(
     )
     rng = SeededRandomSource(seed).spawn("race")
     try:
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             pairs,
             attributes,
             setup,
@@ -422,7 +421,6 @@ def run_grid(
             geometry=geometry,
             fuel_parameters=_fuel_parameters(),
             pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
-            engine=engine,
             grid_start=_grid_start_parameters(),
         )
     except ValueError as error:

@@ -10,42 +10,22 @@ from f1_simulator.application.reference_laps import (
     METHOD_VERSION as REFERENCE_LAPS_METHOD_VERSION,
 )
 from f1_simulator.application.reference_laps import ReferenceLap
-from f1_simulator.domain.attribute_effects import detailed_degradation_factor
 from f1_simulator.domain.driver_attributes import DriverAttributes
 from f1_simulator.domain.fuel import (
     FuelModelParameters,
     FuelPlan,
-    RefuelStops,
-    sample_refuel_stops,
-)
-from f1_simulator.domain.grid_start import (
-    GridStartParameters,
-    LEGACY_GRID_START_PARAMETERS,
 )
 from f1_simulator.domain.model_parameters import ModelParameters
 from f1_simulator.domain.race_control import (
     HEURISTIC_RACE_CONTROL,
     RaceControlParameters,
 )
-from f1_simulator.domain.race_simulation import (
-    NOMINAL_LAP_TIME_MS,
-    Entrant,
-    simulate_detailed_race,
-)
 from f1_simulator.domain.random_source import (
     MAX_JSON_SAFE_SEED,
     RandomSource,
     derive_tournament_stage_random_source,
-    uniform_index,
 )
 from f1_simulator.domain.track_geometry import TrackGeometry
-from f1_simulator.domain.strategy import (
-    DEFAULT_FUEL_TRAIT_HEURISTICS,
-    DEFAULT_HEURISTIC_PIT_PARAMETERS,
-    NEUTRAL_FUEL_TRAITS,
-    HeuristicPitStrategy,
-    draw_fuel_traits,
-)
 from f1_simulator.domain.weather import (
     ASSUMED_WEATHER_EFFECT,
     ASSUMED_WEATHER_PARAMETERS,
@@ -97,6 +77,11 @@ ASSUMED_REFERENCE_PACE = ReferencePaceParameters(pace_ms_per_km=17_000.0)
 
 ASSUMED_REFERENCE_PACE_MS_PER_KM = ASSUMED_REFERENCE_PACE.pace_ms_per_km
 """Ritmo assumido de 17 s/km, apenas como ordem de grandeza da F1 moderna."""
+
+#: Volta de referencia nominal (ms), ultima reserva quando nao ha pista nem
+#: comprimento. No motor 2D so entra no eco de ``assumptions``, porque o 2D
+#: exige geometria e nao chega a simular sem pista.
+NOMINAL_LAP_TIME_MS = 90_000.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,7 +217,7 @@ def _speed_profiles_by_driver(geometry, grid, attributes):
     return profiles
 
 
-def run_detailed_grid_simulation(
+def run_grid_simulation(
     grid: Sequence[GridEntry],
     attributes: dict[str, DriverAttributes],
     setup: RaceSetup,
@@ -242,15 +227,17 @@ def run_detailed_grid_simulation(
     rng: RandomSource,
     reference_pace_ms_per_km: float = ASSUMED_REFERENCE_PACE_MS_PER_KM,
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
-    dispute_model: Literal["legacy", "pressure"] = "pressure",
     reference_lap: ReferenceLap | None = None,
     geometry: TrackGeometry | None = None,
     fuel_parameters: FuelModelParameters | None = None,
     pit_entry_fraction: float | None = None,
-    engine: Literal["detailed", "2d"] = "detailed",
-    grid_start: GridStartParameters = LEGACY_GRID_START_PARAMETERS,
 ) -> dict:
-    """Execute o grid no motor detalhado sem conhecer arquivo, HTTP ou banco.
+    """Execute o grid no motor 2D (ADR 0011) sem conhecer arquivo, HTTP ou banco.
+
+    O motor 2D e o unico da corrida: a posicao x,y evolui por passos de tempo e
+    ultrapassagem e colisao emergem da fisica espacial. Este caso de uso prepara
+    o cenario compartilhado (volta de referencia, plano de combustivel, pista) e
+    delega a simulacao a ``_run_2d``. O motor detalhado por volta foi aposentado.
 
     A ordem recebida em ``grid`` e a ordem de largada, começando em um. Quando
     ``setup.track_id`` existe em ``parameters.tracks``, seus parametros
@@ -294,10 +281,6 @@ def run_detailed_grid_simulation(
     estrategia: o primeiro stint do plano de paradas, nao a corrida inteira.
     ``pit_entry_fraction`` e a posicao da entrada dos boxes na volta, tirada
     da geometria do pit lane; ``None`` supoe a entrada na linha.
-
-    ``grid_start`` atenua o atraso temporal apenas no motor por volta. O 2D
-    representa o grid em metros e recebe os carros em filas de dois; repassar o
-    fator a ele cobraria duas vezes a mesma vantagem da posicao de largada.
     """
 
     if (
@@ -369,154 +352,20 @@ def run_detailed_grid_simulation(
     if missing_attributes:
         raise ValueError(f"attributes ausentes para pilotos: {missing_attributes}")
 
-    if engine == "2d":
-        if geometry is None:
-            raise ValueError("o motor 2D exige geometria da pista")
-        return _run_2d(
-            grid,
-            attributes,
-            setup,
-            parameters=parameters,
-            geometry=geometry,
-            track=track,
-            rng=rng,
-            fuel_plan=fuel_plan,
-            reference_lap_time_ms=reference_lap_time_ms,
-            race_control=race_control,
-        )
-
-    amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
-    known_team_ids = {candidate.team_id for candidate in parameters.team_reliability}
-    entrants = []
-    reliability_fallbacks = []
-    fuel_traits_by_driver: dict[str, object] = {}
-    for grid_position, entry in enumerate(grid, start=1):
-        driver_attributes = attributes[entry.driver_id]
-        # O intervalo inclusivo [-amplitude, +amplitude] tem largura impar; o
-        # deslocamento posterior devolve exatamente o offset inteiro esperado.
-        strategy_rng = rng.spawn(  # type: ignore[attr-defined]
-            f"strategy:offset:{entry.driver_id}"
-        )
-        offset_laps = (
-            uniform_index(
-                strategy_rng,
-                f"strategy:offset:{entry.driver_id}:uniform-index",
-                2 * amplitude + 1,
-            )
-            - amplitude
-        )
-        team_is_modeled = entry.team_id in known_team_ids
-        reliability_factor = (
-            parameters.reliability_factor(entry.team_id) if team_is_modeled else 1.0
-        )
-        if not team_is_modeled:
-            reliability_fallbacks.append(
-                {
-                    "driver_id": entry.driver_id,
-                    "team_id": entry.team_id,
-                    "reliability_factor": 1.0,
-                }
-            )
-        refuel_stops = None
-        fuel_traits = NEUTRAL_FUEL_TRAITS
-        if refuel_mode:
-            assert fuel_plan is not None
-            refuel_stops = _refuel_stops_for(
-                fuel_plan, track.pit_loss_ms, entry, setup.total_laps, rng
-            )
-            trait_label = f"strategy:fuel:{entry.driver_id}"
-            fuel_traits = draw_fuel_traits(
-                driver_attributes.aggression,
-                rng.spawn(trait_label),  # type: ignore[attr-defined]
-                trait_label,
-            )
-            fuel_traits_by_driver[entry.driver_id] = fuel_traits
-        strategy = HeuristicPitStrategy(
-            parameters,
-            track,
-            # O mesmo multiplicador que o motor aplica ao desgaste, para
-            # a decisao de parar enxergar o pneu que o carro tera.
-            tyre_management_factor=detailed_degradation_factor(driver_attributes),
-            offset_laps=offset_laps,
-            fuel_traits=fuel_traits,
-        )
-        start_fuel_kg = None
-        if refuel_mode:
-            assert fuel_plan is not None and refuel_stops is not None
-            start_fuel_kg = strategy.plan_start_fuel_kg(
-                fuel_plan, setup.total_laps, "MEDIUM", refuel_stops.mean_ms
-            )
-        entrants.append(
-            Entrant(
-                driver_id=entry.driver_id,
-                name=entry.driver_name,
-                reference_lap_time_ms=reference_lap_time_ms,
-                grid_position=grid_position,
-                strategy=strategy,
-                starting_compound="MEDIUM",
-                team_id=entry.team_id,
-                reliability_factor=reliability_factor,
-                start_fuel_kg=start_fuel_kg,
-                refuel_stops=refuel_stops,
-            )
-        )
-
-    lap_surface_water = None
-    if setup.weather:
-        lap_weather = simulate_weather(expand_segments(setup.weather, setup.total_laps))
-        lap_surface_water = tuple(item.state.surface_water for item in lap_weather)
-
-    result = simulate_detailed_race(
-        entrants,
-        total_laps=setup.total_laps,
+    if geometry is None:
+        raise ValueError("o motor 2D exige geometria da pista")
+    result = _run_2d(
+        grid,
+        attributes,
+        setup,
         parameters=parameters,
-        track=track,
-        rng=rng.spawn("detailed-race"),  # type: ignore[attr-defined]
-        attributes=attributes,
-        dispute_model=dispute_model,
-        race_control=race_control,
-        lap_surface_water=lap_surface_water,
         geometry=geometry,
-        fuel=fuel_plan,
-        grid_start=grid_start,
+        track=track,
+        rng=rng,
+        fuel_plan=fuel_plan,
+        reference_lap_time_ms=reference_lap_time_ms,
+        race_control=race_control,
     )
-    if geometry is not None:
-        result["speed_profiles"] = _speed_profiles_by_driver(
-            geometry, grid, attributes
-        )
-    result["setup"] = _setup_echo(setup)
-    # O history so tem retratos ao fim de cada volta; sem a largada, quem
-    # consome o resultado (a TrackView, por exemplo) nao sabe a posicao de
-    # partida nem o pneu da primeira volta.
-    result["starting_grid"] = [
-        {
-            "position": entrant.grid_position,
-            "driver_id": entrant.driver_id,
-            "compound": entrant.starting_compound,
-        }
-        for entrant in entrants
-    ]
-    if "fuel" in result:
-        for row in result["starting_grid"]:
-            row["fuel_kg"] = result["fuel"]["start_fuel_kg"][row["driver_id"]]
-        stops_by_driver = {
-            entrant.driver_id: entrant.refuel_stops
-            for entrant in entrants
-            if entrant.refuel_stops is not None
-        }
-        if stops_by_driver:
-            result["fuel"]["refuel_stop_mean_ms"] = {
-                driver_id: round(stops.mean_ms, 1)
-                for driver_id, stops in sorted(stops_by_driver.items())
-            }
-    result["reference_lap_time_ms"] = reference_lap_time_ms
-    result["track_reference"] = {
-        "requested_track_id": setup.track_id,
-        "model_track_id": track.circuit_id,
-        "model_track_name": track.name,
-        "model_track_origin": track.origin,
-        "lap_length_m": lap_length_m,
-    }
     result["assumptions"] = [
         *result.get("assumptions", []),
         {
@@ -540,67 +389,7 @@ def run_detailed_grid_simulation(
                 NOMINAL_LAP_TIME_MS if reference_source == "nominal_lap_time" else None
             ),
         },
-        {
-            "kind": "starting_compound",
-            "compound": "MEDIUM",
-            "origin": "assumed",
-            "parameter_version": "assumed-grid-starting-compound-v1",
-            "rationale": (
-                "Hipotese uniforme para ligar o grid ao modelo de pneus; o "
-                "catalogo atual nao informa o composto de largada."
-            ),
-        },
-        {
-            "kind": "pit_strategy",
-            **asdict(DEFAULT_HEURISTIC_PIT_PARAMETERS),
-        },
     ]
-    if fuel_traits_by_driver:
-        result["assumptions"].append(
-            {
-                "kind": "fuel_strategy",
-                **asdict(DEFAULT_FUEL_TRAIT_HEURISTICS),
-                "rationale": (
-                    "Hipotese heuristica: a agressividade do piloto e um sorteio "
-                    "proprio definem a folga de combustivel e a preferencia por "
-                    "mais ou menos paradas; a estrategia escolhe paradas e "
-                    "abastecimento pesando desgaste, peso e custo da parada."
-                ),
-                "drivers": {
-                    driver_id: {
-                        "margin_laps": round(traits.margin_laps, 3),
-                        "stop_cost_bias": round(traits.stop_cost_bias, 3),
-                    }
-                    for driver_id, traits in sorted(fuel_traits_by_driver.items())
-                },
-            }
-        )
-    if reliability_fallbacks:
-        result["assumptions"].append(
-            {
-                "kind": "team_reliability_fallback",
-                "origin": "assumed",
-                "parameter_version": "model-team-reliability-fallback-v1",
-                "rationale": (
-                    "IDs de equipe sem correspondencia exata no modelo usam "
-                    "o fator neutro 1.0, sem inferencia por nome."
-                ),
-                "entries": reliability_fallbacks,
-            }
-        )
-    if geometry is not None:
-        result["assumptions"].append(
-            {
-                "kind": "physical_lap_time",
-                "origin": "assumed",
-                "parameter_version": "assumed-car-physics-v1",
-                "rationale": (
-                    "ADR 0010: o tempo de volta emerge da velocidade por trecho "
-                    "derivada da curvatura, com envelope fisico assumido e nao "
-                    "calibrado; substitui a volta de referencia historica."
-                ),
-            }
-        )
     if setup.weather:
         result["assumptions"].append(
             {
@@ -622,28 +411,4 @@ def run_detailed_grid_simulation(
     return result
 
 
-def _refuel_stops_for(
-    fuel_plan: FuelPlan,
-    pit_loss_ms: float,
-    entry: GridEntry,
-    total_laps: int,
-    rng: RandomSource,
-) -> RefuelStops:
-    """Perdas das paradas de reabastecimento de um carro, antes da largada.
 
-    Com reabastecimento toda parada (de pneu ou de combustivel) usa estas
-    perdas, entao o teto de sorteios e uma parada por volta. Paradas alem da
-    amostra usam a media do carro.
-    """
-
-    crews = fuel_plan.parameters.refuel_stops
-    offset_ms = crews.offset_ms(entry.team_id) if crews is not None else 0.0
-    mean_ms = max(0.5 * pit_loss_ms, pit_loss_ms + offset_ms)
-    label = f"refuel:stops:{entry.driver_id}"
-    return sample_refuel_stops(
-        mean_ms,
-        crews,
-        rng.spawn(label),  # type: ignore[attr-defined]
-        total_laps,
-        label,
-    )
