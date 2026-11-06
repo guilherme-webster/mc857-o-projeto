@@ -65,6 +65,12 @@ Atualizado em 2026-11-06 (issue #119, ADR 0015).
   lentas perde mais). Sai como `weather_ms` na decomposição do motor detalhado
   e entra no `speed_scale` do 2D. O efeito linear antigo (+40% com pista
   saturada, `weather_penalty_ms`) foi removido.
-- **Fora da integração:** disputas, incidentes, controle de prova e a escolha de
-  pneus ainda não consideram o clima; não há compostos intermediário ou de
-  chuva (issue #120). A temperatura não altera a aderência diretamente.
+- **Pneus e corrida (#120):** intermediário e chuva com aderência por água,
+  troca por clima com viés por piloto, regra de dois compostos suspensa,
+  largada com pneu de chuva se a volta 1 estiver molhada, superaquecimento em
+  pista secando e mais acidentes e contatos com água e pneu errado
+  (`domain/wet_tyres.py`; valores em `docs/modelagem-heuristica.md`, seção 6).
+  A tela da corrida mostra a água e a temperatura do asfalto da volta do líder.
+- **Fora da integração:** a temperatura não altera a aderência nem o desgaste;
+  o controle de prova não reage diretamente à chuva (só aos incidentes); o
+  contato espacial do 2D não depende da água.
