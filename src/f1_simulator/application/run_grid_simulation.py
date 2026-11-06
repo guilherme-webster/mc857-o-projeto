@@ -46,12 +46,18 @@ from f1_simulator.domain.strategy import (
     HeuristicPitStrategy,
     draw_fuel_traits,
 )
+from f1_simulator.domain.speed_dynamics import DEFAULT_CAR_PHYSICS
+from f1_simulator.domain.track_condition import (
+    ASSUMED_TRACK_CONDITION,
+    GRIP_LAP_TIME_EXPONENT,
+    TrackState,
+    simulate_track_conditions,
+)
 from f1_simulator.domain.weather import (
-    ASSUMED_WEATHER_EFFECT,
     ASSUMED_WEATHER_PARAMETERS,
+    RainLevel,
     WeatherSegment,
     expand_segments,
-    simulate_weather,
 )
 
 _REFERENCE_PACE_RATIONALE = (
@@ -164,6 +170,24 @@ def _strategy_offset(rng: RandomSource, driver_id: str) -> int:
     )
 
 
+def _track_states(setup: RaceSetup, reference_lap_time_ms: float) -> tuple[TrackState, ...]:
+    """Estado da pista em cada volta: agua, temperatura e borracha (ADR 0015).
+
+    Calculado sempre, inclusive em corrida seca: a borracha evolui com o
+    pelotao. A duracao da volta, que regula a secagem por minuto, e a volta de
+    referencia do circuito; a precisao por carro nao importa para a pista.
+    """
+
+    conditions = (
+        expand_segments(setup.weather, setup.total_laps)
+        if setup.weather
+        else (RainLevel.DRY,) * setup.total_laps
+    )
+    return simulate_track_conditions(
+        conditions, lap_minutes=reference_lap_time_ms / 60_000.0
+    )
+
+
 def _run_2d(
     grid,
     attributes,
@@ -176,11 +200,11 @@ def _run_2d(
     fuel_plan,
     reference_lap_time_ms,
     race_control,
+    track_states,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) e complete o resultado como o detalhado."""
 
     from f1_simulator.domain.race_simulation_2d import simulate_2d_race
-    from f1_simulator.domain.weather import expand_segments, simulate_weather
 
     compounds = {c.name: c for c in parameters.compounds}
     entrants = [
@@ -198,11 +222,6 @@ def _run_2d(
     reliability_by_id = {
         entry.driver_id: parameters.reliability_factor(entry.team_id) for entry in grid
     }
-    lap_surface_water = None
-    if setup.weather:
-        lap_weather = simulate_weather(expand_segments(setup.weather, setup.total_laps))
-        lap_surface_water = [item.state.surface_water for item in lap_weather]
-
     result = simulate_2d_race(
         entrants,
         geometry,
@@ -212,13 +231,19 @@ def _run_2d(
         track_params=track,
         model_parameters=parameters,
         fuel=fuel_plan,
-        lap_surface_water=lap_surface_water,
+        track_states=track_states,
         reliability_by_id=reliability_by_id,
         mechanical_hazard_per_lap=parameters.mechanical_hazard_per_lap(),
         race_control=race_control,
     )
     result["speed_profiles"] = _speed_profiles_by_driver(geometry, grid, attributes)
     result["setup"] = _setup_echo(setup, engine="2d")
+    result["track_conditions"] = [state.as_dict() for state in track_states]
+    # Mesma fisica e mesma pista do motor por volta: as origens sao declaradas
+    # do mesmo jeito para os resultados dos dois motores serem auditaveis.
+    result.setdefault("assumptions", []).extend(
+        [_physical_lap_assumption(), _track_condition_assumption(setup)]
+    )
     result["reference_lap_time_ms"] = reference_lap_time_ms
     result["track_reference"] = {
         "requested_track_id": setup.track_id,
@@ -383,6 +408,8 @@ def run_detailed_grid_simulation(
     if missing_attributes:
         raise ValueError(f"attributes ausentes para pilotos: {missing_attributes}")
 
+    track_states = _track_states(setup, reference_lap_time_ms)
+
     if engine == "2d":
         if geometry is None:
             raise ValueError("o motor 2D exige geometria da pista")
@@ -397,6 +424,7 @@ def run_detailed_grid_simulation(
             fuel_plan=fuel_plan,
             reference_lap_time_ms=reference_lap_time_ms,
             race_control=race_control,
+            track_states=track_states,
         )
 
     known_team_ids = {candidate.team_id for candidate in parameters.team_reliability}
@@ -462,11 +490,6 @@ def run_detailed_grid_simulation(
             )
         )
 
-    lap_surface_water = None
-    if setup.weather:
-        lap_weather = simulate_weather(expand_segments(setup.weather, setup.total_laps))
-        lap_surface_water = tuple(item.state.surface_water for item in lap_weather)
-
     result = simulate_detailed_race(
         entrants,
         total_laps=setup.total_laps,
@@ -476,7 +499,7 @@ def run_detailed_grid_simulation(
         attributes=attributes,
         dispute_model=dispute_model,
         race_control=race_control,
-        lap_surface_water=lap_surface_water,
+        track_states=track_states,
         geometry=geometry,
         fuel=fuel_plan,
         grid_start=grid_start,
@@ -486,6 +509,7 @@ def run_detailed_grid_simulation(
             geometry, grid, attributes
         )
     result["setup"] = _setup_echo(setup)
+    result["track_conditions"] = [state.as_dict() for state in track_states]
     # O history so tem retratos ao fim de cada volta; sem a largada, quem
     # consome o resultado (a TrackView, por exemplo) nao sabe a posicao de
     # partida nem o pneu da primeira volta.
@@ -590,37 +614,65 @@ def run_detailed_grid_simulation(
             }
         )
     if geometry is not None:
-        result["assumptions"].append(
-            {
-                "kind": "physical_lap_time",
-                "origin": "assumed",
-                "parameter_version": "assumed-car-physics-v1",
-                "rationale": (
-                    "ADR 0010: o tempo de volta emerge da velocidade por trecho "
-                    "derivada da curvatura, com envelope fisico assumido e nao "
-                    "calibrado; substitui a volta de referencia historica."
-                ),
-            }
-        )
-    if setup.weather:
-        result["assumptions"].append(
-            {
-                "kind": "weather",
-                "segments": _weather_echo(setup),
-                "evolution": {
-                    "source_kind": ASSUMED_WEATHER_PARAMETERS.source_kind,
-                    "parameter_version": ASSUMED_WEATHER_PARAMETERS.parameter_version,
-                    "rationale": ASSUMED_WEATHER_PARAMETERS.rationale,
-                },
-                "effect": {
-                    "wet_penalty_pct_max": ASSUMED_WEATHER_EFFECT.wet_penalty_pct_max,
-                    "source_kind": ASSUMED_WEATHER_EFFECT.source_kind,
-                    "parameter_version": ASSUMED_WEATHER_EFFECT.parameter_version,
-                    "rationale": ASSUMED_WEATHER_EFFECT.rationale,
-                },
-            }
-        )
+        result["assumptions"].append(_physical_lap_assumption())
+    result["assumptions"].append(_track_condition_assumption(setup))
     return result
+
+
+def _physical_lap_assumption() -> dict:
+    """Origem do tempo de volta fisico (ADR 0015), para os dois motores."""
+
+    car = DEFAULT_CAR_PHYSICS
+    return {
+        "kind": "physical_lap_time",
+        "origin": "estimated",
+        "parameter_version": "car-physics-v1",
+        "estimated": {
+            "grip_mu": car.grip_mu,
+            "downforce_cla_m2": car.downforce_cla_m2,
+        },
+        "assumed": {
+            "v_max_straight_kmh": car.v_max_straight_kmh,
+            "drag_cda_m2": car.drag_cda_m2,
+            "mass_kg": car.mass_kg,
+            "power_kw": car.power_kw,
+            "traction_share": car.traction_share,
+        },
+        "rationale": (
+            "ADR 0015: velocidade de curva limitada por aderencia e downforce, "
+            "com raio em metros; grip_mu e downforce_cla_m2 ajustados para o "
+            "piloto neutro reproduzir a volta de referencia historica "
+            "(data/parameters/car-physics-v1.json). Substitui a volta de "
+            "referencia como base do tempo de volta."
+        ),
+    }
+
+
+def _track_condition_assumption(setup: RaceSetup) -> dict:
+    """Hipoteses de clima e de estado da pista que entraram na corrida."""
+
+    condition = ASSUMED_TRACK_CONDITION
+    return {
+        "kind": "track_condition",
+        "segments": _weather_echo(setup),
+        "evolution": {
+            "source_kind": ASSUMED_WEATHER_PARAMETERS.source_kind,
+            "parameter_version": ASSUMED_WEATHER_PARAMETERS.parameter_version,
+            "rationale": ASSUMED_WEATHER_PARAMETERS.rationale,
+        },
+        "grip": {
+            "damp_water": condition.damp_water,
+            "damp_grip": condition.damp_grip,
+            "saturated_grip": condition.saturated_grip,
+            "initial_rubber": condition.initial_rubber,
+            "green_track_grip_loss": condition.green_track_grip_loss,
+            "dry_track_temp_c": condition.dry_track_temp_c,
+            "no_geometry_lap_time_exponent": GRIP_LAP_TIME_EXPONENT,
+            "source_kind": condition.source_kind,
+            "parameter_version": condition.parameter_version,
+            "rationale": condition.rationale,
+        },
+    }
 
 
 def _refuel_stops_for(

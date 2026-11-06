@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "origin": "estimated",
+  "parameter_version": "car-physics-v1",
+  "method_version": "grid-search-log-rms-v1",
+  "rationale": "grip_mu e downforce_cla_m2 escolhidos por grade para que o piloto neutro reproduza a volta de referencia historica de cada circuito (raiz do erro quadratico medio de log(fisica/referencia)). O modelo anterior do ADR 0010 errava 0,169 nessa mesma medida (Monaco 37% rapido). Os campos 'assumed' sao ordem de grandeza de um F1 recente, nao medidos. Residuos maiores: curvas inclinadas (Zandvoort), altitude (Mexico) e chicanes curtas que a polilinha de 240 pontos nao resolve (Monza).",
+  "sources": {
+    "geometry": "FastF1 3.8.3, 24 pistas de 2025, 240 pontos (data/sources/fastf1-tracks-2025.json)",
+    "reference_laps": "reference-laps-v1.json (historical-median-fastest-laps-v1)"
+  },
+  "estimated": {
+    "grip_mu": 1.3,
+    "downforce_cla_m2": 4.5
+  },
+  "assumed": {
+    "v_max_straight_kmh": 330.0,
+    "drag_cda_m2": 1.1,
+    "mass_kg": 800.0,
+    "power_kw": 750.0,
+    "traction_share": 0.55
+  },
+  "fit": {
+    "rms_log_error": 0.0457,
+    "rms_error_pct": 4.7,
+    "median_ratio": 0.993,
+    "min_ratio": 0.93,
+    "max_ratio": 1.122
+  },
+  "circuits": [
+    {
+      "circuit_id": "circuit:14",
+      "reference_lap_ms": 85894.0,
+      "physical_lap_ms": 79840.6,
+      "ratio": 0.9295
+    },
+    {
+      "circuit_id": "circuit:3",
+      "reference_lap_ms": 96581.0,
+      "physical_lap_ms": 91270.0,
+      "ratio": 0.945
+    },
+    {
+      "circuit_id": "circuit:32",
+      "reference_lap_ms": 82734.5,
+      "physical_lap_ms": 78415.8,
+      "ratio": 0.9478
+    },
+    {
+      "circuit_id": "circuit:80",
+      "reference_lap_ms": 96665.0,
+      "physical_lap_ms": 91874.5,
+      "ratio": 0.9504
+    },
+    {
+      "circuit_id": "circuit:15",
+      "reference_lap_ms": 98091.0,
+      "physical_lap_ms": 93531.0,
+      "ratio": 0.9535
+    },
+    {
+      "circuit_id": "circuit:13",
+      "reference_lap_ms": 110515.0,
+      "physical_lap_ms": 105743.3,
+      "ratio": 0.9568
+    },
+    {
+      "circuit_id": "circuit:73",
+      "reference_lap_ms": 107151.5,
+      "physical_lap_ms": 103148.5,
+      "ratio": 0.9626
+    },
+    {
+      "circuit_id": "circuit:7",
+      "reference_lap_ms": 77012.5,
+      "physical_lap_ms": 75197.9,
+      "ratio": 0.9764
+    },
+    {
+      "circuit_id": "circuit:17",
+      "reference_lap_ms": 99938.0,
+      "physical_lap_ms": 98266.3,
+      "ratio": 0.9833
+    },
+    {
+      "circuit_id": "circuit:9",
+      "reference_lap_ms": 91437.0,
+      "physical_lap_ms": 90300.8,
+      "ratio": 0.9876
+    },
+    {
+      "circuit_id": "circuit:22",
+      "reference_lap_ms": 97525.5,
+      "physical_lap_ms": 96470.9,
+      "ratio": 0.9892
+    },
+    {
+      "circuit_id": "circuit:79",
+      "reference_lap_ms": 91704.5,
+      "physical_lap_ms": 90821.5,
+      "ratio": 0.9904
+    },
+    {
+      "circuit_id": "circuit:18",
+      "reference_lap_ms": 75172.0,
+      "physical_lap_ms": 74887.8,
+      "ratio": 0.9962
+    },
+    {
+      "circuit_id": "circuit:70",
+      "reference_lap_ms": 69592.0,
+      "physical_lap_ms": 69673.5,
+      "ratio": 1.0012
+    },
+    {
+      "circuit_id": "circuit:69",
+      "reference_lap_ms": 100034.0,
+      "physical_lap_ms": 100433.8,
+      "ratio": 1.004
+    },
+    {
+      "circuit_id": "circuit:21",
+      "reference_lap_ms": 80995.5,
+      "physical_lap_ms": 81559.0,
+      "ratio": 1.007
+    },
+    {
+      "circuit_id": "circuit:1",
+      "reference_lap_ms": 81183.0,
+      "physical_lap_ms": 82853.7,
+      "ratio": 1.0206
+    },
+    {
+      "circuit_id": "circuit:11",
+      "reference_lap_ms": 82933.5,
+      "physical_lap_ms": 85075.0,
+      "ratio": 1.0258
+    },
+    {
+      "circuit_id": "circuit:6",
+      "reference_lap_ms": 77150.0,
+      "physical_lap_ms": 79242.2,
+      "ratio": 1.0271
+    },
+    {
+      "circuit_id": "circuit:77",
+      "reference_lap_ms": 93285.5,
+      "physical_lap_ms": 96177.2,
+      "ratio": 1.031
+    },
+    {
+      "circuit_id": "circuit:24",
+      "reference_lap_ms": 88471.5,
+      "physical_lap_ms": 91433.6,
+      "ratio": 1.0335
+    },
+    {
+      "circuit_id": "circuit:4",
+      "reference_lap_ms": 78690.0,
+      "physical_lap_ms": 81996.1,
+      "ratio": 1.042
+    },
+    {
+      "circuit_id": "circuit:39",
+      "reference_lap_ms": 74806.5,
+      "physical_lap_ms": 82816.5,
+      "ratio": 1.1071
+    },
+    {
+      "circuit_id": "circuit:78",
+      "reference_lap_ms": 85107.2,
+      "physical_lap_ms": 95501.3,
+      "ratio": 1.1221
+    }
+  ]
+}

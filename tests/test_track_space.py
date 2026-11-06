@@ -89,6 +89,21 @@ def _rectangle_with_straight(straight_m=2000.0, width=100.0, step=10.0):
     return _geometry_from_corners(corners)
 
 
+def _finish_time(samples, driver_id, race_distance_m):
+    """Primeiro instante em que o carro completa ``race_distance_m``.
+
+    Comparar a distancia final nao serve: depois da bandeirada os dois carros
+    param de avancar, e a diferenca vira so o quanto cada um passou da linha no
+    ultimo passo.
+    """
+
+    for sample in samples:
+        car = {c.driver_id: c for c in sample.cars}[driver_id]
+        if car.distance_m >= race_distance_m:
+            return sample.time_s
+    return float("inf")
+
+
 class TrackSpaceGeometryTest(unittest.TestCase):
     def test_center_lies_on_centerline(self):
         sp = build_track_space(_square(), width_m=12.0)
@@ -147,7 +162,7 @@ class SpatialExclusionTest(unittest.TestCase):
         # de curva o integrador discreto pode encolher a folga por um ou dois
         # passos -- limitacao documentada no motor.)
         sp = build_track_space(_rectangle_with_straight(straight_m=2000.0), width_m=12.0)
-        same = CarPhysics(v_max_straight_kmh=230, v_min_corner_kmh=120)
+        same = CarPhysics(v_max_straight_kmh=230)
         cars = [
             CarSpaceState("a", distance_m=25, lateral_m=0.0, speed_ms=60),
             CarSpaceState("b", distance_m=20, lateral_m=0.0, speed_ms=60),
@@ -171,10 +186,13 @@ class SpatialExclusionTest(unittest.TestCase):
         self.assertGreaterEqual(min_gap, ASSUMED_CAR_LENGTH_M - 0.15)
 
     def test_bodies_never_overlap_grossly(self):
-        # Mesmo na frenagem, a folga nunca deve indicar sobreposicao total dos
-        # corpos (folga centro-a-centro >= metade de um comprimento de carro).
+        # Mesmo na frenagem, dois corpos na mesma faixa nunca se sobrepoem por
+        # inteiro (folga centro-a-centro >= metade de um comprimento de carro).
+        # Na freada forte o de tras pode sair da esteira e emparelhar por fora
+        # (tentativa de ultrapassagem): lado a lado nao e sobreposicao, entao so
+        # contam os instantes em que as faixas se cruzam.
         sp = build_track_space(_rectangle_with_straight(straight_m=2000.0), width_m=12.0)
-        same = CarPhysics(v_max_straight_kmh=230, v_min_corner_kmh=120)
+        same = CarPhysics(v_max_straight_kmh=230)
         cars = [
             CarSpaceState("a", distance_m=25, lateral_m=0.0, speed_ms=60),
             CarSpaceState("b", distance_m=20, lateral_m=0.0, speed_ms=60),
@@ -183,18 +201,20 @@ class SpatialExclusionTest(unittest.TestCase):
             cars, sp, {"a": same, "b": same}, total_laps=1, dt_s=0.05
         )
         race = sp.lap_length_m
-        min_gap = min(
-            ({c.driver_id: c for c in s.cars}["a"].distance_m
-             - {c.driver_id: c for c in s.cars}["b"].distance_m)
-            for s in res
-            if all(c.distance_m < race for c in s.cars)
-        )
-        self.assertGreater(min_gap, ASSUMED_CAR_LENGTH_M / 2.0)
+        gaps = []
+        for s in res:
+            by_id = {c.driver_id: c for c in s.cars}
+            a, b = by_id["a"], by_id["b"]
+            same_lane = abs(a.lateral_m - b.lateral_m) < (a.width_m + b.width_m) / 2
+            if same_lane and a.distance_m < race and b.distance_m < race:
+                gaps.append(a.distance_m - b.distance_m)
+        self.assertTrue(gaps)
+        self.assertGreater(min(gaps), ASSUMED_CAR_LENGTH_M / 2.0)
 
     def test_different_lanes_do_not_block(self):
         sp = build_track_space(_rectangle_with_straight(), width_m=12.0)
-        fast = CarPhysics(v_max_straight_kmh=330, v_min_corner_kmh=120)
-        slow = CarPhysics(v_max_straight_kmh=230, v_min_corner_kmh=120)
+        fast = CarPhysics(v_max_straight_kmh=330)
+        slow = CarPhysics(v_max_straight_kmh=230)
         cars = [
             CarSpaceState("a_slow", distance_m=40, lateral_m=4.0, speed_ms=60),
             CarSpaceState("b_fast", distance_m=20, lateral_m=-4.0, speed_ms=60),
@@ -206,9 +226,10 @@ class SpatialExclusionTest(unittest.TestCase):
             total_laps=1,
             dt_s=0.05,
         )
-        final = {c.driver_id: c for c in res[-1].cars}
-        self.assertGreater(
-            final["b_fast"].distance_m, final["a_slow"].distance_m
+        # Faixas separadas: o rapido nao fica preso e cruza a linha primeiro.
+        self.assertLess(
+            _finish_time(res, "b_fast", sp.lap_length_m),
+            _finish_time(res, "a_slow", sp.lap_length_m),
         )
 
 
@@ -217,8 +238,8 @@ class EmergentOvertakeTest(unittest.TestCase):
         sp = build_track_space(
             _rectangle_with_straight(straight_m=5000.0), width_m=12.0
         )
-        fast = CarPhysics(v_max_straight_kmh=330, v_min_corner_kmh=120)
-        slow = CarPhysics(v_max_straight_kmh=200, v_min_corner_kmh=120)
+        fast = CarPhysics(v_max_straight_kmh=330)
+        slow = CarPhysics(v_max_straight_kmh=200)
         cars = [
             CarSpaceState("a_slow", distance_m=40, lateral_m=0.0, speed_ms=55),
             CarSpaceState("b_fast", distance_m=20, lateral_m=0.0, speed_ms=55),
@@ -234,10 +255,10 @@ class EmergentOvertakeTest(unittest.TestCase):
         max_lateral = max(
             abs({c.driver_id: c for c in s.cars}["b_fast"].lateral_m) for s in res
         )
-        final = {c.driver_id: c for c in res[-1].cars}
         self.assertGreater(max_lateral, 0.5)  # desviou
-        self.assertGreater(  # e passou
-            final["b_fast"].distance_m, final["a_slow"].distance_m
+        self.assertLess(  # e passou: cruza a linha antes de quem largou na frente
+            _finish_time(res, "b_fast", sp.lap_length_m),
+            _finish_time(res, "a_slow", sp.lap_length_m),
         )
 
     def test_equal_speed_cars_hold_station_on_straight(self):
@@ -246,7 +267,7 @@ class EmergentOvertakeTest(unittest.TestCase):
         sp = build_track_space(
             _rectangle_with_straight(straight_m=5000.0), width_m=12.0
         )
-        same = CarPhysics(v_max_straight_kmh=240, v_min_corner_kmh=120)
+        same = CarPhysics(v_max_straight_kmh=240)
         cars = [
             CarSpaceState("a", distance_m=40, lateral_m=0.0, speed_ms=60),
             CarSpaceState("b", distance_m=20, lateral_m=0.0, speed_ms=60),
@@ -275,7 +296,7 @@ class CollisionTest(unittest.TestCase):
 
     def test_no_rng_means_no_collision(self):
         sp = build_track_space(_rectangle_with_straight(), width_m=12.0)
-        same = CarPhysics(v_max_straight_kmh=250, v_min_corner_kmh=130)
+        same = CarPhysics(v_max_straight_kmh=250)
         cars = self._forced_rubbing_cars()
         res = integrate_field(
             cars, sp, {"a": same, "b": same}, total_laps=1, dt_s=0.05
@@ -322,8 +343,8 @@ class CollisionTest(unittest.TestCase):
 
     def test_collision_reproducible_by_seed(self):
         sp = build_track_space(_rectangle_with_straight(), width_m=12.0)
-        fast = CarPhysics(v_max_straight_kmh=330, v_min_corner_kmh=140)
-        slow = CarPhysics(v_max_straight_kmh=250, v_min_corner_kmh=130)
+        fast = CarPhysics(v_max_straight_kmh=330)
+        slow = CarPhysics(v_max_straight_kmh=250)
 
         def run():
             cars = [

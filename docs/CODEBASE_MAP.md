@@ -29,7 +29,7 @@ O que existe **hoje** e o que não existe:
 
 | Área | Estado |
 |---|---|
-| Motor de corrida | **Dois motores, `detailed` é o padrão.** `simulate_detailed_race` em `domain/race_simulation.py`: motor calibrado da #40 (combustível, pneu por composto, tráfego, paradas, disputas, abandonos) com perfis, disputa, SC/VSC/bandeiras e paradas **heurísticos** por cima (ADR 0008), clima no tempo de volta e tempo-base por velocidade física quando há geometria (ADR 0010). O núcleo simples de ritmo constante (`simulate_race`) foi removido em `d510721`. Valores em `docs/modelagem-heuristica.md`. Motor 2D opcional (`engine="2d"`, ADR 0011) em `domain/race_simulation_2d.py` + `track_space.py`: posição x,y contínua, ultrapassagem e colisão emergentes, com pneu/combustível/clima/abandono; **ainda sem** pit, reabastecimento, SC/VSC nem bandeiras, e não comparável ao histórico. |
+| Motor de corrida | **Dois motores, `detailed` é o padrão.** `simulate_detailed_race` em `domain/race_simulation.py`: motor calibrado da #40 (combustível, pneu por composto, tráfego, paradas, disputas, abandonos) com perfis, disputa, SC/VSC/bandeiras e paradas **heurísticos** por cima (ADR 0008), estado da pista (água, temperatura, borracha) como fator de aderência e tempo-base por velocidade física limitada por aderência quando há geometria (ADR 0010, revisado pelo 0015). O núcleo simples de ritmo constante (`simulate_race`) foi removido em `d510721`. Valores em `docs/modelagem-heuristica.md`. Motor 2D opcional (`engine="2d"`, ADR 0011) em `domain/race_simulation_2d.py` + `track_space.py`: posição x,y contínua, ultrapassagem e colisão emergentes, com pneu/combustível/clima/abandono; **ainda sem** pit, reabastecimento, SC/VSC nem bandeiras, e não comparável ao histórico. |
 | Grid e pilotos | `POST /catalog/grid` monta o grid por sorteio, à mão ou pela largada de uma corrida histórica (`race`); atributos por arquétipo, perfis fictícios nomeados por cima e edição via `PATCH`. |
 | Torneio | Sequência de etapas montada no frontend; cada etapa é um `POST /catalog/grid/run` sobre o grid atual. Classificação do campeonato por `POST /championship/standings` (`domain/championship.py`). A rota de série livre do ADR 0006 foi removida (PRD v3 da modelagem heurística). |
 | Frontend | Configuração do torneio, configuração de etapa (sessão e clima), pilotos e grid, reprodução volta a volta com controle de prova e classificação rica, resultado do torneio. "Confirmar torneio" roda as etapas no backend. |
@@ -140,9 +140,10 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `track_geometry.py` | `TrackGeometry`, `TrackPoint`, `PitLanePoint`, `GeometryProvenance`. | X/Y **normalizados, sem unidade**; só `cumulative_distance_m` está em metros. |
 | `race_simulation.py` | `simulate_detailed_race`: o motor da corrida. Devolve `history` (retrato por volta), `classification`, `race_control_events`, `race_control_by_lap` e `assumptions`. **Fonte de verdade da classificação.** | Sem os recursos opcionais, reproduz exatamente o motor calibrado da #40 (teste com hashes). Os recursos novos são só por palavra-chave. A compressão do SC reescreve o tempo acumulado (`tempo_lider + k*700 ms`). |
 | `lap_time.py`, `tyres.py`, `model_parameters.py` | Decomposição auditável do tempo de volta (referência, combustível, pneu, tráfego, clima, boxes, ruído), penalidade por composto × `tyre_severity` e parâmetros versionados. | Só a degradação é escalada pela severidade do circuito. |
-| `weather.py` | Umidade e água na pista por volta, `WeatherSegment`, `weather_penalty_ms`. | Afeta só o tempo de volta; parâmetros `assumed`. |
+| `weather.py` | Umidade e água na pista por volta (`step_weather`, `simulate_weather`), `WeatherSegment`; fluxos por volta de referência de 1,5 min. | Só evolui o estado; parâmetros `assumed`. |
+| `track_condition.py` | Estado dinâmico da pista por volta (ADR 0015): água, temperatura do asfalto, borracha e o fator de aderência resultante (`simulate_track_conditions`, `TrackState`). | Consumido pelos dois motores via `GripLapTimes`; parâmetros `assumed`. |
 | `fuel.py` | Massa de combustível por carro (`FuelPlan`, `fuel_lap`), limite físico do reabastecimento (`must_pit`) e tempo de parada por equipe (`RefuelStops`). | Só ativo com `FuelPlan`; sem ele o motor legado não muda (hashes). Não sorteia nada. |
-| `speed_dynamics.py` | Velocidade física por trecho (ADR 0010): envelope do carro (`CarPhysics`, `physics_for`), teto por curvatura e tempo de volta que emerge (`steady_lap`, `lap_time_ms`). | Consumido pelo motor detalhado (tempo-base por volta) e pelo 2D. `speed_at` sem consumidor (código morto). |
+| `speed_dynamics.py` | Velocidade física por trecho (ADR 0010, revisado pelo 0015): carro-ponto limitado por aderência e downforce (`CarPhysics`, `physics_for`), curvatura em metros, teto, tempo de volta (`steady_lap`) e tabela por fator de aderência (`GripLapTimes`). | Consumido pelo motor detalhado (tempo-base e condição da pista) e pelo 2D. `DEFAULT_CAR_PHYSICS` espelha `car-physics-v1.json`. `speed_at` sem consumidor (código morto). |
 | `track_space.py` | Motor 2D (ADR 0011): pista em faixa com largura (`build_track_space`), estado espacial do carro (`CarSpaceState`), integração sub-volta multi-carro com ultrapassagem e colisão emergentes (`integrate_field`). | Mecânica espacial pura, selecionável. Não substitui o motor detalhado. |
 | `race_simulation_2d.py` | Orquestra o motor 2D: roda `track_space` e devolve o mesmo `history`/`classification` do detalhado (`simulate_2d_race`). Pneu, combustível, clima e abandono mecânico via `speed_scale`. | Selecionável por `engine="2d"`. **Sem** pit, reabastecimento, SC/VSC nem bandeiras ainda. Sem testes permanentes. |
 | `random_source.py` | `RandomSource` (protocolo) e `SeededRandomSource`, com `spawn` por chave via SHA-256. | Nunca `random` global; a semente é escolhida na borda. |
@@ -182,6 +183,7 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `run_grid_simulation.py` | `run_detailed_grid_simulation`: liga grid, atributos, pista, clima e volta de referência ao motor; publica `setup`, `starting_grid` e `assumptions`. |
 | `calibrate_model.py`, `backtest_model.py`, `reference_laps.py`, `pace_profiles.py` | Calibração do motor (#40), backtest contra a ordem de largada, voltas de referência por circuito e ritmo fora da amostra. |
 | `calibrate_fuel.py` | Calibração e validação do combustível por massa (regressão de dois relógios com regressor volta × T × L) e do tempo de parada por equipe. |
+| `calibrate_car_physics.py` | Estimativa de `grip_mu` e `downforce_cla_m2` do carro de referência contra as voltas de referência (grade, erro em log). |
 
 ### 4.3 `src/f1_simulator/factories/`
 
@@ -204,7 +206,7 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `persistence/sqlite_race_data_repository.py` | Lê ambos os formatos (via views `race_entries` e `source_ids`). |
 | `persistence/sqlite_track_geometry.py` | Geometria dentro do mesmo banco da corrida. |
 | `profile_parameters.py` | `ProfileParametersAdapter`: `ProfileRun` → parâmetros por contexto exato. |
-| `driver_presets_json.py`, `model_parameters_json.py`, `reference_laps_json.py`, `fuel_parameters_json.py` | JSON versionados: perfis fictícios (com o aviso), parâmetros do motor, voltas de referência e combustível (agrupado por origem). |
+| `driver_presets_json.py`, `model_parameters_json.py`, `reference_laps_json.py`, `fuel_parameters_json.py`, `car_physics_json.py` | JSON versionados: perfis fictícios (com o aviso), parâmetros do motor, voltas de referência, combustível (agrupado por origem) e carro de referência. |
 | `persistence/sqlite_calibration.py`, `sqlite_race_scenario.py`, `sqlite_inspection.py`, `sqlite_trotman_profiles.py` | Leitura para calibração e backtest, inspeção somente leitura e ponte com os perfis. |
 
 ### 4.4.1 `scripts/` (composition roots das CLIs)
@@ -212,7 +214,7 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 - **ETL:** `download_trotman.py`, `list_races.py`, `ingest_trotman.py` (`--race-id` ou `--all-tables`), `ingest_fastf1.py` (`--base`, `--season`, `--rounds`, `--sessions`, `--strict`, `--without-telemetry`).
 - **Pilotos:** `profile_drivers.py`, `rank_drivers.py`, `evaluate_profiles.py`, `analyze_profile_development.py`, `analyze_profile_contexts.py`, `analyze_teammates.py`.
 - **Pneus:** `analyze_tyres.py`, `analyze_tyre_restarts.py`, `compare_tyre_estimators.py`.
-- **Motor:** `calibrate_model.py`, `calibrate_fuel.py`, `backtest_model.py`, `build_reference_laps.py`, `race_control_frequency.py`, `race_report.py` (corrida explicada, `--html` com visualizador).
+- **Motor:** `calibrate_model.py`, `calibrate_fuel.py`, `calibrate_car_physics.py`, `backtest_model.py`, `build_reference_laps.py`, `race_control_frequency.py`, `race_report.py` (corrida explicada, `--html` com visualizador).
 - **Geometria:** `rebuild_fastf1_geometry.py`.
 - **Manutenção:** `sync_github_backlog.py` (gera `docs/backlog.md`; requer `gh` autenticado).
 - Todos inserem `src/` no `sys.path`. Resultados são publicados em pasta nova com sufixo uuid (rename atômico), nunca sobrescrevem, e recusam escrever em `data/raw`.

@@ -60,7 +60,8 @@ mesma versão de código, Python, parâmetros e dados, não entre versões.
 | Entrada dos boxes | `domain/track_geometry.py` (`pit_entry_lap_fraction`) | geometria FastF1 (só a posição na volta) |
 | Volta de referência | `application/reference_laps.py`, `data/parameters/reference-laps-v1.json` | `historical-median-fastest-laps-v1` |
 | Voltas padrão por pista | `application/default_laps.py` | corrida mais recente ou `assumed-distance-rule-v1` |
-| Clima no tempo de volta | `domain/weather.py` (`simulate_weather`, `weather_penalty_ms`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`), `ASSUMED_WEATHER_EFFECT` (`assumed-weather-effect-v1`) |
+| Clima e estado da pista | `domain/weather.py` (`step_weather`, `simulate_weather`), `domain/track_condition.py` (`simulate_track_conditions`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`, por volta de referência de 1,5 min), `ASSUMED_TRACK_CONDITION` (`assumed-track-condition-v1`) |
+| Tempo de volta físico | `domain/speed_dynamics.py` (`CarPhysics`, `physics_for`, `GripLapTimes`), `application/calibrate_car_physics.py` | `data/parameters/car-physics-v1.json` (`mu` e `C_L·A` estimados; demais campos `assumed`), ADR 0015 |
 | Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
 | Impacto temporal do grid | `domain/grid_start.py`, aplicado por `domain/race_simulation.py` | `data/parameters/grid-start-v1.json` (`heuristic-grid-start-v1`) |
 | Ligação ao grid | `application/run_grid_simulation.py` (`run_detailed_grid_simulation`) | ritmo de reserva `ASSUMED_REFERENCE_PACE_MS_PER_KM` |
@@ -364,11 +365,22 @@ próprios parâmetros, não números fixos.
 - **Deslocamento por equipe fraco em 2025.** Previu as paradas de 2025 pior
   que tratar todas as equipes iguais (131 contra 118 ms).
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
-- **Clima só no tempo de volta.** A água na pista ao fim de cada volta
-  (`domain/weather.py`, #69) acrescenta até 40% ao tempo de referência
-  (`assumed-weather-effect-v1`, proporcional à água). O clima não altera
-  disputas, incidentes nem paradas, e não há pneus intermediários ou de chuva:
-  todos seguem nos compostos secos.
+- **Clima só no tempo de volta.** Água e borracha viram um fator de
+  aderência (`domain/track_condition.py`, ADR 0015) que o motor físico
+  converte em tempo pela geometria: pista saturada custa ~27% em Mônaco e
+  ~19% em Monza. A água descreve a aderência com o pneu adequado, mas o carro
+  continua nos compostos secos: não há pneus intermediários ou de chuva, nem
+  efeito do clima em disputas, incidentes ou paradas (issue #120). A
+  temperatura do asfalto evolui e acelera a secagem, sem efeito direto na
+  aderência.
+- **Volta física com erro de ~4,7% por pista.** O carro de referência
+  (`car-physics-v1.json`) reproduz a mediana das voltas de referência, mas
+  Zandvoort (curvas inclinadas) e Losail saem ~11-12% lentas e Monza (chicanes
+  que 240 pontos não resolvem) ~7% rápida.
+- **Frenagens fortes aumentam os toques no 2D.** Com freada de até ~4-5 g, o
+  carro de trás sai da esteira na freada com mais frequência; a taxa de
+  contato do 2D (`ASSUMED_SIDE_CONTACT_PER_SECOND`) ainda não foi revista para
+  isso.
 - **Composto de largada fixo e médio quase sem volta.** Todos largam de MEDIUM
   (hipótese). Enquanto a regra de dois compostos não foi cumprida, o médio fica
   fora da escolha; depois vence o mais macio cuja vida típica (macio 14, médio
