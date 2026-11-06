@@ -70,6 +70,16 @@ class ParametersViewTest(unittest.TestCase):
         ],
     }
 
+    @staticmethod
+    def to_window(view: object, x: float, y: float) -> tuple[float, float]:
+        """Convert design-canvas units into the window units mouse events carry.
+
+        Fixed-layout views scale their design canvas to the window, so tests
+        state targets in design units and send them as the real pointer would.
+        """
+
+        return view._canvas_fit().to_window(x, y)
+
     def ready_view(self) -> ParametersView:
         """Provide a catalog response without an HTTP server or waiting."""
 
@@ -315,7 +325,11 @@ class ParametersViewTest(unittest.TestCase):
 
         race_view = self.window.current_view
         self.assertIsInstance(race_view, RaceConfigurationView)
-        race_view.on_mouse_release(100, 500, arcade.MOUSE_BUTTON_LEFT, 0)
+        race_view.on_mouse_release(
+            *self.to_window(race_view, 100, 500),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
+        )
         self.assertIs(self.window.current_view, race_view)
         self.assertEqual(race_view.active_topic, "Clima")
         self.assertEqual(race_view.schedule.total_laps, 71)
@@ -362,29 +376,42 @@ class ParametersViewTest(unittest.TestCase):
         race_view = self.window.current_view
         left, bottom, width, height = SESSION_STEPPER_BOUNDS["first_lap"][1]
         race_view.on_mouse_release(
-            left + width // 2,
-            bottom + height // 2,
+            *self.to_window(race_view, left + width // 2, bottom + height // 2),
             arcade.MOUSE_BUTTON_LEFT,
             0,
         )
         self.assertEqual(race_view.session.first_lap, 2)
         self.assertEqual(race_view.session.start_mode, "Parada")
-        race_view.on_mouse_release(100, 500, arcade.MOUSE_BUTTON_LEFT, 0)
+        race_view.on_mouse_release(
+            *self.to_window(race_view, 100, 500),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
+        )
         palette = RACE_WEATHER_PALETTE_BOUNDS["Chuva leve"]
         race_view.on_mouse_release(
-            palette[0] + 10, palette[1] + 10, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, palette[0] + 10, palette[1] + 10),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         left, bottom, width, height = WEATHER_TIMELINE_BOUNDS
         start_x = int(left + width * 1.5 / 69)
         end_x = int(left + width * 2.5 / 69)
         race_view.on_mouse_press(
-            start_x, bottom + height // 2, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, start_x, bottom + height // 2),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         race_view.on_mouse_drag(
-            end_x, bottom + height // 2, 0, 0, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, end_x, bottom + height // 2),
+            0,
+            0,
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         race_view.on_mouse_release(
-            end_x, bottom + height // 2, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, end_x, bottom + height // 2),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         self.assertIs(self.window.current_view, race_view)
         self.assertEqual(race_view.schedule.by_lap[1], "Chuva leve")
@@ -414,8 +441,7 @@ class ParametersViewTest(unittest.TestCase):
 
         left, bottom, width, height = SESSION_STEPPER_BOUNDS["last_lap"][0]
         race_view.on_mouse_release(
-            left + width // 2,
-            bottom + height // 2,
+            *self.to_window(race_view, left + width // 2, bottom + height // 2),
             arcade.MOUSE_BUTTON_LEFT,
             0,
         )
@@ -424,7 +450,9 @@ class ParametersViewTest(unittest.TestCase):
 
         left, bottom, width, height = SESSION_FIELD_BOUNDS["last_lap"]
         race_view.on_mouse_release(
-            left + 20, bottom + height // 2, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, left + 20, bottom + height // 2),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         self.assertEqual(race_view.session.last_lap, 68)
 
@@ -451,19 +479,29 @@ class ParametersViewTest(unittest.TestCase):
         self.window.show_view(parent)
         parent.open_track_configuration()
         race_view = self.window.current_view
-        race_view.on_mouse_release(100, 500, arcade.MOUSE_BUTTON_LEFT, 0)
+        race_view.on_mouse_release(
+            *self.to_window(race_view, 100, 500),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
+        )
         bounds = RACE_WEATHER_PALETTE_BOUNDS["Chuva intensa"]
         race_view.on_mouse_release(
-            bounds[0] + 10, bounds[1] + 10, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, bounds[0] + 10, bounds[1] + 10),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         for field, value in ((WEATHER_START_BOUNDS, "5"), (WEATHER_END_BOUNDS, "7")):
             race_view.on_mouse_release(
-                field[0] + 10, field[1] + 10, arcade.MOUSE_BUTTON_LEFT, 0
+                *self.to_window(race_view, field[0] + 10, field[1] + 10),
+                arcade.MOUSE_BUTTON_LEFT,
+                0,
             )
             race_view.on_text(value)
         bounds = WEATHER_APPLY_BOUNDS
         race_view.on_mouse_release(
-            bounds[0] + 10, bounds[1] + 10, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, bounds[0] + 10, bounds[1] + 10),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         self.assertEqual(race_view.schedule.by_lap[4:7], ("Chuva intensa",) * 3)
         self.assertEqual(race_view.schedule.by_lap[3], "Seco")
@@ -476,7 +514,11 @@ class ParametersViewTest(unittest.TestCase):
         self.window.show_view(parent)
         parent.open_track_configuration()
         race_view = self.window.current_view
-        race_view.on_mouse_release(100, 500, arcade.MOUSE_BUTTON_LEFT, 0)
+        race_view.on_mouse_release(
+            *self.to_window(race_view, 100, 500),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
+        )
         race_view.selected_weather = "Chuva leve"
         race_view._weather_start_text = "1"
         race_view._weather_end_text = "2"
@@ -496,10 +538,16 @@ class ParametersViewTest(unittest.TestCase):
             track_loader=lambda _id: {},
         )
         self.window.show_view(race_view)
-        race_view.on_mouse_release(100, 500, arcade.MOUSE_BUTTON_LEFT, 0)
+        race_view.on_mouse_release(
+            *self.to_window(race_view, 100, 500),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
+        )
         bounds = WEATHER_NEXT_BOUNDS
         race_view.on_mouse_release(
-            bounds[0] + 10, bounds[1] + 10, arcade.MOUSE_BUTTON_LEFT, 0
+            *self.to_window(race_view, bounds[0] + 10, bounds[1] + 10),
+            arcade.MOUSE_BUTTON_LEFT,
+            0,
         )
         self.assertEqual(race_view._weather_summary_page, 1)
         self.assertIs(self.window.current_view, race_view)
@@ -517,12 +565,48 @@ class ParametersViewTest(unittest.TestCase):
             view.on_draw()
             screenshot = arcade.get_image()
             self.assertNotEqual(screenshot.getpixel((100, 350))[:3], (0, 0, 0))
-            self.assertEqual(view._screen_camera.viewport.width, 1672)
+            # 1672×900 is wider than 16:9: the 1280×720 canvas scales by
+            # 900/720 and is centered between two background strips.
+            self.assertEqual(view._screen_camera.viewport.width, 1600)
+            self.assertEqual(view._screen_camera.viewport.left, 36)
             left, bottom, width, height = TOGGLE_TRACK_BOUNDS
-            x = int((left + width / 2) * TOURNAMENT_WINDOW_SIZE[0] / 1280)
-            y = int((bottom + height / 2) * TOURNAMENT_WINDOW_SIZE[1] / 720)
+            x, y = self.to_window(view, left + width / 2, bottom + height / 2)
             view.on_mouse_release(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
             self.assertEqual(view.selected_track_ids, ("circuit:18",))
+        finally:
+            self.window.set_size(*original_size)
+
+    def test_resizing_keeps_size_and_refits_both_configuration_screens(self) -> None:
+        """A small laptop window must not be enlarged and clicks must still land."""
+
+        original_size = self.window.get_size()
+        try:
+            self.window.set_size(1100, 700)
+            view = self.ready_view()
+            self.window.show_view(view)
+            self.assertEqual(self.window.get_size(), (1100, 700))
+            self.assertEqual(view._screen_camera.viewport.width, 1100)
+
+            self.window.set_size(1000, 600)
+            view.on_resize(1000, 600)
+            self.assertAlmostEqual(view._screen_camera.viewport.height, 562.5)
+            left, bottom, width, height = TOGGLE_TRACK_BOUNDS
+            x, y = self.to_window(view, left + width / 2, bottom + height / 2)
+            view.on_mouse_release(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
+            self.assertEqual(view.selected_track_ids, ("circuit:18",))
+
+            view.open_track_configuration()
+            race_view = self.window.current_view
+            self.assertIsInstance(race_view, RaceConfigurationView)
+            self.assertEqual(self.window.get_size(), (1000, 600))
+            race_view.on_draw()
+            race_view.on_mouse_release(
+                *self.to_window(race_view, 100, 500), arcade.MOUSE_BUTTON_LEFT, 0
+            )
+            self.assertEqual(race_view.active_topic, "Clima")
+            # The letterbox strip below the canvas must not reach any control.
+            race_view.on_mouse_release(100, 1, arcade.MOUSE_BUTTON_LEFT, 0)
+            self.assertIs(self.window.current_view, race_view)
         finally:
             self.window.set_size(*original_size)
 
@@ -633,9 +717,7 @@ class ParametersViewTest(unittest.TestCase):
             view.toggle_selected_track()
 
         self.assertEqual(view._sequence_scroll_index, 3)
-        width, height = self.window.get_size()
-        scroll_x = int(1000 * width / 1280)
-        scroll_y = int(420 * height / 720)
+        scroll_x, scroll_y = self.to_window(view, 1000, 420)
         view.on_mouse_scroll(scroll_x, scroll_y, 0, 1)
         self.assertEqual(view._sequence_scroll_index, 2)
         self.assertEqual(view._sequence_index_at(965, 455), 2)

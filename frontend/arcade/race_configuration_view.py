@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import arcade
 
+from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
 from frontend.arcade.configuration_state import (
     ConfigurationFormError,
     SessionConfiguration,
@@ -30,7 +31,9 @@ if TYPE_CHECKING:
     from frontend.arcade.parameters_view import ParametersView
 
 
-WINDOW_SIZE = (1672, 900)
+# Design canvas of this screen. Every *_BOUNDS constant and draw call uses
+# these units; ``canvas_fit`` scales them uniformly to the current window.
+DESIGN_SIZE = (1672, 900)
 SIDEBAR_ITEMS = {
     "Sessão": (45, 600, 378, 55),
     "Pista": (45, 540, 378, 55),
@@ -113,12 +116,24 @@ class RaceConfigurationView(arcade.View):
         }
 
     def on_show_view(self) -> None:
-        """Use the tournament window size for every tab of this view."""
+        """Apply the background and start loading the track preview.
 
-        if self.window.visible and self.window.get_size() != WINDOW_SIZE:
-            self.window.set_size(*WINDOW_SIZE)
+        The window keeps whatever size the user chose; drawing and pointer
+        input go through :meth:`_canvas_fit` instead of resizing the window.
+        """
+
         arcade.set_background_color(BACKGROUND_COLOR)
         self._load_track()
+
+    def _canvas_fit(self) -> CanvasFit:
+        """Current uniform mapping between the design canvas and the window."""
+
+        return CanvasFit.fit(DESIGN_SIZE, self.window.get_size())
+
+    def _logical_pointer(self, x: float, y: float) -> tuple[float, float]:
+        """Convert window pointer coordinates to design-canvas units."""
+
+        return self._canvas_fit().to_logical(x, y)
 
     def _load_track(self) -> None:
         if self._loading or self._preview is not None:
@@ -154,7 +169,19 @@ class RaceConfigurationView(arcade.View):
             self._track_error = str(error)
 
     def on_draw(self) -> None:
+        """Draw the design canvas scaled to the window.
+
+        Shapes go through a camera; labels are rasterized at window resolution
+        by :meth:`_text`, so they stay sharp at any scale.
+        """
+
         self.clear()
+        # Built per frame: it is cheap and always matches the current size,
+        # including resizes that happened while another view was shown.
+        with make_canvas_camera(self._canvas_fit(), self.window).activate():
+            self._draw_canvas()
+
+    def _draw_canvas(self) -> None:
         self._draw_header()
         self._draw_sidebar()
         self._draw_stage_header()
@@ -575,6 +602,7 @@ class RaceConfigurationView(arcade.View):
     def on_mouse_release(self, x: int, y: int, button: int, modifiers: int) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
+        x, y = self._logical_pointer(x, y)
         if self.active_topic == "Clima" and self._weather_drag_start is not None:
             self._weather_drag_end = self._weather_lap_at(x)
             first, last = sorted((self._weather_drag_start, self._weather_drag_end))
@@ -629,6 +657,7 @@ class RaceConfigurationView(arcade.View):
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> None:
         """Start an inclusive weather interval without leaving this view."""
 
+        x, y = self._logical_pointer(x, y)
         if (
             button == arcade.MOUSE_BUTTON_LEFT
             and self.active_topic == "Clima"
@@ -642,6 +671,7 @@ class RaceConfigurationView(arcade.View):
     ) -> None:
         """Preview the range while dragging over the timeline."""
 
+        x, _ = self._logical_pointer(x, y)
         if self._weather_drag_start is not None:
             self._weather_drag_end = self._weather_lap_at(x)
 
@@ -752,8 +782,8 @@ class RaceConfigurationView(arcade.View):
         left, bottom, width, height = bounds
         return left <= x <= left + width and bottom <= y <= bottom + height
 
-    @staticmethod
     def _text(
+        self,
         value: str,
         x: float,
         y: float,
@@ -761,7 +791,22 @@ class RaceConfigurationView(arcade.View):
         color: tuple[int, ...] = PRIMARY_TEXT_COLOR,
         **kwargs: object,
     ) -> None:
-        arcade.Text(value, x, y, color, size, **kwargs).draw()
+        """Draw a label placed in design units but rasterized natively.
+
+        Scaling glyph textures through the canvas camera blurs them, so the
+        position and font size are converted to window units and the label is
+        drawn with the window's default camera, then the canvas camera returns.
+        """
+
+        fit = self._canvas_fit()
+        width = kwargs.get("width")
+        if width is not None:
+            kwargs["width"] = int(width * fit.scale)
+        label = arcade.Text(
+            value, *fit.to_window(x, y), color, size * fit.scale, **kwargs
+        )
+        with self.window.default_camera.activate():
+            label.draw()
 
     @staticmethod
     def _panel(
