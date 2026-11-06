@@ -695,6 +695,11 @@ def simulate_2d_race(
         snap = lap_snapshots[did].get(laps_done)
         if snap is not None:
             return snap
+        # Carro que abandonou no meio da volta nao tem retrato dela: vale o
+        # ultimo conhecido (composto e paradas reais), nao o estado da largada.
+        earlier = [lap for lap in lap_snapshots[did] if lap <= laps_done]
+        if earlier:
+            return lap_snapshots[did][max(earlier)]
         return {
             "compound": compounds_used[did][0],
             "tyre_age_laps": max(0, laps_done),
