@@ -214,7 +214,7 @@ class ComputeLapTimeTest(unittest.TestCase):
                 reference_ms=90_000.0,
                 parameters=parameters(),
                 track=track(),
-                tyre=TyreSet("WET"),
+                tyre=TyreSet("ULTRASOFT"),
                 lap_number=1,
                 total_laps=10,
                 gap_ahead_ms=None,

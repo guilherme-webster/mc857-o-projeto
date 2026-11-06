@@ -294,7 +294,7 @@ class ValidationTest(unittest.TestCase):
                 reference_lap_time_ms=90_000.0,
                 grid_position=1,
                 strategy=NoStopStrategy(),
-                starting_compound="WET",
+                starting_compound="ULTRASOFT",
             )
         ]
         with self.assertRaises(KeyError):
@@ -349,7 +349,7 @@ class StrategyTest(unittest.TestCase):
 
     def test_tyre_life_strategy_validates_compound_up_front(self) -> None:
         with self.assertRaises(KeyError):
-            TyreLifeStrategy(parameters(), "WET")
+            TyreLifeStrategy(parameters(), "ULTRASOFT")
 
     def test_no_stop_strategy_never_pits(self) -> None:
         strategy = NoStopStrategy()
