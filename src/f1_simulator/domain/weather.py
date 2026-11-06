@@ -4,7 +4,7 @@ As intensidades são entradas do cenário, não observações inferidas do FastF
 O índice de água é adimensional (0 = seco, 1 = saturado); não representa
 milímetros de precipitação nem um coeficiente físico de aderência. A tradução
 da água em aderência, e daí em tempo de volta, fica em
-``domain/track_condition.py`` (ADR 0014); este módulo só evolui o estado.
+``domain/track_condition.py`` (ADR 0015); este módulo só evolui o estado.
 
 Os fluxos são definidos por "volta de referência" de
 ``WeatherParameters.reference_lap_minutes``. Uma volta mais longa acumula e

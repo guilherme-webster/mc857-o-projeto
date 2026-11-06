@@ -1,4 +1,4 @@
-"""Estime a aderencia e o downforce do carro de referencia (ADR 0014).
+"""Estime a aderencia e o downforce do carro de referencia (ADR 0015).
 
 Uso, a partir da raiz do repositorio::
 

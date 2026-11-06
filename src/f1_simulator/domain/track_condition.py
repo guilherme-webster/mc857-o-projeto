@@ -1,4 +1,4 @@
-"""Estado dinamico da pista por volta e a aderencia que ele permite (ADR 0014).
+"""Estado dinamico da pista por volta e a aderencia que ele permite (ADR 0015).
 
 A pista muda durante a corrida por tres motivos, todos modelados aqui:
 

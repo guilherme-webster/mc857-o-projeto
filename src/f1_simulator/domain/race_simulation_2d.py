@@ -6,8 +6,8 @@ A fisica continua em ``track_space`` (posicao, ultrapassagem, colisao). Aqui se
 converte a trajetoria continua em retratos de fim de volta e se traduzem, para a
 moeda espacial do 2D, os efeitos que o motor por volta cobra em tempo:
 
-- pneu, combustivel, clima e lift-and-coast viram uma penalidade em ms por
-  volta, convertida numa reducao fracionaria da velocidade (``speed_scale``);
+- desgaste e queima são integrados por movimento; desgaste e massa atuais,
+  junto com clima, modulam a velocidade (``speed_scale``);
 - as paradas percorrem a pit lane e consomem tempo real no serviço;
 - o controle de prova (SC, VSC, amarela, vermelha, relargada) reusa o automato
   de ``race_control``: ``LapEffects`` modula o ``speed_scale`` de todos os
@@ -25,8 +25,16 @@ reusadas sao as mesmas do motor por volta. Tudo rotulado em ``assumptions``.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import asdict, replace
 
-from f1_simulator.domain.fuel import FuelLap, FuelPlan, fuel_lap
+from f1_simulator.domain.attribute_effects import detailed_degradation_factor
+from f1_simulator.domain.dynamic_usage import (
+    DynamicUsageParameters,
+    curvature_profile,
+    usage_delta,
+    usage_reference,
+)
+from f1_simulator.domain.fuel import FuelPlan
 from f1_simulator.domain.model_parameters import (
     CompoundParameters,
     ModelParameters,
@@ -53,6 +61,7 @@ from f1_simulator.domain.strategy import (
     HeuristicPitStrategy,
     StrategyState,
     TyreStrategy,
+    SpatialPitPlanningParameters,
 )
 from f1_simulator.domain.track_condition import TrackState
 from f1_simulator.domain.track_space import (
@@ -60,6 +69,7 @@ from f1_simulator.domain.track_space import (
     ASSUMED_CAR_WIDTH_M,
     CarSpaceState,
     FieldSample,
+    MotionIncrement,
     build_track_space,
     integrate_field,
 )
@@ -117,7 +127,7 @@ def _lap_crossing_times_ms(
         if car.retired and not retired:
             retired = True
             retired_on = len(times_ms) + 1
-            retired_at_ms = sample.time_s * 1000.0
+            retired_at_ms = (car.retired_time_s if car.retired_time_s is not None else sample.time_s) * 1000.0
         prev = (sample.time_s, car.distance_m)
     return times_ms, retired, retired_on, retired_at_ms
 
@@ -153,7 +163,8 @@ def _trajectories_2d(
 ) -> dict[str, list[list[float | None]]]:
     """Trajetoria espacial por carro ao longo do tempo, comprimida p/ o frontend.
 
-    Cada ponto e ``[t_ms, distance_m, lateral_m, speed_kmh, pit_distance_m]``.
+    Cada ponto e ``[t_ms, distance_m, lateral_m, speed_kmh, pit_distance_m,
+    fuel_kg, tyre_wear_laps]``. Campos de recursos ausentes são nulos.
     O quinto campo é nulo na pista e é a distância no caminho aberto nos
     boxes. Mudanças de fase preservam os dois lados da transição, inclusive
     o início/fim do serviço, para a interpolação não apagar o tempo parado.
@@ -191,7 +202,11 @@ def _trajectories_2d(
             round(car.distance_m, 2),
             round(car.lateral_m, 3),
             round(car.speed_ms * 3.6, 1),
-            round(car.pit_state.path_distance_m, 3) if car.pit_state is not None else None,
+            round(car.pit_state.path_distance_m, 3)
+            if car.pit_state is not None
+            else None,
+            round(car.fuel_kg, 6) if car.fuel_kg is not None else None,
+            round(car.tyre_wear_laps, 6) if car.tyre_wear_laps is not None else None,
         ]
 
     def _push(did: str, point: list[float | None]) -> None:
@@ -213,7 +228,12 @@ def _trajectories_2d(
                 previous[did] = (_point(t_ms, car), _phase(car))
                 continue
             if car.retired or car.distance_m >= race_distance_m:
-                _push(did, _point(t_ms, car))
+                stop_ms = (
+                    car.retired_time_s * 1000
+                    if car.retired_time_s is not None
+                    else t_ms
+                )
+                _push(did, _point(stop_ms, car))
                 done.add(did)
                 continue
             point, phase = _point(t_ms, car), _phase(car)
@@ -273,6 +293,7 @@ def _classification(states: dict[str, dict]) -> list[dict]:
             "status": s["status"],
             "compound": s["compound"],
             "tyre_age_laps": s["tyre_age_laps"],
+            "tyre_wear_laps": round(s["tyre_wear_laps"], 6) if s["tyre_wear_laps"] is not None else None,
             "stops_made": s["stops_made"],
             "retirement_cause": s["retirement_cause"],
             "blocked_laps": 0,
@@ -304,6 +325,8 @@ def simulate_2d_race(
     width_m: float | None = None,
     dt_s: float = 0.05,
     pit_parameters: PitLaneParameters = PitLaneParameters(),
+    usage_parameters: DynamicUsageParameters = DynamicUsageParameters(),
+    pit_planning: SpatialPitPlanningParameters = SpatialPitPlanningParameters(),
 ) -> dict:
     """Simule a corrida no motor 2D e devolva ``history`` + ``classification``.
 
@@ -315,10 +338,10 @@ def simulate_2d_race(
     existentes) convertidas numa reducao fracionaria da velocidade do carro
     (``speed_scale``), de modo que a volta mais lenta emerge do movimento:
 
-    - ``compounds`` + ``track_params``: o pneu degrada com a idade (``tyres.py``);
-    - ``fuel``: a massa a bordo custa tempo e diminui a cada volta queimada; sem
-      reabastecimento permitido, o lift-and-coast economiza combustivel ao custo
-      de tempo (``fuel.py``);
+    - ``compounds`` + ``track_params``: exposição por distância e esforço
+      determina a penalidade do pneu, separada da idade em voltas;
+    - ``fuel``: queima por movimento e marcha lenta; massa custa tempo. O
+      proxy de desaceleração reduz a demanda, sem chamar ``fuel_lap``;
     - ``track_states``: agua, temperatura e borracha da volta viram um fator de
       aderencia (``track_condition.py``), e a fisica do proprio carro diz quanto
       tempo ele perde com esse fator -- o mesmo calculo do motor por volta.
@@ -352,6 +375,9 @@ def simulate_2d_race(
     lap_length_m = track.lap_length_m
 
     tyre_active = compounds is not None and track_params is not None
+    usage_active = tyre_active or fuel is not None
+    curvature = curvature_profile(geometry) if usage_active else None
+    reference_usage = usage_reference(geometry, curvature, base_physics, usage_parameters) if usage_active else None
     pit_active = tyre_active and model_parameters is not None
     pit_lane = build_pit_lane(geometry) if pit_active else None
     refuel_mode = False  # O 2D ainda executa apenas serviço de pneus.
@@ -365,8 +391,10 @@ def simulate_2d_race(
     grid_by_id: dict[str, int] = {}
     tyre_by_id: dict[str, TyreSet] = {}
     compounds_used: dict[str, tuple[str, ...]] = {}
-    fuel_kg: dict[str, float] = {}
+    management: dict[str, float] = {}
+    usage_totals: dict[str, dict[str, float]] = {}
     strategy_by_id: dict[str, TyreStrategy] = {}
+    strategy_plans: dict[str, dict] = {}
     stops_made: dict[str, int] = {}
     refuels_made: dict[str, int] = {}
     fuel_saving_laps: dict[str, int] = {}
@@ -382,6 +410,14 @@ def simulate_2d_race(
         names[did] = entry["name"]
         grid_by_id[did] = entry["grid_position"]
         physics = physics_for(entry.get("attributes"), base_physics)
+        management[did] = detailed_degradation_factor(entry.get("attributes"))
+        usage_totals[did] = dict(
+            fuel_burned_kg=0.0,
+            distance_wear_laps=0.0,
+            lateral_wear_laps=0.0,
+            longitudinal_wear_laps=0.0,
+            max_lateral_acceleration_ms2=0.0,
+        )
         physics_by_id[did] = physics
         aggression_by_id[did] = float(entry.get("aggression", 1.0))
         compound = entry.get("compound", "MEDIUM")
@@ -394,13 +430,28 @@ def simulate_2d_race(
         ref_ms[did] = grip_laps[did].lap_ms(1.0)
         if fuel is not None:
             load = entry.get("start_fuel_kg")
-            fuel_kg[did] = (
+            start_load = (
                 float(load) if load is not None else fuel.start_fuel_kg(total_laps)
             )
-            start_fuel_kg_by_id[did] = fuel_kg[did]
+            fuel.validate_start_fuel(start_load, did)
+            start_fuel_kg_by_id[did] = start_load
         if pit_active:
             assert model_parameters is not None and track_params is not None
-            strategy_by_id[did] = entry.get("strategy") or HeuristicPitStrategy(model_parameters, track_params)
+            target = pit_planning.wear_target(total_laps)
+            offset_laps = entry.get("strategy_offset_laps", 0)
+            strategy_by_id[did] = entry.get("strategy") or HeuristicPitStrategy(
+                model_parameters,
+                track_params,
+                offset_laps=offset_laps,
+                compulsory_wear_target_laps=target,
+            )
+            strategy_plans[did] = {
+                "mode": "custom" if entry.get("strategy") is not None else "heuristic",
+                "offset_laps": offset_laps,
+                "compulsory_wear_target_laps": target
+                if entry.get("strategy") is None
+                else None,
+            }
         # Grid escalonado em fila: cada carro numa posicao longitudinal distinta
         # (a pole na frente, cada um ``GRID_ROW_SPACING_M`` atras), com lateral
         # alternado so para o visual de grid. Separados longitudinalmente, os
@@ -411,7 +462,17 @@ def simulate_2d_race(
         usable = track.bounds.usable_m
         lateral = max(-usable, min(usable, side * GRID_LATERAL_OFFSET_M))
         offset = slot * GRID_ROW_SPACING_M
-        cars.append(CarSpaceState(did, distance_m=offset, lateral_m=lateral))
+        cars.append(
+            CarSpaceState(
+                did,
+                distance_m=offset,
+                lateral_m=lateral,
+                fuel_kg=start_fuel_kg_by_id.get(did),
+                tyre_wear_laps=0.0 if tyre_active else None,
+            )
+        )
+
+    cars_by_id = {car.driver_id: car for car in cars}
 
     # Retrato do estado de pneu/combustivel/paradas ao fim de cada volta de cada
     # carro, para o history refletir a evolucao e nao apenas o estado final.
@@ -426,7 +487,7 @@ def simulate_2d_race(
     control_laps_done = 0
 
     def _status_for_lap(lap_number: int) -> str:
-        """Estado da pista na volta ``lap_number`` para a queima de combustivel."""
+        """Estado da pista na volta ``lap_number`` para a estratégia."""
 
         if race_control is None:
             return GREEN
@@ -446,7 +507,12 @@ def simulate_2d_race(
         if not tyre_active:
             return 0.0
         tyre = tyre_by_id[did]
-        return tyre_penalty_ms(tyre, compounds[tyre.compound], track_params)
+        return tyre_penalty_ms(
+            tyre,
+            compounds[tyre.compound],
+            track_params,
+            wear_laps=cars_by_id[did].tyre_wear_laps,
+        )
 
     def _apply_scale(car: CarSpaceState, lap_number: int) -> None:
         """Converta as penalidades de tempo da volta em fator de velocidade.
@@ -461,7 +527,7 @@ def simulate_2d_race(
         eff = _lap_effects(lap_number)
         penalty = _tyre_penalty_ms(did)
         if fuel is not None:
-            penalty += _last_fuel_ms.get(did, 0.0)
+            penalty += fuel.ms_per_kg * max(0.0, car.fuel_kg - fuel.parameters.finish_reserve_kg)
         if track_states:
             idx = min(lap_number - 1, len(track_states) - 1)
             grip_factor = track_states[idx].grip_factor
@@ -473,9 +539,6 @@ def simulate_2d_race(
     reliability_by_id = reliability_by_id or {}
     mechanical_retired: dict[str, int] = {}
     fuel_retired: dict[str, int] = {}
-    # Parcela de combustivel (ms) da ultima volta de cada carro, para o
-    # ``speed_scale`` da proxima volta refletir a massa ja queimada.
-    _last_fuel_ms: dict[str, float] = {}
 
     def _advance_control(lap: int, incidents: list[Incident]) -> None:
         """Avance o controle de prova uma volta e registre estado e eventos."""
@@ -499,24 +562,67 @@ def simulate_2d_race(
             }
         )
 
-    def _consume_fuel(car: CarSpaceState, completed_lap: int) -> FuelLap | None:
-        """Queime a volta ``completed_lap`` e guarde a massa e a parcela de tempo."""
+    def _on_motion(car: CarSpaceState, motion: MotionIncrement) -> None:
+        """Integre recursos e atualize o ritmo, antes dos eventos de serviço/volta."""
 
-        if fuel is None:
-            return None
+        if not usage_active:
+            return
+        assert curvature is not None and reference_usage is not None
         did = car.driver_id
-        laps_remaining = max(1, total_laps - completed_lap + 1)
-        lap_fuel = fuel_lap(
-            fuel,
-            fuel_kg=fuel_kg[did],
-            laps_remaining=laps_remaining,
-            status=_status_for_lap(completed_lap),
+        midpoint = motion.start_distance_m + motion.distance_m / 2
+        delta = usage_delta(
+            distance_m=motion.distance_m,
+            dt_s=motion.dt_s,
+            speed_ms=motion.speed_ms,
+            acceleration_ms2=motion.acceleration_ms2,
+            curvature_per_m=curvature.at(midpoint),
+            lap_length_m=lap_length_m,
+            burn_kg_per_km=fuel.parameters.burn_kg_per_km if fuel else 0.0,
+            reference=reference_usage,
+            parameters=usage_parameters,
+            management_factor=management[did],
+            in_pit=motion.in_pit,
         )
-        fuel_kg[did] = lap_fuel.end_kg
-        _last_fuel_ms[did] = lap_fuel.fuel_ms
-        if lap_fuel.saved_kg > 0.0:
-            fuel_saving_laps[did] += 1
-        return lap_fuel
+        fraction = 1.0
+        burned = 0.0
+        if fuel is not None:
+            assert car.fuel_kg is not None
+            burned = min(delta.fuel_kg, car.fuel_kg)
+            if delta.fuel_kg > car.fuel_kg + 1e-12:
+                fraction = car.fuel_kg / delta.fuel_kg
+                car.retired = True
+                car.retired_time_s = motion.time_s - motion.dt_s * (1 - fraction)
+                car.speed_ms = 0.0
+                car.distance_m = (
+                    motion.start_distance_m
+                    + (car.distance_m - motion.start_distance_m) * fraction
+                )
+                if motion.in_pit and car.pit_state is not None:
+                    car.pit_state = replace(
+                        car.pit_state,
+                        path_distance_m=car.pit_state.path_distance_m
+                        - motion.distance_m * (1 - fraction),
+                    )
+                fuel_retired[did] = max(1, int(car.distance_m // lap_length_m) + 1)
+                pending_incidents.setdefault(fuel_retired[did], []).append(
+                    Incident(fuel_retired[did], "mechanical", (did,))
+                )
+            car.fuel_kg = max(0.0, car.fuel_kg - burned)
+        totals = usage_totals[did]
+        totals["fuel_burned_kg"] += burned
+        if tyre_active:
+            assert car.tyre_wear_laps is not None
+            car.tyre_wear_laps += delta.wear_laps * fraction
+            for name in (
+                "distance_wear_laps",
+                "lateral_wear_laps",
+                "longitudinal_wear_laps",
+            ):
+                totals[name] += getattr(delta, name) * fraction
+        totals["max_lateral_acceleration_ms2"] = max(
+            totals["max_lateral_acceleration_ms2"], delta.lateral_acceleration_ms2
+        )
+        _apply_scale(car, int(car.distance_m // lap_length_m) + 1)
 
     def _request_pit(car: CarSpaceState, lap_number: int) -> None:
         """Decida no início da volta; o pedido só troca pneus no serviço."""
@@ -536,6 +642,7 @@ def simulate_2d_race(
             compounds_used=compounds_used[did],
             free_tyre_change=eff.free_tyre_change,
             fuel=None,
+            tyre_wear_laps=car.tyre_wear_laps,
         )
         decision = strategy.decide(state)
         if not decision.pit:
@@ -543,6 +650,7 @@ def simulate_2d_race(
         assert decision.compound is not None
         if eff.free_tyre_change:
             tyre_by_id[did] = TyreSet(decision.compound, 0)
+            car.tyre_wear_laps = 0.0
             if decision.compound not in compounds_used[did]:
                 compounds_used[did] = (*compounds_used[did], decision.compound)
         else:
@@ -562,6 +670,7 @@ def simulate_2d_race(
         compound = pending_compounds[did]
         if kind == "service_completed":
             tyre_by_id[did] = TyreSet(compound, 0)
+            car.tyre_wear_laps = 0.0
             stops_made[did] += 1
             if compound not in compounds_used[did]:
                 compounds_used[did] = (*compounds_used[did], compound)
@@ -593,22 +702,6 @@ def simulate_2d_race(
     def on_lap_complete(car: CarSpaceState, lap: int) -> None:
         nonlocal control_laps_done
         did = car.driver_id
-        lap_fuel = _consume_fuel(car, lap)
-        # Pane seca: o carro para como uma quebra; vira incidente mecanico.
-        if (
-            lap_fuel is not None
-            and lap_fuel.ran_dry
-            and not refuel_mode
-            and lap < total_laps
-            and did not in mechanical_retired
-            and did not in fuel_retired
-        ):
-            car.retired = True
-            fuel_retired[did] = lap
-            pending_incidents.setdefault(lap, []).append(
-                Incident(lap, "mechanical", (did,))
-            )
-            return
         # Abandono mecanico: sorteio por volta. Ordem fixa pelo rotulo.
         if mechanical_hazard_per_lap > 0.0 and lap < total_laps:
             hazard = mechanical_hazard_per_lap * reliability_by_id.get(did, 1.0)
@@ -627,8 +720,9 @@ def simulate_2d_race(
         lap_snapshots[did][lap] = {
             "compound": tyre_by_id[did].compound,
             "tyre_age_laps": tyre_by_id[did].age_laps,
+            "tyre_wear_laps": car.tyre_wear_laps,
             "stops_made": stops_made[did],
-            "fuel_kg": fuel_kg[did] if fuel is not None else None,
+            "fuel_kg": car.fuel_kg,
             "fuel_saving_laps": fuel_saving_laps[did],
             "refuels_made": refuels_made[did],
         }
@@ -653,8 +747,6 @@ def simulate_2d_race(
 
     # Fator inicial da volta 1 (pneu novo, tanque cheio, clima da volta 1).
     for car in cars:
-        if fuel is not None:
-            _last_fuel_ms[car.driver_id] = fuel.ms_per_kg * fuel_kg[car.driver_id]
         _apply_scale(car, 1)
         _request_pit(car, 1)
 
@@ -672,6 +764,7 @@ def simulate_2d_race(
         pit_lane=pit_lane,
         pit_parameters=pit_parameters,
         on_pit_event=_pit_event,
+        on_motion=_on_motion,
     )
 
     per_car: dict[str, list[float]] = {}
@@ -680,12 +773,8 @@ def simulate_2d_race(
         times, retired, retired_on, retired_at_ms = _lap_crossing_times_ms(
             samples, did, lap_length_m, total_laps
         )
-        # Carro que abandonou sem completar nenhuma volta registra uma "volta"
-        # com o tempo do abandono, porque o retrato por volta (e o RacePlayback
-        # do frontend) exige ao menos uma volta por carro.
-        if retired and not times:
-            times = [retired_at_ms if retired_at_ms is not None else 0.0]
-            retired_on = 1
+        # Pane seca pode ocorrer antes da primeira linha. Não creditar uma
+        # volta fictícia: a trajetória informa o instante e o progresso finais.
         per_car[did] = times
         outcome[did] = (retired, retired_on, retired_at_ms)
 
@@ -703,8 +792,9 @@ def simulate_2d_race(
         return {
             "compound": compounds_used[did][0],
             "tyre_age_laps": max(0, laps_done),
+            "tyre_wear_laps": cars_by_id[did].tyre_wear_laps,
             "stops_made": 0,
-            "fuel_kg": fuel_kg[did] if fuel is not None else None,
+            "fuel_kg": cars_by_id[did].fuel_kg,
             "fuel_saving_laps": 0,
             "refuels_made": 0,
         }
@@ -714,10 +804,12 @@ def simulate_2d_race(
         states: dict[str, dict] = {}
         for did in names:
             times = per_car[did]
-            retired, retired_on, _ = outcome[did]
+            retired, retired_on, retired_ms = outcome[did]
             laps_done = min(lap, len(times))
             total_ms = times[laps_done - 1] if laps_done >= 1 else 0.0
             is_retired = retired and retired_on is not None and lap >= retired_on
+            if is_retired and retired_ms is not None:
+                total_ms = retired_ms
             cause = None
             if is_retired:
                 if did in mechanical_retired:
@@ -727,6 +819,15 @@ def simulate_2d_race(
                 else:
                     cause = CONTACT
             snap = _snapshot_for(did, laps_done)
+            if is_retired:
+                snap = {
+                    **snap,
+                    "fuel_kg": cars_by_id[did].fuel_kg,
+                    "tyre_wear_laps": cars_by_id[did].tyre_wear_laps,
+                    "compound": tyre_by_id[did].compound,
+                    "tyre_age_laps": tyre_by_id[did].age_laps,
+                    "stops_made": stops_made[did],
+                }
             states[did] = {
                 "driver_id": did,
                 "name": names[did],
@@ -736,6 +837,7 @@ def simulate_2d_race(
                 "retirement_cause": cause,
                 "compound": snap["compound"],
                 "tyre_age_laps": snap["tyre_age_laps"],
+                "tyre_wear_laps": snap["tyre_wear_laps"],
                 "stops_made": snap["stops_made"],
                 "fuel_kg": snap["fuel_kg"] if fuel is not None else None,
                 "fuel_saving_laps": snap["fuel_saving_laps"],
@@ -768,7 +870,9 @@ def simulate_2d_race(
         # Trajetoria espacial para o frontend desenhar carros lado a lado com
         # hitbox. ``track_space_2d`` traz a largura e a escala para converter os
         # metros laterais em unidades do desenho normalizado.
-        "trajectories_2d": _trajectories_2d(samples, list(names), total_laps * lap_length_m),
+        "trajectories_2d": _trajectories_2d(
+            samples, list(names), total_laps * lap_length_m
+        ),
         "track_space_2d": {
             "width_m": track.width_m,
             "xy_per_metre": track.xy_per_metre,
@@ -780,14 +884,13 @@ def simulate_2d_race(
             {
                 "kind": "engine_2d",
                 "origin": "assumed",
-                "parameter_version": "motor-2d-v3",
+                "parameter_version": "motor-2d-v4",
                 "rationale": (
                     "ADR 0011: motor 2D de posicao continua. Velocidade, "
-                    "ultrapassagem e colisao emergem da fisica espacial; pneu, "
-                    "combustivel, clima, "
-                    "lift-and-coast e controle de prova (SC/VSC/bandeiras) "
-                    "entram como penalidades de tempo convertidas em velocidade, "
-                    "reusando as mesmas heuristicas do motor por volta."
+                    "ultrapassagem e colisao emergem da fisica espacial; "
+                    "desgaste e queima sao integrados por movimento. A massa e "
+                    "a exposicao acumulada, o clima e o controle de prova "
+                    "modulam a velocidade com parametros assumidos."
                     " Pit stop percorre geometria mockada e serviço de pneus; "
                     "não soma a perda histórica nem executa reabastecimento."
                 ),
@@ -803,7 +906,65 @@ def simulate_2d_race(
             }
         ],
     }
+    if usage_active:
+        reports = {}
+        for did, totals in usage_totals.items():
+            report = dict(totals)
+            if fuel is None:
+                report["fuel_burned_kg"] = None
+            if not tyre_active:
+                for name in (
+                    "distance_wear_laps",
+                    "lateral_wear_laps",
+                    "longitudinal_wear_laps",
+                ):
+                    report[name] = None
+            reports[did] = {
+                **report,
+                "current_tyre_wear_laps": cars_by_id[did].tyre_wear_laps,
+                "management_factor": management[did] if tyre_active else None,
+            }
+        result["usage_2d"] = {
+            "tyre_active": tyre_active,
+            "fuel_active": fuel is not None,
+            "reference": asdict(reference_usage),
+            "curvature": {
+                "distance_m": list(curvature.distances_m),
+                "curvature_per_m": list(curvature.curvature_per_m),
+            },
+            "cars": reports,
+        }
+        result["assumptions"].append(
+            {
+                "kind": "dynamic_usage_2d",
+                **asdict(usage_parameters),
+                "reference_physics": asdict(base_physics),
+                "rationale": "Carga lateral estimada por v²*curvatura; índices de desgaste e consumo "
+                "normalizados pela mesma volta neutra, sem calibrar os pesos nem "
+                "somar a idade/queima por volta ou os fatores de consumo SC/VSC. "
+                "Gestão aplicada uma vez; agressividade atua pelo movimento. "
+                "Frenagem é proxy de coasting, não acelerador medido. Vazão máxima usa 2025.",
+                "sources": [
+                    "https://press.pirelli.com/an-important-debut-on-one-of-the-toughest-tracks-for-tyres/",
+                    "https://simulation.michelin.com/canopy/technical-articles/save-more-fuel-than-lando-norris-how-to-drive-an-f1-car-efficiently",
+                    "https://www.fia.com/sites/default/files/fia_2025_formula_1_technical_regulations_-_issue_01_-_2024-12-11_1.pdf",
+                ],
+            }
+        )
     if pit_lane is not None:
+        result["pit_planning_2d"] = {
+            "parameters": asdict(pit_planning),
+            "cars": strategy_plans,
+        }
+        result["assumptions"].append(
+            {
+                "kind": "pit_planning_2d",
+                **asdict(pit_planning),
+                "rationale": "Troca obrigatória planejada pelo desgaste equivalente com preferência "
+                "individual semeada; preserva o último prazo comum e não exige "
+                "voltas distintas quando as decisões coincidirem.",
+            }
+        )
         result["pit_lane_2d"] = {
             "points": [list(point) for point in pit_lane.points],
             "entry_distance_m": pit_lane.entry_distance_m,

@@ -1,4 +1,4 @@
-"""Estado dinamico da pista: agua, temperatura, borracha e aderencia (ADR 0014)."""
+"""Estado dinamico da pista: agua, temperatura, borracha e aderencia (ADR 0015)."""
 
 from __future__ import annotations
 

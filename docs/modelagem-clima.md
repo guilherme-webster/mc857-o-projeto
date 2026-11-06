@@ -36,7 +36,7 @@ Verificação isolada: `uv run python -m unittest tests.test_weather`.
 
 ## Integração atual
 
-Atualizado em 2026-11-06 (issue #119, ADR 0014).
+Atualizado em 2026-11-06 (issue #119, ADR 0015).
 
 - **Interface:** a tela de configuração da etapa pinta o clima por volta com os
   rótulos "Seco", "Chuva leve" e "Chuva intensa".

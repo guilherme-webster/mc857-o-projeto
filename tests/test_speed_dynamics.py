@@ -1,4 +1,4 @@
-"""Motor fisico de velocidade limitado por aderencia (ADR 0014).
+"""Motor fisico de velocidade limitado por aderencia (ADR 0015).
 
 Os testes sinteticos verificam a fisica onde a resposta e conhecida (circulo,
 reta, formula da curva). Os testes com a geometria versionada verificam o

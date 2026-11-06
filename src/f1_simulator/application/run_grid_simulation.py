@@ -157,8 +157,21 @@ def _setup_echo(setup: RaceSetup, engine: str = "detailed") -> dict:
     return payload
 
 
+def _strategy_offset(rng: RandomSource, driver_id: str) -> int:
+    """Preferência por piloto em fluxo isolado, idêntica nos dois motores."""
+
+    amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
+    stream = rng.spawn(f"strategy:offset:{driver_id}")  # type: ignore[attr-defined]
+    return (
+        uniform_index(
+            stream, f"strategy:offset:{driver_id}:uniform-index", 2 * amplitude + 1
+        )
+        - amplitude
+    )
+
+
 def _track_states(setup: RaceSetup, reference_lap_time_ms: float) -> tuple[TrackState, ...]:
-    """Estado da pista em cada volta: agua, temperatura e borracha (ADR 0014).
+    """Estado da pista em cada volta: agua, temperatura e borracha (ADR 0015).
 
     Calculado sempre, inclusive em corrida seca: a borracha evolui com o
     pelotao. A duracao da volta, que regula a secagem por minuto, e a volta de
@@ -202,6 +215,7 @@ def _run_2d(
             "attributes": attributes[entry.driver_id],
             "aggression": attributes[entry.driver_id].aggression,
             "compound": "MEDIUM",
+            "strategy_offset_laps": _strategy_offset(rng, entry.driver_id),
         }
         for position, entry in enumerate(grid, start=1)
     ]
@@ -413,26 +427,13 @@ def run_detailed_grid_simulation(
             track_states=track_states,
         )
 
-    amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
     known_team_ids = {candidate.team_id for candidate in parameters.team_reliability}
     entrants = []
     reliability_fallbacks = []
     fuel_traits_by_driver: dict[str, object] = {}
     for grid_position, entry in enumerate(grid, start=1):
         driver_attributes = attributes[entry.driver_id]
-        # O intervalo inclusivo [-amplitude, +amplitude] tem largura impar; o
-        # deslocamento posterior devolve exatamente o offset inteiro esperado.
-        strategy_rng = rng.spawn(  # type: ignore[attr-defined]
-            f"strategy:offset:{entry.driver_id}"
-        )
-        offset_laps = (
-            uniform_index(
-                strategy_rng,
-                f"strategy:offset:{entry.driver_id}:uniform-index",
-                2 * amplitude + 1,
-            )
-            - amplitude
-        )
+        offset_laps = _strategy_offset(rng, entry.driver_id)
         team_is_modeled = entry.team_id in known_team_ids
         reliability_factor = (
             parameters.reliability_factor(entry.team_id) if team_is_modeled else 1.0
@@ -619,7 +620,7 @@ def run_detailed_grid_simulation(
 
 
 def _physical_lap_assumption() -> dict:
-    """Origem do tempo de volta fisico (ADR 0014), para os dois motores."""
+    """Origem do tempo de volta fisico (ADR 0015), para os dois motores."""
 
     car = DEFAULT_CAR_PHYSICS
     return {
@@ -638,7 +639,7 @@ def _physical_lap_assumption() -> dict:
             "traction_share": car.traction_share,
         },
         "rationale": (
-            "ADR 0014: velocidade de curva limitada por aderencia e downforce, "
+            "ADR 0015: velocidade de curva limitada por aderencia e downforce, "
             "com raio em metros; grip_mu e downforce_cla_m2 ajustados para o "
             "piloto neutro reproduzir a volta de referencia historica "
             "(data/parameters/car-physics-v1.json). Substitui a volta de "

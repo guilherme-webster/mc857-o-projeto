@@ -1,7 +1,7 @@
 # 0010 - Motor físico de velocidade por trecho
 
 - Status: aceita; a velocidade de curva (ângulo normalizado, envelope
-  320/90 km/h) é revisada pelo [ADR 0014](0014-aderencia-fisica-e-estado-da-pista.md)
+  320/90 km/h) é revisada pelo [ADR 0015](0015-aderencia-fisica-e-estado-da-pista.md)
 - Data: 2026-10-01
 - Responsável pela autorização: usuário, nesta sessão, ao escolher o desenho B
   (velocidade física gera o tempo) com envelope global inicial de 320 km/h na

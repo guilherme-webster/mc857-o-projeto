@@ -9,6 +9,7 @@ em ``CompoundParameters.origin``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 from f1_simulator.domain.model_parameters import CompoundParameters, TrackParameters
 
@@ -58,12 +59,18 @@ def tyre_penalty_ms(
     tyre: TyreSet,
     compound: CompoundParameters,
     track: TrackParameters,
+    *,
+    wear_laps: float | None = None,
 ) -> float:
     """Penalidade do jogo em ms, relativa a uma volta de pneu novo de referencia.
 
     Aplica ``a * idade + b * idade ** 2`` escalado pela severidade do circuito,
     somado ao deslocamento de ritmo do composto. Apenas a degradacao e escalada:
     a diferenca intrinseca entre compostos nao depende do desgaste da pista.
+
+    ``wear_laps`` substitui a idade por exposição equivalente no motor 2D.
+    A idade real do jogo não é modificada nem somada outra vez. Ausente,
+    preserva o cálculo por volta.
 
     O resultado pode ser negativo para um composto macio com pneu novo, que e
     genuinamente mais rapido que a referencia. O piso nao negativo vale para a
@@ -75,7 +82,14 @@ def tyre_penalty_ms(
             f"parametros do composto {compound.name!r} nao descrevem "
             f"o jogo {tyre.compound!r}"
         )
-    age = tyre.age_laps
+    age = tyre.age_laps if wear_laps is None else wear_laps
+    if (
+        isinstance(age, bool)
+        or not isinstance(age, (int, float))
+        or not isfinite(age)
+        or age < 0
+    ):
+        raise ValueError("desgaste deve ser uma idade equivalente finita não negativa")
     wear = compound.degradation_ms_per_lap * age
     wear += compound.degradation_ms_per_lap2 * age * age
     return compound.pace_offset_ms + wear * track.tyre_severity

@@ -61,7 +61,7 @@ mesma versão de código, Python, parâmetros e dados, não entre versões.
 | Volta de referência | `application/reference_laps.py`, `data/parameters/reference-laps-v1.json` | `historical-median-fastest-laps-v1` |
 | Voltas padrão por pista | `application/default_laps.py` | corrida mais recente ou `assumed-distance-rule-v1` |
 | Clima e estado da pista | `domain/weather.py` (`step_weather`, `simulate_weather`), `domain/track_condition.py` (`simulate_track_conditions`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`, por volta de referência de 1,5 min), `ASSUMED_TRACK_CONDITION` (`assumed-track-condition-v1`) |
-| Tempo de volta físico | `domain/speed_dynamics.py` (`CarPhysics`, `physics_for`, `GripLapTimes`), `application/calibrate_car_physics.py` | `data/parameters/car-physics-v1.json` (`mu` e `C_L·A` estimados; demais campos `assumed`), ADR 0014 |
+| Tempo de volta físico | `domain/speed_dynamics.py` (`CarPhysics`, `physics_for`, `GripLapTimes`), `application/calibrate_car_physics.py` | `data/parameters/car-physics-v1.json` (`mu` e `C_L·A` estimados; demais campos `assumed`), ADR 0015 |
 | Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
 | Impacto temporal do grid | `domain/grid_start.py`, aplicado por `domain/race_simulation.py` | `data/parameters/grid-start-v1.json` (`heuristic-grid-start-v1`) |
 | Ligação ao grid | `application/run_grid_simulation.py` (`run_detailed_grid_simulation`) | ritmo de reserva `ASSUMED_REFERENCE_PACE_MS_PER_KM` |
@@ -157,6 +157,19 @@ antes da relargada; não há bandeira laranja nem desdobramento formal de
 retardatários (a compressão do SC já os traz para perto do pelotão).
 
 ## 6. Paradas
+
+No 2D, o [ADR 0014](adr/0014-consumo-e-desgaste-por-movimento.md) integra
+combustível e desgaste por movimento. A estratégia recebe o desgaste
+equivalente acumulado, separado da idade real. Não há segunda queima nem
+desgaste adicional ao fechar a volta. Os fatores de consumo SC/VSC da tabela
+abaixo continuam exclusivos do motor por volta; no 2D o esforço menor produz
+a economia. Fórmulas e limites em [consumo-desgaste-dinamicos.md](consumo-desgaste-dinamicos.md).
+
+A primeira troca obrigatória no 2D usa um orçamento de desgaste, com preferência
+individual semeada de ±2 voltas equivalentes (`spatial-pit-planning-v1`). Assim,
+o grid não precisa inteiro aguardar o último prazo comum para usar o segundo
+composto. O prazo de segurança permanece, e decisões coincidentes continuam
+possíveis. O motor por volta conserva sua política anterior.
 
 No motor 2D, o [ADR 0012](adr/0012-percurso-espacial-de-pit-lane.md) substitui
 a perda diluída por um percurso físico hipotético dos boxes. O carro entra
@@ -353,7 +366,7 @@ próprios parâmetros, não números fixos.
   que tratar todas as equipes iguais (131 contra 118 ms).
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
 - **Clima só no tempo de volta.** Água e borracha viram um fator de
-  aderência (`domain/track_condition.py`, ADR 0014) que o motor físico
+  aderência (`domain/track_condition.py`, ADR 0015) que o motor físico
   converte em tempo pela geometria: pista saturada custa ~27% em Mônaco e
   ~19% em Monza. A água descreve a aderência com o pneu adequado, mas o carro
   continua nos compostos secos: não há pneus intermediários ou de chuva, nem

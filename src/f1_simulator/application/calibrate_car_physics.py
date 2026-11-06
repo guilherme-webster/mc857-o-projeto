@@ -1,4 +1,4 @@
-"""Estime a aderencia e o downforce do carro de referencia (ADR 0014).
+"""Estime a aderencia e o downforce do carro de referencia (ADR 0015).
 
 O motor fisico (``domain/speed_dynamics.py``) transforma a geometria de cada
 pista num tempo de volta. Dois parametros do carro nao tem valor publico

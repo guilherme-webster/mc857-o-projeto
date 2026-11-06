@@ -1,4 +1,4 @@
-"""Velocidade de um carro ao longo da volta, limitada pela aderencia (ADR 0014).
+"""Velocidade de um carro ao longo da volta, limitada pela aderencia (ADR 0015).
 
 O carro e um ponto de massa que percorre a linha de centro da geometria. Em cada
 ponto, a velocidade maxima e a de curva: a aceleracao lateral ``v**2 / R`` nao
@@ -14,7 +14,7 @@ acelera, com limites que tambem dependem da velocidade:
 - freada: ``uso_freio * mu * (g + k_a * v**2) + k_d * v**2`` (o arrasto ajuda);
 - tracao: ``min(parcela_tracao * mu * (g + k_a * v**2), P / (m * v)) - k_d * v**2``.
 
-Por que esse modelo (ADR 0014 revisa o ADR 0010): a versao anterior interpolava
+Por que esse modelo (ADR 0015 revisa o ADR 0010): a versao anterior interpolava
 entre 320 e 90 km/h pelo angulo entre pontos, normalizado pela curva mais
 fechada da propria pista. Ela nao conhecia o raio nem a aderencia, entao toda
 pista tinha a curva mais lenta a 90 km/h e Monaco saia 37% rapido demais. Com
