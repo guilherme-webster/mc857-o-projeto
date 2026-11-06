@@ -2,8 +2,15 @@
 
 As intensidades são entradas do cenário, não observações inferidas do FastF1.
 O índice de água é adimensional (0 = seco, 1 = saturado); não representa
-milímetros de precipitação nem um coeficiente físico de aderência. Este módulo
-não altera tempos de volta, pneus ou resultados de corrida.
+milímetros de precipitação nem um coeficiente físico de aderência. A tradução
+da água em aderência, e daí em tempo de volta, fica em
+``domain/track_condition.py`` (ADR 0014); este módulo só evolui o estado.
+
+Os fluxos são definidos por "volta de referência" de
+``WeatherParameters.reference_lap_minutes``. Uma volta mais longa acumula e
+seca proporcionalmente mais: Spa (~1,8 min) seca mais por volta que a Áustria
+(~1,2 min). Sem duração informada, cada volta vale uma volta de referência,
+como no modelo original da issue #69.
 """
 
 from __future__ import annotations
@@ -66,8 +73,16 @@ class WeatherParameters:
     source_kind: Literal["assumed", "estimated"]
     parameter_version: str
     rationale: str
+    #: Duração (min) da volta para a qual os fluxos acima foram escritos.
+    reference_lap_minutes: float = 1.5
 
     def __post_init__(self) -> None:
+        if (
+            isinstance(self.reference_lap_minutes, bool)
+            or not isfinite(self.reference_lap_minutes)
+            or self.reference_lap_minutes <= 0
+        ):
+            raise ValueError("reference_lap_minutes deve ser positivo")
         for name in (
             "dry_humidity_pct",
             "light_humidity_pct",
@@ -128,17 +143,67 @@ class LapWeather:
     state: WeatherState
 
 
+def step_weather(
+    state: WeatherState,
+    rain: RainLevel,
+    parameters: WeatherParameters = ASSUMED_WEATHER_PARAMETERS,
+    *,
+    lap_minutes: float | None = None,
+    evaporation_scale: float = 1.0,
+) -> WeatherState:
+    """Estado ao fim de uma volta de ``lap_minutes`` sob a chuva ``rain``.
+
+    ``lap_minutes`` ``None`` vale uma volta de referência. Os fluxos de água
+    escalam linearmente com a duração; a aproximação da umidade ao alvo, que é
+    uma fração por volta, vira ``1 - (1 - f) ** escala`` para que duas voltas
+    curtas equivalham a uma longa. ``evaporation_scale`` multiplica só a
+    evaporação: é por onde a temperatura da pista acelera a secagem
+    (``track_condition``).
+    """
+
+    if type(rain) is not RainLevel:
+        raise ValueError(f"condição climática inválida: {rain!r}")
+    scale = 1.0 if lap_minutes is None else lap_minutes / parameters.reference_lap_minutes
+    if not isfinite(scale) or scale <= 0:
+        raise ValueError("lap_minutes deve ser positivo")
+    if not isfinite(evaporation_scale) or evaporation_scale < 0:
+        raise ValueError("evaporation_scale nao pode ser negativo")
+    targets = {
+        RainLevel.DRY: parameters.dry_humidity_pct,
+        RainLevel.LIGHT: parameters.light_humidity_pct,
+        RainLevel.HEAVY: parameters.heavy_humidity_pct,
+    }
+    gains = {
+        RainLevel.DRY: 0.0,
+        RainLevel.LIGHT: parameters.light_water_gain_per_lap,
+        RainLevel.HEAVY: parameters.heavy_water_gain_per_lap,
+    }
+    response = 1.0 - (1.0 - parameters.humidity_response_fraction) ** scale
+    humidity = state.humidity_pct + response * (targets[rain] - state.humidity_pct)
+    evaporation = (
+        parameters.evaporation_per_lap * evaporation_scale * (1 - humidity / 100)
+    )
+    water = state.surface_water + scale * (
+        gains[rain] - parameters.drainage_per_lap - evaporation
+    )
+    return WeatherState(
+        humidity_pct=max(0.0, min(100.0, humidity)),
+        surface_water=max(0.0, min(1.0, water)),
+    )
+
+
 def simulate_weather(
     conditions: Sequence[RainLevel],
     *,
     initial_state: WeatherState = WeatherState(50.0, 0.0),
     parameters: WeatherParameters = ASSUMED_WEATHER_PARAMETERS,
+    lap_minutes: float | None = None,
 ) -> tuple[LapWeather, ...]:
     """Evolua uma volta por entrada, sem aleatoriedade nem dependências externas.
 
     ``initial_state`` é o estado antes da volta 1. Cada item retornado contém
     o estado após aplicar a condição daquela volta. Não converte rótulos de UI:
-    a futura borda deverá mapear explicitamente esses rótulos para RainLevel.
+    a borda mapeia explicitamente esses rótulos para RainLevel.
     """
 
     if not conditions:
@@ -150,83 +215,12 @@ def simulate_weather(
 
     state = initial_state
     history: list[LapWeather] = []
-    targets = {
-        RainLevel.DRY: parameters.dry_humidity_pct,
-        RainLevel.LIGHT: parameters.light_humidity_pct,
-        RainLevel.HEAVY: parameters.heavy_humidity_pct,
-    }
-    gains = {
-        RainLevel.DRY: 0.0,
-        RainLevel.LIGHT: parameters.light_water_gain_per_lap,
-        RainLevel.HEAVY: parameters.heavy_water_gain_per_lap,
-    }
     for lap, rain in enumerate(conditions, start=1):
         if type(rain) is not RainLevel:
             raise ValueError(f"condição climática inválida na volta {lap}: {rain!r}")
-        humidity = state.humidity_pct + parameters.humidity_response_fraction * (
-            targets[rain] - state.humidity_pct
-        )
-        evaporation = parameters.evaporation_per_lap * (1 - humidity / 100)
-        water = (
-            state.surface_water
-            + gains[rain]
-            - parameters.drainage_per_lap
-            - evaporation
-        )
-        state = WeatherState(
-            humidity_pct=max(0.0, min(100.0, humidity)),
-            surface_water=max(0.0, min(1.0, water)),
-        )
+        state = step_weather(state, rain, parameters, lap_minutes=lap_minutes)
         history.append(LapWeather(lap=lap, rain=rain, state=state))
     return tuple(history)
-
-
-@dataclass(frozen=True, slots=True)
-class WeatherEffectParameters:
-    """Hipótese do efeito do clima no tempo de volta, proporcional à água.
-
-    ``wet_penalty_pct_max`` é a fração máxima adicionada ao tempo em pista
-    saturada (``surface_water`` = 1); escala linearmente com a água. Não é
-    calibrado: representa só a ordem de grandeza de uma volta na chuva.
-    """
-
-    wet_penalty_pct_max: float
-    source_kind: Literal["assumed", "estimated"]
-    parameter_version: str
-    rationale: str
-
-    def __post_init__(self) -> None:
-        _bounded("wet_penalty_pct_max", self.wet_penalty_pct_max, 2)
-        if self.source_kind not in ("assumed", "estimated"):
-            raise ValueError("source_kind deve ser 'assumed' ou 'estimated'")
-        if not isinstance(self.parameter_version, str) or not self.parameter_version.strip():
-            raise ValueError("parameter_version deve ser não vazio")
-        if not isinstance(self.rationale, str) or not self.rationale.strip():
-            raise ValueError("rationale deve ser não vazio")
-
-
-ASSUMED_WEATHER_EFFECT = WeatherEffectParameters(
-    wet_penalty_pct_max=0.40,
-    source_kind="assumed",
-    parameter_version="assumed-weather-effect-v1",
-    rationale=(
-        "Hipótese não calibrada: pista saturada deixa a volta ~40% mais lenta, "
-        "proporcional à água na pista. Não descreve aderência medida."
-    ),
-)
-
-
-def weather_penalty_ms(
-    reference_ms: float,
-    surface_water: float,
-    parameters: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
-) -> float:
-    """Penalidade de tempo da volta pela água na pista, zero em pista seca."""
-
-    _bounded("surface_water", surface_water, 1)
-    if reference_ms <= 0:
-        raise ValueError("reference_ms deve ser positivo")
-    return reference_ms * parameters.wet_penalty_pct_max * surface_water
 
 
 @dataclass(frozen=True, slots=True)

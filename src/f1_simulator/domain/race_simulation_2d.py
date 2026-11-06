@@ -24,6 +24,8 @@ reusadas sao as mesmas do motor por volta. Tudo rotulado em ``assumptions``.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from f1_simulator.domain.fuel import FuelLap, FuelPlan, fuel_lap
 from f1_simulator.domain.model_parameters import (
     CompoundParameters,
@@ -44,15 +46,15 @@ from f1_simulator.domain.race_control import (
 from f1_simulator.domain.random_source import RandomSource
 from f1_simulator.domain.speed_dynamics import (
     CarPhysics,
-    lap_time_ms,
+    GripLapTimes,
     physics_for,
-    steady_lap,
 )
 from f1_simulator.domain.strategy import (
     HeuristicPitStrategy,
     StrategyState,
     TyreStrategy,
 )
+from f1_simulator.domain.track_condition import TrackState
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
@@ -294,7 +296,7 @@ def simulate_2d_race(
     track_params: TrackParameters | None = None,
     model_parameters: ModelParameters | None = None,
     fuel: FuelPlan | None = None,
-    lap_surface_water: list[float] | None = None,
+    track_states: Sequence[TrackState] | None = None,
     reliability_by_id: dict[str, float] | None = None,
     mechanical_hazard_per_lap: float = 0.0,
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
@@ -317,7 +319,9 @@ def simulate_2d_race(
     - ``fuel``: a massa a bordo custa tempo e diminui a cada volta queimada; sem
       reabastecimento permitido, o lift-and-coast economiza combustivel ao custo
       de tempo (``fuel.py``);
-    - ``lap_surface_water``: a agua na pista penaliza por volta (``weather.py``).
+    - ``track_states``: agua, temperatura e borracha da volta viram um fator de
+      aderencia (``track_condition.py``), e a fisica do proprio carro diz quanto
+      tempo ele perde com esse fator -- o mesmo calculo do motor por volta.
 
     Com ``model_parameters`` + ``track_params`` + ``compounds``, cada piloto ganha
     uma ``HeuristicPitStrategy``. Uma estratégia explícita no entrante pode
@@ -372,6 +376,7 @@ def simulate_2d_race(
     # Volta de referencia de cada carro (ms), para converter penalidades de tempo
     # em fator de velocidade. E o tempo que o proprio envelope fisico produz.
     ref_ms: dict[str, float] = {}
+    grip_laps: dict[str, GripLapTimes] = {}
     for entry in sorted(entrants, key=lambda e: e["grid_position"]):
         did = entry["driver_id"]
         names[did] = entry["name"]
@@ -385,7 +390,8 @@ def simulate_2d_race(
         stops_made[did] = 0
         refuels_made[did] = 0
         fuel_saving_laps[did] = 0
-        ref_ms[did] = lap_time_ms(steady_lap(geometry, physics))
+        grip_laps[did] = GripLapTimes(geometry, physics)
+        ref_ms[did] = grip_laps[did].lap_ms(1.0)
         if fuel is not None:
             load = entry.get("start_fuel_kg")
             fuel_kg[did] = (
@@ -456,9 +462,11 @@ def simulate_2d_race(
         penalty = _tyre_penalty_ms(did)
         if fuel is not None:
             penalty += _last_fuel_ms.get(did, 0.0)
-        if lap_surface_water:
-            idx = min(lap_number - 1, len(lap_surface_water) - 1)
-            penalty += base * 0.40 * lap_surface_water[idx]
+        if track_states:
+            idx = min(lap_number - 1, len(track_states) - 1)
+            grip_factor = track_states[idx].grip_factor
+            if grip_factor != 1.0:
+                penalty += grip_laps[did].delta_ms(grip_factor)
         on_track_ms = (base + penalty) * eff.lap_time_factor + eff.lap_time_loss_ms
         car.speed_scale = base / on_track_ms if on_track_ms > 0 else 1.0
 
@@ -782,7 +790,9 @@ def simulate_2d_race(
                 "fuel_active": fuel is not None,
                 "refuel_active": refuel_mode,
                 "pit_active": pit_active,
-                "weather_active": bool(lap_surface_water),
+                "weather_active": bool(track_states)
+                and any(state.surface_water > 0 for state in track_states),
+                "track_condition_active": bool(track_states),
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
             }

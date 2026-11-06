@@ -27,7 +27,7 @@ from f1_simulator.domain.pit_lane import (
 
 from f1_simulator.domain.random_source import RandomSource
 from f1_simulator.domain.speed_dynamics import (
-    ASSUMED_CAR_PHYSICS,
+    DEFAULT_CAR_PHYSICS,
     CarPhysics,
     speed_ceiling,
 )
@@ -278,7 +278,7 @@ def _ceiling_at(cum: list[float], ceiling: list[float], distance_m: float) -> fl
 
 def integrate_single_car(
     geometry: TrackGeometry,
-    physics: CarPhysics = ASSUMED_CAR_PHYSICS,
+    physics: CarPhysics = DEFAULT_CAR_PHYSICS,
     *,
     dt_s: float = ASSUMED_TIME_STEP_S,
     initial_speed_ms: float | None = None,
@@ -287,7 +287,9 @@ def integrate_single_car(
     """Integre uma volta de um carro por passos de tempo (fatia 2 do ADR 0011).
 
     A cada passo o carro ajusta a velocidade em direcao ao teto da curvatura,
-    limitado por ``accel``/``brake``, e avanca ``speed * dt`` metros. Para quando
+    limitado pela tracao e pela freada que o envelope permite naquela
+    velocidade (``accel_limit_ms2``/``brake_limit_ms2``), e avanca
+    ``speed * dt`` metros. Para quando
     completa uma volta (``distance_m >= lap_length``). O tempo de volta emerge da
     soma dos passos; com ``dt`` pequeno, aproxima o ``steady_lap`` por distancia
     do ADR 0010. Um unico carro, sem lateral nem disputa: essas entram nas
@@ -309,9 +311,9 @@ def integrate_single_car(
     while distance < lap_length and steps < max_steps:
         target = _ceiling_at(cum, ceiling, distance)
         if speed < target:
-            speed = min(target, speed + physics.accel_ms2 * dt_s)
+            speed = min(target, speed + physics.accel_limit_ms2(speed) * dt_s)
         elif speed > target:
-            speed = max(target, speed - physics.brake_ms2 * dt_s)
+            speed = max(target, speed - physics.brake_limit_ms2(speed) * dt_s)
         distance += speed * dt_s
         time_s += dt_s
         samples.append(MotionSample(time_s, distance, speed))
@@ -586,11 +588,13 @@ def integrate_field(
 
             # (3) velocidade longitudinal: acelera/freia em direcao ao teto.
             # O teto e reduzido por ``speed_scale`` (pneu, combustivel, clima).
+            # Os limites dependem da velocidade (downforce), como no ADR 0014.
             target = _ceiling_at(cum, ceiling, car.distance_m) * car.speed_scale
-            if car.speed_ms < target:
-                car.speed_ms = min(target, car.speed_ms + physics.accel_ms2 * dt_s)
-            elif car.speed_ms > target:
-                car.speed_ms = max(target, car.speed_ms - physics.brake_ms2 * dt_s)
+            speed = car.speed_ms
+            if speed < target:
+                car.speed_ms = min(target, speed + physics.accel_limit_ms2(speed) * dt_s)
+            elif speed > target:
+                car.speed_ms = max(target, speed - physics.brake_limit_ms2(speed) * dt_s)
 
             # (4) avanco com exclusao: usa a faixa lateral JA atualizada, entao
             # um carro que saiu da esteira do da frente deixa de ser bloqueado.
