@@ -230,6 +230,13 @@ class StrategyState:
     compounds_used: tuple[str, ...] = ()
     free_tyre_change: bool = False
     fuel: FuelStatus | None = None
+    tyre_wear_laps: float | None = None
+
+    @property
+    def effective_tyre_age(self) -> float:
+        """Desgaste acumulado no 2D; idade em voltas no caminho por volta."""
+
+        return self.tyre.age_laps if self.tyre_wear_laps is None else self.tyre_wear_laps
 
     def __post_init__(self) -> None:
         """Valide somente o contexto novo, preservando o contrato legado.
@@ -257,6 +264,13 @@ class StrategyState:
             raise ValueError("free_tyre_change deve ser bool")
         if self.fuel is not None and not isinstance(self.fuel, FuelStatus):
             raise ValueError("fuel deve ser FuelStatus")
+        if self.tyre_wear_laps is not None and (
+            isinstance(self.tyre_wear_laps, bool)
+            or not isinstance(self.tyre_wear_laps, (int, float))
+            or not isfinite(self.tyre_wear_laps)
+            or self.tyre_wear_laps < 0
+        ):
+            raise ValueError("tyre_wear_laps deve ser finito e não negativo")
 
 
 @dataclass(frozen=True, slots=True)
@@ -324,6 +338,44 @@ DEFAULT_HEURISTIC_PIT_PARAMETERS = HeuristicPitParameters(
     final_laps_without_pit=3,
     driver_variation_amplitude_laps=2,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class SpatialPitPlanningParameters:
+    """Planeje a troca obrigatória por desgaste, antes do último prazo comum.
+
+    O orçamento equivale à fração da corrida em voltas neutras de carga. O
+    desgaste real determina quando o carro o atinge; a preferência individual
+    usa o offset já existente, sorteado na composição. Não força voltas únicas:
+    carros com decisões semelhantes ainda podem parar juntos, como sob SC.
+    """
+
+    compulsory_change_fraction: float = 0.5
+    origin: Literal["heuristic"] = "heuristic"
+    parameter_version: str = "spatial-pit-planning-v1"
+
+    def __post_init__(self) -> None:
+        value = self.compulsory_change_fraction
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not isfinite(value)
+            or not 0 < value < 1
+        ):
+            raise ValueError("compulsory_change_fraction deve estar em (0, 1)")
+        if (
+            self.origin != "heuristic"
+            or not isinstance(self.parameter_version, str)
+            or not self.parameter_version.strip()
+        ):
+            raise ValueError("planejamento dos boxes exige origem heurística e versão")
+
+    def wear_target(self, total_laps: int) -> float:
+        """Orçamento antes da volta de entrada, sem antecipar o desgaste dela."""
+
+        if type(total_laps) is not int or total_laps < 1:
+            raise ValueError("total_laps deve ser positivo")
+        return max(0.0, total_laps * self.compulsory_change_fraction - 1.0)
 """Hipotese padrao versionada para a estrategia; nao e calibracao empirica."""
 
 
@@ -420,7 +472,7 @@ class TyreLifeStrategy:
         if state.lap_number >= state.total_laps:
             return PitDecision(False)
         life = self._parameters.compound(state.tyre.compound).typical_stint_laps
-        if state.tyre.age_laps >= life:
+        if state.effective_tyre_age >= life:
             return PitDecision(True, self._next_compound)
         return PitDecision(False)
 
@@ -446,6 +498,10 @@ class HeuristicPitStrategy:
     apenas para a decisao (positivo adia, negativo antecipa) e deve ter sido
     sorteado pelo consumidor dentro da amplitude declarada. Assim, ``decide``
     nao consome aleatoriedade e e deterministico para o mesmo estado.
+
+    ``compulsory_wear_target_laps`` permite ao 2D planejar a troca obrigatória
+    por exposição acumulada antes do prazo final. ``None`` mantém a política
+    por volta; o orçamento não altera o desgaste real nem exige voltas únicas.
 
     Nas ultimas voltas configuradas, uma parada normal e recusada. A excecao de
     seguranca ocorre quando o jogo ja ultrapassou sua vida tipica por mais que
@@ -482,6 +538,7 @@ class HeuristicPitStrategy:
         "_parameters",
         "_track",
         "_tyre_management_factor",
+        "_compulsory_wear_target_laps",
     )
 
     def __init__(
@@ -493,6 +550,7 @@ class HeuristicPitStrategy:
         offset_laps: int = 0,
         dry_compounds: Sequence[str] = _DEFAULT_DRY_COMPOUNDS,
         fuel_traits: FuelStrategyTraits = NEUTRAL_FUEL_TRAITS,
+        compulsory_wear_target_laps: float | None = None,
     ) -> None:
         """Construa uma politica pura e valide todo o catalogo antes da corrida."""
 
@@ -526,6 +584,13 @@ class HeuristicPitStrategy:
             parameters.compound(compound)
         if not isinstance(fuel_traits, FuelStrategyTraits):
             raise ValueError("fuel_traits deve ser FuelStrategyTraits")
+        if compulsory_wear_target_laps is not None and (
+            isinstance(compulsory_wear_target_laps, bool)
+            or not isinstance(compulsory_wear_target_laps, (int, float))
+            or not isfinite(compulsory_wear_target_laps)
+            or compulsory_wear_target_laps < 0
+        ):
+            raise ValueError("compulsory_wear_target_laps deve ser finito e não negativo")
 
         self._parameters = parameters
         self._track = track
@@ -534,6 +599,7 @@ class HeuristicPitStrategy:
         self._offset_laps = offset_laps
         self._dry_compounds = compounds
         self._fuel_traits = fuel_traits
+        self._compulsory_wear_target_laps = compulsory_wear_target_laps
 
     def decide(self, state: StrategyState) -> PitDecision:
         """Decida a parada sem sortear nem manter estado interno mutavel."""
@@ -576,7 +642,7 @@ class HeuristicPitStrategy:
         if needs_second_compound and state.lap_number == last_regular_pit_lap:
             return PitDecision(True, next_compound)
 
-        decision_age_laps = max(0, state.tyre.age_laps - self._offset_laps)
+        decision_age_laps = max(0, state.effective_tyre_age - self._offset_laps)
         if state.free_tyre_change:
             if self._free_change_is_convenient(
                 state, decision_age_laps, next_compound
@@ -592,6 +658,16 @@ class HeuristicPitStrategy:
             state, decision_age_laps
         ):
             return PitDecision(False)
+
+        # No 2D, planejar o composto obrigatório por exposição real evita
+        # que todos aguardem o mesmo prazo final apesar de desgastes distintos.
+        # None preserva exatamente a política do motor por volta.
+        if (
+            needs_second_compound
+            and self._compulsory_wear_target_laps is not None
+            and decision_age_laps >= self._compulsory_wear_target_laps
+        ):
+            return PitDecision(True, next_compound)
 
         if state.neutralization in ("SC", "VSC") and self._is_opportunistic(
             state, decision_age_laps
@@ -631,12 +707,12 @@ class HeuristicPitStrategy:
             ).typical_stint_laps,
         )
 
-    def _adjusted_tyre_penalty_ms(self, compound: str, age_laps: int) -> float:
+    def _adjusted_tyre_penalty_ms(self, compound: str, age_laps: float) -> float:
         """Aplique gestao a degradacao sem distorcer o ritmo do composto novo."""
 
         compound_parameters = self._parameters.compound(compound)
         raw_penalty_ms = tyre_penalty_ms(
-            TyreSet(compound, age_laps), compound_parameters, self._track
+            TyreSet(compound, 0), compound_parameters, self._track, wear_laps=age_laps
         )
         degradation_ms = raw_penalty_ms - compound_parameters.pace_offset_ms
         return (
@@ -645,7 +721,7 @@ class HeuristicPitStrategy:
         )
 
     def _old_tyre_cost_ms(
-        self, state: StrategyState, decision_age_laps: int
+        self, state: StrategyState, decision_age_laps: float
     ) -> float:
         remaining_including_current = state.total_laps - state.lap_number + 1
         return sum(
@@ -658,7 +734,7 @@ class HeuristicPitStrategy:
     def _normal_stop_cost_ms(
         self,
         state: StrategyState,
-        decision_age_laps: int,
+        decision_age_laps: float,
         next_compound: str,
     ) -> float:
         """Some volta de entrada, perda de boxes e voltas do jogo novo."""
@@ -676,7 +752,7 @@ class HeuristicPitStrategy:
     def _free_change_is_convenient(
         self,
         state: StrategyState,
-        decision_age_laps: int,
+        decision_age_laps: float,
         next_compound: str,
     ) -> bool:
         """Compare a troca de bandeira vermelha, efetiva antes da proxima volta."""
@@ -691,7 +767,7 @@ class HeuristicPitStrategy:
         )
 
     def _is_opportunistic(
-        self, state: StrategyState, decision_age_laps: int
+        self, state: StrategyState, decision_age_laps: float
     ) -> bool:
         life_laps = self._parameters.compound(
             state.tyre.compound
@@ -703,7 +779,7 @@ class HeuristicPitStrategy:
         )
 
     def _is_extreme_overlife(
-        self, state: StrategyState, decision_age_laps: int
+        self, state: StrategyState, decision_age_laps: float
     ) -> bool:
         life_laps = self._parameters.compound(
             state.tyre.compound
@@ -824,7 +900,7 @@ class HeuristicPitStrategy:
         burn_kg = plan.burn_kg_per_lap
         reserve_kg = plan.parameters.finish_reserve_kg
         mass_kg = fuel.end_kg
-        age = max(0, state.tyre.age_laps - self._offset_laps)
+        age = max(0, state.effective_tyre_age - self._offset_laps)
         cost_ms = 0.0
         for _ in range(state.lap_number + 1, stop_lap + 1):
             age += 1

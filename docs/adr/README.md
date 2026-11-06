@@ -26,6 +26,7 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | [0011](0011-motor-2d-posicao-continua-ultrapassagem-e-colisao.md) | aceita; atualiza o 0002, 0003 e 0010 | Motor 2D sub-volta: posicao x,y continua; ultrapassagem e colisao emergem da proximidade espacial. |
 | [0012](0012-percurso-espacial-de-pit-lane.md) | aceita; atualiza o 0011 | Pit lane espacial no 2D: entrada, fila, serviço e saída; tempo efetivo sem duplicar a perda de boxes. |
 | [0013](0013-torneio-salvo-e-reexecucao.md) | aceita; atualiza o 0006 | Torneio salvo com grid congelado e resultados: reabrir sem simular ou reexecutar pelo `POST /catalog/grid/run`. |
+| [0014](0014-consumo-e-desgaste-por-movimento.md) | aceita; atualiza o 0011/0012 | Consumo e desgaste contínuos por esforço e carga de curva, com parâmetros assumidos e auditáveis. |
 
 ## Modelo
 
