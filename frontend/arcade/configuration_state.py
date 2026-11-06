@@ -192,6 +192,11 @@ DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(DEFAULT_LAPS_FALLBACK)
 SCORING_OPTIONS = ("F1 oficial", "Sem pontuação")
 WEATHER_MODE_OPTIONS = ("Configuração por corrida", "Seco em todas")
 TIEBREAK_OPTIONS = ("Melhor posição média", "Mais vitórias")
+# Motor de corrida por torneio (ADR 0011): o detalhado, calibrado, continua o
+# padrão; o 2D move os carros no espaço e percorre a pit lane física, ao custo
+# de ~30x mais tempo por etapa. Rótulo da tela -> valor de ``setup.engine``.
+ENGINE_OPTIONS = ("Detalhado (calibrado)", "2D com pit lane")
+ENGINE_API_VALUES = {"Detalhado (calibrado)": "detailed", "2D com pit lane": "2d"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +210,8 @@ class TournamentRules:
     weather_mode: str = WEATHER_MODE_OPTIONS[0]
     allow_repeats: bool = False
     tiebreak: str = TIEBREAK_OPTIONS[0]
+    # Com default, torneios salvos antes desta opção continuam carregando.
+    engine: str = ENGINE_OPTIONS[0]
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -219,6 +226,8 @@ class TournamentRules:
             raise ConfigurationFormError("modo de clima desconhecido")
         if self.tiebreak not in TIEBREAK_OPTIONS:
             raise ConfigurationFormError("critério de desempate desconhecido")
+        if self.engine not in ENGINE_OPTIONS:
+            raise ConfigurationFormError("motor de corrida desconhecido")
 
 
 @dataclass(frozen=True, slots=True)

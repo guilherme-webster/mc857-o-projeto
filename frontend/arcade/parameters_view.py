@@ -32,6 +32,8 @@ from frontend.arcade.configuration_state import (
     SessionConfiguration,
     SimulationPlan,
     TIEBREAK_OPTIONS,
+    ENGINE_API_VALUES,
+    ENGINE_OPTIONS,
     TournamentRules,
     WEATHER_MODE_OPTIONS,
     WeatherSchedule,
@@ -55,7 +57,7 @@ from frontend.arcade.theme import (
     SUCCESS_COLOR,
 )
 
-RULES_PANEL_BOUNDS = (28, 230, 544, 346)
+RULES_PANEL_BOUNDS = (28, 184, 544, 392)
 TRACK_CARD_BOUNDS = (586, 76, 666, 500)
 SCHEDULER_BOUNDS = (600, 91, 638, 418)
 TRACK_PREVIEW_BOUNDS = (614, 115, 320, 188)
@@ -66,9 +68,9 @@ NEXT_TRACK_BOUNDS = (816, 382, 34, 31)
 TOGGLE_TRACK_BOUNDS = (956, 286, 268, 38)
 REMOVE_TRACK_BOUNDS = (956, 236, 268, 38)
 AUTOMATIC_BOUNDS = (956, 186, 268, 38)
-# Abaixo do painel de regras, que termina em y=230.
-DRIVERS_BOUNDS = (28, 176, 268, 38)
-SAVED_TOURNAMENTS_BOUNDS = (28, 128, 268, 38)
+# Abaixo do painel de regras, que termina em y=184.
+DRIVERS_BOUNDS = (28, 130, 268, 38)
+SAVED_TOURNAMENTS_BOUNDS = (28, 82, 268, 38)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
 CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 36)
 SAVE_RULES_BOUNDS = (916, 13, 138, 36)
@@ -79,6 +81,7 @@ STAGES_INCREASE_BOUNDS = (326, 383, 28, 34)
 WEATHER_BOUNDS = (232, 344, 320, 34)
 REPEATS_BOUNDS = (232, 306, 44, 25)
 TIEBREAK_BOUNDS = (232, 268, 320, 34)
+ENGINE_BOUNDS = (232, 192, 320, 30)
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
@@ -495,6 +498,7 @@ class ParametersView(UIView):
                     "weather_mode": self.rules.weather_mode,
                     "allow_repeats": self.rules.allow_repeats,
                     "tiebreak": self.rules.tiebreak,
+                    "engine": self.rules.engine,
                     **changes,
                 }
             )
@@ -991,6 +995,14 @@ class ParametersView(UIView):
         if self._contains(TIEBREAK_BOUNDS, x, y):
             self._cycle_rule("tiebreak", TIEBREAK_OPTIONS)
             return
+        if self._contains(ENGINE_BOUNDS, x, y):
+            if self._cycle_rule("engine", ENGINE_OPTIONS) and (
+                ENGINE_API_VALUES[self.rules.engine] == "2d"
+            ):
+                self._set_status(
+                    "Motor 2D com pit lane: ~15 s por etapa.", SUCCESS_COLOR
+                )
+            return
         if self._contains(STAGES_DECREASE_BOUNDS, x, y):
             self._update_rules(total_stages=max(1, self.rules.total_stages - 1))
             return
@@ -1094,9 +1106,9 @@ class ParametersView(UIView):
                 return index
         return None
 
-    def _cycle_rule(self, name: str, options: tuple[str, ...]) -> None:
+    def _cycle_rule(self, name: str, options: tuple[str, ...]) -> bool:
         current = getattr(self.rules, name)
-        self._update_rules(
+        return self._update_rules(
             **{name: options[(options.index(current) + 1) % len(options)]}
         )
 
@@ -1317,6 +1329,7 @@ class ParametersView(UIView):
             ("Permitir repetição de pista", 315),
             ("Critério de desempate", 277),
             ("Semente · Ctrl+C/V", 239),
+            ("Motor da corrida", 201),
         )
         for label, y in labels:
             self._native_text(
@@ -1330,6 +1343,7 @@ class ParametersView(UIView):
             (SCORING_BOUNDS, self.rules.scoring),
             (WEATHER_BOUNDS, self.rules.weather_mode),
             (TIEBREAK_BOUNDS, self.rules.tiebreak),
+            (ENGINE_BOUNDS, self.rules.engine),
         ):
             left, bottom, width, height = bounds
             self._draw_rounded_panel(

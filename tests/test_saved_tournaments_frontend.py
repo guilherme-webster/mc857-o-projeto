@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from frontend.arcade.configuration_state import (
+    ENGINE_OPTIONS,
     ConfigurationFormData,
     PlannedRace,
     SessionConfiguration,
@@ -148,6 +149,30 @@ class RerunTest(unittest.TestCase):
         self.assertEqual(len(outcome.races), 2)
         self.assertIn("reexecutado", outcome.grid_note)
         self.assertTrue(messages[0].startswith("Restaurando"))
+
+    def test_2d_engine_choice_survives_save_and_rerun(self) -> None:
+        rules = TournamentRules(
+            name="Copa 2D", total_stages=2, engine="2D com pit lane"
+        )
+        launch = FakeClient()
+        session = session_from_outcome(
+            launch_plan(SimulationPlan(PLANNED, rules, 109), launch)
+        )
+        record = saved_record(session)
+        client = FakeClient()
+
+        outcome = rerun(record, client)
+
+        sent = [call[1] for call in client.calls if call[0] == "run_grid"]
+        self.assertEqual([setup["engine"] for setup in sent], ["2d", "2d"])
+        self.assertEqual(outcome.rules.engine, "2D com pit lane")
+
+    def test_record_saved_before_engine_option_loads_as_detailed(self) -> None:
+        session, _ = simulated_session()
+        record = saved_record(session)
+        del record["rules"]["engine"]
+
+        self.assertEqual(reopen(record, lambda _: {}).rules.engine, ENGINE_OPTIONS[0])
 
     def test_session_without_tournament_seed_round_trips(self) -> None:
         session, _ = simulated_session(seed=None)

@@ -130,14 +130,21 @@ def _weather_echo(setup: RaceSetup) -> list[dict]:
     ]
 
 
-def _setup_echo(setup: RaceSetup) -> dict:
-    """Ecoe o contrato novo sem alterar a representacao de corridas legadas."""
+def _setup_echo(setup: RaceSetup, engine: str = "detailed") -> dict:
+    """Ecoe o contrato novo sem alterar a representacao de corridas legadas.
+
+    ``engine`` so aparece fora do padrao: corridas do motor detalhado mantem o
+    eco de antes, e uma corrida 2D declara o motor que a produziu (conferido ao
+    salvar um torneio).
+    """
 
     payload = {
         "total_laps": setup.total_laps,
         "track_id": setup.track_id,
         "weather": _weather_echo(setup),
     }
+    if engine != "detailed":
+        payload["engine"] = engine
     if setup.tournament_seed is not None:
         payload["tournament_seed"] = setup.tournament_seed
         payload["stage_index"] = setup.stage_index
@@ -197,7 +204,7 @@ def _run_2d(
         race_control=race_control,
     )
     result["speed_profiles"] = _speed_profiles_by_driver(geometry, grid, attributes)
-    result["setup"] = _setup_echo(setup)
+    result["setup"] = _setup_echo(setup, engine="2d")
     result["reference_lap_time_ms"] = reference_lap_time_ms
     result["track_reference"] = {
         "requested_track_id": setup.track_id,
