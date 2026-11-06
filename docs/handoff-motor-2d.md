@@ -148,7 +148,9 @@ incompleto.
 
 ## 6. Como rodar a simulacao 2D
 
-O motor 2D e selecionavel pela API, mas **nao ha botao no frontend** ainda.
+Na tela inicial do Arcade, a regra **Motor da corrida** = "2D com pit lane"
+envia `engine="2d"` em todas as etapas do torneio (e e salva com ele). Pela
+API:
 
 1. Suba o backend: `docker compose up -d --build backend`.
 2. Monte um grid (pelo frontend ou API) e dispare a corrida com `engine="2d"`:

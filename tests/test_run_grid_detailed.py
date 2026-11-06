@@ -331,6 +331,15 @@ class DetailedGridSimulationTest(unittest.TestCase):
         self.assertNotEqual(first, different_seed)
         self.assertNotEqual(first, repeated_track_next_stage)
 
+    def test_setup_echo_declares_the_2d_engine_and_keeps_detailed_unchanged(
+        self,
+    ) -> None:
+        detailed = self._run_tournament_stage("detailed", 105, 0)
+        spatial = self._run_tournament_stage("2d", 105, 0)
+
+        self.assertNotIn("engine", detailed["setup"])
+        self.assertEqual(spatial["setup"]["engine"], "2d")
+
     def test_tournament_seed_reproduces_and_separates_2d_stages(self) -> None:
         first = self._run_tournament_stage("2d", 105, 0)
         repeated = self._run_tournament_stage("2d", 105, 0)

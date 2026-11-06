@@ -161,9 +161,13 @@ def _check_stage(
         tournament_seed is not None and race.get("stage_index") != index
     ):
         raise SavedTournamentError(f"{label}: corrida rodada com outra seed")
-    race_laps = (race.get("setup") or {}).get("total_laps")
-    if race_laps != setup.get("total_laps"):
+    race_setup = race.get("setup") or {}
+    if race_setup.get("total_laps") != setup.get("total_laps"):
         raise SavedTournamentError(f"{label}: voltas do setup e da corrida diferem")
+    # O motor muda a fisica inteira da corrida; ausente significa o detalhado,
+    # que era o unico antes da opcao de motor na tela.
+    if race_setup.get("engine", "detailed") != setup.get("engine", "detailed"):
+        raise SavedTournamentError(f"{label}: motor do setup e da corrida diferem")
 
     # O grid e conferido pela seed (atributos sorteados) e pela ordem de
     # largada; atributos editados a mao nao mudam a seed, mas aparecem no

@@ -152,9 +152,12 @@ class SavedTournamentContractTest(unittest.TestCase):
         wrong_index["setup"]["stage_index"] = 0
         wrong_laps = stage(0)
         wrong_laps["setup"]["total_laps"] = 4
+        wrong_engine = stage(0)
+        wrong_engine["setup"]["engine"] = "2d"
         cases = {
             "indice": [stage(0), wrong_index],
             "voltas": [wrong_laps],
+            "motor": [wrong_engine],
             "seed do torneio": [stage(0)],
         }
         for label, stages in cases.items():
