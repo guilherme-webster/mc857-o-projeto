@@ -11,6 +11,13 @@ from threading import Thread
 import arcade
 from arcade.gui import UIDropdown, UIFlatButton, UIInputText, UIView
 
+from frontend.arcade.canvas_fit import (
+    MINIMUM_WINDOW_SIZE,
+    CanvasFit,
+    initial_window_size,
+    make_canvas_camera,
+    screen_size_in_window_units,
+)
 from frontend.arcade.configuration_layout import (
     Control,
     build_initial_configuration_layout,
@@ -74,7 +81,11 @@ TIEBREAK_BOUNDS = (232, 268, 320, 34)
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
+# Preferred size of the desktop window. It is only the starting point: the
+# window is resizable and starts smaller when the screen cannot hold it.
 TOURNAMENT_WINDOW_SIZE = (1672, 900)
+# Design canvas of this screen; every *_BOUNDS constant is in these units and
+# is scaled uniformly to the current window size (see ``canvas_fit``).
 CONFIGURATION_WINDOW_SIZE = (1280, 720)
 
 
@@ -824,16 +835,24 @@ class ParametersView(UIView):
         """Enable Arcade GUI input and apply the screen background color."""
 
         super().on_show_view()
-        if self.window.visible and self.window.get_size() != TOURNAMENT_WINDOW_SIZE:
-            self.window.set_size(*TOURNAMENT_WINDOW_SIZE)
-        self._screen_camera = arcade.Camera2D(
-            projection=arcade.LBWH(-640, -360, *CONFIGURATION_WINDOW_SIZE),
-            viewport=arcade.LBWH(0, 0, *self.window.get_size()),
-            position=(640, 360),
-            window=self.window,
-        )
+        # The window may have been resized while another view was shown.
+        self._sync_screen_camera()
         arcade.set_background_color(BACKGROUND_COLOR)
         self._load_track_catalog()
+
+    def on_resize(self, width: int, height: int) -> None:
+        """Refit the design canvas whenever the user resizes the window."""
+
+        super().on_resize(width, height)
+        self._sync_screen_camera()
+
+    def _canvas_fit(self) -> CanvasFit:
+        """Current uniform mapping between the design canvas and the window."""
+
+        return CanvasFit.fit(CONFIGURATION_WINDOW_SIZE, self.window.get_size())
+
+    def _sync_screen_camera(self) -> None:
+        self._screen_camera = make_canvas_camera(self._canvas_fit(), self.window)
 
     def on_draw(self) -> None:
         """Scale shapes while rasterizing text at the window's native resolution."""
@@ -860,26 +879,24 @@ class ParametersView(UIView):
     ) -> _NativeText:
         """Place a label in logical layout units but render its glyphs natively."""
 
-        scale_x = self.window.width / CONFIGURATION_WINDOW_SIZE[0]
-        scale_y = self.window.height / CONFIGURATION_WINDOW_SIZE[1]
+        fit = self._canvas_fit()
         width = kwargs.get("width")
         if width is not None:
-            kwargs["width"] = int(width * scale_x)
+            kwargs["width"] = int(width * fit.scale)
         label = arcade.Text(
             text,
-            x * scale_x,
-            y * scale_y,
+            *fit.to_window(x, y),
             color,
-            font_size * scale_y,
+            font_size * fit.scale,
             **kwargs,
         )
         return _NativeText(label, self._native_labels)
 
     def _logical_pointer(self, x: int, y: int) -> tuple[int, int]:
-        """Map physical pointer pixels back to the 1280×720 design canvas."""
+        """Map window pointer coordinates back to the 1280×720 design canvas."""
 
-        width, height = self.window.get_size()
-        return int(x * 1280 / width), int(y * 720 / height)
+        logical_x, logical_y = self._canvas_fit().to_logical(x, y)
+        return int(logical_x), int(logical_y)
 
     def on_draw_before_ui(self) -> None:
         """Draw the track-selection screen before hidden controller widgets."""
@@ -1708,14 +1725,24 @@ class ParametersView(UIView):
 
 
 def create_parameters_window() -> arcade.Window:
-    """Create the single desktop window and show its initial ParametersView."""
+    """Create the single desktop window and show its initial ParametersView.
+
+    The window is resizable and starts at the preferred size only when the
+    screen can hold it; on smaller or HiDPI-scaled screens it starts reduced,
+    keeping the aspect ratio. Fixed-layout screens scale with it.
+    """
 
     layout = build_initial_configuration_layout()
     window = arcade.Window(
-        *TOURNAMENT_WINDOW_SIZE,
+        *initial_window_size(TOURNAMENT_WINDOW_SIZE, screen_size_in_window_units()),
         layout.title,
-        resizable=False,
+        resizable=True,
     )
+    # pyglet 2.1 on X11 applies size hints in physical pixels, so under a 2×
+    # desktop scale this minimum is effectively halved. It is only a guard
+    # against unusable sizes; set_size has the same quirk, which is why the
+    # views never resize the window themselves.
+    window.set_minimum_size(*MINIMUM_WINDOW_SIZE)
     window.show_view(ParametersView(simulation_runner=backend_simulation_runner))
     return window
 

@@ -307,9 +307,16 @@ docker compose down
 O fluxo completo roda sem `curl`: configurar o torneio, ajustar o grid,
 simular, assistir a cada etapa e ver o resultado do campeonato.
 
+A janela é redimensionável. Ela abre em 1672 × 900 quando a tela comporta e,
+em telas menores ou com escala HiDPI, abre reduzida na mesma proporção. As
+telas de configuração do torneio e da etapa são desenhadas em coordenadas fixas
+de projeto e escaladas uniformemente para a janela, com faixas laterais quando
+a proporção difere (`frontend/arcade/canvas_fit.py`); grid, reprodução e
+resultados se reorganizam pelo tamanho da janela.
+
 ### Configuração do torneio (`ParametersView`)
 
-A primeira tela (1672 × 900) define nome, pontuação, número de etapas, clima e
+A primeira tela define nome, pontuação, número de etapas, clima e
 desempate do torneio e consulta `GET /simulation/tracks`. Use as setas para
 percorrer as pistas, **Adicionar à sequência** para incluí-las na ordem
 desejada e arraste as linhas da lista para reordenar; também é possível gerar
