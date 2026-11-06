@@ -331,6 +331,13 @@ pilotos, se não houver), roda cada etapa em `POST /catalog/grid/run` numa threa
 e abre a reprodução da primeira. Intervalo de voltas da sessão e largada lançada
 ainda não são suportados pelo motor: viram avisos na tela da corrida.
 
+A regra **Motor da corrida** escolhe o motor de todas as etapas e é salva com
+o torneio. **Detalhado (calibrado)** é o padrão (ADR 0011). **2D com pit
+lane** envia `setup.engine="2d"`: os carros se movem no plano da pista e
+entram, param e saem pela pit lane, que a reprodução desenha. Cada etapa do 2D
+leva cerca de 15 s para simular (Interlagos, 71 voltas), contra menos de 1 s
+do detalhado.
+
 ### Pilotos e grid (`GridView`)
 
 Aberta pelo botão **Pilotos e grid**, monta o grid usado pelo Confirmar
