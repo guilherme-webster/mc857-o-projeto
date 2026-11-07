@@ -36,7 +36,7 @@ Verificação isolada: `uv run python -m unittest tests.test_weather`.
 
 ## Integração atual
 
-Atualizado em 2026-10-16.
+Atualizado em 2026-11-06 (issue #119, ADR 0015).
 
 - **Interface:** a tela de configuração da etapa pinta o clima por volta com os
   rótulos "Seco", "Chuva leve" e "Chuva intensa".
@@ -45,12 +45,32 @@ Atualizado em 2026-10-16.
   seca em todas as etapas. A tela da corrida mostra a condição da volta do líder.
 - **API:** `POST /catalog/grid/run` recebe `setup.weather` (faixas
   `from_lap`/`to_lap`/`rain`). Voltas não cobertas são secas
-  (`expand_segments`), e as faixas voltam ecoadas em `setup.weather`.
-- **Tempo de volta:** `run_detailed_grid_simulation` roda `simulate_weather` e
-  entrega ao motor a água ao fim de cada volta. O motor soma
-  `weather_penalty_ms`, que vai até 40% do tempo de referência com pista
-  saturada (`ASSUMED_WEATHER_EFFECT`, `assumed-weather-effect-v1`, não
-  calibrado, proporcional à água). A parcela aparece como `weather_ms` na
-  decomposição do tempo de volta.
-- **Fora da integração:** disputas, incidentes, controle de prova e a escolha de
-  pneus não consideram o clima. Não há compostos intermediário ou de chuva.
+  (`expand_segments`), e as faixas voltam ecoadas em `setup.weather`. O
+  resultado traz `track_conditions`, um registro por volta com chuva, umidade,
+  água, temperatura do asfalto, borracha e fator de aderência.
+- **Tempo:** os fluxos de água valem por "volta de referência" de 1,5 min
+  (`WeatherParameters.reference_lap_minutes`); cada volta real acumula e seca
+  na proporção da sua duração (a volta de referência histórica do circuito).
+  Sem duração informada, `simulate_weather` mantém o comportamento original por
+  volta.
+- **Estado da pista** (`domain/track_condition.py`): a cada volta, a
+  temperatura do asfalto acelera a evaporação; a água evolui; a temperatura se
+  aproxima de 35 °C (seca) ou até 12 °C abaixo (saturada); a borracha cresce
+  com o pelotão e a chuva a lava. Tudo vira um **fator de aderência** =
+  água × borracha. A água descreve a aderência com o pneu adequado: 0,81 com
+  água 0,3 (intermediário) e 0,69 saturada (pneu de chuva). Parâmetros
+  `assumed-track-condition-v1`.
+- **Tempo de volta:** o fator multiplica o `mu` do carro no motor físico; cada
+  carro paga o tempo que a própria física perde naquela pista (pista de curvas
+  lentas perde mais). Sai como `weather_ms` na decomposição do motor detalhado
+  e entra no `speed_scale` do 2D. O efeito linear antigo (+40% com pista
+  saturada, `weather_penalty_ms`) foi removido.
+- **Pneus e corrida (#120):** intermediário e chuva com aderência por água,
+  troca por clima com viés por piloto, regra de dois compostos suspensa,
+  largada com pneu de chuva se a volta 1 estiver molhada, superaquecimento em
+  pista secando e mais acidentes e contatos com água e pneu errado
+  (`domain/wet_tyres.py`; valores em `docs/modelagem-heuristica.md`, seção 6).
+  A tela da corrida mostra a água e a temperatura do asfalto da volta do líder.
+- **Fora da integração:** a temperatura não altera a aderência nem o desgaste;
+  o controle de prova não reage diretamente à chuva (só aos incidentes); o
+  contato espacial do 2D não depende da água.

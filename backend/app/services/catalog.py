@@ -479,7 +479,7 @@ def _deserialize_grid(state: dict):
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
                     "current grid uses the driver-attributes v1 schema and "
-                    "cannot run with the detailed engine; rebuild it with "
+                    "cannot run the simulation; rebuild it with "
                     "POST /catalog/grid"
                 ),
             )

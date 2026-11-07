@@ -54,11 +54,10 @@ from f1_simulator.domain.race_control import (
 )
 from f1_simulator.domain.random_source import RandomSource
 from f1_simulator.domain.speed_dynamics import (
-    ASSUMED_CAR_PHYSICS,
+    DEFAULT_CAR_PHYSICS,
     CarPhysics,
-    lap_time_ms,
+    GripLapTimes,
     physics_for,
-    steady_lap,
 )
 from f1_simulator.domain.strategy import (
     FuelStatus,
@@ -66,12 +65,17 @@ from f1_simulator.domain.strategy import (
     StrategyState,
     TyreStrategy,
 )
+from f1_simulator.domain.track_condition import (
+    TrackState,
+    approximate_lap_time_ratio,
+)
 from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.tyres import TyreSet
-from f1_simulator.domain.weather import (
-    ASSUMED_WEATHER_EFFECT,
-    WeatherEffectParameters,
-    weather_penalty_ms,
+from f1_simulator.domain.wet_tyres import (
+    contact_multiplier,
+    crash_multiplier,
+    relative_grip,
+    wear_factor,
 )
 
 RUNNING = "RUNNING"
@@ -243,10 +247,9 @@ def simulate_detailed_race(
     dispute_model: Literal["legacy", "pressure"] = "legacy",
     dispute_heuristics: DisputeHeuristics = DEFAULT_DISPUTE_HEURISTICS,
     race_control: RaceControlParameters | None = None,
-    lap_surface_water: Sequence[float] | None = None,
-    weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
+    track_states: Sequence[TrackState] | None = None,
     geometry: TrackGeometry | None = None,
-    car_physics: CarPhysics = ASSUMED_CAR_PHYSICS,
+    car_physics: CarPhysics = DEFAULT_CAR_PHYSICS,
     fuel: FuelPlan | None = None,
     grid_start: GridStartParameters | None = None,
 ) -> dict:
@@ -271,6 +274,11 @@ def simulate_detailed_race(
     quanto colocar (``StrategyState.fuel``). O modelo nao sorteia nada, entao
     a sequencia aleatoria so muda se um carro ficar sem combustivel sob
     controle de prova (o carro parado vira um incidente).
+    ``track_states`` traz a pista ao fim de cada volta (``track_condition``):
+    agua, temperatura e borracha resumidas num fator de aderencia. Com
+    geometria, cada carro paga o tempo que a propria fisica perde com aquela
+    aderencia; sem geometria, a aproximacao da pista mediana. A parcela sai
+    como ``weather_ms`` no tempo da volta.
     ``grid_start`` atenua somente o atraso inicial derivado da posicao. ``None``
     preserva integralmente o contrato anterior, inclusive a forma da resposta;
     um objeto explicito publica a origem heuristica em ``assumptions``. O fator
@@ -283,7 +291,7 @@ def simulate_detailed_race(
         attributes is not None
         or dispute_model == "pressure"
         or race_control is not None
-        or lap_surface_water is not None
+        or track_states is not None
         or geometry is not None
         or fuel is not None
     )
@@ -310,8 +318,7 @@ def simulate_detailed_race(
         dispute_model=dispute_model,
         dispute_heuristics=dispute_heuristics,
         race_control=race_control,
-        lap_surface_water=lap_surface_water,
-        weather_effect=weather_effect,
+        track_states=track_states,
         geometry=geometry,
         car_physics=car_physics,
         fuel=fuel,
@@ -523,10 +530,9 @@ def _simulate_detailed_race_enhanced(
     dispute_model: Literal["legacy", "pressure"],
     dispute_heuristics: DisputeHeuristics,
     race_control: RaceControlParameters | None,
-    lap_surface_water: Sequence[float] | None = None,
-    weather_effect: WeatherEffectParameters = ASSUMED_WEATHER_EFFECT,
+    track_states: Sequence[TrackState] | None = None,
     geometry: TrackGeometry | None = None,
-    car_physics: CarPhysics = ASSUMED_CAR_PHYSICS,
+    car_physics: CarPhysics = DEFAULT_CAR_PHYSICS,
     fuel: FuelPlan | None = None,
     grid_start: GridStartParameters | None = None,
 ) -> dict:
@@ -567,13 +573,16 @@ def _simulate_detailed_race_enhanced(
     # tem seu envelope, derivado dos atributos, entao o tempo fisico difere por
     # piloto. As penalidades aditivas e o ruido seguem somando por cima,
     # preservando pit, disputa, clima e a ordem de consumo do rng.
+    # A mesma tabela por carro responde pela volta seca (fator 1,0) e pelo
+    # custo de cada condicao de pista (``track_states``), sem refazer a fisica.
     physical_lap_ms_by_id: dict[str, float] = {}
+    grip_laps_by_id: dict[str, GripLapTimes] = {}
     if geometry is not None:
         for entrant in ordered_entrants:
             physics = physics_for(used_attributes.get(entrant.driver_id), car_physics)
-            physical_lap_ms_by_id[entrant.driver_id] = lap_time_ms(
-                steady_lap(geometry, physics)
-            )
+            grip_laps = GripLapTimes(geometry, physics)
+            grip_laps_by_id[entrant.driver_id] = grip_laps
+            physical_lap_ms_by_id[entrant.driver_id] = grip_laps.lap_ms(1.0)
     profiles = {
         driver_id: DisputeProfile(
             aggression=item.aggression,
@@ -632,6 +641,17 @@ def _simulate_detailed_race_enhanced(
             if race_control
             else effects(control_state)
         )
+        # Agua desta volta (estado ao fim dela, como o resto da pista). E
+        # tambem o que o muro dos boxes usa ao decidir: o radar mostra a chuva
+        # da volta que vai comecar, entao ninguem para por um slick na volta
+        # em que a chuva chega para trocar por intermediario na seguinte.
+        lap_state = (
+            track_states[lap - 1]
+            if track_states is not None and lap - 1 < len(track_states)
+            else None
+        )
+        lap_water = lap_state.surface_water if lap_state is not None else 0.0
+        seen_water = lap_water if lap_state is not None else None
         control_by_lap.append(
             {
                 "lap": lap,
@@ -699,6 +719,7 @@ def _simulate_detailed_race_enhanced(
                     compounds_used=tuple(compounds_used[state.driver_id]),
                     free_tyre_change=lap_effects.free_tyre_change,
                     fuel=fuel_status,
+                    surface_water=seen_water,
                 )
             )
             # Rede de seguranca: a estrategia nao olhou o combustivel e o carro
@@ -726,16 +747,22 @@ def _simulate_detailed_race_enhanced(
                     entrant.reference_lap_time_ms, driver_attributes
                 )
             )
-            surface_water = (
-                lap_surface_water[lap - 1]
-                if lap_surface_water is not None and lap - 1 < len(lap_surface_water)
-                else 0.0
+            # A pista oferece ``grip_factor`` com o pneu adequado; o pneu
+            # montado paga a sua aderencia relativa ao melhor para essa agua.
+            grip_factor = (
+                lap_state.grip_factor
+                * relative_grip(lap_tyre.compound, lap_water)
+                if lap_state is not None
+                else 1.0
             )
-            lap_weather_ms = (
-                weather_penalty_ms(lap_reference_ms, surface_water, weather_effect)
-                if surface_water > 0.0
-                else 0.0
-            )
+            if grip_factor == 1.0:
+                lap_weather_ms = 0.0
+            elif grip_laps_by_id:
+                lap_weather_ms = grip_laps_by_id[state.driver_id].delta_ms(grip_factor)
+            else:
+                lap_weather_ms = lap_reference_ms * (
+                    approximate_lap_time_ratio(grip_factor) - 1.0
+                )
             in_pit_lane = decision.pit and not free_change
             if refuel_mode and in_pit_lane and lap_fuel is not None:
                 assert fuel is not None and state.fuel_kg is not None
@@ -781,7 +808,10 @@ def _simulate_detailed_race_enhanced(
                 pitting=in_pit_lane,
                 rng=rng,
                 noise_scale=consistency_scale(driver_attributes),
-                degradation_factor=detailed_degradation_factor(driver_attributes),
+                degradation_factor=(
+                    detailed_degradation_factor(driver_attributes)
+                    * wear_factor(lap_tyre.compound, lap_water)
+                ),
                 pit_loss_factor=lap_effects.pit_loss_factor,
                 lap_time_factor=lap_effects.lap_time_factor,
                 lap_time_loss_ms=lap_effects.lap_time_loss_ms,
@@ -856,7 +886,8 @@ def _simulate_detailed_race_enhanced(
                     heuristics=dispute_heuristics,
                     laps_completed=derived_laps,
                     overtake_factor=lap_effects.overtake_factor,
-                    contact_factor=lap_effects.contact_factor,
+                    contact_factor=lap_effects.contact_factor
+                    * contact_multiplier(lap_water),
                 )
             }
 
@@ -954,7 +985,17 @@ def _simulate_detailed_race_enhanced(
                 draw = rng.uniform01(
                     f"race-control:lap:{lap}:{state.driver_id}:solo-crash"
                 )
-                if draw < solo_probability:
+                # Agua e pneu errado aumentam o risco; a compostura do piloto
+                # faz as vezes de habilidade na chuva. Seco: fator 1.
+                driver_composure = (
+                    used_attributes[state.driver_id].composure
+                    if state.driver_id in used_attributes
+                    else 1.0
+                )
+                car_probability = solo_probability * crash_multiplier(
+                    state.tyre.compound, lap_water, driver_composure
+                )
+                if draw < car_probability:
                     incidents.append(Incident(lap, "solo_crash", (state.driver_id,)))
                     retirement_causes.setdefault(state.driver_id, CRASH)
 

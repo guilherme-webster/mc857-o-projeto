@@ -613,3 +613,25 @@ class RacePlaybackEngineRefuelContractTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TrackConditionLabelTest(unittest.TestCase):
+    """Painel de clima: agua e temperatura do asfalto por volta (ADR 0015)."""
+
+    def test_label_reads_the_lap_and_clamps_to_the_last_record(self):
+        from frontend.arcade.race_playback import track_condition_label
+
+        race = {
+            "track_conditions": [
+                {"lap": 1, "surface_water": 0.0, "track_temp_c": 35.0},
+                {"lap": 2, "surface_water": 0.42, "track_temp_c": 30.4},
+            ]
+        }
+        self.assertEqual(track_condition_label(race, 1), "pista 35 °C")
+        self.assertEqual(track_condition_label(race, 2), "agua 42% · pista 30 °C")
+        self.assertEqual(track_condition_label(race, 9), "agua 42% · pista 30 °C")
+
+    def test_older_races_without_the_block_show_only_the_rain(self):
+        from frontend.arcade.race_playback import track_condition_label
+
+        self.assertIsNone(track_condition_label({}, 3))

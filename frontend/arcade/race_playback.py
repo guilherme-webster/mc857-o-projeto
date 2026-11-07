@@ -58,6 +58,8 @@ class SpatialPosition:
     lateral_m: float
     speed_kmh: float
     pit_distance_m: float | None
+    fuel_kg: float | None = None
+    tyre_wear_laps: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,10 +124,11 @@ class CarTimeline:
     pit_events: tuple[Mapping, ...] = ()
 
     def spatial_at(self, t_ms: float) -> SpatialPosition | None:
-        """Leia os pontos HTTP 2D de 4 ou 5 campos, sem reconstruir a física.
+        """Leia os pontos HTTP 2D de 4, 5 ou 7 campos, sem reconstruir a física.
 
         O quinto campo opcional é o progresso nos boxes. Transições entre
         caminhos são discretas; dentro de um caminho a interpolação é linear.
+        Os campos 6/7 trazem combustível e desgaste produzidos pelo motor.
         """
 
         series = self.trajectory
@@ -139,7 +142,27 @@ class CarTimeline:
         pa = a[4] if len(a) > 4 else None
         pb = b[4] if len(b) > 4 else None
         pit = pa + (pb - pa) * f if pa is not None and pb is not None else pa
-        return SpatialPosition(*(a[i] + (b[i] - a[i]) * f for i in (1, 2, 3)), pit)
+
+        def resource(index: int) -> float | None:
+            if (
+                len(a) <= index
+                or len(b) <= index
+                or a[index] is None
+                or b[index] is None
+            ):
+                return None
+            # Uma queda descontínua do desgaste marca um jogo novo; o valor
+            # não deve diminuir gradualmente antes de o serviço terminar.
+            if index == 6 and b[index] < a[index]:
+                return a[index]
+            return a[index] + (b[index] - a[index]) * f
+
+        return SpatialPosition(
+            *(a[i] + (b[i] - a[i]) * f for i in (1, 2, 3)),
+            pit,
+            resource(5),
+            resource(6),
+        )
 
     @property
     def laps_completed(self) -> int:
@@ -149,21 +172,31 @@ class CarTimeline:
     def finish_time_ms(self) -> float:
         """Instante em que o carro termina a corrida ou abandona."""
 
+        if self.retired and self.trajectory:
+            return self.trajectory[-1][0]
         return self.lap_end_times_ms[-1] if self.lap_end_times_ms else 0.0
 
     def laps_at(self, t_ms: float) -> float:
-        """Voltas percorridas no instante ``t_ms``, entre 0 e ``laps_completed``."""
+        """Progresso no instante; no 2D inclui a fração anterior ao abandono."""
 
         times = self.lap_end_times_ms
         # O history arredonda instantes para 0,1 ms; a trajetória arredonda
         # distâncias separadamente. Na chegada vale o fim oficial da volta,
         # sem deixar o carro em 3,99999 voltas por erro de arredondamento.
-        if times and t_ms >= times[-1]:
+        if (
+            times
+            and not (self.retired and self.trajectory and self.lap_length_m)
+            and t_ms >= times[-1]
+        ):
             return float(len(times))
         spatial = self.spatial_at(t_ms)
         if spatial is not None and self.lap_length_m:
             return max(
-                0.0, min(float(len(times)), spatial.distance_m / self.lap_length_m)
+                0.0,
+                min(
+                    float(len(times) + int(self.retired)),
+                    spatial.distance_m / self.lap_length_m,
+                ),
             )
         if not times or t_ms <= 0.0:
             return 0.0
@@ -248,6 +281,9 @@ class CarTimeline:
     def fuel_at(self, t_ms: float) -> float | None:
         """Combustivel a bordo (kg) no instante ``t_ms``; ``None`` sem dados.
 
+        Com recursos na trajetória 2D, lê e interpola as amostras do motor,
+        inclusive marcha lenta nos boxes. Nos resultados antigos, segue a
+        aproximação por volta abaixo.
         Interpola linearmente na fracao da volta entre dois fins de volta,
         como ``laps_at`` faz com a posicao. Nao e uma aproximacao a mais: o
         motor queima uma massa unica por volta, e a exibicao ja supoe
@@ -257,6 +293,9 @@ class CarTimeline:
         """
 
         states = self.fuel_states
+        spatial = self.spatial_at(t_ms)
+        if spatial is not None and spatial.fuel_kg is not None:
+            return spatial.fuel_kg
         if not states:
             return None
         laps = self.laps_at(t_ms)
@@ -334,6 +373,9 @@ class RacePlayback:
             total_laps,
             _starting_grid(race.get("starting_grid")),
             _refuel_levels(race.get("fuel")),
+            zero_lap_retirement_ids=frozenset(
+                (race.get("trajectories_2d") or {}).keys()
+            ),
         )
         trajectories = race.get("trajectories_2d") or {}
         space = race.get("track_space_2d") or {}
@@ -568,6 +610,8 @@ def _build_timelines(
     total_laps: int,
     starting_grid: Mapping[str, tuple[int, str, float | None]],
     refuel_levels: Mapping[tuple[str, int], float] | None = None,
+    *,
+    zero_lap_retirement_ids: frozenset[str] = frozenset(),
 ) -> tuple[CarTimeline, ...]:
     """Monte as linhas do tempo validando o contrato do ``history``.
 
@@ -655,7 +699,7 @@ def _build_timelines(
             raise ValueError(
                 f"{driver_id}: em prova com {len(lap_times)} de {total_laps} voltas"
             )
-        if not lap_times:
+        if not lap_times and not (retired and driver_id in zero_lap_retirement_ids):
             raise ValueError(f"{driver_id}: sem nenhuma volta registrada")
         start = starting_grid.get(driver_id)
         timelines.append(
@@ -681,4 +725,31 @@ def _lap_in_progress(laps: float, total_laps: int) -> int:
 
 def _next_lap_end(car: CarTimeline, laps: float) -> float:
     times = car.lap_end_times_ms
+    if not times:
+        return car.finish_time_ms
     return times[min(floor(laps), len(times) - 1)]
+
+
+def track_condition_label(race: Mapping, lap: int) -> str | None:
+    """Agua e temperatura do asfalto na volta ``lap``, para o painel de clima.
+
+    Le ``track_conditions`` do resultado (um registro por volta, ADR 0015);
+    voltas alem do fim usam o ultimo registro. Corridas antigas, sem o bloco,
+    devolvem ``None`` e o painel mostra so a chuva, como antes. A agua sai em
+    porcentagem do indice 0-1 (nao e milimetro de chuva).
+    """
+
+    rows = race.get("track_conditions") if isinstance(race, Mapping) else None
+    if not isinstance(rows, Sequence) or not rows:
+        return None
+    row = rows[min(max(lap, 1), len(rows)) - 1]
+    if not isinstance(row, Mapping):
+        return None
+    water = row.get("surface_water")
+    temp = row.get("track_temp_c")
+    parts = []
+    if isinstance(water, (int, float)) and water > 0:
+        parts.append(f"agua {round(water * 100)}%")
+    if isinstance(temp, (int, float)):
+        parts.append(f"pista {temp:.0f} °C")
+    return " · ".join(parts) or None

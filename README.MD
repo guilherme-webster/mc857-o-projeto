@@ -196,6 +196,23 @@ partir da raiz:
 uv run python -m unittest -v
 ```
 
+Para os recursos contínuos do motor 2D (issue #104):
+
+```bash
+uv run python -m unittest tests.test_dynamic_usage tests.test_pit_lane tests.test_spatial_pit_planning -v
+PYTHONPATH=src uv run python scripts/analyze_dynamic_usage.py --circuit circuit:9
+```
+
+As fórmulas, fontes e hipóteses ficam em
+[Consumo e desgaste dinâmicos](docs/consumo-desgaste-dinamicos.md).
+
+Se o `TestClient` da versão instalada do Starlette pedir `httpx2`, execute a
+suíte completa com a dependência temporária, sem mudar o ambiente do projeto:
+
+```bash
+uv run --with httpx2 python -m unittest -v
+```
+
 Sem elas, `python3 -m unittest -v` ainda roda os testes do nucleo; os modulos
 que importam FastAPI falham na importacao e os de interface sao pulados. Os
 testes de interface grafica abrem janelas Arcade e so rodam com

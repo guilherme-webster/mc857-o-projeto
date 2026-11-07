@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import arcade
 
 from frontend.arcade.race_control_feed import RaceControlFeed
-from frontend.arcade.race_playback import RacePlayback
+from frontend.arcade.race_playback import RacePlayback, track_condition_label
 from frontend.arcade.tournament_session import TournamentSession
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
@@ -421,6 +421,8 @@ class TrackView(arcade.View):
             race, {car.driver_id: car.name for car in self._playback.cars}
         )
         self._weather = _weather_segments(race)
+        # Estado da pista por volta (agua, temperatura), quando o backend o envia.
+        self._race = race
 
         self._elapsed = 0.0
         self._speed = 1.0
@@ -883,7 +885,8 @@ class TrackView(arcade.View):
 
         rain = self._current_rain()
         label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
-        self._weather_text.text = label
+        condition = track_condition_label(self._race, self._current_lap())
+        self._weather_text.text = f"{label} · {condition}" if condition else label
         self._weather_text.color = color
         self._weather_text.x = width - 20
         self._weather_text.y = height - 40

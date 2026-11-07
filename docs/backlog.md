@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-10-26T22:30:41Z
-- **Abertas:** 43
-- **Fechadas:** 16
+- **Ultima atividade registrada:** 2026-11-06T21:35:41Z
+- **Abertas:** 49
+- **Fechadas:** 20
 
 ## Issues abertas
 
@@ -294,7 +294,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** [#70 — Consumir dados da modelagem](https://github.com/guilherme-webster/mc857-o-projeto/issues/70), [#71 — Executar simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/71)
+- **Sub-issues:** [#70 — Consumir dados da modelagem](https://github.com/guilherme-webster/mc857-o-projeto/issues/70), [#71 — Executar simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/71), [#102 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/102)
 - **Criada:** 2026-08-28T23:06:39Z
 - **Atualizada:** 2026-08-28T23:25:14Z
 - **Fechada:** —
@@ -309,6 +309,7 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-10-26T22:56:43Z — sub-issue adicionada: #102 por @Jmvjr
 - 2026-09-11T23:54:52Z — sub-issue adicionada: #71 por @guilherme-webster
 - 2026-09-11T23:54:09Z — sub-issue adicionada: #70 por @guilherme-webster
 - 2026-08-28T23:06:41Z — label adicionada: História por @Jmvjr
@@ -1036,7 +1037,7 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** —
+- **Sub-issues:** [#119 — Aderência física e estado dinâmico da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/119)
 - **Criada:** 2026-09-08T22:18:07Z
 - **Atualizada:** 2026-09-24T23:41:38Z
 - **Fechada:** —
@@ -1110,6 +1111,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-06T20:20:47Z — sub-issue adicionada: #119 por @DaviGabrielBC
 - 2026-09-24T23:41:38Z — reaberta por @Jmvjr
 - 2026-09-24T23:41:19Z — fechada por @Jmvjr
 - 2026-09-11T22:17:46Z — atribuida: @guilherme-webster por @guilherme-webster
@@ -1255,7 +1257,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** —
+- **Sub-issues:** [#104 — Desgate e combústivel dinâmicos](https://github.com/guilherme-webster/mc857-o-projeto/issues/104)
 - **Criada:** 2026-09-11T22:22:10Z
 - **Atualizada:** 2026-09-11T22:33:26Z
 - **Fechada:** —
@@ -1270,6 +1272,7 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-10-26T23:08:01Z — sub-issue adicionada: #104 por @Jmvjr
 - 2026-09-11T22:33:26Z — atribuida: @guilherme-webster por @guilherme-webster
 - 2026-09-11T22:33:26Z — label adicionada: Task por @guilherme-webster
 
@@ -1430,37 +1433,6 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 </details>
 
-### [#68 — Consumir backend e frontend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @Jmvjr, @guilherme-webster
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T22:31:03Z
-- **Atualizada:** 2026-10-02T22:38:41Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-02T22:38:41Z — atribuida: @Jmvjr por @Jmvjr
-- 2026-10-02T22:38:33Z — renomeada: “Consumir backend para modelar clima” → “Consumir backend e frontend para modelar clima” por @Jmvjr
-- 2026-09-11T22:31:05Z — label adicionada: Task por @guilherme-webster
-- 2026-09-11T22:31:04Z — atribuida: @guilherme-webster por @guilherme-webster
-
-</details>
-
 ### [#70 — Consumir dados da modelagem](https://github.com/guilherme-webster/mc857-o-projeto/issues/70)
 
 - **Estado:** aberta
@@ -1559,31 +1531,430 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 </details>
 
-### [#101 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/101)
+### [#105 — Seed digitável e reprodução determinística do torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/105)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** @Jmvjr
-- **Labels:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** enhancement
 - **Milestone:** —
-- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Issue-pai:** —
 - **Sub-issues:** —
-- **Criada:** 2026-10-26T22:30:33Z
-- **Atualizada:** 2026-10-26T22:30:41Z
+- **Criada:** 2026-10-30T20:33:02Z
+- **Atualizada:** 2026-10-30T21:55:48Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>Permitir que o usuário informe uma seed para reproduzir deterministicamente uma simulação.
+
+Hoje a seed existe só no grid: todas as etapas de um torneio usam a mesma seed e o mesmo fluxo `race`, a sequência automática de pistas usa `random.Random(nome_do_torneio)` e a interface não tem campo de seed.
+
+Critérios:
+- campo de seed do torneio e do grid na interface; vazio gera seed mostrada ao usuário;
+- RNG por etapa derivado no núcleo a partir de `(tournament_seed, stage_index)`;
+- `RaceSetupRequest` aceita seed e índice de etapa opcionais; ausentes, preserva o comportamento atual; a resposta devolve as seeds usadas;
+- ordem automática das pistas depende da seed;
+- testes: mesma seed reproduz, seeds diferentes mudam, etapas repetidas diferem.
+
+Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.1.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-10-30T20:35:17Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/105#issuecomment-6532927697)
+
+<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `105-seed-deterministica`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
+
+#### [@guilherme-webster em 2026-10-30T20:47:22Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/105#issuecomment-6533136617)
+
+<pre>Implementado na branch `105-seed-deterministica` (5 commits: correcao dos 3 testes quebrados de `test_catalog_grid_run.py`, derivacao SHA-256 versionada `tournament-stage-v1` de `(tournament_seed, stage_index)` no nucleo, `RaceSetupRequest.tournament_seed/stage_index` com seeds efetivas na resposta, campos de seed na configuracao do torneio e no grid, ordem automatica das pistas pela seed). Integrado na `develop` local (merge, sem push). Verificacao: suite completa 650 passed / 0 failed na develop integrada. Pendente: push/PR e inspecao visual dos campos novos (testes GUI de `test_parameters_view.py` tem 3 falhas pre-existentes, iguais na base 1200f6e).</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:31:43Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/105#issuecomment-6533890853)
+
+<pre>Correção do registro anterior: a integração na `develop` local foi desfeita a pedido do usuário, que preferiu PRs. A entrega está no PR #111 (base `develop`). Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Próximo passo: revisão e merge.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:55:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/105#issuecomment-6534336495)
+
+<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-10-26T22:30:41Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-10-30T20:33:03Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
+### [#106 — Reordenar livremente o grid de largada](https://github.com/guilherme-webster/mc857-o-projeto/issues/106)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** enhancement
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-30T20:33:03Z
+- **Atualizada:** 2026-10-30T21:55:49Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Permitir que o usuário mude a ordem de largada como quiser.
+
+A ordem já chega ao motor, mas a tela só seleciona linhas e o `PATCH /catalog/grid` altera apenas atributos.
+
+Critérios:
+- botões ↑/↓ na tela do grid; ordem pendente no `GridDraft` (descartar, payload);
+- `PATCH /catalog/grid` aceita `order`, permutação exata do grid atual; 422 para duplicata, ausência ou ID desconhecido;
+- atributos, perfis e seed preservados; escrita atômica.
+
+Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.2.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-10-30T20:35:19Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6532928102)
+
+<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `106-reordenar-grid`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
+
+#### [@guilherme-webster em 2026-10-30T20:47:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6533137003)
+
+<pre>Implementado na branch `106-reordenar-grid` (2 commits: `reorder_grid` valida permutacao exata por `driver_id` e `PATCH /catalog/grid` aceita `order` preservando atributos e seed; botoes Subir/Descer e ordem pendente no `GridDraft`). Integrado na `develop` local (merge, sem push). Suite: 650 passed / 0 failed na develop integrada. Pendente: push/PR e conferencia visual dos botoes.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:31:45Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6533891164)
+
+<pre>Entrega no PR #112 (empilhado sobre o #111, com a branch 105 já mesclada). Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Próximo passo: revisão e merge; conferir visualmente os botões Subir/Descer.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:55:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6534336804)
+
+<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-30T20:33:04Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
+### [#107 — Número de voltas padrão por pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/107)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-30T20:33:05Z
+- **Atualizada:** 2026-10-30T21:55:50Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Toda pista nova começa com 69 voltas fixas no frontend (`configuration_state.py`, `parameters_view.py`).
+
+Critérios:
+- padrão = máximo de voltas completadas na corrida mais recente do circuito (Trotman v128), com proveniência;
+- sem histórico: menor número de voltas completas acima de 305 km (Mônaco 260 km), rotulado `assumed_distance_rule`;
+- `GET /simulation/tracks` devolve `default_laps` e origem;
+- padrão só para pista não configurada; edição do usuário preservada; clima padrão cobre o novo total.
+
+Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.3. Proposta original em `docs/progresso.md`.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-10-30T20:35:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6532928474)
+
+<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `107-voltas-padrao`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
+
+#### [@guilherme-webster em 2026-10-30T20:47:25Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6533137326)
+
+<pre>Implementado na branch `107-voltas-padrao` (2 commits: caso de uso `default_laps_for_circuit` com historico Trotman e reserva `assumed-distance-rule-v1`; `GET /simulation/tracks` com `default_laps`, origem e corrida; frontend aplica o padrao so em pista nao configurada e ajusta o clima). Conferido com o Trotman v128 bruto: Albert Park 58, Monaco 78, Spa 44, Interlagos 71, Yas Marina 58 (corrida mais recente). Integrado na `develop` local (merge com conflito resolvido em `parameters_view.py`/teste, sem push). Suite: 650 passed / 0 failed.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:31:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6533891529)
+
+<pre>Entrega no PR #113 (empilhado sobre o #112, conflito com a #105 resolvido no merge da branch). Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Próximo passo: revisão e merge.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:55:50Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6534337125)
+
+<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-30T20:33:06Z — label adicionada: bug por @guilherme-webster
+
+</details>
+
+### [#108 — Ajustar o impacto da posição de largada (pole)](https://github.com/guilherme-webster/mc857-o-projeto/issues/108)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** enhancement
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-30T20:33:06Z
+- **Atualizada:** 2026-10-30T21:55:51Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>A penalidade calibrada de 782,4 ms por posição deixa P20 ~15 s atrás antes da primeira volta; a pole venceu 21 de 40 corridas em Spa (`docs/modelagem-heuristica.md`). No motor 2D cada carro larga 10 m atrás do anterior, em vez de filas de dois.
+
+Critérios:
+- manter 782,4 ms como valor calibrado; acrescentar fator de atenuação rotulado `heuristic`, versionado e publicado em `assumptions`;
+- escolher o fator por análise de sensibilidade com seeds fixas (alvo: pole vence ~40–45%);
+- grid 2D em filas de dois, sem somar a penalidade temporal;
+- documentar em `docs/modelagem-heuristica.md`.
+
+Contrato: `docs/prds/controles-do-usuario-simulacao.md`, item 1 da seção 2.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-10-30T20:35:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/108#issuecomment-6532928838)
+
+<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `108-impacto-largada`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
+
+#### [@guilherme-webster em 2026-10-30T20:47:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/108#issuecomment-6533137655)
+
+<pre>Implementado na branch `108-impacto-largada` (3 commits), ainda NAO integrado. 782,4 ms segue calibrado; novo `grid_start_penalty_factor` heuristico em `data/parameters/grid-start-v1.json`; grid 2D em filas de dois. Analise (`scripts/analyze_grid_start_sensitivity.py`, 360 corridas/fator): fator 1,0 -&gt; pole vence 73,9%; 0,25 -&gt; 59,4%; 0,10 -&gt; 50,8%; 0,015 -&gt; 43,3%; 0 -&gt; 46,4%. Ponto em aberto: abaixo de ~0,1 as diferencas ficam dentro do ruido (EP ~2,6 p.p.), entao o alvo 40-45% so e atingido praticamente zerando a penalidade; o restante da vantagem da pole vem do modelo de ultrapassagem. Aguardando decisao do valor do fator.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:31:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/108#issuecomment-6533891831)
+
+<pre>Decisão do usuário: fator 0,10 (78,24 ms/posição, pole vence ~51% na análise); a causa restante foi para a #110. O grid 2D em filas de dois foi testado e revertido (`0072e31`): causava 34 abandonos por contato em 15 corridas de 2 voltas, contra 0 no grid escalonado. Entrega no PR #114. Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Suíte: 657 passed, 0 failed.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:55:51Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/108#issuecomment-6534337429)
+
+<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-30T20:33:07Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
+### [#109 — Salvar e reabrir/reexecutar torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/109)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** enhancement
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-30T20:33:07Z
+- **Atualizada:** 2026-10-30T21:55:53Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Permitir salvar uma simulação para reabrir ou rodar o torneio de novo sem reprocessar tudo.
+
+Critérios:
+- formato JSON versionado fora do Git com grid congelado, seeds, motor, regras, etapas, proveniência e resultados;
+- reabrir não chama `/catalog/grid/run`; reexecutar reproduz o resultado com o mesmo cenário;
+- port no núcleo, adaptador JSON na borda, endpoints e tela de listar/abrir/reexecutar;
+- ADR novo revisando o ADR 0006.
+
+Depende das issues de seed, ordem do grid, voltas e largada. Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.4.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-10-30T21:31:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/109#issuecomment-6533892156)
+
+<pre>Implementado na branch `109-salvar-torneio` (PR #115, empilhado sobre o #114): núcleo `application/saved_tournament.py`; rotas `/tournaments` (salvar, listar, abrir, `restore-grid`); botão Salvar torneio na tela de resultado e tela Torneios salvos com Abrir e Reexecutar; ADR 0013 atualizando o 0006. Verificação: pytest 672 passed, 0 failed; GUI 711 passed, com 3 falhas pré-existentes em `test_parameters_view.py`; teste de ponta a ponta de reexecução reproduzindo as classificações. Pendente: revisão, merge e conferência visual das telas novas no app rodando.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:55:52Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/109#issuecomment-6534337763)
+
+<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-30T20:33:09Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
+### [#110 — Revisar a dificuldade de ultrapassagem no motor detalhado](https://github.com/guilherme-webster/mc857-o-projeto/issues/110)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** enhancement
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-30T21:18:57Z
+- **Atualizada:** 2026-10-30T21:18:57Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Achado da analise de sensibilidade da #108 (`scripts/analyze_grid_start_sensitivity.py`, 360 corridas por fator, 3 pistas, 3 grids sinteticos): mesmo zerando a penalidade temporal de largada, a pole ainda vence ~46% e um carro 500 ms/volta mais rapido saindo de P8 termina em media em ~5,3-5,9. Abaixo de um fator ~0,1 as diferencas ficam dentro do ruido (EP ~2,6 p.p.).
+
+Decisao do usuario (2026-10-30): usar fator 0,10 na #108 e atacar a causa restante aqui.
+
+Investigar: `resistance_scale`, limiares de disputa e bloqueio por volta em `domain/race_simulation.py` (ADR 0008, `docs/modelagem-heuristica.md`). Parametros sao heuristicos: rotular, versionar e medir com o mesmo script/sementes.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-30T21:18:58Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
+### [#119 — Aderência física e estado dinâmico da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/119)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** @DaviGabrielBC
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
+- **Sub-issues:** —
+- **Criada:** 2026-11-06T20:20:28Z
+- **Atualizada:** 2026-11-06T20:30:28Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>## Contexto
+
+A velocidade de curva do motor físico (ADR 0010, `speed_dynamics._target_speeds`) interpola entre 320 e 90 km/h pelo ângulo entre pontos consecutivos, normalizado pela curva mais fechada da própria pista. Não usa raio nem aderência:
+
+- a curva mais fechada de qualquer pista vale 90 km/h (o grampo de Mônaco e a curva mais lenta de Monza ficam iguais);
+- o ângulo depende do espaçamento dos 240 pontos (~14 m em Mônaco, ~29 m em Spa), não do raio;
+- a volta física sai, em mediana, 0,89 da histórica (Mônaco 0,63, Montreal 0,74), e o motor detalhado a usa no lugar da referência quando há geometria;
+- água, temperatura, borracha e pneu não têm onde atuar além de uma porcentagem no tempo de volta.
+
+## Proposta
+
+Velocidade de curva limitada pela aderência, `v = min(v_max, √(μ_ef · g · R))`, com `R` em metros e `μ_ef` incluindo um termo aerodinâmico (downforce cresce com a velocidade). O estado da pista entra como multiplicador de `μ`, que também é o ponto de entrada dos compostos na #120.
+
+## Critérios
+
+- [ ] raio em metros a partir da geometria (escala já calculada em `track_space`), suavizado, com raio mínimo para curvas sub-amostradas;
+- [ ] `speed_ceiling` limitado por `μ` nos dois motores (detalhado e 2D), sem duplicar a curvatura;
+- [ ] `μ` e termo aerodinâmico calibrados contra `reference-laps-v1.json`, com script reproduzível e parâmetros versionados; meta: mediana da razão física/histórica ≈ 1,00 e Mônaco dentro de ±10%;
+- [ ] `physics_for` traduz a compostura em aproveitamento de `μ`, não mais em velocidade mínima de curva;
+- [ ] estado da pista por volta: água (já existe em `weather.py`), temperatura de pista (padrão por circuito) e borracha acumulada (cresce com o tráfego, lavada pela chuva), rotulados `assumed`/`estimated`;
+- [ ] secagem por tempo decorrido e temperatura, não por volta;
+- [ ] o 2D usa o mesmo efeito de clima do detalhado (remover o `0.40` fixo em `race_simulation_2d.py`);
+- [ ] testes de curvatura, calibração, estado da pista e reprodutibilidade por seed;
+- [ ] ADR novo revisando o ADR 0010; atualizar `docs/modelagem-heuristica.md` e `docs/modelagem-clima.md`.
+
+## Fora do escopo
+
+Compostos de chuva, efeito da temperatura no pneu, estratégia de troca e efeitos em disputas (#120); desgaste dinâmico (#104).</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-06T20:20:29Z — label adicionada: Task por @DaviGabrielBC
+- 2026-11-06T20:20:28Z — atribuida: @DaviGabrielBC por @DaviGabrielBC
+
+</details>
+
+### [#120 — Pneus de chuva e efeitos do clima na corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/120)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** @DaviGabrielBC
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-06T20:31:18Z
+- **Atualizada:** 2026-11-06T20:31:18Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>## Contexto
+
+Hoje a água na pista só soma até 40% ao tempo de volta (`assumed-weather-effect-v1`), igual para qualquer pneu, e todos seguem em compostos secos (`docs/modelagem-heuristica.md`, §9). O clima não afeta disputa, incidente, controle de prova nem estratégia.
+
+Referência real (voltas FastF1 de 2023–2024; mediana da metade mais rápida das voltas com pneu de chuva ÷ voltas rápidas com slick na mesma corrida):
+
+| Corrida | Intermediário | Chuva |
+|---|---|---|
+| Holanda 2023 | +11% | – |
+| Mônaco 2023 | +16% | +25% |
+| Inglaterra 2024 | +13% | – |
+| Canadá 2024 | +14% | – |
+
+Depende de #119 (aderência física e estado da pista). Coordenar com #104 (desgaste dinâmico).
+
+## Critérios
+
+- [ ] compostos INTERMEDIATE e WET com aderência em função da água; slick em pista molhada e pneu de chuva em pista seca penalizados; o ponto de troca slick ↔ intermediário ↔ chuva emerge do modelo, não de um limiar fixo;
+- [ ] janela de temperatura por composto e aquecimento lento na volta de saída (efeito no desgaste combinado com #104);
+- [ ] pneu de chuva superaquece e degrada rápido em pista secando;
+- [ ] estratégia: cada piloto troca com limiar próprio, sorteado por seed a partir do perfil (como `FuelStrategyTraits`); regra dos dois compostos suspensa quando há pneus de chuva na corrida;
+- [ ] risco de incidente, SC/VSC e disputa sensíveis à água e ao pneu; habilidade na chuva por piloto (comentário da #62);
+- [ ] mesmo comportamento nos motores detalhado e 2D;
+- [ ] interface: condição inicial da pista (molhada na largada), cores dos compostos INTERMEDIATE/WET, água e temperatura na tela da corrida;
+- [ ] parâmetros versionados e rotulados: `estimated` só onde houver âncora com proveniência registrada, o resto `assumed`/`heuristic`;
+- [ ] testes e documentação em `docs/modelagem-heuristica.md` e `docs/modelagem-clima.md`.
+
+## Pendência
+
+Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como âncora (AGENTS.md, ADR 0005) antes de rotular qualquer parâmetro como `estimated`.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-06T20:31:20Z — label adicionada: Task por @DaviGabrielBC
+- 2026-11-06T20:31:19Z — atribuida: @DaviGabrielBC por @DaviGabrielBC
 
 </details>
 
@@ -2218,6 +2589,38 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 
 </details>
 
+### [#68 — Consumir backend e frontend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @Jmvjr, @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T22:31:03Z
+- **Atualizada:** 2026-10-26T23:07:15Z
+- **Fechada:** 2026-10-26T23:07:15Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-26T23:07:15Z — fechada por @Jmvjr
+- 2026-10-02T22:38:41Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-10-02T22:38:33Z — renomeada: “Consumir backend para modelar clima” → “Consumir backend e frontend para modelar clima” por @Jmvjr
+- 2026-09-11T22:31:05Z — label adicionada: Task por @guilherme-webster
+- 2026-09-11T22:31:04Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
 ### [#69 — Modelagem clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/69)
 
 - **Estado:** fechada
@@ -2319,5 +2722,114 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-26T00:40:21Z — fechada por @Jmvjr
 - 2026-09-26T00:29:35Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-09-26T00:29:33Z — label adicionada: Task por @Jmvjr
+
+</details>
+
+### [#101 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/101)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-10-26T22:30:33Z
+- **Atualizada:** 2026-10-26T22:55:37Z
+- **Fechada:** 2026-10-26T22:55:37Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-26T22:55:37Z — fechada por @Jmvjr
+- 2026-10-26T22:30:41Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
+### [#102 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/102)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
+- **Sub-issues:** —
+- **Criada:** 2026-10-26T22:56:42Z
+- **Atualizada:** 2026-10-26T22:56:49Z
+- **Fechada:** 2026-10-26T22:56:49Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-10-26T22:56:49Z — fechada por @Jmvjr
+- 2026-10-26T22:56:48Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
+### [#104 — Desgate e combústivel dinâmicos](https://github.com/guilherme-webster/mc857-o-projeto/issues/104)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#63 — Pneu](https://github.com/guilherme-webster/mc857-o-projeto/issues/63)
+- **Sub-issues:** —
+- **Criada:** 2026-10-26T23:08:00Z
+- **Atualizada:** 2026-11-06T21:35:40Z
+- **Fechada:** 2026-11-06T21:35:39Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-11-06T21:19:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/104#issuecomment-6695878335)
+
+<pre>Retomada em 06/11/2026: alterações locais de consumo e desgaste dinâmicos recuperadas na develop atualizada, com stash preservado como cópia de segurança. Revisão inclui as paradas sincronizadas na regra de segundo composto e a preservação das funcionalidades recentes de torneios e sementes. O ADR novo passa a ser 0014, pois 0013 já pertence aos torneios salvos. Próximos passos: concluir os ajustes, executar os testes e registrar o commit antes de encerrar a issue.</pre>
+
+#### [@Jmvjr em 2026-11-06T21:35:38Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/104#issuecomment-6696268042)
+
+<pre>Concluído e integrado à develop pelo PR #121: https://github.com/guilherme-webster/mc857-o-projeto/pull/121
+
+Commit da implementação: 8531d60f80341aa89320dc2a9f08cd1470a80222. Merge: e30b79497c98aabf065649964e6e274a04561666.
+
+O 2D agora integra queima e desgaste por movimento, considerando distância, velocidade, esforço longitudinal e carga lateral estimada das curvas. O frontend lê os recursos das trajetórias; pane seca pode ocorrer entre linhas sem creditar uma volta fictícia. A troca obrigatória é planejada por desgaste e preferência individual semeada, preservando o prazo de dois compostos, estratégias explícitas e o motor por volta. O ADR 0014 registra a integração sem substituir o ADR 0013 dos torneios.
+
+Verificações: suíte completa com `uv run --with httpx2 python -m unittest` — 756 testes, zero falhas/erros, 45 ignorados por condições gráficas; Ruff e whitespace passaram. No cenário de regressão de dez voltas/seed 42, o grid entra nas voltas 6 e 7. Reprodutibilidade, conservação de massa, curvas rápidas, convergência do passo, serviço parado, formatos legados e torneios estão cobertos.
+
+Limites registrados: pesos heurísticos/assumidos, curvatura derivada do mock com contribuição limitada a 6 g, sem calibração de consumo/desgaste medidos nem reabastecimento no 2D. Próximo trabalho possível: calibrar esses fatores e revisar o envelope físico; não há bloqueio para esta entrega. Datasets e arquivos calibrados foram preservados.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-06T21:35:40Z — fechada por @Jmvjr
+- 2026-10-26T23:12:04Z — atribuida: @Jmvjr por @Jmvjr
 
 </details>
