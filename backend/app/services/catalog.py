@@ -13,7 +13,6 @@ from app.config import (
     CURRENT_GRID_JSON,
     CURRENT_RACE_JSON,
     FUEL_PARAMETERS,
-    GRID_START_PARAMETERS,
     HISTORY_DB,
     MODEL_PARAMETERS,
     REFERENCE_LAPS,
@@ -248,27 +247,6 @@ def _model_parameters():
         ) from error
 
 
-def _grid_start_parameters():
-    """Carregue a heuristica versionada de largada ou devolva 503.
-
-    Diferente de um recurso opcional, o fator muda o resultado padrao do motor
-    detalhado. Ausencia ou corrupcao nao pode cair silenciosamente em 1,0.
-    """
-
-    from f1_simulator.adapters.grid_start_parameters_json import (
-        GridStartParametersError,
-        read_grid_start_parameters,
-    )
-
-    try:
-        return read_grid_start_parameters(GRID_START_PARAMETERS)
-    except (OSError, GridStartParametersError) as error:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"parametros de largada invalidos: {error}",
-        ) from error
-
-
 def _reference_lap(track_id):
     """Entrada da tabela historica para a pista, ou ``None`` se nao houver.
 
@@ -371,13 +349,12 @@ def run_grid(
     total_laps,
     track_id,
     weather,
-    engine="detailed",
     tournament_seed=None,
     stage_index=0,
 ):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
-        run_detailed_grid_simulation,
+        run_grid_simulation,
     )
     from f1_simulator.domain.random_source import (
         TOURNAMENT_STAGE_STREAM_VERSION,
@@ -411,7 +388,7 @@ def run_grid(
     )
     rng = SeededRandomSource(seed).spawn("race")
     try:
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             pairs,
             attributes,
             setup,
@@ -422,8 +399,6 @@ def run_grid(
             geometry=geometry,
             fuel_parameters=_fuel_parameters(),
             pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
-            engine=engine,
-            grid_start=_grid_start_parameters(),
         )
     except ValueError as error:
         raise HTTPException(
@@ -504,7 +479,7 @@ def _deserialize_grid(state: dict):
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
                     "current grid uses the driver-attributes v1 schema and "
-                    "cannot run with the detailed engine; rebuild it with "
+                    "cannot run the simulation; rebuild it with "
                     "POST /catalog/grid"
                 ),
             )

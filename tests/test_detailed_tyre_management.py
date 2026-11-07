@@ -7,7 +7,7 @@ import unittest
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.attribute_effects import (
     DETAILED_TYRE_MANAGEMENT,
@@ -51,7 +51,7 @@ class DetailedTyreManagementTest(unittest.TestCase):
         model = parameters(dnf_hazard_per_lap=0.0)
 
         def tyre_cost(factor: float) -> tuple[float, dict]:
-            result = run_detailed_grid_simulation(
+            result = run_grid_simulation(
                 grid,
                 {"driver:1": attribute("driver:1", tyre_management_factor=factor)},
                 RaceSetup(10, "circuit:1"),

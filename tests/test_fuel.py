@@ -25,7 +25,7 @@ from f1_simulator.application.calibrate_fuel import (
 from f1_simulator.application.calibrate_model import LapObservation
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.fuel import (
     FuelModelParameters,
@@ -442,7 +442,7 @@ class GridFuelTest(unittest.TestCase):
             GridEntry("driver:1", "Primeiro", "team:solid", "Solida"),
             GridEntry("driver:2", "Segundo", "team:solid", "Solida"),
         )
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             grid,
             {entry.driver_id: attribute(entry.driver_id) for entry in grid},
             RaceSetup(total_laps=10),
@@ -460,7 +460,7 @@ class GridFuelTest(unittest.TestCase):
 
     def test_grid_run_without_fuel_keeps_the_linear_contract(self) -> None:
         grid = (GridEntry("driver:1", "Primeiro", "team:solid", "Solida"),)
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             grid,
             {"driver:1": attribute("driver:1")},
             RaceSetup(total_laps=5),
@@ -758,7 +758,7 @@ class GridRefuelTest(unittest.TestCase):
             GridEntry("driver:2", "Lento", "team:slow", "Lenta"),
             GridEntry("driver:3", "Medio", "team:other", "Outra"),
         )
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             grid,
             {entry.driver_id: attribute(entry.driver_id) for entry in grid},
             RaceSetup(total_laps=80, track_id="circuit:1"),

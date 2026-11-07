@@ -11,7 +11,7 @@ from f1_simulator.adapters.datasets.mock_track_geometry import MockTrackDatasetA
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.fuel import FuelPlan
 from f1_simulator.domain.race_simulation import (
@@ -206,7 +206,7 @@ class EngineRefuelStrategyTest(unittest.TestCase):
             entry.driver_id: attribute(entry.driver_id, aggression=0.8 + 0.1 * index)
             for index, entry in enumerate(grid)
         }
-        result = run_detailed_grid_simulation(
+        result = run_grid_simulation(
             grid,
             attributes,
             RaceSetup(total_laps=60, track_id="circuit:1"),

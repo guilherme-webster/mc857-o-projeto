@@ -9,7 +9,7 @@ from f1_simulator.adapters.datasets.mock_track_geometry import MockTrackDatasetA
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
 from f1_simulator.domain.speed_dynamics import (
@@ -165,9 +165,9 @@ class EngineIntegrationTest(unittest.TestCase):
         )
         self.attributes = {g.driver_id: attribute(g.driver_id) for g in self.grid}
 
-    def _run(self, engine, weather, laps=4):
+    def _run(self, weather, laps=4):
         geometry = small_geometry()
-        return run_detailed_grid_simulation(
+        return run_grid_simulation(
             self.grid,
             self.attributes,
             RaceSetup(total_laps=laps, track_id=None, weather=weather),
@@ -176,25 +176,22 @@ class EngineIntegrationTest(unittest.TestCase):
             rng=SeededRandomSource(7),
             geometry=geometry,
             race_control=None,
-            engine=engine,
         )
 
-    def test_both_engines_publish_track_conditions_and_slow_down_in_rain(self):
+    def test_engine_publishes_track_conditions_and_slows_down_in_rain(self):
         # Volta sintetica de ~7 s: a agua evolui por minuto, entao 12 voltas
         # de chuva forte (~1,4 min) deixam a pista apenas umida.
         laps = 12
         rain = (WeatherSegment(1, laps, HEAVY),)
-        for engine in ("detailed", "2d"):
-            with self.subTest(engine=engine):
-                dry = self._run(engine, (), laps)
-                wet = self._run(engine, rain, laps)
-                self.assertEqual(len(wet["track_conditions"]), laps)
-                self.assertGreater(wet["track_conditions"][-1]["surface_water"], 0.15)
-                dry_time = min(c["total_time_ms"] for c in dry["classification"])
-                wet_time = min(c["total_time_ms"] for c in wet["classification"])
-                self.assertGreater(wet_time, dry_time * 1.03)
-                kinds = {a["kind"] for a in wet["assumptions"]}
-                self.assertIn("track_condition", kinds)
+        dry = self._run((), laps)
+        wet = self._run(rain, laps)
+        self.assertEqual(len(wet["track_conditions"]), laps)
+        self.assertGreater(wet["track_conditions"][-1]["surface_water"], 0.15)
+        dry_time = min(c["total_time_ms"] for c in dry["classification"])
+        wet_time = min(c["total_time_ms"] for c in wet["classification"])
+        self.assertGreater(wet_time, dry_time * 1.03)
+        kinds = {a["kind"] for a in wet["assumptions"]}
+        self.assertIn("track_condition", kinds)
 
 
 if __name__ == "__main__":

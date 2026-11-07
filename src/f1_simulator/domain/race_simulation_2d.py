@@ -385,6 +385,18 @@ def simulate_2d_race(
     pit_events: list[dict] = []
     pending_compounds: dict[str, str] = {}
 
+    # TODO(motor-2d): duas features do motor detalhado ficaram de fora por
+    # decisao, e este e o ponto de entrada para quando forem portadas:
+    #
+    # 1. Reabastecimento. Hoje ``refuel_mode`` e sempre False e o pit so troca
+    #    pneu. Para ligar: respeitar ``fuel.parameters.refuelling_allowed``,
+    #    abastecer no serviço (``PitStopRequest`` + vazao ``refuel_rate_kg_per_s``)
+    #    e recalcular ``fuel_kg``/``speed_scale`` do carro ao sair dos boxes.
+    # 2. Perda historica de boxes calibrada. Hoje o tempo de parada vem so da
+    #    geometria mockada + serviço; falta somar ``track_params.pit_loss_ms``
+    #    (a perda medida por circuito) como no motor detalhado, para o tempo de
+    #    parada deixar de ser puramente assumido.
+
     cars: list[CarSpaceState] = []
     physics_by_id: dict[str, CarPhysics] = {}
     aggression_by_id: dict[str, float] = {}

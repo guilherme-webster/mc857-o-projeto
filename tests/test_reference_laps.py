@@ -21,7 +21,7 @@ from f1_simulator.application.reference_laps import (
 from f1_simulator.application.run_grid_simulation import (
     ASSUMED_REFERENCE_PACE_MS_PER_KM,
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
 from tests.model_support import parameters
@@ -205,7 +205,7 @@ class DetailedGridReferenceTest(unittest.TestCase):
         self.parameters = parameters(dnf_hazard_per_lap=0.0)
 
     def _run(self, **kwargs) -> dict:
-        return run_detailed_grid_simulation(
+        return run_grid_simulation(
             self.grid,
             self.attributes,
             RaceSetup(3, "circuit:1"),

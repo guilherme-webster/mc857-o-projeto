@@ -6,7 +6,7 @@ import unittest
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
 from f1_simulator.domain.strategy import (
@@ -81,7 +81,7 @@ def run_grid(*, reverse=False, seed=42):
     if reverse:
         grid = tuple(reversed(grid))
     geometry = pit_geometry()
-    return run_detailed_grid_simulation(
+    return run_grid_simulation(
         grid,
         attributes,
         RaceSetup(10, geometry.circuit_id),
@@ -89,7 +89,6 @@ def run_grid(*, reverse=False, seed=42):
         lap_length_m=geometry.lap_length_m,
         rng=SeededRandomSource(seed).spawn("race"),
         geometry=geometry,
-        engine="2d",
         race_control=None,
     )
 

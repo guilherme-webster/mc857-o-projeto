@@ -7,7 +7,7 @@ import unittest
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
-    run_detailed_grid_simulation,
+    run_grid_simulation,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
 from f1_simulator.domain.strategy import (
@@ -142,7 +142,7 @@ class WetRaceTest(unittest.TestCase):
         geometry = _fixture_geometry("circuit:6")
         grid = tuple(GridEntry(f"driver:{i}", f"P{i}", "team:1", "Team") for i in range(6))
         attributes = {entry.driver_id: attribute(entry.driver_id) for entry in grid}
-        return run_detailed_grid_simulation(
+        return run_grid_simulation(
             grid,
             attributes,
             RaceSetup(total_laps=laps, track_id="circuit:6", weather=weather),
@@ -165,7 +165,6 @@ class WetRaceTest(unittest.TestCase):
         result = self._race((WeatherSegment(1, 30, RainLevel.HEAVY),))
         self.assertIn(result["starting_grid"][0]["compound"], WET_COMPOUNDS)
         kinds = {a["kind"]: a for a in result["assumptions"]}
-        self.assertIn(kinds["starting_compound"]["compound"], WET_COMPOUNDS)
         self.assertIn("wet_tyres", kinds["track_condition"])
 
     def test_a_dry_race_never_sees_wet_tyres(self):
