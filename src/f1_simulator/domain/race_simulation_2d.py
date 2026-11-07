@@ -24,7 +24,7 @@ reusadas sao as mesmas do motor por volta. Tudo rotulado em ``assumptions``.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, replace
 
 from f1_simulator.domain.attribute_effects import detailed_degradation_factor
@@ -328,6 +328,7 @@ def simulate_2d_race(
     pit_parameters: PitLaneParameters = PitLaneParameters(),
     usage_parameters: DynamicUsageParameters = DynamicUsageParameters(),
     pit_planning: SpatialPitPlanningParameters = SpatialPitPlanningParameters(),
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     """Simule a corrida no motor 2D e devolva ``history`` + ``classification``.
 
@@ -418,6 +419,10 @@ def simulate_2d_race(
     # em fator de velocidade. E o tempo que o proprio envelope fisico produz.
     ref_ms: dict[str, float] = {}
     grip_laps: dict[str, GripLapTimes] = {}
+    # Decomposicao da velocidade por carro e por volta: quanto pneu, combustivel,
+    # clima e controle de prova tiram do ritmo fisico de referencia. Registrado
+    # em ``_apply_scale`` sem alterar a fisica; alimenta a ferramenta de analise.
+    speed_breakdown: dict[str, dict[int, dict]] = {}
     for entry in sorted(entrants, key=lambda e: e["grid_position"]):
         did = entry["driver_id"]
         names[did] = entry["name"]
@@ -441,6 +446,7 @@ def simulate_2d_race(
         fuel_saving_laps[did] = 0
         grip_laps[did] = GripLapTimes(geometry, physics)
         ref_ms[did] = grip_laps[did].lap_ms(1.0)
+        speed_breakdown[did] = {}
         if fuel is not None:
             load = entry.get("start_fuel_kg")
             start_load = (
@@ -500,6 +506,9 @@ def simulate_2d_race(
     # ``LapEffects`` da volta corrente da corrida, aplicado a todos os carros.
     lap_effects_by_lap: dict[int, LapEffects] = {}
     control_laps_done = 0
+    # Volta mais avancada ja completada por qualquer carro, para o progresso.
+    # Independe do controle de prova (``control_laps_done`` so avanca com ele).
+    progress_lap_done = 0
 
     def _status_for_lap(lap_number: int) -> str:
         """Estado da pista na volta ``lap_number`` para a estratégia."""
@@ -538,20 +547,78 @@ def simulate_2d_race(
             wear_laps=cars_by_id[did].tyre_wear_laps,
         ) * wear_factor(tyre.compound, _water(lap_number))
 
+    def _record_breakdown(
+        did: str,
+        lap_number: int,
+        base: float,
+        tyre_ms: float,
+        fuel_ms: float,
+        weather_ms: float,
+        eff: LapEffects,
+        speed_scale: float,
+    ) -> None:
+        """Guarde a decomposicao da velocidade da volta, em ms e em fracao perdida.
+
+        A perda de velocidade total e ``1 - speed_scale``. Cada fator recebe a
+        fatia dessa perda proporcional ao tempo (ms) que ele acrescentou, de
+        modo que as fracoes somam a perda total e espelham o que o motor cobrou.
+        O controle de prova nao e um ms somado a ``base``: e o invluctro
+        multiplicativo/aditivo da volta, entao a sua fatia e o que sobra.
+        """
+
+        penalty = tyre_ms + fuel_ms + weather_ms
+        on_track_ms = base + penalty
+        control_ms = on_track_ms * (eff.lap_time_factor - 1.0) + eff.lap_time_loss_ms
+        # ``delta_ms`` e o tempo a mais (ou a menos) da volta sobre a referencia.
+        # Pode ser negativo: um composto macio novo e mais rapido que a base, e
+        # ai ``speed_scale`` passa de 1.0 (ganho, nao perda). A fatia de cada
+        # fator e proporcional ao seu ms, com o mesmo sinal, somando a variacao
+        # total de velocidade, seja ela perda (positiva) ou ganho (negativa).
+        delta_ms = penalty + control_ms
+        speed_delta = 1.0 - speed_scale
+        if delta_ms != 0.0:
+            unit = speed_delta / delta_ms
+            shares = {
+                "tyre": tyre_ms * unit,
+                "fuel": fuel_ms * unit,
+                "weather": weather_ms * unit,
+                "race_control": control_ms * unit,
+            }
+        else:
+            shares = {"tyre": 0.0, "fuel": 0.0, "weather": 0.0, "race_control": 0.0}
+        speed_breakdown[did][lap_number] = {
+            "base_ms": round(base, 3),
+            "tyre_ms": round(tyre_ms, 3),
+            "fuel_ms": round(fuel_ms, 3),
+            "weather_ms": round(weather_ms, 3),
+            "control_factor": eff.lap_time_factor,
+            "control_loss_ms": eff.lap_time_loss_ms,
+            "speed_scale": round(speed_scale, 6),
+            "speed_delta_fraction": round(speed_delta, 6),
+            "delta_shares": {k: round(v, 6) for k, v in shares.items()},
+        }
+
     def _apply_scale(car: CarSpaceState, lap_number: int) -> None:
         """Converta as penalidades de tempo da volta em fator de velocidade.
 
         A referencia fisica do carro e o denominador comum; pneu, combustivel,
         clima e controle de prova entram como ms a mais. Boxes têm movimento
         e serviço próprios; incluí-los aqui cobraria a mesma parada duas vezes.
+
+        Registra cada parcela em ``speed_breakdown`` para a ferramenta de
+        decomposição, sem alterar o ``speed_scale`` resultante.
         """
 
         did = car.driver_id
         base = ref_ms[did]
         eff = _lap_effects(lap_number)
-        penalty = _tyre_penalty_ms(did, lap_number)
+        tyre_ms = _tyre_penalty_ms(did, lap_number)
+        fuel_ms = 0.0
         if fuel is not None:
-            penalty += fuel.ms_per_kg * max(0.0, car.fuel_kg - fuel.parameters.finish_reserve_kg)
+            fuel_ms = fuel.ms_per_kg * max(
+                0.0, car.fuel_kg - fuel.parameters.finish_reserve_kg
+            )
+        weather_ms = 0.0
         if track_states:
             idx = min(lap_number - 1, len(track_states) - 1)
             water = track_states[idx].surface_water
@@ -559,9 +626,13 @@ def simulate_2d_race(
                 tyre_by_id[did].compound, water
             )
             if grip_factor != 1.0:
-                penalty += grip_laps[did].delta_ms(grip_factor)
+                weather_ms = grip_laps[did].delta_ms(grip_factor)
+        penalty = tyre_ms + fuel_ms + weather_ms
         on_track_ms = (base + penalty) * eff.lap_time_factor + eff.lap_time_loss_ms
         car.speed_scale = base / on_track_ms if on_track_ms > 0 else 1.0
+        _record_breakdown(
+            did, lap_number, base, tyre_ms, fuel_ms, weather_ms, eff, car.speed_scale
+        )
 
     reliability_by_id = reliability_by_id or {}
     mechanical_retired: dict[str, int] = {}
@@ -729,8 +800,14 @@ def simulate_2d_race(
     retired_seen: set[str] = set()
 
     def on_lap_complete(car: CarSpaceState, lap: int) -> None:
-        nonlocal control_laps_done
+        nonlocal control_laps_done, progress_lap_done
         did = car.driver_id
+        # Progresso: emite quando a volta mais avancada do pelotao cresce, uma
+        # vez por volta da corrida. Callback puro injetado; o nucleo nao conhece
+        # HTTP nem a tela (a borda decide o que fazer com o progresso).
+        if on_progress is not None and lap > progress_lap_done:
+            progress_lap_done = lap
+            on_progress(min(lap, total_laps), total_laps)
         # Abandono mecanico: sorteio por volta. Ordem fixa pelo rotulo.
         if mechanical_hazard_per_lap > 0.0 and lap < total_laps:
             hazard = mechanical_hazard_per_lap * reliability_by_id.get(did, 1.0)
@@ -934,6 +1011,23 @@ def simulate_2d_race(
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
             }
         ],
+    }
+    # Decomposicao da velocidade por carro: ritmo fisico de referencia, teto de
+    # reta e, por volta, quanto pneu/combustivel/clima/controle tiram do ritmo.
+    # A curva e lida ponto a ponto no frontend (teto do ponto vs v_max); aqui
+    # fica so o invariante por carro e as penalidades por volta.
+    result["speed_breakdown"] = {
+        "cars": {
+            did: {
+                "v_max_kmh": round(physics_by_id[did].v_max_straight_kmh, 2),
+                "reference_lap_ms": round(ref_ms[did], 3),
+                "laps": {
+                    str(lap): data
+                    for lap, data in sorted(speed_breakdown[did].items())
+                },
+            }
+            for did in names
+        },
     }
     if usage_active:
         reports = {}

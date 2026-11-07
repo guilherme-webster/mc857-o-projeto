@@ -134,6 +134,46 @@ FUEL_STANDINGS_WIDTH = 580
 _MENU_BG = (16, 22, 30)
 _ROW_BG = (30, 41, 53)
 _ROW_HOVER = (46, 62, 80)
+# Linha realcada do carro selecionado para o grafico de decomposicao.
+_SELECTED_ROW_COLOR = (54, 74, 96)
+# Fatias do grafico de decomposicao de velocidade (fracao de v_max).
+_BREAKDOWN_EFFECTIVE_COLOR = (90, 200, 120)
+_BREAKDOWN_TRANSIENT_COLOR = (150, 150, 160)
+_BREAKDOWN_CORNER_COLOR = (120, 150, 230)
+_BREAKDOWN_FACTOR_COLORS = {
+    "tyre": (230, 170, 70),
+    "fuel": (170, 180, 195),
+    "weather": (90, 200, 250),
+    "race_control": (240, 150, 40),
+}
+_BREAKDOWN_LABELS = {
+    "effective": "velocidade",
+    "transient": "acel/freio",
+    "corner": "curva",
+    "tyre": "pneu",
+    "fuel": "combustível",
+    "weather": "clima",
+    "race_control": "controle",
+}
+# Painel flutuante da decomposicao: um por piloto, arrastavel e fechavel.
+_PANEL_W = 300.0
+_PANEL_H = 128.0
+_PANEL_TITLE_H = 20.0  # faixa de titulo (arrastar aqui)
+_PANEL_CLOSE = 16.0  # lado do botao de fechar
+_PANEL_BG = (22, 30, 40)
+_PANEL_BORDER = (70, 84, 100)
+_PANEL_CASCADE = 24.0  # deslocamento entre paineis novos
+
+
+class _BreakdownPanel:
+    """Painel flutuante da decomposicao de um piloto; posicao pelo canto inf-esq."""
+
+    __slots__ = ("driver_id", "x", "y")
+
+    def __init__(self, driver_id: str, x: float, y: float) -> None:
+        self.driver_id = driver_id
+        self.x = x
+        self.y = y
 _SWITCH_BG = (46, 62, 80)
 _PRIMARY_BG = (190, 30, 45)
 _PRIMARY_HOVER = (225, 45, 60)
@@ -429,6 +469,17 @@ class TrackView(arcade.View):
         self._speed_kmh: dict[str, float] = {}
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
+        # Decomposicao de velocidade: paineis flutuantes, um por piloto. A
+        # ordem da lista e o z-order (ultimo no topo). Clique numa linha da
+        # tabela abre/fecha; o painel e arrastavel pela faixa de titulo.
+        self._show_breakdown = self._playback.has_speed_breakdown
+        self._breakdown_panels: list[_BreakdownPanel] = []
+        self._standing_row_rects: list[tuple[str, tuple[float, float, float, float]]] = []
+        # Painel em arraste e offset do cursor ate o canto, e contador de
+        # cascata para paineis novos nao nascerem exatamente sobrepostos.
+        self._dragging_panel: _BreakdownPanel | None = None
+        self._drag_offset = (0.0, 0.0)
+        self._panel_opened_count = 0
         self._circuit = (
             tournament.stage_title(stage_index)
             if tournament is not None
@@ -500,6 +551,27 @@ class TrackView(arcade.View):
         self._header_texts = {
             key: arcade.Text(label, 0, 0, _HEADER_COLOR, 9, bold=True, anchor_x=anchor)
             for key, (label, _, anchor) in _STANDING_COLUMNS.items()
+        }
+        # Textos reutilizaveis do grafico de decomposicao de velocidade. Os
+        # mesmos objetos sao reposicionados por painel a cada frame.
+        self._breakdown_title = arcade.Text(
+            "", 0, 0, PRIMARY_TEXT_COLOR, 11, bold=True, anchor_y="center"
+        )
+        self._breakdown_close_x = arcade.Text(
+            "×", 0, 0, PRIMARY_TEXT_COLOR, 13, bold=True,
+            anchor_x="center", anchor_y="center",
+        )
+        self._breakdown_legend = {
+            key: arcade.Text("", 0, 0, PRIMARY_TEXT_COLOR, 10, font_name="monospace")
+            for key in (
+                "effective",
+                "transient",
+                "corner",
+                "tyre",
+                "fuel",
+                "weather",
+                "race_control",
+            )
         }
         self._status_text = arcade.Text(
             "",
@@ -613,12 +685,76 @@ class TrackView(arcade.View):
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         if self._next_text is not None and self._in_rect(x, y, self._next_rect()):
             self._open_next()
-        elif self._in_rect(x, y, self._switch_rect()):
+            return
+        if self._in_rect(x, y, self._switch_rect()):
             self.window.show_view(MenuView())
-        elif self._in_rect(x, y, self._end_rect()):
+            return
+        if self._in_rect(x, y, self._end_rect()):
             self._elapsed = self._race_len_ms
             self._paused = True
             self._direction = 1
+            return
+        if self._show_breakdown and self._press_breakdown(x, y):
+            return
+
+    def _press_breakdown(self, x: float, y: float) -> bool:
+        """Trate o clique nos paineis e na tabela; devolve se consumiu o clique.
+
+        Ordem: botao de fechar e faixa de titulo dos paineis (do topo para o
+        fundo, respeitando a sobreposicao), depois as linhas da tabela (toggle).
+        """
+
+        # Paineis do topo para o fundo (fim da lista = topo).
+        for panel in reversed(self._breakdown_panels):
+            if self._in_rect(x, y, self._panel_close_rect(panel)):
+                self._breakdown_panels.remove(panel)
+                return True
+            if self._in_rect(x, y, self._panel_title_rect(panel)):
+                # Traz para frente e inicia o arraste pela faixa de titulo.
+                self._breakdown_panels.remove(panel)
+                self._breakdown_panels.append(panel)
+                self._dragging_panel = panel
+                self._drag_offset = (x - panel.x, y - panel.y)
+                return True
+            if self._in_rect(x, y, self._panel_body_rect(panel)):
+                # Clicar no corpo so traz para frente, sem arrastar.
+                self._breakdown_panels.remove(panel)
+                self._breakdown_panels.append(panel)
+                return True
+
+        for driver_id, rect in self._standing_row_rects:
+            if self._in_rect(x, y, rect):
+                self._toggle_panel(driver_id)
+                return True
+        return False
+
+    def _toggle_panel(self, driver_id: str) -> None:
+        """Abre o painel do piloto, ou fecha se ja estiver aberto."""
+
+        for panel in self._breakdown_panels:
+            if panel.driver_id == driver_id:
+                self._breakdown_panels.remove(panel)
+                return
+        # Cascata a partir do canto inferior direito da area util.
+        base_x = self.window.width - _PANEL_W - MARGIN
+        base_y = 60.0
+        shift = (self._panel_opened_count % 6) * _PANEL_CASCADE
+        self._panel_opened_count += 1
+        self._breakdown_panels.append(
+            _BreakdownPanel(driver_id, base_x - shift, base_y + shift)
+        )
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
+        panel = self._dragging_panel
+        if panel is None:
+            return
+        ox, oy = self._drag_offset
+        # Mantem o painel dentro da janela, pela faixa de titulo.
+        panel.x = max(0.0, min(x - ox, self.window.width - _PANEL_W))
+        panel.y = max(0.0, min(y - oy, self.window.height - _PANEL_H))
+
+    def on_mouse_release(self, x, y, button, modifiers) -> None:
+        self._dragging_panel = None
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if symbol == arcade.key.SPACE:
@@ -907,6 +1043,9 @@ class TrackView(arcade.View):
         self._hud.draw()
         self._help.draw()
         self._draw_standings(height)
+        if self._show_breakdown:
+            for panel in self._breakdown_panels:
+                self._draw_breakdown_panel(panel)
         self._draw_race_control(status, width, height)
         self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
         self._draw_button(self._end_rect(), self._end_text, self._end_hover)
@@ -925,6 +1064,133 @@ class TrackView(arcade.View):
         text.x = left + width / 2
         text.y = bottom + height / 2
         text.draw()
+
+    #: Ordem fixa dos fatores no painel: cada um ocupa sempre o mesmo slot, para
+    #: a leitura em tempo real nao "dancar" quando um valor muda.
+    _BREAKDOWN_ORDER = ("corner", "transient", "tyre", "fuel", "weather", "race_control")
+
+    def _breakdown_fraction(self, breakdown, key: str) -> float:
+        if key == "corner":
+            return breakdown.corner
+        if key == "transient":
+            return breakdown.transient
+        return breakdown.penalties.get(key, 0.0)
+
+    def _panel_title_rect(self, panel) -> tuple:
+        """Faixa de titulo (arrastar) no topo do painel."""
+
+        return (panel.x, panel.y + _PANEL_H - _PANEL_TITLE_H, _PANEL_W, _PANEL_TITLE_H)
+
+    def _panel_close_rect(self, panel) -> tuple:
+        """Botao de fechar, no canto superior direito."""
+
+        pad = (_PANEL_TITLE_H - _PANEL_CLOSE) / 2
+        return (
+            panel.x + _PANEL_W - _PANEL_CLOSE - pad,
+            panel.y + _PANEL_H - _PANEL_TITLE_H + pad,
+            _PANEL_CLOSE,
+            _PANEL_CLOSE,
+        )
+
+    def _panel_body_rect(self, panel) -> tuple:
+        return (panel.x, panel.y, _PANEL_W, _PANEL_H)
+
+    def _draw_breakdown_panel(self, panel) -> None:
+        """Desenhe o painel flutuante de um piloto: titulo, fechar e as barras.
+
+        A velocidade efetiva aparece no titulo. Abaixo, cada fator ocupa um
+        slot fixo: os que reduzem a velocidade empilham na barra "tira"; os que
+        a aumentam (pneu novo, inercia) na barra "da". O comprimento de cada
+        fatia e a fracao de ``v_max``, entao os numeros sao "% da velocidade
+        maxima", nao "% da perda". Carro parado nao tem velocidade para
+        decompor e mostra so o aviso. Reusa os mesmos ``arcade.Text`` movendo-os
+        por painel, ja que o desenho e imediato.
+        """
+
+        did = panel.driver_id
+        name = self._playback.car(did).name
+        # Moldura e faixa de titulo.
+        arcade.draw_lbwh_rectangle_filled(panel.x, panel.y, _PANEL_W, _PANEL_H, _PANEL_BG)
+        arcade.draw_lbwh_rectangle_outline(
+            panel.x, panel.y, _PANEL_W, _PANEL_H, _PANEL_BORDER, 1
+        )
+        tl, tb, tw, th = self._panel_title_rect(panel)
+        arcade.draw_lbwh_rectangle_filled(tl, tb, tw, th, _PANEL_BORDER)
+        cl, cb, cw, ch = self._panel_close_rect(panel)
+        arcade.draw_lbwh_rectangle_outline(cl, cb, cw, ch, PRIMARY_TEXT_COLOR, 1)
+        self._breakdown_close_x.x = cl + cw / 2
+        self._breakdown_close_x.y = cb + ch / 2
+        self._breakdown_close_x.draw()
+
+        breakdown = self._playback.speed_breakdown_at(did, self._elapsed)
+        title = self._breakdown_title
+        title.x = panel.x + 8
+        title.y = tb + th / 2
+        if breakdown is None or breakdown.speed_kmh < 1.0:
+            title.text = f"{name[:20]} · parado"
+            title.draw()
+            return
+        pct = breakdown.effective * 100.0
+        title.text = f"{name[:16]}  {breakdown.speed_kmh:.0f} km/h · {pct:.0f}%"
+        title.draw()
+
+        bar_w = _PANEL_W - 16
+        bar_h = 16.0
+        left = panel.x + 8
+        takes_y = panel.y + _PANEL_H - _PANEL_TITLE_H - 8 - bar_h
+        gives_y = takes_y - bar_h - 4
+        self._draw_breakdown_bar(breakdown, left, takes_y, bar_w, bar_h, positive=True)
+        self._draw_breakdown_bar(breakdown, left, gives_y, bar_w, bar_h, positive=False)
+
+        for i, key in enumerate(self._BREAKDOWN_ORDER):
+            fraction = self._breakdown_fraction(breakdown, key)
+            legend = self._breakdown_legend[key]
+            legend.text = f"{_BREAKDOWN_LABELS[key]:>11} {-fraction * 100:+5.1f}%"
+            legend.color = (
+                _BREAKDOWN_EFFECTIVE_COLOR
+                if fraction < 0
+                else self._breakdown_slice_color(key)
+            )
+            col = i % 2
+            rown = i // 2
+            legend.x = left + col * (bar_w / 2)
+            legend.y = gives_y - 14 - rown * 13
+            legend.draw()
+
+    @staticmethod
+    def _breakdown_slice_color(key: str) -> tuple:
+        if key == "corner":
+            return _BREAKDOWN_CORNER_COLOR
+        if key == "transient":
+            return _BREAKDOWN_TRANSIENT_COLOR
+        return _BREAKDOWN_FACTOR_COLORS[key]
+
+    def _draw_breakdown_bar(
+        self, breakdown, left: float, y: float, bar_w: float, bar_h: float, *, positive: bool
+    ) -> None:
+        """Empilha numa barra os fatores do sinal pedido (tira vs da velocidade).
+
+        ``positive=True`` desenha o que reduz a velocidade (fracao positiva);
+        ``positive=False`` o que a aumenta (fracao negativa), em modulo. A
+        escala e a mesma (fracao de ``v_max``), entao as duas barras sao
+        comparaveis lado a lado.
+        """
+
+        cursor = left
+        for key in self._BREAKDOWN_ORDER:
+            fraction = self._breakdown_fraction(breakdown, key)
+            take = fraction if positive else -fraction
+            if take <= 0.0:
+                continue
+            seg_w = take * bar_w
+            color = (
+                self._breakdown_slice_color(key)
+                if positive
+                else _BREAKDOWN_EFFECTIVE_COLOR
+            )
+            arcade.draw_lbwh_rectangle_filled(cursor, y, seg_w, bar_h, color)
+            cursor += seg_w
+        arcade.draw_lbwh_rectangle_outline(left, y, bar_w, bar_h, _HEADER_COLOR, 1)
 
     def _draw_standings(self, height: int) -> None:
         """Classificacao ao vivo com pneu, paradas, posicoes ganhas e combustivel.
@@ -963,11 +1229,21 @@ class TrackView(arcade.View):
                     for key, (_, _, anchor) in _STANDING_COLUMNS.items()
                 }
             )
+        self._standing_row_rects = []
         for i, row in enumerate(standings):
             texts = self._row_texts[i]
             y = top - i * line_h
             car_color = self._color_by_driver.get(row.driver_id, PRIMARY_TEXT_COLOR)
             cells = self._standing_cells(row, car_color)
+            # Guarda a faixa clicavel da linha (do topo para baixo) para a
+            # selecao do carro do grafico de decomposicao de velocidade.
+            rect = (left - 4, y - line_h / 2, self._standings_width - left, line_h)
+            self._standing_row_rects.append((row.driver_id, rect))
+            # Realca as linhas cujos paineis estao abertos (pode ser varias).
+            if self._show_breakdown and any(
+                p.driver_id == row.driver_id for p in self._breakdown_panels
+            ):
+                arcade.draw_lbwh_rectangle_filled(*rect, _SELECTED_ROW_COLOR)
             if self._show_fuel and row.fuel_kg is not None and not row.retired:
                 self._draw_fuel_gauge(left, y, row.fuel_kg, row.lift_and_coast)
             for key, (value, color) in cells.items():

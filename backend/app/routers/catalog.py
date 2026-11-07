@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
+import queue
+import threading
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from app.schemas.responses import (
     BuildGridRequest,
@@ -127,3 +132,56 @@ def run_grid(request: RunGridRequest) -> dict:
         arguments["tournament_seed"] = request.setup.tournament_seed
         arguments["stage_index"] = request.setup.stage_index
     return catalog.run_grid(**arguments)
+
+
+def _sse(event: str, data: dict) -> str:
+    """Formate um evento SSE: uma linha ``event:`` e uma ``data:`` com JSON."""
+
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+@router.post("/grid/run/stream")
+def run_grid_stream(request: RunGridRequest) -> StreamingResponse:
+    """Rode a corrida transmitindo o progresso por volta via SSE.
+
+    A simulacao roda numa thread e empurra ``(lap, total)`` numa fila a cada
+    volta; o gerador consome a fila e emite eventos ``progress``, fechando com
+    ``done`` (resultado completo) ou ``error``. O motor so recebe um callback
+    puro; HTTP e SSE ficam nesta borda.
+    """
+
+    arguments = {
+        "total_laps": request.setup.total_laps,
+        "track_id": request.setup.track_id,
+        "weather": request.setup.weather,
+    }
+    if request.setup.tournament_seed is not None or request.setup.stage_index != 0:
+        arguments["tournament_seed"] = request.setup.tournament_seed
+        arguments["stage_index"] = request.setup.stage_index
+
+    events: queue.Queue = queue.Queue()
+    _DONE = object()
+
+    def on_progress(lap: int, total: int) -> None:
+        events.put(("progress", {"lap": lap, "total": total}))
+
+    def worker() -> None:
+        try:
+            result = catalog.run_grid(on_progress=on_progress, **arguments)
+        except Exception as error:  # a borda traduz qualquer falha em evento
+            events.put(("error", {"detail": str(error)}))
+        else:
+            events.put(("done", result))
+        finally:
+            events.put((_DONE, None))
+
+    def stream():
+        thread = threading.Thread(target=worker, name="race-sse", daemon=True)
+        thread.start()
+        while True:
+            kind, data = events.get()
+            if kind is _DONE:
+                break
+            yield _sse(kind, data)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")

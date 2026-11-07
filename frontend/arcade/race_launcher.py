@@ -51,7 +51,9 @@ class RaceClient(Protocol):
 
     def build_grid(self, size: int) -> dict: ...
 
-    def run_grid(self, setup: dict) -> dict: ...
+    def run_grid(
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+    ) -> dict: ...
 
     def fetch_track(self, circuit_id: str) -> dict: ...
 
@@ -162,14 +164,24 @@ def launch_plan(
     warnings: list[str] = []
     for stage_index, planned in enumerate(plan.races):
         warnings.extend(unsupported_options(planned))
-        progress(f"Simulando etapa {stage_index + 1}/{total}: {planned.name}…")
+        stage_label = (
+            f"Simulando etapa {stage_index + 1}/{total}: {planned.name}"
+            if total > 1
+            else f"Simulando {planned.name}"
+        )
+        progress(f"{stage_label}…")
+
+        def on_lap(lap: int, laps: int, _label: str = stage_label) -> None:
+            progress(f"{_label} — volta {lap}/{laps}")
+
         race = client.run_grid(
             run_setup(
                 planned,
                 plan.rules,
                 tournament_seed=plan.tournament_seed,
                 stage_index=stage_index,
-            )
+            ),
+            on_lap,
         )
         track = client.fetch_track(planned.circuit_id)
         launched.append(LaunchedRace(planned, race, track))
@@ -213,8 +225,10 @@ class HttpRaceClient:
     def build_grid(self, size: int) -> dict:
         return track_client.build_grid(size)
 
-    def run_grid(self, setup: dict) -> dict:
-        return track_client.run_grid(setup)
+    def run_grid(
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+    ) -> dict:
+        return track_client.run_grid_stream(setup, on_progress=on_lap)
 
     def fetch_track(self, circuit_id: str) -> dict:
         return track_client.fetch_track(circuit_id)

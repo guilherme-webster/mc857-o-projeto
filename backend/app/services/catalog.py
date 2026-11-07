@@ -351,6 +351,7 @@ def run_grid(
     weather,
     tournament_seed=None,
     stage_index=0,
+    on_progress=None,
 ):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
@@ -399,6 +400,7 @@ def run_grid(
             geometry=geometry,
             fuel_parameters=_fuel_parameters(),
             pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
+            on_progress=on_progress,
         )
     except ValueError as error:
         raise HTTPException(
