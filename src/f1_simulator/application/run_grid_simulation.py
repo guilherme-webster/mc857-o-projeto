@@ -1,7 +1,7 @@
 from __future__ import annotations
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from math import isfinite
 from typing import Literal
@@ -215,6 +215,7 @@ def _run_2d(
     reference_lap_time_ms,
     race_control,
     track_states,
+    on_progress=None,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) e monte o resultado da corrida."""
 
@@ -256,6 +257,7 @@ def _run_2d(
         reliability_by_id=reliability_by_id,
         mechanical_hazard_per_lap=parameters.mechanical_hazard_per_lap(),
         race_control=race_control,
+        on_progress=on_progress,
     )
     result["speed_profiles"] = _speed_profiles_by_driver(geometry, grid, attributes)
     result["setup"] = _setup_echo(setup)
@@ -304,6 +306,7 @@ def run_grid_simulation(
     geometry: TrackGeometry | None = None,
     fuel_parameters: FuelModelParameters | None = None,
     pit_entry_fraction: float | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) sem conhecer arquivo, HTTP ou banco.
 
@@ -428,6 +431,7 @@ def run_grid_simulation(
         reference_lap_time_ms=reference_lap_time_ms,
         race_control=race_control,
         track_states=track_states,
+        on_progress=on_progress,
     )
     result["assumptions"] = [
         *result.get("assumptions", []),

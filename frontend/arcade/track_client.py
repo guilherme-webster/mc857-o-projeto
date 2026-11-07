@@ -4,6 +4,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 
 BASE_URL = os.environ.get("F1_API_BASE_URL", "http://localhost:8000").rstrip("/")
 
@@ -152,6 +153,74 @@ def run_grid(setup: dict, base_url: str = BASE_URL) -> dict:
     """Rode o grid atual com ``setup`` e devolva a corrida salva pelo backend."""
 
     return _post("/catalog/grid/run", {"setup": setup}, base_url, RUN_TIMEOUT_S)
+
+
+def run_grid_stream(
+    setup: dict,
+    base_url: str = BASE_URL,
+    on_progress: Callable[[int, int], None] = lambda lap, total: None,
+) -> dict:
+    """Rode o grid transmitindo o progresso por volta (SSE) e devolva a corrida.
+
+    Le o fluxo ``POST /catalog/grid/run/stream`` evento a evento: cada
+    ``progress`` chama ``on_progress(lap, total)``; ``done`` traz a corrida;
+    ``error`` vira ``BackendError``. Cai no ``run_grid`` sincrono se a rota de
+    stream nao existir (backend antigo).
+    """
+
+    request = urllib.request.Request(
+        f"{base_url}/catalog/grid/run/stream",
+        data=json.dumps({"setup": setup}).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
+        method="POST",
+    )
+    try:
+        response = _OPENER.open(request, timeout=RUN_TIMEOUT_S)
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            # Backend sem a rota de stream: usa o caminho sincrono.
+            return run_grid(setup, base_url)
+        raise BackendError(error.code, _error_detail(error)) from error
+
+    result: dict | None = None
+    with response:
+        for event, data in _iter_sse(response):
+            if event == "progress":
+                on_progress(int(data["lap"]), int(data["total"]))
+            elif event == "done":
+                result = data
+            elif event == "error":
+                raise BackendError(500, str(data.get("detail", "erro no backend")))
+    if result is None:
+        raise BackendError(500, "stream encerrou sem resultado da corrida")
+    return result
+
+
+def _iter_sse(response):
+    """Itere ``(event, data)`` de um fluxo SSE; ``data`` e o JSON decodificado.
+
+    Um evento termina numa linha em branco; acumula ``event:`` e ``data:`` ate
+    la. So emite eventos cujo ``data`` e JSON valido.
+    """
+
+    event = "message"
+    data_lines: list[str] = []
+    for raw in response:
+        line = raw.decode("utf-8").rstrip("\n").rstrip("\r")
+        if line == "":
+            if data_lines:
+                payload = "\n".join(data_lines)
+                try:
+                    yield event, json.loads(payload)
+                except ValueError:
+                    pass
+            event = "message"
+            data_lines = []
+            continue
+        if line.startswith("event:"):
+            event = line[len("event:"):].strip()
+        elif line.startswith("data:"):
+            data_lines.append(line[len("data:"):].strip())
 
 
 def fetch_championship_standings(request: dict, base_url: str = BASE_URL) -> dict:
