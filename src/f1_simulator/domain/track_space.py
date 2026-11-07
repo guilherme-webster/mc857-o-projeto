@@ -37,7 +37,7 @@ from f1_simulator.domain.track_geometry import TrackGeometry
 #: Passo de tempo da integracao sub-volta (s). Hipotese assumida (ADR 0011):
 #: menor passo aproxima melhor o continuo e custa mais. 50 ms equilibra as duas
 #: coisas para o uso educacional.
-ASSUMED_TIME_STEP_S = 0.05
+ASSUMED_TIME_STEP_S = 0.1
 
 #: Velocidade lateral maxima de troca de faixa (m/s). Hipotese assumida: um
 #: carro leva cerca de um segundo para cruzar a pista inteira. Governa quao
@@ -634,7 +634,18 @@ def integrate_field(
     usable = track.bounds.usable_m
     by_id = {c.driver_id: c for c in cars}
     laps_done = {c.driver_id: 0 for c in cars}
+    # A composicao de ``cars`` e o ``driver_id`` de cada um nao mudam durante a
+    # corrida (so os atributos dos carros sao mutados). A ordem por driver_id e,
+    # portanto, fixa: calcula-se uma vez e reusa-se a cada passo, em vez de
+    # reordenar os carros milhoes de vezes. Resultado identico.
     order = sorted(cars, key=lambda c: c.driver_id)
+    # Plano fixo por carro na ordem de iteracao: fisica e teto nao mudam, entao
+    # resolve-se o lookup de dict uma vez, nao a cada um dos milhoes de passos.
+    step_plan = [
+        (car, physics_by_id[car.driver_id], *ceilings[car.driver_id]) for car in order
+    ]
+    # Passo lateral maximo por iteracao: invariante no laco (constantes).
+    max_step_lat = ASSUMED_LANE_CHANGE_MS * dt_s
     samples = [FieldSample(0.0, tuple(_frozen(c) for c in order))]
     time_s = 0.0
     steps = 0
@@ -643,7 +654,7 @@ def integrate_field(
     ):
         time_s += dt_s
         by_distance = sorted((c for c in cars if c.pit_state is None), key=lambda c: c.distance_m)
-        for car in sorted(cars, key=lambda c: c.driver_id):
+        for car, physics, cum, ceiling in step_plan:
             if car.retired or car.distance_m >= race_distance:
                 continue
             if car.pit_state is not None:
@@ -664,9 +675,7 @@ def integrate_field(
                     if completed <= total_laps:
                         on_lap_complete(car, completed)
                 continue
-            cum, ceiling = ceilings[car.driver_id]
             start_distance, start_speed = car.distance_m, car.speed_ms
-            physics = physics_by_id[car.driver_id]
             car_lap = int(car.distance_m // lap_length) + 1
             neutralized = neutralized_lap is not None and neutralized_lap(car_lap)
 
@@ -686,8 +695,8 @@ def integrate_field(
                     usable,
                     aggression_by_id.get(car.driver_id, 1.0),
                 )
-            # (2) move a lateral em direcao ao alvo, limitada pela velocidade lateral.
-            max_step_lat = ASSUMED_LANE_CHANGE_MS * dt_s
+            # (2) move a lateral em direcao ao alvo, limitada pela velocidade
+            # lateral (``max_step_lat`` e invariante, calculado antes do laco).
             delta = car.target_lateral_m - car.lateral_m
             car.lateral_m += max(-max_step_lat, min(max_step_lat, delta))
             car.clamp_lateral(track.bounds)
@@ -798,7 +807,6 @@ def integrate_field(
                 cars, race_distance, aggression_by_id, rng, dt_s, start_zone_m
             )
 
-        order = sorted(cars, key=lambda c: c.driver_id)
         samples.append(FieldSample(time_s, tuple(_frozen(c) for c in order)))
         steps += 1
     return tuple(samples)

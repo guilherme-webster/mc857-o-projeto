@@ -47,6 +47,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from math import floor
 
+from frontend.arcade.speed_breakdown import SpeedBreakdown, SpeedBreakdownReader
+
 RETIRED = "RETIRED"
 
 
@@ -395,6 +397,8 @@ class RacePlayback:
         self.duration_ms = max(car.finish_time_ms for car in self._cars)
         # Teto regulamentar do bloco ``fuel`` (kg), escala natural do medidor.
         self.max_fuel_kg = _max_fuel_kg(race.get("fuel"))
+        # Decomposicao da velocidade (pneu/combustivel/clima/curva) por carro.
+        self._speed_breakdown = SpeedBreakdownReader(race)
 
     @property
     def cars(self) -> tuple[CarTimeline, ...]:
@@ -408,6 +412,36 @@ class RacePlayback:
 
     def car(self, driver_id: str) -> CarTimeline:
         return self._by_id[driver_id]
+
+    @property
+    def has_speed_breakdown(self) -> bool:
+        """Se a corrida traz a decomposicao de velocidade; falso nas antigas."""
+
+        return self._speed_breakdown.available
+
+    def speed_breakdown_at(
+        self, driver_id: str, t_ms: float
+    ) -> SpeedBreakdown | None:
+        """Fatias da velocidade do carro no instante ``t_ms``.
+
+        Le a posicao e a velocidade da trajetoria e a volta em andamento, e
+        delega ao leitor da decomposicao. ``None`` quando o carro abandonou,
+        nao tem trajetoria ou a corrida nao traz a decomposicao.
+        """
+
+        car = self._by_id.get(driver_id)
+        if car is None or car.is_retired_at(t_ms):
+            return None
+        spatial = car.spatial_at(t_ms)
+        if spatial is None:
+            return None
+        lap = _lap_in_progress(car.laps_at(t_ms), self.total_laps)
+        return self._speed_breakdown.at(
+            driver_id,
+            distance_m=spatial.distance_m,
+            speed_kmh=spatial.speed_kmh,
+            lap=lap,
+        )
 
     def on_track(self, t_ms: float) -> list[tuple[str, float]]:
         """``(driver_id, voltas)`` dos carros que ainda estao na pista."""
