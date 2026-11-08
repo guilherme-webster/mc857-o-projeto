@@ -24,7 +24,7 @@ reusadas sao as mesmas do motor por volta. Tudo rotulado em ``assumptions``.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, replace
 
 from f1_simulator.domain.attribute_effects import detailed_degradation_factor
@@ -314,6 +314,8 @@ def simulate_2d_race(
     total_laps: int,
     rng: RandomSource,
     base_physics: CarPhysics = CarPhysics(),
+    base_physics_by_id: Mapping[str, CarPhysics] | None = None,
+    pit_execution_by_id: Mapping[str, float] | None = None,
     compounds: dict[str, CompoundParameters] | None = None,
     track_params: TrackParameters | None = None,
     model_parameters: ModelParameters | None = None,
@@ -427,7 +429,12 @@ def simulate_2d_race(
         did = entry["driver_id"]
         names[did] = entry["name"]
         grid_by_id[did] = entry["grid_position"]
-        physics = physics_for(entry.get("attributes"), base_physics)
+        base = (
+            base_physics_by_id.get(did, base_physics)
+            if base_physics_by_id
+            else base_physics
+        )
+        physics = physics_for(entry.get("attributes"), base)
         management[did] = detailed_degradation_factor(entry.get("attributes"))
         usage_totals[did] = dict(
             fuel_burned_kg=0.0,
@@ -761,7 +768,14 @@ def simulate_2d_race(
             if exit_d >= total_laps * lap_length_m:
                 return
             pending_compounds[did] = decision.compound
-            car.pit_request = PitStopRequest(entry, pit_parameters.service_time_s)
+            # Execucao de box da equipe (heuristico): escala o tempo de
+            # servico deste carro. Neutro em 1.0 (sem preset de equipe).
+            execution = (
+                pit_execution_by_id.get(did, 1.0) if pit_execution_by_id else 1.0
+            )
+            car.pit_request = PitStopRequest(
+                entry, pit_parameters.service_time_s * execution
+            )
 
     def _pit_event(car: CarSpaceState, kind: str, time_s: float) -> None:
         """Aplique a troca ao terminar o serviço, registrando instantes reais."""

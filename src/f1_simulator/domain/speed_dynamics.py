@@ -160,11 +160,16 @@ class CarPhysics:
 DEFAULT_CAR_PHYSICS = CarPhysics()
 
 #: Ganhos que traduzem atributos (neutros em 1.0, ou 0% no ritmo) no envelope
-#: fisico. Nao calibrados e deliberadamente exagerados em relacao a F1 real,
-#: para que os estilos ficticios se separem de forma visivel na tela.
-#: Agressividade atua na frenagem, compostura na velocidade de curva, ritmo
-#: num fator geral sobre as duas velocidades.
-_PACE_GAIN = 7.0
+#: fisico. O ritmo do piloto tem ganho moderado (2x, nao mais 7x): antes do
+#: carro por equipe (``car_pace_to_physics``), o atributo de piloto era o
+#: unico medidor de ritmo e precisava ser exagerado para separar estilos na
+#: tela. Agora o carro carrega o spread entre equipes de forma literal, e o
+#: ganho alto duplicaria essa vantagem (o ``pace_offset_pct`` dos pilotos ja
+#: embute parte do desempenho do carro) e espalharia o pelotao alem do
+#: realista. Com 2x o piloto continua visivelmente distinto, mas menor que o
+#: carro, como na F1. Agressividade atua na frenagem, compostura na velocidade
+#: de curva, ritmo num fator geral sobre as duas velocidades.
+_PACE_GAIN = 2.0
 _COMPOSURE_CORNER_GAIN = 0.5
 _AGGRESSION_BRAKE_GAIN = 0.5
 
@@ -200,6 +205,54 @@ def physics_for(
         v_max_straight_kmh=base.v_max_straight_kmh * pace,
         corner_grip_use=base.corner_grip_use * (pace * corner) ** 2,
         brake_grip_use=base.brake_grip_use * brake,
+    )
+
+
+#: Ganho que traduz o ritmo de carro de equipe (negativo = mais rapido) no
+#: envelope fisico. Diferente do ganho exagerado dos atributos de piloto
+#: (``_PACE_GAIN = 7``), o ritmo do carro e aplicado de forma literal (1:1):
+#: 1% de ritmo vira ~1% de velocidade de reta e de aderencia. O spread real
+#: entre equipes numa temporada fica na casa de 1-3%, entao o mapeamento 1:1
+#: mantem o pelotao plausivel. Parametro heuristico, nao calibrado (ADR 0008).
+_CAR_PACE_GAIN = 1.0
+
+
+def car_pace_to_physics(
+    pace_offset_pct: float,
+    base: CarPhysics = DEFAULT_CAR_PHYSICS,
+) -> CarPhysics:
+    """Envelope fisico de um carro de equipe a partir do ritmo heuristico.
+
+    ``pace_offset_pct`` segue a mesma convencao dos atributos de piloto:
+    negativo e mais rapido, zero e o carro de referencia (o mesmo que o piloto
+    neutro reproduz). O fator ``1 - pace_offset_pct/100`` escala a velocidade
+    de reta (``v_max_straight_kmh``), a aderencia (``grip_mu``) e a potencia
+    (``power_kw``) pelo mesmo valor, de modo que um carro mais rapido o e em
+    todos os trechos -- curva, freada e reta -- e nao so na reta. Downforce,
+    arrasto, massa e tracao permanecem do carro de referencia; a aderencia do
+    proprio carro e o ponto por onde agua, borracha e composto continuam
+    atuando (:meth:`CarPhysics.with_grip`).
+
+    O ganho e literal, nao o ganho exagerado dos pilotos, porque o ritmo do
+    carro e uma alavanca de realismo, nao de estilo ficticio. Parametros
+    heuristicos/assumidos, nao calibrados: ver ADR 0008 e
+    ``configs/cars/perfis-ficticios.json``.
+    """
+
+    if (
+        isinstance(pace_offset_pct, bool)
+        or not isinstance(pace_offset_pct, (int, float))
+        or not isfinite(pace_offset_pct)
+    ):
+        raise ValueError("pace_offset_pct deve ser finito")
+    factor = 1.0 - pace_offset_pct / 100.0 * _CAR_PACE_GAIN
+    if not isfinite(factor) or factor <= 0:
+        raise ValueError("pace_offset_pct produz fator de carro nao positivo")
+    return replace(
+        base,
+        v_max_straight_kmh=base.v_max_straight_kmh * factor,
+        grip_mu=base.grip_mu * factor,
+        power_kw=base.power_kw * factor,
     )
 
 

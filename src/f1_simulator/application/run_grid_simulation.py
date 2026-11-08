@@ -1,12 +1,14 @@
 from __future__ import annotations
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from math import isfinite
 from typing import Literal
 
 from f1_simulator.application.build_grid import GridEntry
+from f1_simulator.application.car_presets import CarPreset
+from f1_simulator.application.team_presets import TeamPreset
 from f1_simulator.application.reference_laps import (
     METHOD_VERSION as REFERENCE_LAPS_METHOD_VERSION,
 )
@@ -38,7 +40,11 @@ from f1_simulator.domain.wet_tyres import (
     best_tyre_class,
 )
 from f1_simulator.domain.model_parameters import ASSUMED_WET_COMPOUNDS
-from f1_simulator.domain.speed_dynamics import DEFAULT_CAR_PHYSICS
+from f1_simulator.domain.speed_dynamics import (
+    DEFAULT_CAR_PHYSICS,
+    CarPhysics,
+    car_pace_to_physics,
+)
 from f1_simulator.domain.track_condition import (
     ASSUMED_TRACK_CONDITION,
     GRIP_LAP_TIME_EXPONENT,
@@ -215,6 +221,13 @@ def _run_2d(
     reference_lap_time_ms,
     race_control,
     track_states,
+    car_physics_by_driver,
+    car_presets,
+    car_preset_disclaimer,
+    car_overrides_by_driver,
+    pit_execution_by_driver,
+    team_presets,
+    team_preset_disclaimer,
     on_progress=None,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) e monte o resultado da corrida."""
@@ -257,14 +270,28 @@ def _run_2d(
         reliability_by_id=reliability_by_id,
         mechanical_hazard_per_lap=parameters.mechanical_hazard_per_lap(),
         race_control=race_control,
+        base_physics_by_id=car_physics_by_driver,
+        pit_execution_by_id=pit_execution_by_driver,
         on_progress=on_progress,
     )
-    result["speed_profiles"] = _speed_profiles_by_driver(geometry, grid, attributes)
+    result["speed_profiles"] = _speed_profiles_by_driver(
+        geometry, grid, attributes, car_physics_by_driver
+    )
     result["setup"] = _setup_echo(setup)
     result["track_conditions"] = [state.as_dict() for state in track_states]
     result.setdefault("assumptions", []).extend(
         [_physical_lap_assumption(), _track_condition_assumption(setup)]
     )
+    if car_physics_by_driver:
+        result["assumptions"].append(
+            _team_car_presets_assumption(
+                grid, car_presets, car_preset_disclaimer, car_overrides_by_driver
+            )
+        )
+    if pit_execution_by_driver:
+        result["assumptions"].append(
+            _team_execution_assumption(grid, team_presets, team_preset_disclaimer)
+        )
     result["reference_lap_time_ms"] = reference_lap_time_ms
     result["track_reference"] = {
         "requested_track_id": setup.track_id,
@@ -276,14 +303,28 @@ def _run_2d(
     return result
 
 
-def _speed_profiles_by_driver(geometry, grid, attributes):
-    """Perfil fisico de velocidade por piloto, para a tela mostrar carros distintos."""
+def _speed_profiles_by_driver(geometry, grid, attributes, car_physics_by_driver=None):
+    """Perfil fisico de velocidade por piloto, para a tela mostrar carros distintos.
+
+    O envelope de cada piloto tambem reflete o carro da sua equipe quando ha
+    presets de carro, para que a velocidade desenhada coincida com a que
+    efetivamente move o carro na pista.
+    """
 
     from f1_simulator.domain.speed_dynamics import physics_for, steady_lap
 
     profiles = {}
     for entry in grid:
-        physics = physics_for(attributes.get(entry.driver_id))
+        base = (
+            car_physics_by_driver.get(entry.driver_id)
+            if car_physics_by_driver
+            else None
+        )
+        physics = (
+            physics_for(attributes.get(entry.driver_id), base)
+            if base is not None
+            else physics_for(attributes.get(entry.driver_id))
+        )
         samples = steady_lap(geometry, physics)
         profiles[entry.driver_id] = [
             {"distance_m": s.distance_m, "speed_ms": s.speed_ms, "time_s": s.time_s}
@@ -306,6 +347,11 @@ def run_grid_simulation(
     geometry: TrackGeometry | None = None,
     fuel_parameters: FuelModelParameters | None = None,
     pit_entry_fraction: float | None = None,
+    car_presets: Mapping[str, CarPreset] | None = None,
+    car_preset_disclaimer: str | None = None,
+    car_overrides_by_driver: Mapping[str, float] | None = None,
+    team_presets: Mapping[str, TeamPreset] | None = None,
+    team_preset_disclaimer: str | None = None,
     on_progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) sem conhecer arquivo, HTTP ou banco.
@@ -419,6 +465,10 @@ def run_grid_simulation(
     if geometry is None:
         raise ValueError("o motor 2D exige geometria da pista")
     track_states = _track_states(setup, reference_lap_time_ms)
+    car_physics_by_driver = _car_physics_by_driver(
+        grid, car_presets, car_overrides_by_driver
+    )
+    pit_execution_by_driver = _pit_execution_by_driver(grid, team_presets)
     result = _run_2d(
         grid,
         attributes,
@@ -431,6 +481,13 @@ def run_grid_simulation(
         reference_lap_time_ms=reference_lap_time_ms,
         race_control=race_control,
         track_states=track_states,
+        car_physics_by_driver=car_physics_by_driver,
+        car_presets=car_presets,
+        car_preset_disclaimer=car_preset_disclaimer,
+        car_overrides_by_driver=car_overrides_by_driver,
+        pit_execution_by_driver=pit_execution_by_driver,
+        team_presets=team_presets,
+        team_preset_disclaimer=team_preset_disclaimer,
         on_progress=on_progress,
     )
     result["assumptions"] = [
@@ -458,6 +515,200 @@ def run_grid_simulation(
         },
     ]
     return result
+
+
+def _car_physics_by_driver(
+    grid: Sequence[GridEntry],
+    car_presets: Mapping[str, CarPreset] | None,
+    car_overrides_by_driver: Mapping[str, float] | None = None,
+) -> dict[str, CarPhysics]:
+    """Envelope fisico por piloto a partir dos presets de carro por equipe.
+
+    Sem presets nem overrides, devolve ``{}`` e os motores usam o carro de
+    referencia unico, preservando exatamente o comportamento (e os hashes) de
+    antes. Equipes do grid sem preset ficam de fora e caem no carro de
+    referencia: o mapa so traz quem tem caracterizacao propria.
+
+    ``car_overrides_by_driver`` e o ritmo especifico de **um piloto** da equipe
+    (upgrade que chega so a um carro, dano, especificacao), em pontos
+    percentuais somados ao ritmo da equipe antes da conversao fisica. Ausente,
+    os dois carros da equipe sao identicos. Um override para um piloto sem
+    preset de equipe usa o carro de referencia como base (equipe neutra).
+    """
+
+    overrides = dict(car_overrides_by_driver or {})
+    if not car_presets and not overrides:
+        return {}
+    by_team = (
+        {team_id: preset.pace_offset_pct for team_id, preset in car_presets.items()}
+        if car_presets
+        else {}
+    )
+    result: dict[str, CarPhysics] = {}
+    for entry in grid:
+        has_team = entry.team_id in by_team
+        has_override = entry.driver_id in overrides
+        if not has_team and not has_override:
+            continue
+        team_pace = by_team.get(entry.team_id, 0.0)
+        driver_pace = team_pace + overrides.get(entry.driver_id, 0.0)
+        result[entry.driver_id] = car_pace_to_physics(driver_pace)
+    return result
+
+
+def _pit_execution_by_driver(
+    grid: Sequence[GridEntry],
+    team_presets: Mapping[str, TeamPreset] | None,
+) -> dict[str, float]:
+    """Fator de execucao de pit por piloto, a partir do preset da equipe.
+
+    Sem presets, devolve ``{}`` e os motores usam o tempo de box neutro,
+    preservando o comportamento anterior. Equipes sem preset ou fatores iguais
+    a 1.0 ficam de fora: so entra quem muda o resultado, e os dois pilotos de
+    uma equipe partilham o mesmo box (a execucao e da equipe, nao do piloto).
+    """
+
+    if not team_presets:
+        return {}
+    by_team = {
+        team_id: preset.pit_execution_factor
+        for team_id, preset in team_presets.items()
+        if preset.pit_execution_factor != 1.0
+    }
+    return {
+        entry.driver_id: by_team[entry.team_id]
+        for entry in grid
+        if entry.team_id in by_team
+    }
+
+
+def _team_car_presets_assumption(
+    grid: Sequence[GridEntry],
+    car_presets: Mapping[str, CarPreset] | None,
+    disclaimer: str | None,
+    car_overrides_by_driver: Mapping[str, float] | None = None,
+) -> dict:
+    """Origem heuristica dos carros por equipe (ADR 0008), para os dois motores.
+
+    ``mapped`` traz o ritmo da equipe e, quando ha variacao por piloto, o
+    ritmo efetivo de cada carro (equipe + override).
+    """
+
+    presets = car_presets or {}
+    overrides = dict(car_overrides_by_driver or {})
+    if not presets and not overrides:
+        raise AssertionError("a assumption de carro exige presets ou overrides")
+    teams_in_grid = {entry.team_id: entry.team_name for entry in grid}
+    mapped = []
+    for team_id in sorted(teams_in_grid):
+        preset = presets.get(team_id)
+        team_pace = preset.pace_offset_pct if preset is not None else 0.0
+        drivers_here = sorted(
+            entry.driver_id for entry in grid if entry.team_id == team_id
+        )
+        if preset is None and not any(d in overrides for d in drivers_here):
+            continue
+        mapped.append(
+            {
+                "team_id": team_id,
+                "team_name": teams_in_grid[team_id],
+                "team_pace_offset_pct": team_pace,
+                "has_preset": preset is not None,
+                "drivers": [
+                    {
+                        "driver_id": driver_id,
+                        "driver_override_pct": overrides.get(driver_id, 0.0),
+                        "effective_pace_offset_pct": team_pace
+                        + overrides.get(driver_id, 0.0),
+                    }
+                    for driver_id in drivers_here
+                ],
+            }
+        )
+    unmapped = [
+        {"team_id": team_id, "team_name": name}
+        for team_id, name in sorted(teams_in_grid.items())
+        if team_id not in presets
+        and not any(
+            entry.team_id == team_id and entry.driver_id in overrides
+            for entry in grid
+        )
+    ]
+    if presets:
+        sample = next(iter(presets.values()))
+        parameter_version = sample.parameter_version
+        rationale = sample.rationale
+    else:
+        parameter_version = "driver-car-override-only-v1"
+        rationale = (
+            "Variacao de carro por piloto sem preset de equipe: o ritmo do "
+            "carro de cada piloto e o override aplicado ao carro de referencia."
+        )
+    return {
+        "kind": "team_car_presets",
+        "origin": "heuristic",
+        "parameter_version": parameter_version,
+        "rationale": rationale,
+        "disclaimer": disclaimer,
+        "method": (
+            "car_pace_to_physics: factor = 1 - (team + override)/100 escala "
+            "v_max_straight_kmh, grip_mu e power_kw do carro de referencia"
+        ),
+        "mapped": mapped,
+        "unmapped_teams": unmapped,
+        "applies_to": (
+            "2d: movimento por fisica; detailed: volta base quando ha "
+            "geometria (producao). Sem geometria, o motor detalhado usa a "
+            "volta de referencia historica e o carro por equipe nao altera o "
+            "ritmo base."
+        ),
+    }
+
+
+def _team_execution_assumption(
+    grid: Sequence[GridEntry],
+    team_presets: Mapping[str, TeamPreset] | None,
+    disclaimer: str | None,
+) -> dict:
+    """Origem heuristica da execucao de pit por equipe (ADR 0008).
+
+    Declara explicitamente que confiabilidade mecanica (abandono) continua
+    calibrada em ``model-v1.json`` e nao e tocada por esta heuristica.
+    """
+
+    if not team_presets:
+        raise AssertionError("a assumption de execucao exige presets de equipe")
+    teams_in_grid = {entry.team_id: entry.team_name for entry in grid}
+    mapped = [
+        {
+            "team_id": team_id,
+            "team_name": preset.team_name,
+            "pit_execution_factor": preset.pit_execution_factor,
+            "drivers": sorted(
+                entry.driver_id for entry in grid if entry.team_id == team_id
+            ),
+        }
+        for team_id, preset in sorted(team_presets.items())
+        if team_id in teams_in_grid
+    ]
+    sample = next(iter(team_presets.values()))
+    return {
+        "kind": "team_execution_presets",
+        "origin": "heuristic",
+        "parameter_version": sample.parameter_version,
+        "rationale": sample.rationale,
+        "disclaimer": disclaimer,
+        "method": (
+            "pit_execution_factor multiplica o tempo de parada: detailed, a "
+            "perda de boxes (track.pit_loss_ms) da troca de pneus; 2d, o "
+            "service_time_s. O tempo de abastecer nao escala."
+        ),
+        "mapped": mapped,
+        "mechanical_reliability": (
+            "nao modelada aqui: abandono por quebra continua calibrado em "
+            "model-v1.json (team_reliability.hazard_factor)"
+        ),
+    }
 
 
 def _physical_lap_assumption() -> dict:
