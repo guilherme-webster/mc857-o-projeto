@@ -105,6 +105,11 @@ class RaceConfigurationView(arcade.View):
         self._weather_end_text = str(schedule.total_laps)
         self._weather_focused_field: str | None = None
         self._weather_replace_on_type = False
+        # Campos "Volta inicial"/"Volta final" digitaveis: o texto so existe
+        # enquanto o campo tem foco; fora dele o campo mostra a sessao.
+        self._session_focused_field: str | None = None
+        self._session_replace_on_type = False
+        self._session_text: dict[str, str] = {"first_lap": "", "last_lap": ""}
         self._weather_drag_start: int | None = None
         self._weather_drag_end: int | None = None
         self._weather_summary_page = 0
@@ -306,7 +311,12 @@ class RaceConfigurationView(arcade.View):
             ("last_lap", str(self.session.last_lap)),
         ):
             bounds = SESSION_FIELD_BOUNDS[key]
+            focused = self._session_focused_field == key
+            if focused:
+                value = self._session_text[key]
             self._panel(bounds)
+            if focused:
+                arcade.draw_lbwh_rectangle_outline(*bounds, ACCENT_COLOR, 2)
             self._text(
                 value,
                 bounds[0] + (bounds[2] - 74) / 2,
@@ -662,6 +672,8 @@ class RaceConfigurationView(arcade.View):
         """Start an inclusive weather interval without leaving this view."""
 
         x, y = self._logical_pointer(x, y)
+        if button == arcade.MOUSE_BUTTON_LEFT and self.active_topic == "Sessão":
+            self._handle_session_press(x, y)
         if (
             button == arcade.MOUSE_BUTTON_LEFT
             and self.active_topic == "Clima"
@@ -728,9 +740,68 @@ class RaceConfigurationView(arcade.View):
             return
         self._status = "Intervalo climático atualizado."
 
+    def _handle_session_press(self, x: int, y: int) -> None:
+        """Foca um campo de voltas da sessao ou aplica o que estava digitado.
+
+        Os botoes − e + ficam dentro do campo, mas nao o focam: o clique neles
+        segue para o passo de soltar, como antes.
+        """
+
+        for key in ("first_lap", "last_lap"):
+            bounds = SESSION_FIELD_BOUNDS[key]
+            on_stepper = any(
+                self._contains(button, x, y) for button in SESSION_STEPPER_BOUNDS[key]
+            )
+            if self._contains(bounds, x, y) and not on_stepper:
+                if self._session_focused_field == key:
+                    return
+                self._commit_session_text()
+                self._session_focused_field = key
+                self._session_text[key] = str(getattr(self.session, key))
+                self._session_replace_on_type = True
+                return
+        self._commit_session_text()
+
+    def _commit_session_text(self) -> None:
+        """Valide o texto digitado e aplique-o; texto invalido e descartado."""
+
+        field = self._session_focused_field
+        if field is None:
+            return
+        self._session_focused_field = None
+        self._session_replace_on_type = False
+        text = self._session_text[field].strip()
+        if not text.isdigit():
+            self._status = "Digite um número inteiro de voltas."
+            return
+        value = int(text)
+        first, last = self.session.first_lap, self.session.last_lap
+        if field == "first_lap":
+            first = value
+        else:
+            last = value
+        if not 1 <= first <= last <= MAX_LAPS:
+            self._status = (
+                f"Volta inicial deve ser no mínimo 1 e não passar da volta final, "
+                f"que vai de 1 a {MAX_LAPS}."
+            )
+            return
+        self._resize_race(last)
+        self.session = SessionConfiguration(first, last, self.session.start_mode)
+        self._status = "Voltas da etapa atualizadas."
+
     def on_text(self, text: str) -> None:
         """Edit the focused lap field, keeping invalid text visible for validation."""
 
+        if self.active_topic == "Sessão" and self._session_focused_field is not None:
+            if text.isdigit():
+                field = self._session_focused_field
+                current = (
+                    "" if self._session_replace_on_type else self._session_text[field]
+                )
+                self._session_text[field] = (current + text)[:3]
+                self._session_replace_on_type = False
+            return
         if self.active_topic != "Clima" or self._weather_focused_field is None:
             return
         if text.isdigit():
@@ -740,6 +811,20 @@ class RaceConfigurationView(arcade.View):
             self._weather_replace_on_type = False
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if self.active_topic == "Sessão" and self._session_focused_field is not None:
+            field = self._session_focused_field
+            if symbol == arcade.key.BACKSPACE:
+                current = (
+                    "" if self._session_replace_on_type else self._session_text[field]
+                )
+                self._session_text[field] = current[:-1]
+                self._session_replace_on_type = False
+            elif symbol in (arcade.key.ENTER, arcade.key.TAB):
+                self._commit_session_text()
+            elif symbol == arcade.key.ESCAPE:
+                self._session_focused_field = None
+                self._session_replace_on_type = False
+            return
         if self.active_topic != "Clima" or self._weather_focused_field is None:
             return
         attribute = f"_weather_{self._weather_focused_field}_text"
@@ -771,6 +856,7 @@ class RaceConfigurationView(arcade.View):
         )
 
     def save_and_return(self) -> None:
+        self._commit_session_text()
         self.parent.accept_weather_schedule(self.schedule)
         self.parent.accept_session_configuration(self.circuit_id, self.session)
         self.window.show_view(self.parent)
@@ -781,6 +867,7 @@ class RaceConfigurationView(arcade.View):
         self.window.show_view(self.parent)
 
     def save_and_advance(self) -> None:
+        self._commit_session_text()
         self.parent.accept_weather_schedule(self.schedule)
         self.parent.accept_session_configuration(self.circuit_id, self.session)
         if self.stage_index < len(self.parent.selected_track_ids):
