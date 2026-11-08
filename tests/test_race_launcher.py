@@ -121,13 +121,18 @@ class UnsupportedOptionsTest(unittest.TestCase):
         )
         self.assertEqual(unsupported_options(planned()), ())
 
-    def test_partial_session_and_rolling_start_are_reported(self) -> None:
+    def test_rolling_start_is_reported(self) -> None:
         warnings = unsupported_options(
-            planned(session=SessionConfiguration(3, 8, "Lançada"))
+            planned(session=SessionConfiguration(1, 8, "Lançada"))
         )
-        self.assertEqual(len(warnings), 2)
-        self.assertIn("3-8", warnings[0])
-        self.assertIn("lançada", warnings[1])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("lançada", warnings[0])
+
+    def test_first_lap_is_supported_and_raises_no_warning(self) -> None:
+        # A volta inicial so muda a reproducao; a corrida segue desde a largada.
+        self.assertEqual(
+            unsupported_options(planned(session=SessionConfiguration(3, 8))), ()
+        )
 
 
 class LaunchPlanTest(unittest.TestCase):
