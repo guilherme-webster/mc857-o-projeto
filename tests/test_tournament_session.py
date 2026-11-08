@@ -68,6 +68,31 @@ class TournamentSessionTest(unittest.TestCase):
             self.session.driver_names(), {"A": "Piloto A", "B": "Piloto B"}
         )
 
+    def test_teams_come_from_the_first_stage_that_lists_them(self) -> None:
+        def with_team(driver: str, team: str) -> dict:
+            return {"driver_id": driver, "team_name": team, "position": 1}
+
+        first = launched("Suzuka", ("A", 1, "RUNNING"))
+        first.race["classification"][0]["team_name"] = "Red Bull"
+        second = LaunchedRace(
+            planned=first.planned,
+            race={
+                "classification": [
+                    with_team("A", "Outra"),  # nao sobrescreve a primeira etapa
+                    with_team("B", "Ferrari"),
+                ]
+            },
+            track={},
+        )
+        session = TournamentSession(
+            (first, second), TournamentRules(name="Copa", total_stages=2)
+        )
+        self.assertEqual(session.driver_teams(), {"A": "Red Bull", "B": "Ferrari"})
+
+    def test_missing_team_is_omitted_not_invented(self) -> None:
+        # Corrida salva antes de a equipe ser exposta: sem equipe, sem erro.
+        self.assertEqual(self.session.driver_teams(), {})
+
     def test_rejects_empty_tournament(self) -> None:
         with self.assertRaises(ValueError):
             TournamentSession((), TournamentRules())

@@ -242,6 +242,7 @@ def _run_2d(
         {
             "driver_id": entry.driver_id,
             "name": entry.driver_name,
+            "team_name": entry.team_name,
             "grid_position": position,
             "attributes": attributes[entry.driver_id],
             "aggression": attributes[entry.driver_id].aggression,

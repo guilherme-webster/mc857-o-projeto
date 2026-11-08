@@ -19,6 +19,7 @@ try:
         CONFIRM_SERIES_BOUNDS,
         NEXT_TRACK_BOUNDS,
         ParametersView,
+        PREVIOUS_TRACK_BOUNDS,
         TOGGLE_TRACK_BOUNDS,
         TOURNAMENT_WINDOW_SIZE,
     )
@@ -405,6 +406,71 @@ class ParametersViewTest(unittest.TestCase):
         configured.cancel()
         self.assertIs(self.window.current_view, view)
         self.assertEqual(view.selected_track["circuit_id"], "circuit:6")
+
+    def _rects_overlap(self, a, b) -> bool:
+        ax, ay, aw, ah = a
+        bx, by, bw, bh = b
+        return not (ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay)
+
+    def test_hidden_data_widgets_do_not_cover_custom_click_areas(self) -> None:
+        """Regressao do bug real: um ``UIFlatButton``/``UIInputText`` escondido
+        ainda intercepta o clique na sua area (o Arcade nao olha ``visible`` em
+        ``UIInteractiveWidget.on_event``). O ``weather_button`` cobria a seta
+        'anterior' e abria a configuracao. Os widgets so guardam dados, entao
+        suas areas devem ficar fora de qualquer regiao clicavel da tela."""
+
+        view = self.ready_view()
+        hidden = (
+            view.preset_dropdown,
+            view.laps_input,
+            view.weather_button,
+            view.reset_button,
+            view.start_button,
+            view.tournament_name_input,
+            view.tournament_seed_input,
+        )
+        custom_areas = (
+            PREVIOUS_TRACK_BOUNDS,
+            NEXT_TRACK_BOUNDS,
+            TOGGLE_TRACK_BOUNDS,
+            CONFIGURE_TRACK_BOUNDS,
+            CONFIRM_SERIES_BOUNDS,
+        )
+        for widget in hidden:
+            rect = widget.rect
+            widget_bounds = (rect.left, rect.bottom, rect.width, rect.height)
+            for area in custom_areas:
+                self.assertFalse(
+                    self._rects_overlap(widget_bounds, area),
+                    msg=f"widget {type(widget).__name__} cobre area clicavel {area}",
+                )
+
+    def test_previous_arrow_selects_the_previous_track(self) -> None:
+        """A seta 'anterior' apenas retrocede a selecao, sem abrir a tela de
+        configuracao da pista."""
+
+        view = self.ready_view()
+        self.window.show_view(view)
+        view._selected_track_index = 1  # Monaco
+
+        left, bottom, width, height = PREVIOUS_TRACK_BOUNDS
+        px, py = self.to_window(view, left + width / 2, bottom + height / 2)
+        view.on_mouse_press(px, py, arcade.MOUSE_BUTTON_LEFT, 0)
+        view.on_mouse_release(px, py, arcade.MOUSE_BUTTON_LEFT, 0)
+
+        self.assertIs(self.window.current_view, view)
+        self.assertEqual(view.selected_track["circuit_id"], "circuit:18")
+
+    def test_preview_click_still_opens_the_configurator(self) -> None:
+        """A correcao nao pode quebrar o clique legitimo na previa."""
+
+        view = self.ready_view()
+        self.window.show_view(view)
+        left, bottom, width, height = CONFIGURE_TRACK_BOUNDS
+        cx, cy = left + width // 2, bottom + height // 2
+        view.on_mouse_press(cx, cy, arcade.MOUSE_BUTTON_LEFT, 0)
+        view.on_mouse_release(cx, cy, arcade.MOUSE_BUTTON_LEFT, 0)
+        self.assertIsInstance(self.window.current_view, RaceConfigurationView)
 
     def test_race_configuration_saves_session_and_inline_weather(
         self,

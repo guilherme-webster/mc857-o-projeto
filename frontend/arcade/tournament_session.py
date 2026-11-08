@@ -68,6 +68,21 @@ class TournamentSession:
                 names.setdefault(str(car["driver_id"]), str(car.get("name", "")))
         return names
 
+    def driver_teams(self) -> dict[str, str]:
+        """Equipe de cada piloto, da primeira etapa em que ela aparece.
+
+        Corridas salvas antes de a equipe ser exposta trazem ``team_name``
+        vazio; esses pilotos simplesmente nao recebem equipe, sem erro.
+        """
+
+        teams: dict[str, str] = {}
+        for race in self.races:
+            for car in _classification(race):
+                team = str(car.get("team_name", "") or "")
+                if team:
+                    teams.setdefault(str(car["driver_id"]), team)
+        return teams
+
     def standings_request(self) -> dict:
         """Corpo de ``POST /championship/standings`` para este torneio."""
 

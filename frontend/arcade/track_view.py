@@ -1324,9 +1324,11 @@ class TrackView(arcade.View):
         speed = self._speed_kmh.get(row.driver_id)
         speed_text = "" if speed is None or row.retired else f"{speed:.0f}"
 
+        code = _team_code(getattr(row, "team_name", ""))
+        name_text = f"{row.name[:14]} · {code}" if code else row.name[:18]
         return {
             "position": (str(row.position), car_color),
-            "name": (row.name[:18], car_color),
+            "name": (name_text, car_color),
             "time": (time_text, car_color),
             "tyre": (letter, tyre_color),
             "age": (age_text, car_color),
@@ -1376,6 +1378,39 @@ def _format_clock(ms: float) -> str:
 
 def _format_gap(ms: float) -> str:
     return f"+{ms / 1000.0:.3f}"
+
+
+# Codigos curtos das equipes conhecidas; o resto cai no fallback generico.
+# So abreviam a exibicao compacta da classificacao; o nome completo aparece no
+# painel de decomposicao de cada carro.
+_TEAM_CODES = {
+    "Red Bull": "RBR",
+    "McLaren": "MCL",
+    "Ferrari": "FER",
+    "Mercedes": "MER",
+    "Aston Martin": "AST",
+    "Alpine F1 Team": "ALP",
+    "RB F1 Team": "RB",
+    "Haas F1 Team": "HAA",
+    "Williams": "WIL",
+    "Sauber": "SAU",
+}
+
+
+def _team_code(team_name: str) -> str:
+    """Abrevie o nome da equipe para a classificacao compacta.
+
+    Usa o codigo conhecido quando existe; senao, as tres primeiras letras da
+    primeira palavra em maiusculas. Vazio continua vazio (corridas salvas antes
+    de a equipe ser exposta).
+    """
+
+    team_name = (team_name or "").strip()
+    if not team_name:
+        return ""
+    if team_name in _TEAM_CODES:
+        return _TEAM_CODES[team_name]
+    return team_name.split()[0][:3].upper()
 
 
 def _fuel_scale_kg(playback: RacePlayback) -> float | None:

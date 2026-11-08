@@ -55,11 +55,26 @@ SOURCE_COLORS = {
 _TABLE_COLUMNS = (
     ("P", 30, "right"),
     ("PILOTO", 42, "left"),
-    ("EQUIPE", 250, "left"),
-    ("ARQUÉTIPO", 430, "left"),
-    *((spec.short, 610 + i * 78, "right") for i, spec in enumerate(ATTRIBUTES)),
+    ("EQUIPE", 230, "left"),
+    ("ARQUÉTIPO", 380, "left"),
+    *((spec.short, 540 + i * 60, "right") for i, spec in enumerate(ATTRIBUTES)),
 )
+# Rolagem vertical da caixa do piloto: altura de cada atributo e da linha
+# inicial em relacao ao topo da area rolavel, e passo de cada giro da roda.
+_PANEL_ROW_HEIGHT = 64
+_PANEL_FIRST_ROW_OFFSET = 34
+_PANEL_DISCLAIMER_SPACE = 90
+_PANEL_SCROLL_STEP = 32
 _PANEL_LEFT_MARGIN = 40
+# Caixa lateral do piloto selecionado: largura total (inclui a margem direita
+# de 40 px) e posicao dos controles em relacao a borda esquerda da caixa.
+_PANEL_TOTAL_WIDTH = 440
+_CONTROL_X = {
+    "minus": 240,
+    "value": 317,
+    "move-down": 316,
+    "plus": 360,
+}
 
 
 class GridView(arcade.View):
@@ -86,6 +101,12 @@ class GridView(arcade.View):
         self._status_color = SECONDARY_TEXT_COLOR
         self._row_texts: list[dict[str, arcade.Text]] = []
         self._texts: dict[str, arcade.Text] = {}
+        # Indice do primeiro piloto visivel na tabela (rolagem).
+        self._scroll = 0
+        # Rolagem da caixa de atributos e o piloto a que ela pertence; ao
+        # trocar de piloto a caixa volta ao topo.
+        self._panel_scroll = 0
+        self._panel_owner: str | None = None
         self._run("load-grid", self._client.fetch_current_grid)
         self._run("load-races", lambda: self._client.fetch_history_races(SEASON))
 
@@ -145,6 +166,7 @@ class GridView(arcade.View):
                 self._draft.entries[0]["driver_id"] if self._draft.entries else None
             )
         self._row_texts = []
+        self._ensure_selected_visible()
         if self._draft.seed is not None:
             self._grid_seed_text = str(self._draft.seed)
         message = {
@@ -208,6 +230,7 @@ class GridView(arcade.View):
         if self._draft is None or self._selected is None:
             return
         if self._draft.move(self._selected, delta):
+            self._ensure_selected_visible()
             position = next(
                 index
                 for index, entry in enumerate(self._draft.entries, start=1)
@@ -225,7 +248,7 @@ class GridView(arcade.View):
     # -- geometria ---------------------------------------------------------------
 
     def _panel_left(self) -> int:
-        return self.window.width - 560
+        return self.window.width - _PANEL_TOTAL_WIDTH
 
     def _buttons(self) -> dict[str, tuple[float, float, float, float]]:
         width, height = self.window.width, self.window.height
@@ -238,22 +261,63 @@ class GridView(arcade.View):
             "save": (width - 230, 20, 190, 36),
             "discard": (width - 430, 20, 190, 36),
         }
-        panel = self._panel_left() + 24
-        rects["move-up"] = (panel + 330, height - 332, 70, 30)
-        rects["move-down"] = (panel + 410, height - 332, 70, 30)
+        left = self._panel_left()
+        rects["move-up"] = (left + _CONTROL_X["minus"], height - 332, 66, 30)
+        rects["move-down"] = (left + _CONTROL_X["move-down"], height - 332, 66, 30)
+        bottom, top = self._panel_region()
         for i, spec in enumerate(ATTRIBUTES):
-            y = height - 380 - i * 64
-            rects[f"minus:{spec.name}"] = (panel + 330, y - 6, 34, 30)
-            rects[f"plus:{spec.name}"] = (panel + 440, y - 6, 34, 30)
+            y = self._attribute_y(i)
+            # Botoes fora da area rolavel nao sao desenhados nem clicaveis.
+            if y - 6 < bottom or y - 6 + 30 > top:
+                continue
+            rects[f"minus:{spec.name}"] = (left + _CONTROL_X["minus"], y - 6, 34, 30)
+            rects[f"plus:{spec.name}"] = (left + _CONTROL_X["plus"], y - 6, 34, 30)
         return rects
+
+    def _table_top(self) -> float:
+        """Y da primeira linha de pilotos; as demais descem ROW_HEIGHT cada."""
+
+        return self.window.height - 230
+
+    def _visible_count(self) -> int:
+        """Quantas linhas cabem entre o topo da tabela e a area de rodape (y=80)."""
+
+        fits = (self._table_top() - 80) // ROW_HEIGHT + 1
+        return max(1, int(fits))
+
+    def _clamp_scroll(self) -> None:
+        if self._draft is None:
+            self._scroll = 0
+            return
+        max_scroll = max(0, len(self._draft.entries) - self._visible_count())
+        self._scroll = min(max(0, self._scroll), max_scroll)
+
+    def _ensure_selected_visible(self) -> None:
+        """Role a tabela o minimo para o piloto selecionado aparecer."""
+
+        if self._draft is None or self._selected is None:
+            return
+        ids = [entry["driver_id"] for entry in self._draft.entries]
+        if self._selected not in ids:
+            return
+        index = ids.index(self._selected)
+        visible = self._visible_count()
+        if index < self._scroll:
+            self._scroll = index
+        elif index >= self._scroll + visible:
+            self._scroll = index - visible + 1
+        self._clamp_scroll()
 
     def _row_at(self, x: float, y: float) -> str | None:
         if self._draft is None or x > self._panel_left() - 20:
             return None
-        top = self.window.height - 230
-        index = int((top + ROW_HEIGHT / 2 - y) // ROW_HEIGHT)
+        top = self._table_top()
+        offset = int((top + ROW_HEIGHT / 2 - y) // ROW_HEIGHT)
+        if not 0 <= offset < self._visible_count():
+            return None
+        index = self._scroll + offset
         entries = self._draft.entries
-        if 0 <= index < len(entries):
+        if index < len(entries):
             return entries[index]["driver_id"]
         return None
 
@@ -267,6 +331,21 @@ class GridView(arcade.View):
             (key for key, rect in self._buttons().items() if _inside(x, y, rect)),
             None,
         )
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
+        """Role a caixa do piloto ou a tabela, conforme o ponteiro esteja sobre."""
+
+        if self._draft is None:
+            return
+        bottom, top = self._panel_region()
+        if x >= self._panel_left() and bottom <= y <= top:
+            self._panel_scroll -= int(scroll_y) * _PANEL_SCROLL_STEP
+            self._clamp_panel_scroll()
+            return
+        if x > self._panel_left() - 20 or y < 80:
+            return
+        self._scroll -= int(scroll_y)
+        self._clamp_scroll()
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         self._editing_grid_seed = (
@@ -330,8 +409,10 @@ class GridView(arcade.View):
         index = ids.index(self._selected) if self._selected in ids else 0
         if symbol == arcade.key.DOWN:
             self._selected = ids[min(index + 1, len(ids) - 1)]
+            self._ensure_selected_visible()
         elif symbol == arcade.key.UP:
             self._selected = ids[max(index - 1, 0)]
+            self._ensure_selected_visible()
 
     def on_text(self, text: str) -> None:
         if self._editing_grid_seed and text.isprintable():
@@ -376,6 +457,7 @@ class GridView(arcade.View):
         ).draw()
         self._draw_source_selector(height)
         self._draw_table(height)
+        self._draw_scroll_hint()
         self._draw_panel(width, height)
         self._draw_buttons()
         self._text(
@@ -462,9 +544,12 @@ class GridView(arcade.View):
                 bold=True,
                 anchor_x=anchor,
             ).draw()
-        top = height - 230
-        for i, entry in enumerate(self._draft.entries):
-            y = top - i * ROW_HEIGHT
+        self._clamp_scroll()
+        top = self._table_top()
+        entries = self._draft.entries
+        for i in range(self._scroll, len(entries)):
+            entry = entries[i]
+            y = top - (i - self._scroll) * ROW_HEIGHT
             if y < 80:
                 break
             driver_id = entry["driver_id"]
@@ -507,6 +592,70 @@ class GridView(arcade.View):
                     anchor_y="center",
                 ).draw()
 
+    def _panel_region(self) -> tuple[float, float]:
+        """(base, topo) da area rolavel da caixa, abaixo da linha de posicao."""
+
+        return 88.0, self.window.height - 340.0
+
+    def _attribute_y(self, index: int) -> float:
+        """Y do atributo ``index`` com a rolagem da caixa aplicada."""
+
+        # Rolar para baixo (rolagem crescendo) sobe o conteudo, por isso soma.
+        _, top = self._panel_region()
+        return (
+            top
+            - _PANEL_FIRST_ROW_OFFSET
+            - index * _PANEL_ROW_HEIGHT
+            + self._panel_scroll
+        )
+
+    def _clamp_panel_scroll(self) -> None:
+        bottom, top = self._panel_region()
+        content = (
+            _PANEL_FIRST_ROW_OFFSET
+            + len(ATTRIBUTES) * _PANEL_ROW_HEIGHT
+            + _PANEL_DISCLAIMER_SPACE
+        )
+        max_scroll = max(0, content - (top - bottom))
+        self._panel_scroll = int(min(max(0, self._panel_scroll), max_scroll))
+
+    def _clip_panel_region(self) -> None:
+        """Recorta o desenho na area rolavel (coordenadas da janela em pixels)."""
+
+        bottom, top = self._panel_region()
+        left = self._panel_left()
+        right = self.window.width - 40
+        ratio = self.window.get_pixel_ratio()
+        self.window.ctx.scissor = (
+            int(left * ratio),
+            int(bottom * ratio),
+            int((right - left) * ratio),
+            int((top - bottom) * ratio),
+        )
+
+    def _unclip_panel_region(self) -> None:
+        self.window.ctx.scissor = None
+
+    def _draw_scroll_hint(self) -> None:
+        """Avisa quais pilotos estao na tela quando a lista nao cabe inteira."""
+
+        if self._draft is None:
+            return
+        total = len(self._draft.entries)
+        visible = self._visible_count()
+        if total <= visible:
+            return
+        first = self._scroll + 1
+        last = min(total, self._scroll + visible)
+        self._text(
+            "table-hint",
+            f"Pilotos {first}–{last} de {total} · role a lista para ver os demais",
+            40,
+            66,
+            _HEADER_COLOR,
+            10,
+        ).draw()
+
     def _draw_panel(self, width: int, height: int) -> None:
         left = self._panel_left()
         bottom, top = 80, height - 200
@@ -518,6 +667,10 @@ class GridView(arcade.View):
         )
         if self._draft is None or self._selected is None:
             return
+        if self._panel_owner != self._selected:
+            self._panel_owner = self._selected
+            self._panel_scroll = 0
+        self._clamp_panel_scroll()
         entry = next(e for e in self._draft.entries if e["driver_id"] == self._selected)
         x = left + 24
         self._text(
@@ -569,8 +722,9 @@ class GridView(arcade.View):
             11,
             bold=True,
         ).draw()
+        self._clip_panel_region()
         for i, spec in enumerate(ATTRIBUTES):
-            y = height - 380 - i * 64
+            y = self._attribute_y(i)
             source = self._draft.source(self._selected, spec.name)
             self._text(
                 f"a:{spec.name}:label",
@@ -595,7 +749,7 @@ class GridView(arcade.View):
             self._text(
                 f"a:{spec.name}:value",
                 value,
-                x + 407,
+                left + _CONTROL_X["value"],
                 y + 9,
                 SOURCE_COLORS.get(source, PRIMARY_TEXT_COLOR),
                 14,
@@ -608,12 +762,14 @@ class GridView(arcade.View):
                 "p:disclaimer",
                 self._draft.disclaimer,
                 x,
-                bottom + 64,
+                self._attribute_y(len(ATTRIBUTES) - 1) - 40,
                 _HEADER_COLOR,
                 9,
                 width=width - left - 90,
                 multiline=True,
+                anchor_y="top",
             ).draw()
+        self._unclip_panel_region()
 
     def _draw_buttons(self) -> None:
         labels = {
