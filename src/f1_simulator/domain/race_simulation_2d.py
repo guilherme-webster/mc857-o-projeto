@@ -288,6 +288,7 @@ def _classification(states: dict[str, dict]) -> list[dict]:
             "position": index,
             "driver_id": s["driver_id"],
             "name": s["name"],
+            "team_name": s.get("team_name", ""),
             "total_time_ms": round(s["total_time_ms"], 1),
             "lap_time_ms": round(s["total_time_ms"] / laps, 1) if laps else 0.0,
             "laps_completed": laps,
@@ -404,6 +405,7 @@ def simulate_2d_race(
     physics_by_id: dict[str, CarPhysics] = {}
     aggression_by_id: dict[str, float] = {}
     names: dict[str, str] = {}
+    team_names: dict[str, str] = {}
     grid_by_id: dict[str, int] = {}
     tyre_by_id: dict[str, TyreSet] = {}
     compounds_used: dict[str, tuple[str, ...]] = {}
@@ -428,6 +430,9 @@ def simulate_2d_race(
     for entry in sorted(entrants, key=lambda e: e["grid_position"]):
         did = entry["driver_id"]
         names[did] = entry["name"]
+        # Equipe do piloto: opcional no contrato do entrante para nao quebrar
+        # chamadas antigas; o frontend a exibe na classificacao e no grid.
+        team_names[did] = entry.get("team_name", "")
         grid_by_id[did] = entry["grid_position"]
         base = (
             base_physics_by_id.get(did, base_physics)
@@ -951,6 +956,7 @@ def simulate_2d_race(
             states[did] = {
                 "driver_id": did,
                 "name": names[did],
+                "team_name": team_names[did],
                 "total_time_ms": total_ms,
                 "laps_completed": laps_done,
                 "status": RETIRED if is_retired else RUNNING,
@@ -975,6 +981,7 @@ def simulate_2d_race(
             {
                 "position": grid_by_id[did],
                 "driver_id": did,
+                "team_name": team_names[did],
                 "compound": compounds_used[did][0],
                 **(
                     {"fuel_kg": round(start_fuel_kg_by_id[did], 3)}

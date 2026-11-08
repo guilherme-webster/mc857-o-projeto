@@ -114,6 +114,8 @@ class CarTimeline:
     name: str
     lap_end_times_ms: tuple[float, ...]
     retired: bool
+    # Equipe do piloto; vazia em corridas salvas antes de a equipe ser exposta.
+    team_name: str = ""
     # ``tyre_states[k]`` e o estado depois da volta ``k``; ``[0]`` e a largada.
     tyre_states: tuple[TyreState, ...] = ()
     retirement_cause: str | None = None
@@ -347,6 +349,8 @@ class StandingRow:
     tyre: TyreState | None = None
     in_pit: bool = False
     retirement_cause: str | None = None
+    # Equipe do piloto; vazia em corridas salvas antes de a equipe ser exposta.
+    team_name: str = ""
     # Largada menos posicao atual: positivo quando ganhou posicoes.
     positions_gained: int | None = None
     # Combustivel a bordo e volta de lift-and-coast; ``None`` e ``False`` em
@@ -518,6 +522,7 @@ class RacePlayback:
                     lap=_lap_in_progress(laps, self.total_laps),
                     retired=False,
                     gap_ms=gap_ms,
+                    team_name=car.team_name,
                     tyre=car.tyre_at(t_ms),
                     in_pit=car.in_pit_lap_at(t_ms),
                     positions_gained=(
@@ -538,6 +543,7 @@ class RacePlayback:
                     lap=car.laps_completed,
                     retired=True,
                     gap_ms=None,
+                    team_name=car.team_name,
                     tyre=car.tyre_at(t_ms),
                     retirement_cause=car.retirement_cause,
                     fuel_kg=car.fuel_at(t_ms),
@@ -662,6 +668,7 @@ def _build_timelines(
 
     order: list[str] = []
     names: dict[str, str] = {}
+    team_names: dict[str, str] = {}
     times: dict[str, list[float]] = {}
     statuses: dict[str, str] = {}
     tyres: dict[str, list[TyreState]] = {}
@@ -682,6 +689,7 @@ def _build_timelines(
             if driver_id not in times:
                 order.append(driver_id)
                 names[driver_id] = str(car.get("name", driver_id))
+                team_names[driver_id] = str(car.get("team_name", ""))
                 times[driver_id] = []
                 start = starting_grid.get(driver_id)
                 tyres[driver_id] = [
@@ -742,6 +750,7 @@ def _build_timelines(
                 names[driver_id],
                 tuple(lap_times),
                 retired,
+                team_name=team_names[driver_id],
                 tyre_states=tuple(tyres[driver_id]),
                 retirement_cause=causes[driver_id] if retired else None,
                 grid_position=start[0] if start else None,

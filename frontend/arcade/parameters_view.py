@@ -169,6 +169,16 @@ class ParametersView(UIView):
         self.start_button = self._add_button(
             "start_simulation", self.submit_configuration, primary=True
         )
+        # Estes widgets existem apenas como guardadores de dados: a tela
+        # desenha a propria UI e roteia cliques em ``on_mouse_release``. O
+        # ``UIInteractiveWidget`` do Arcade, porem, trata o clique pela area do
+        # widget **sem** olhar ``visible`` -- um botao invisivel ainda engole o
+        # evento e dispara ``on_click``. O ``weather_button`` (448..752, 360..416)
+        # cobria a seta "anterior" (622..656, 382..413) e abria a configuracao
+        # da pista; a seta "proximo" (816..850) ficava fora e por isso
+        # funcionava. Esconder nao basta: e preciso tirar a area de clique do
+        # caminho. Movemos os widgets para longe da tela, preservando ``.text``
+        # e ``.value`` usados como dados.
         for widget in (
             self.preset_dropdown,
             self.laps_input,
@@ -177,6 +187,7 @@ class ParametersView(UIView):
             self.start_button,
         ):
             widget.visible = False
+            widget.move(-100_000, -100_000)
         self._configure_pressed = False
         self._configure_hovered = False
         self._dragged_sequence_index: int | None = None
@@ -200,6 +211,7 @@ class ParametersView(UIView):
             )
         )
         self.tournament_name_input.visible = False
+        self.tournament_name_input.move(-100_000, -100_000)
         self.tournament_seed_input = self.add_widget(
             UIInputText(
                 x=SEED_INPUT_BOUNDS[0],
@@ -214,6 +226,7 @@ class ParametersView(UIView):
             )
         )
         self.tournament_seed_input.visible = False
+        self.tournament_seed_input.move(-100_000, -100_000)
         self._logo_texture = arcade.load_texture(LOGO_PATH)
         self._status_text = arcade.Text(
             self._status_message,
@@ -966,6 +979,13 @@ class ParametersView(UIView):
         x, y = self._logical_pointer(x, y)
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
+        # Consuma o estado do press imediatamente: ele so vale para este par
+        # press->release. Varios ramos abaixo terminam com ``return`` e, se o
+        # flag permanecesse ligado, um clique seguinte nas setas (ou em outro
+        # controle) poderia ser reinterpretado como clique na previa e abrir a
+        # configuracao da pista. Capturar e limpar aqui elimina esse vazamento.
+        configure_pressed = self._configure_pressed
+        self._configure_pressed = False
         target_index = self._sequence_index_at(x, y)
         if target_index is not None:
             source_index = self._dragged_sequence_index
@@ -1048,10 +1068,9 @@ class ParametersView(UIView):
         if self._catalog_error and self._contains(CONFIGURE_TRACK_BOUNDS, x, y):
             self._load_track_catalog()
             return
-        should_open = self._configure_pressed and self._contains(
+        should_open = configure_pressed and self._contains(
             CONFIGURE_TRACK_BOUNDS, x, y
         )
-        self._configure_pressed = False
         if should_open:
             self.open_track_configuration()
 

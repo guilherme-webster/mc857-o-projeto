@@ -60,6 +60,7 @@ class TournamentResultView(arcade.View):
         self._return_view = return_view
         self._rows: list[StandingLine] = []
         self._names = tournament.driver_names()
+        self._teams = tournament.driver_teams()
         self._cells: list[tuple[arcade.Text, int]] = []
         self._results: SimpleQueue[tuple[str, object]] = SimpleQueue()
         self._message = arcade.Text(
@@ -126,14 +127,15 @@ class TournamentResultView(arcade.View):
         columns = [
             ("P", 60, "right"),
             ("PILOTO", 76, "left"),
-            ("PTS", 330, "right"),
-            ("V", 370, "right"),
-            ("PÓD", 415, "right"),
-            ("MÉD", 470, "right"),
+            ("EQUIPE", 262, "left"),
+            ("PTS", 430, "right"),
+            ("V", 470, "right"),
+            ("PÓD", 515, "right"),
+            ("MÉD", 570, "right"),
         ]
         if not self._tournament.scored:
             columns = [column for column in columns if column[0] != "PTS"]
-        stage_x = 520
+        stage_x = 620
         for stage in range(first_stage, stages + 1):
             columns.append((f"E{stage}", stage_x, "right"))
             stage_x += 46
@@ -149,7 +151,8 @@ class TournamentResultView(arcade.View):
             )
             values = {
                 "P": str(row.position),
-                "PILOTO": self._names.get(row.driver_id, row.driver_id)[:26],
+                "PILOTO": self._names.get(row.driver_id, row.driver_id)[:20],
+                "EQUIPE": self._teams.get(row.driver_id, "—")[:20],
                 "PTS": str(row.points),
                 "V": str(row.wins),
                 "PÓD": str(row.podiums),
@@ -157,7 +160,11 @@ class TournamentResultView(arcade.View):
             }
             for label, x, anchor in columns:
                 if label in values:
-                    value, cell_color, bold = values[label], color, label == "PTS"
+                    value = values[label]
+                    if label == "EQUIPE":
+                        cell_color, bold = SECONDARY_TEXT_COLOR, False
+                    else:
+                        cell_color, bold = color, label == "PTS"
                 else:
                     index = int(label[1:]) - 1
                     position = row.stage_positions[index]
