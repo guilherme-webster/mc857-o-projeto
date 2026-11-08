@@ -40,6 +40,31 @@ DRIVER_PRESETS_JSON = Path(
     os.environ.get("F1_DRIVER_PRESETS_JSON", _REPOSITORY_DRIVER_PRESETS)
 )
 
+# Presets ficticios de carro por equipe, no mesmo molde dos de piloto. O
+# default atende execucao local a partir do checkout; ``F1_CAR_PRESETS_JSON``
+# permite montar o arquivo em outro lugar no container sem acoplar o nucleo.
+_REPOSITORY_CAR_PRESETS = (
+    Path(__file__).resolve().parents[3]
+    / "configs"
+    / "cars"
+    / "perfis-ficticios.json"
+)
+CAR_PRESETS_JSON = Path(
+    os.environ.get("F1_CAR_PRESETS_JSON", _REPOSITORY_CAR_PRESETS)
+)
+
+# Presets ficticios de execucao de equipe (organizacao de pit stop). Mesmo
+# molde dos de carro; ``F1_TEAM_PRESETS_JSON`` permite montar em outro lugar.
+_REPOSITORY_TEAM_PRESETS = (
+    Path(__file__).resolve().parents[3]
+    / "configs"
+    / "teams"
+    / "perfis-ficticios.json"
+)
+TEAM_PRESETS_JSON = Path(
+    os.environ.get("F1_TEAM_PRESETS_JSON", _REPOSITORY_TEAM_PRESETS)
+)
+
 
 def _repository():
     from f1_simulator.adapters.persistence.sqlite_history import (
@@ -150,6 +175,51 @@ def driver_profiles():
     try:
         return load_driver_preset_file(DRIVER_PRESETS_JSON)
     except DriverPresetError as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
+
+
+def _car_presets():
+    """Presets de carro: ``(presets, disclaimer, overrides_por_piloto)``.
+
+    Sem arquivo de presets o grid corre com o carro de referencia unico e o
+    resultado nao muda; nao e erro. Arquivo presente porem invalido e erro de
+    implantacao e vira 500, como os demais parametros de configuracao.
+    """
+
+    if not CAR_PRESETS_JSON.exists():
+        return None, None, {}
+    from f1_simulator.adapters.car_presets_json import (
+        CarPresetError,
+        load_car_preset_file_with_overrides,
+    )
+
+    try:
+        return load_car_preset_file_with_overrides(CAR_PRESETS_JSON)
+    except CarPresetError as error:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
+        ) from error
+
+
+def _team_presets():
+    """Presets de execucao de equipe (pit), ou ``(None, None)`` sem arquivo.
+
+    Nao modela confiabilidade mecanica (abandono), que segue calibrada em
+    ``model-v1.json``. Ausencia nao e erro; arquivo invalido vira 500.
+    """
+
+    if not TEAM_PRESETS_JSON.exists():
+        return None, None
+    from f1_simulator.adapters.team_presets_json import (
+        TeamPresetError,
+        load_team_preset_file,
+    )
+
+    try:
+        return load_team_preset_file(TEAM_PRESETS_JSON)
+    except TeamPresetError as error:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
@@ -388,6 +458,8 @@ def run_grid(
         stage_index=stage_index,
     )
     rng = SeededRandomSource(seed).spawn("race")
+    car_presets, car_preset_disclaimer, car_overrides = _car_presets()
+    team_presets, team_preset_disclaimer = _team_presets()
     try:
         result = run_grid_simulation(
             pairs,
@@ -400,6 +472,11 @@ def run_grid(
             geometry=geometry,
             fuel_parameters=_fuel_parameters(),
             pit_entry_fraction=_pit_entry_fraction(canonical_track_id),
+            car_presets=car_presets,
+            car_preset_disclaimer=car_preset_disclaimer,
+            car_overrides_by_driver=car_overrides,
+            team_presets=team_presets,
+            team_preset_disclaimer=team_preset_disclaimer,
             on_progress=on_progress,
         )
     except ValueError as error:
