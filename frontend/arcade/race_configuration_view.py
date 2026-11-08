@@ -12,6 +12,7 @@ import arcade
 
 from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
 from frontend.arcade.configuration_state import (
+    MAX_LAPS,
     ConfigurationFormError,
     SessionConfiguration,
     WeatherSchedule,
@@ -645,10 +646,13 @@ class RaceConfigurationView(arcade.View):
                     last_lap = self.session.last_lap
                 else:
                     first_lap = self.session.first_lap
+                    # A ultima volta e o tamanho da corrida: ao muda-la, o clima
+                    # por volta acompanha, e ao salvar a etapa a quantidade de
+                    # voltas enviada ao motor e esta.
                     last_lap = min(
-                        self.schedule.total_laps,
-                        max(first_lap, self.session.last_lap + delta),
+                        MAX_LAPS, max(first_lap, self.session.last_lap + delta)
                     )
+                    self._resize_race(last_lap)
                 self.session = SessionConfiguration(
                     first_lap, last_lap, self.session.start_mode
                 )
@@ -746,6 +750,13 @@ class RaceConfigurationView(arcade.View):
         elif symbol in (arcade.key.ENTER, arcade.key.TAB):
             self._weather_focused_field = None
             self.apply_weather_range()
+
+    def _resize_race(self, laps: int) -> None:
+        """Mantem o numero de voltas da corrida e o clima por volta sincronizados."""
+
+        if laps != self.schedule.total_laps:
+            self.schedule = self.schedule.resize(laps)
+            self._weather_end_text = str(laps)
 
     def accept_weather_schedule(self, schedule: WeatherSchedule) -> None:
         """Accept a replacement schedule while keeping lap fields in sync."""

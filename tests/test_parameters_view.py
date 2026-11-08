@@ -562,6 +562,31 @@ class ParametersViewTest(unittest.TestCase):
         )
         self.assertEqual(race_view.session.last_lap, 68)
 
+    def test_reducing_last_lap_sets_the_race_length_sent_to_the_engine(self) -> None:
+        """Regressao: a ultima volta escolhida na etapa precisa virar o numero de
+        voltas da corrida (pedido ao motor e exibicao), e nao so o campo da sessao."""
+
+        parent = self.ready_view()
+        self.window.show_view(parent)
+        parent.toggle_selected_track()
+        parent.open_track_configuration()
+        race_view = self.window.current_view
+
+        left, bottom, width, height = SESSION_STEPPER_BOUNDS["last_lap"][0]
+        for _ in range(9):  # 69 -> 60 voltas
+            race_view.on_mouse_release(
+                *self.to_window(race_view, left + width // 2, bottom + height // 2),
+                arcade.MOUSE_BUTTON_LEFT,
+                0,
+            )
+        self.assertEqual(race_view.schedule.total_laps, 60)
+
+        race_view.save_and_return()
+        plan = parent.build_simulation_plan()
+        self.assertEqual(plan.races[0].configuration.laps, 60)
+        self.assertEqual(plan.races[0].configuration.weather_schedule.total_laps, 60)
+        self.assertEqual(plan.races[0].session.last_lap, 60)
+
     def test_race_configuration_hides_source_metadata_on_session_and_climate(
         self,
     ) -> None:
