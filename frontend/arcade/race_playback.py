@@ -464,6 +464,27 @@ class RacePlayback:
             default=max(car.laps_completed for car in self._cars),
         )
 
+    def lap_start_ms(self, lap: int) -> float:
+        """Instante em que a corrida entra na volta ``lap`` (1 = largada).
+
+        E o primeiro carro a fechar a volta anterior. A simulacao sempre parte
+        da largada; a volta inicial escolhida pelo usuario so define de onde a
+        reproducao comeca, sem alterar o estado da corrida.
+        """
+
+        if isinstance(lap, bool) or not isinstance(lap, int):
+            raise ValueError("lap deve ser um inteiro")
+        if not 1 <= lap <= self.total_laps:
+            raise ValueError(f"volta {lap} fora de 1..{self.total_laps}")
+        if lap == 1:
+            return 0.0
+        finished = [
+            time
+            for time in (car.time_at_laps(lap - 1) for car in self._cars)
+            if time is not None
+        ]
+        return min(finished) if finished else 0.0
+
     def current_lap(self, t_ms: float) -> int:
         """Volta em andamento do lider, entre 1 e ``total_laps``."""
 

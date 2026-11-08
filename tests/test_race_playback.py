@@ -414,6 +414,31 @@ class RacePlaybackSafetyCarCompressionTest(unittest.TestCase):
         self.assertEqual(lapped.laps_at(260_000.0), 2.0)
 
 
+class RacePlaybackLapStartTest(unittest.TestCase):
+    """Volta inicial da exibicao: so muda o ponto de partida da reproducao."""
+
+    def setUp(self) -> None:
+        self.playback = RacePlayback(
+            race(
+                2,
+                [car("A", 1, 100_000.0), car("B", 1, 120_000.0)],
+                [car("A", 2, 200_000.0), car("B", 2, 240_000.0)],
+            )
+        )
+
+    def test_largada_comeca_em_zero(self) -> None:
+        self.assertEqual(self.playback.lap_start_ms(1), 0.0)
+
+    def test_volta_comeca_quando_o_primeiro_fecha_a_anterior(self) -> None:
+        self.assertEqual(self.playback.lap_start_ms(2), 100_000.0)
+
+    def test_rejeita_volta_fora_da_corrida_e_tipo_invalido(self) -> None:
+        with self.assertRaisesRegex(ValueError, "fora"):
+            self.playback.lap_start_ms(3)
+        with self.assertRaisesRegex(ValueError, "inteiro"):
+            self.playback.lap_start_ms(True)
+
+
 class RacePlaybackContractTest(unittest.TestCase):
     def test_rejects_race_without_history(self) -> None:
         with self.assertRaisesRegex(ValueError, "history"):

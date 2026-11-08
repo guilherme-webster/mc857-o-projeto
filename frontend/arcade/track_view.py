@@ -29,6 +29,9 @@ CAR_RADIUS = 7
 # E so apresentacao: a largura fisica real vem de ``track_space_2d.width_m``.
 _TRACK_LANE_MIN_PX = 14.0
 _TRACK_LANE_MAX_PX = 34.0
+# Linha de chegada/largada: onde a contagem de voltas recomeca (distancia zero).
+_START_LINE_COLOR = (240, 240, 240)
+_START_LINE_WIDTH = 3.0
 BASE_PLAYBACK_SPEED = 1_000.0  # 1x = tempo real (1 s de simulacao por 1 s de tela)
 MIN_SPEED = 1.0 / 256.0  # ~0,004x: permite camera lenta extrema
 SPEED_FACTOR = 2.0  # cada toque em up/down dobra ou divide a velocidade
@@ -464,7 +467,15 @@ class TrackView(arcade.View):
         # Estado da pista por volta (agua, temperatura), quando o backend o envia.
         self._race = race
 
-        self._elapsed = 0.0
+        # Volta inicial da exibicao (sessao da etapa). A corrida ja foi simulada
+        # desde a largada; so o relogio da reproducao comeca mais adiante.
+        session = (
+            tournament.stage(stage_index).planned.session
+            if tournament is not None
+            else None
+        )
+        self._start_lap = 1 if session is None else session.first_lap
+        self._elapsed = self._playback.lap_start_ms(self._start_lap)
         self._speed = 1.0
         self._speed_kmh: dict[str, float] = {}
         self._direction = 1  # +1 para frente, -1 para tras
@@ -770,7 +781,7 @@ class TrackView(arcade.View):
         elif symbol == arcade.key.DOWN:
             self._speed = max(MIN_SPEED, self._speed / SPEED_FACTOR)
         elif symbol == arcade.key.R:
-            self._elapsed = 0.0
+            self._elapsed = self._playback.lap_start_ms(self._start_lap)
             self._direction = 1
         elif symbol == arcade.key.M:
             self.window.show_view(MenuView())
@@ -936,6 +947,36 @@ class TrackView(arcade.View):
         assert self._lane_shapes is not None
         self._lane_shapes.draw()
 
+    def _draw_start_finish_line(self, screen) -> None:
+        """Linha de chegada no ponto de distancia zero: onde cada volta comeca.
+
+        Atravessa a faixa, perpendicular ao sentido do traçado. Na vista 2D a
+        largura segue a faixa desenhada (mesma conta de ``_ensure_lane_geometry``).
+        """
+
+        if len(screen) < 2:
+            return
+        (x0, y0), (x1, y1) = screen[0], screen[1]
+        dx, dy = x1 - x0, y1 - y0
+        length = (dx * dx + dy * dy) ** 0.5
+        if length == 0:
+            return
+        nx, ny = -dy / length, dx / length
+        if self._is_2d:
+            lane_width = self._space_2d.get("width_m", 12.0) * self._lane_px
+            visible = max(_TRACK_LANE_MIN_PX, min(_TRACK_LANE_MAX_PX, lane_width))
+            half = visible / 2.0 + 2.0
+        else:
+            half = 8.0
+        arcade.draw_line(
+            x0 - nx * half,
+            y0 - ny * half,
+            x0 + nx * half,
+            y0 + ny * half,
+            _START_LINE_COLOR,
+            _START_LINE_WIDTH,
+        )
+
     def _draw_cars_2d(self, screen) -> None:
         """Carro como retangulo orientado (hitbox) na posicao espacial real.
 
@@ -1004,6 +1045,7 @@ class TrackView(arcade.View):
         )
         if self._is_2d:
             self._draw_track_2d(screen, track_color)
+            self._draw_start_finish_line(screen)
             if self._pit_screen:
                 arcade.draw_line_strip(
                     self._pit_screen, (190, 146, 52), max(5.0, 4.0 * self._lane_px)
@@ -1017,6 +1059,7 @@ class TrackView(arcade.View):
             self._draw_cars_2d(screen)
         else:
             arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
+            self._draw_start_finish_line(screen)
             self._draw_cars(screen)
 
         rain = self._current_rain()

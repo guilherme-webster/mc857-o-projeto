@@ -14,8 +14,10 @@ Politica de grid desta etapa (a tela de grid e pilotos ainda nao existe):
   aleatorio de ``DEFAULT_GRID_SIZE`` pilotos, com semente escolhida pelo
   backend e registrada no resultado.
 
-Opcoes da tela que o motor ainda nao suporta (intervalo de voltas da sessao,
-largada lancada) nao sao descartadas em silencio: viram avisos no resultado.
+Opcoes da tela que o motor ainda nao suporta (largada lancada) nao sao
+descartadas em silencio: viram avisos no resultado. A volta inicial da sessao
+nao e uma delas: a corrida sempre roda desde a largada e so a reproducao
+comeca na volta escolhida.
 """
 
 from __future__ import annotations
@@ -128,21 +130,12 @@ def unsupported_options(planned: PlannedRace) -> tuple[str, ...]:
     """Avisos para opcoes da etapa que o motor ainda ignora."""
 
     session = planned.session
-    if session is None:
+    if session is None or session.start_mode == "Parada":
         return ()
-    warnings = []
-    laps = planned.configuration.laps
-    if (session.first_lap, session.last_lap) != (1, laps):
-        warnings.append(
-            f"{planned.name}: intervalo de voltas {session.first_lap}-"
-            f"{session.last_lap} ainda não é suportado; simulando 1-{laps}."
-        )
-    if session.start_mode != "Parada":
-        warnings.append(
-            f"{planned.name}: largada {session.start_mode.lower()} ainda não é "
-            "suportada; simulando largada parada."
-        )
-    return tuple(warnings)
+    return (
+        f"{planned.name}: largada {session.start_mode.lower()} ainda não é "
+        "suportada; simulando largada parada.",
+    )
 
 
 def launch_plan(
