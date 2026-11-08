@@ -64,6 +64,27 @@ class GridOutdatedError(Exception):
     """O grid salvo no backend precisa ser montado de novo (HTTP 409)."""
 
 
+class LaunchCancelled(Exception):
+    """O usuario abortou a simulacao; nenhuma etapa nova e iniciada."""
+
+
+@dataclass(frozen=True, slots=True)
+class LaunchProgress:
+    """Estado do lancamento, para a tela de carregamento.
+
+    ``stage_index`` comeca em 1 e ``lap`` em 0 enquanto a etapa nao tem volta
+    concluida. Antes da primeira etapa, ``stage_index`` e 0 e so ``message``
+    descreve o passo (conferir o grid).
+    """
+
+    message: str
+    stage_index: int = 0
+    total_stages: int = 0
+    stage_name: str = ""
+    lap: int = 0
+    laps: int = 0
+
+
 @dataclass(frozen=True, slots=True)
 class LaunchedRace:
     """Uma etapa simulada, com a geometria necessaria para a TrackView."""
@@ -141,31 +162,55 @@ def unsupported_options(planned: PlannedRace) -> tuple[str, ...]:
 def launch_plan(
     plan: SimulationPlan,
     client: RaceClient,
-    progress: Callable[[str], None] = lambda message: None,
+    progress: Callable[[LaunchProgress], None] = lambda item: None,
+    cancelled: Callable[[], bool] = lambda: False,
 ) -> LaunchOutcome:
     """Garanta um grid e rode as etapas na ordem do plano.
 
     Erros do backend propagam para quem chamou, com a mensagem original; as
-    etapas ja rodadas continuam salvas no backend.
+    etapas ja rodadas continuam salvas no backend. ``cancelled`` e consultado
+    antes de cada etapa: se disparar, levanta ``LaunchCancelled`` e nenhuma
+    etapa nova e pedida. A etapa em curso nao pode ser interrompida, porque o
+    backend ja a recebeu.
     """
 
-    progress("Conferindo o grid no backend…")
+    progress(LaunchProgress("Conferindo o grid no backend…"))
     grid_note = _ensure_grid(client)
 
     total = len(plan.races)
     launched = []
     warnings: list[str] = []
     for stage_index, planned in enumerate(plan.races):
+        if cancelled():
+            raise LaunchCancelled()
         warnings.extend(unsupported_options(planned))
+        number = stage_index + 1
+        laps = planned.configuration.laps
         stage_label = (
-            f"Simulando etapa {stage_index + 1}/{total}: {planned.name}"
+            f"Simulando etapa {number}/{total}: {planned.name}"
             if total > 1
             else f"Simulando {planned.name}"
         )
-        progress(f"{stage_label}…")
+        stage = LaunchProgress(
+            f"{stage_label}…",
+            stage_index=number,
+            total_stages=total,
+            stage_name=planned.name,
+            laps=laps,
+        )
+        progress(stage)
 
-        def on_lap(lap: int, laps: int, _label: str = stage_label) -> None:
-            progress(f"{_label} — volta {lap}/{laps}")
+        def on_lap(lap: int, laps_total: int, _stage: LaunchProgress = stage) -> None:
+            progress(
+                LaunchProgress(
+                    f"{_stage.message[:-1]} — volta {lap}/{laps_total}",
+                    stage_index=_stage.stage_index,
+                    total_stages=_stage.total_stages,
+                    stage_name=_stage.stage_name,
+                    lap=lap,
+                    laps=laps_total,
+                )
+            )
 
         race = client.run_grid(
             run_setup(

@@ -43,7 +43,12 @@ from frontend.arcade.configuration_state import (
     generate_seed,
     parse_optional_seed,
 )
-from frontend.arcade.race_launcher import HttpRaceClient, LaunchOutcome, launch_plan
+from frontend.arcade.race_launcher import (
+    HttpRaceClient,
+    LaunchOutcome,
+    LaunchProgress,
+    launch_plan,
+)
 from frontend.arcade.track_client import fetch_track, fetch_tracks
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 from frontend.arcade.theme import (
@@ -126,8 +131,6 @@ class ParametersView(UIView):
 
         super().__init__()
         self._simulation_runner = simulation_runner
-        self._launch_results: SimpleQueue[tuple[str, object]] = SimpleQueue()
-        self._launching = False
         self.layout = build_initial_configuration_layout()
         self._initial_supplied = initial is not None
         self.initial = initial or ConfigurationFormData()
@@ -289,7 +292,6 @@ class ParametersView(UIView):
         """Accept completed catalog responses on the Arcade thread."""
 
         del delta_time
-        self._accept_launch_results()
         try:
             outcome, payload = self._catalog_results.get_nowait()
         except Empty:
@@ -645,46 +647,27 @@ class ParametersView(UIView):
         self._set_status(message, SUCCESS_COLOR)
 
     def _start_simulation(self, plan: SimulationPlan) -> None:
-        """Rode o plano numa thread; ``on_update`` recebe progresso e fim."""
+        """Leve a configuracao para a tela de carregamento enquanto simula.
 
-        if self._launching:
-            self._set_status("Simulação já em andamento…", SECONDARY_TEXT_COLOR)
-            return
-        self._launching = True
-        runner = self._simulation_runner
-        results = self._launch_results
+        A tela de carregamento roda o plano e, ao terminar, abre a corrida da
+        primeira etapa; abortar volta a esta configuracao.
+        """
 
-        def run() -> None:
-            try:
-                outcome = runner(
-                    plan, lambda message: results.put(("progress", message))
-                )
-            except (RuntimeError, OSError, ValueError, KeyError) as error:
-                # BackendError e RuntimeError; URLError e OSError.
-                results.put(("error", str(error)))
-            else:
-                results.put(("done", outcome))
+        from frontend.arcade.simulation_loading_view import SimulationLoadingView
 
-        self._set_status("Iniciando a simulação…", SECONDARY_TEXT_COLOR)
-        Thread(target=run, name="simulation-launcher", daemon=True).start()
+        self.window.show_view(
+            SimulationLoadingView(
+                plan,
+                self._simulation_runner,
+                return_view=self,
+                on_done=self._open_simulated_race,
+            )
+        )
 
-    def _accept_launch_results(self) -> None:
-        """Aplique, na thread do Arcade, o que o lancador publicou."""
+    def show_message(self, message: str, color) -> None:
+        """Mostra um aviso na barra de status (ex.: simulacao abortada)."""
 
-        while True:
-            try:
-                kind, payload = self._launch_results.get_nowait()
-            except Empty:
-                return
-            if kind == "progress":
-                self._set_status(str(payload), SECONDARY_TEXT_COLOR)
-                continue
-            self._launching = False
-            if kind == "error":
-                self._set_status(f"Não foi possível simular: {payload}", ERROR_COLOR)
-                return
-            self._open_simulated_race(payload)
-            return
+        self._set_status(message, color)
 
     def _open_simulated_race(self, outcome: LaunchOutcome) -> None:
         from frontend.arcade.track_view import TrackView
@@ -1792,8 +1775,10 @@ def create_parameters_window() -> arcade.Window:
 
 
 def backend_simulation_runner(
-    plan: SimulationPlan, progress: Callable[[str], None]
+    plan: SimulationPlan,
+    progress: Callable[[LaunchProgress], None],
+    cancelled: Callable[[], bool] = lambda: False,
 ) -> LaunchOutcome:
     """Runner de producao: roda o plano no backend HTTP configurado."""
 
-    return launch_plan(plan, HttpRaceClient(), progress)
+    return launch_plan(plan, HttpRaceClient(), progress, cancelled)

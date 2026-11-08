@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from dataclasses import dataclass
-from math import hypot, isfinite
+from math import floor, hypot, isfinite
 
 from f1_simulator.domain.track_geometry import TrackGeometry
 
@@ -98,9 +98,11 @@ class PitLanePath:
     def next_entry(self, distance_m: float) -> float:
         """Próxima entrada à frente do carro, inclusive se estiver na linha."""
 
-        entry = (
-            distance_m // self.lap_length_m
-        ) * self.lap_length_m + self.entry_distance_m
+        # Carros no grid tem distancia negativa (atras da linha de chegada). A
+        # volta 0 e a primeira da corrida; sem o piso, ``floor`` daria uma
+        # entrada em -L e o pedido de parada seria recusado.
+        lap_index = max(0, floor(distance_m / self.lap_length_m))
+        entry = lap_index * self.lap_length_m + self.entry_distance_m
         return entry if entry > distance_m + 1e-9 else entry + self.lap_length_m
 
     def race_distance(self, entry: float, path_distance: float) -> float:

@@ -65,6 +65,14 @@ class PitLaneMotionTest(unittest.TestCase):
                     lane.exit_distance_m - lane.entry_distance_m, geometry.lap_length_m
                 )
 
+    def test_next_entry_from_the_grid_is_the_first_lap_entry_not_negative(self):
+        # Carro no grid, atras da linha: a proxima entrada e a da volta 0.
+        path = build_pit_lane(pit_geometry())
+        self.assertAlmostEqual(path.next_entry(-10.0), 360)
+        self.assertAlmostEqual(path.next_entry(-390.0), 360)
+        self.assertAlmostEqual(path.next_entry(0.0), 360)
+        self.assertAlmostEqual(path.next_entry(361.0), 760)
+
     def test_projection_wraps_exit_and_maps_progress_without_adding_a_lap(self):
         path = build_pit_lane(pit_geometry())
         self.assertAlmostEqual(path.entry_distance_m, 360)
