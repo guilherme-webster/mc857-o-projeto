@@ -364,7 +364,8 @@ def simulate_2d_race(
     (abandono por toque no integrador) e falhas mecanicas alimentam o automato.
 
     O grid de largada e escalonado 2x2 (``GRID_ROW_SPACING_M``,
-    ``GRID_LATERAL_OFFSET_M``): a pole na frente, cada fileira recuada, os dois
+    ``GRID_LATERAL_OFFSET_M``), atras da linha de chegada: a pole mais perto
+    dela, cada fileira recuada, os dois
     carros de uma fileira em lados opostos da pista. Com ``standing_start`` (o
     default), o pelotao larga parado e acelera pela propria fisica; ``False``
     mantem a largada de regime do ADR 0010.
@@ -485,20 +486,22 @@ def simulate_2d_race(
                 if entry.get("strategy") is None
                 else None,
             }
-        # Grid escalonado em fila: cada carro numa posicao longitudinal distinta
-        # (a pole na frente, cada um ``GRID_ROW_SPACING_M`` atras), com lateral
-        # alternado so para o visual de grid. Separados longitudinalmente, os
-        # carros nao largam emparelhados e nao roçam na partida.
+        # Grid atras da linha de chegada (distancia zero, onde cada volta comeca):
+        # a pole fica ``GRID_ROW_SPACING_M`` atras da linha e cada posicao recua
+        # mais uma folga, com distancia negativa. A posicao na pista usa modulo,
+        # e a contagem de voltas so comeca no cruzamento de ``k * lap_length``
+        # (k >= 1): o trecho do grid ate a linha entra na primeira volta, como
+        # na F1. Lateral alternado so para o visual de grid. Separados
+        # longitudinalmente, os carros nao largam emparelhados nem roçam.
         pos = entry["grid_position"]
-        slot = len(entrants) - pos  # 0 = fundo do grid (na linha); maior = pole
         side = 1.0 if pos % 2 == 1 else -1.0
         usable = track.bounds.usable_m
         lateral = max(-usable, min(usable, side * GRID_LATERAL_OFFSET_M))
-        offset = slot * GRID_ROW_SPACING_M
+        offset = pos * GRID_ROW_SPACING_M
         cars.append(
             CarSpaceState(
                 did,
-                distance_m=offset,
+                distance_m=-offset,
                 lateral_m=lateral,
                 fuel_kg=start_fuel_kg_by_id.get(did),
                 tyre_wear_laps=0.0 if tyre_active else None,

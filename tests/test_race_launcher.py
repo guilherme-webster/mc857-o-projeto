@@ -18,6 +18,7 @@ from frontend.arcade.configuration_state import (
 from frontend.arcade.race_launcher import (
     DEFAULT_GRID_SIZE,
     GridOutdatedError,
+    LaunchCancelled,
     launch_plan,
     run_setup,
     unsupported_options,
@@ -58,9 +59,11 @@ class FakeClient:
         self.calls.append(("build_grid", size))
         return {"size": size, "seed": 7, "grid": []}
 
-    def run_grid(self, setup: dict) -> dict:
+    def run_grid(self, setup: dict, on_lap=None) -> dict:
         self.calls.append(("run_grid", setup["track_id"]))
         self.setups.append(setup)
+        if on_lap is not None:
+            on_lap(1, setup["total_laps"])
         return {"total_laps": setup["total_laps"], "setup": setup}
 
     def fetch_track(self, circuit_id: str) -> dict:
@@ -166,7 +169,7 @@ class LaunchPlanTest(unittest.TestCase):
                 planned("circuit:24", "Yas Marina"), planned("circuit:18", "Interlagos")
             ),
             client,
-            messages.append,
+            lambda item: messages.append(item.message),
         )
         self.assertEqual(
             [call for call in client.calls if call[0] == "run_grid"],
@@ -177,6 +180,36 @@ class LaunchPlanTest(unittest.TestCase):
             ["circuit:24", "circuit:18"],
         )
         self.assertIn("Simulando etapa 2/2: Interlagos…", messages)
+
+    def test_progress_carries_stage_and_lap_for_the_loading_screen(self) -> None:
+        client = FakeClient(grid={"size": 20, "seed": 1})
+        seen = []
+        launch_plan(
+            self.plan(planned("circuit:18", "Interlagos")), client, seen.append
+        )
+        lap_events = [item for item in seen if item.lap]
+        self.assertTrue(lap_events)
+        last = lap_events[-1]
+        self.assertEqual((last.stage_index, last.total_stages), (1, 1))
+        self.assertEqual(last.stage_name, "Interlagos")
+        self.assertEqual(last.lap, 1)
+        self.assertEqual(last.laps, client.setups[0]["total_laps"])
+
+    def test_cancel_stops_before_the_next_stage(self) -> None:
+        client = FakeClient(grid={"size": 20, "seed": 1})
+        with self.assertRaises(LaunchCancelled):
+            launch_plan(
+                self.plan(
+                    planned("circuit:24", "Yas Marina"),
+                    planned("circuit:18", "Interlagos"),
+                ),
+                client,
+                cancelled=lambda: any(call[0] == "run_grid" for call in client.calls),
+            )
+        self.assertEqual(
+            [call for call in client.calls if call[0] == "run_grid"],
+            [("run_grid", "circuit:24")],
+        )
 
     def test_sends_same_tournament_seed_and_distinct_zero_based_stage_indices(self) -> None:
         client = FakeClient(grid={"size": 20, "seed": 1})
@@ -208,7 +241,7 @@ class LaunchPlanTest(unittest.TestCase):
 
     def test_backend_errors_propagate(self) -> None:
         class FailingClient(FakeClient):
-            def run_grid(self, setup: dict) -> dict:
+            def run_grid(self, setup: dict, on_lap=None) -> dict:
                 raise BackendError(422, "track_id desconhecido")
 
         with self.assertRaisesRegex(BackendError, "track_id desconhecido"):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -162,9 +163,11 @@ class ParametersViewTest(unittest.TestCase):
         return view
 
     def pump_until(self, view: ParametersView, done) -> None:
+        """Entrega os resultados a tela atual (a configuracao ou o carregamento)."""
+
         deadline = time.monotonic() + 5
         while not done() and time.monotonic() < deadline:
-            view.on_update(0)
+            self.window.current_view.on_update(0)
             time.sleep(0.01)
 
     def test_runner_simulates_in_background_and_opens_the_race(self) -> None:
@@ -173,7 +176,7 @@ class ParametersViewTest(unittest.TestCase):
 
         received: list[SimulationPlan] = []
 
-        def runner(plan, progress):
+        def runner(plan, progress, cancelled=None):
             received.append(plan)
             progress("Simulando etapa 1/1: Interlagos…")
             return LaunchOutcome(
@@ -190,18 +193,47 @@ class ParametersViewTest(unittest.TestCase):
         self.assertEqual(received[0].races[0].circuit_id, "circuit:18")
         self.assertEqual(view.status_message, "Simulação concluída.")
 
-    def test_runner_failure_stays_on_the_form_with_the_reason(self) -> None:
+    def test_runner_failure_shows_the_reason_and_back_returns_to_the_form(self) -> None:
+        from frontend.arcade.simulation_loading_view import SimulationLoadingView
         from frontend.arcade.track_client import BackendError
 
-        def runner(plan, progress):
+        def runner(plan, progress, cancelled=None):
             raise BackendError(422, "track_id desconhecido no catalogo")
 
         view = self.runner_view(runner)
         view.submit_configuration()
-        self.pump_until(view, lambda: "Não foi possível" in view.status_message)
+        loading = self.window.current_view
+        self.assertIsInstance(loading, SimulationLoadingView)
+        self.pump_until(view, lambda: "Não foi possível" in loading._progress.message)
 
+        self.assertIn("track_id desconhecido", loading._progress.message)
+        loading.abort()
+        self.assertIs(self.window.current_view, view)
         self.assertIn("track_id desconhecido", view.status_message)
-        self.assertFalse(view._launching)
+
+    def test_abort_sets_the_cancel_flag_and_returns_to_the_form(self) -> None:
+        from frontend.arcade.race_launcher import LaunchCancelled
+        from frontend.arcade.simulation_loading_view import SimulationLoadingView
+
+        flags = []
+        release = threading.Event()
+
+        def runner(plan, progress, cancelled=lambda: False):
+            flags.append(cancelled)
+            release.wait(5)
+            raise LaunchCancelled()
+
+        view = self.runner_view(runner)
+        view.submit_configuration()
+        loading = self.window.current_view
+        self.assertIsInstance(loading, SimulationLoadingView)
+        self.pump_until(view, lambda: flags)
+
+        loading.abort()
+        release.set()
+        self.assertIs(self.window.current_view, view)
+        self.assertEqual(view.status_message, "Simulação cancelada.")
+        self.assertTrue(flags[0]())
 
     def test_seed_fields_copy_and_paste_through_the_clipboard(self) -> None:
         """Ctrl+V replaces a focused seed and Ctrl+C sends it back (#105)."""
