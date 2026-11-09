@@ -1190,7 +1190,7 @@ class ParametersView(UIView):
             left, bottom, width, height, 8, (26, 36, 48), PANEL_BORDER_COLOR
         )
         self._native_text(
-            "Torneios salvos",
+            "Simulações Salvas",
             left + width / 2,
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
@@ -1199,7 +1199,7 @@ class ParametersView(UIView):
             anchor_y="center",
         ).draw()
         self._native_text(
-            "Reabrir sem simular ou reexecutar com o grid salvo.",
+            "Carregar simulação anterior",
             left + width + 14,
             bottom + height / 2,
             SECONDARY_TEXT_COLOR,

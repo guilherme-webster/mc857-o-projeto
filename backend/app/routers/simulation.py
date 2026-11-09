@@ -4,6 +4,7 @@ import json
 
 from app.config import CURRENT_RACE_JSON
 from app.schemas.responses import (
+    RenameRequest,
     SaveRaceRequest,
     SavedRaceMeta,
     SavedRacesResponse,
@@ -36,7 +37,7 @@ def obter_dados_corrida() -> dict:
 
 @router.post("/saved", response_model=SavedRaceMeta)
 def save_race(request: SaveRaceRequest) -> SavedRaceMeta:
-    return SavedRaceMeta(**catalog.save_current_race(request.name))
+    return SavedRaceMeta(**catalog.save_current_race(request.name, request.race))
 
 
 @router.get("/saved", response_model=SavedRacesResponse)
@@ -51,6 +52,17 @@ def list_saved() -> SavedRacesResponse:
 @router.get("/saved/{race_id}")
 def open_saved(race_id: str) -> dict:
     return catalog.read_saved_race(race_id)
+
+
+@router.patch("/saved/{race_id}", response_model=SavedRaceMeta)
+def rename_saved(race_id: str, request: RenameRequest) -> SavedRaceMeta:
+    return SavedRaceMeta(**catalog.rename_saved_race(race_id, request.name))
+
+
+@router.delete("/saved/{race_id}")
+def delete_saved(race_id: str) -> dict:
+    catalog.delete_saved_race(race_id)
+    return {"deleted": race_id}
 
 
 @router.get("/tracks")

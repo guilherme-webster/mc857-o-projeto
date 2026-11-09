@@ -597,19 +597,35 @@ def _write_json(destination, payload: dict) -> None:
         raise
 
 
-def save_current_race(name):
+def save_current_race(name=None, race=None):
+    """Grave a corrida enviada (a que a tela mostra) ou, sem ela, a atual.
+
+    Corrida enviada precisa de ``setup`` e ``classification``, o minimo para a
+    listagem e a reabertura funcionarem. Sem ``name``, usa o nome padrao.
+    """
+
+    if race is None:
+        race = _read_current_race()
+    elif not isinstance(race, dict) or "setup" not in race or "classification" not in race:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="corrida incompleta: faltam setup ou classification",
+        )
+    return _persist_saved_race(race, name or _default_race_name(race))
+
+
+def _read_current_race() -> dict:
     if not CURRENT_RACE_JSON.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="no current race; run POST /catalog/grid/run before saving",
         )
     try:
-        race = json.loads(CURRENT_RACE_JSON.read_text(encoding="utf-8"))
+        return json.loads(CURRENT_RACE_JSON.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
-    return _persist_saved_race(race, name)
 
 
 def _persist_saved_race(race: dict, name: str) -> dict:
@@ -623,6 +639,7 @@ def _persist_saved_race(race: dict, name: str) -> dict:
         "saved_at": datetime.now(UTC).isoformat(),
         "seed": race.get("seed"),
         "track_id": setup.get("track_id"),
+        "track_name": _track_name(race),
         "total_laps": setup.get("total_laps"),
         "car_count": len(race.get("classification", [])),
     }
@@ -630,13 +647,34 @@ def _persist_saved_race(race: dict, name: str) -> dict:
     return meta
 
 
-def _default_race_name(race: dict) -> str:
-    from datetime import datetime
+def _track_name(race: dict) -> str | None:
+    """Nome legivel da pista; sem nome do modelo, o proprio id do circuito.
+
+    O nome do modelo so vale quando ele corresponde ao circuito pedido no setup,
+    para nao rotular a corrida com outra pista.
+    """
 
     setup = race.get("setup", {})
-    track = setup.get("track_id") or "sem-pista"
-    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    return f"{track} {stamp}"
+    track_id = setup.get("track_id")
+    reference = race.get("track_reference")
+    if (
+        track_id
+        and isinstance(reference, dict)
+        and reference.get("model_track_name")
+        and track_id in (reference.get("requested_track_id"), reference.get("model_track_id"))
+    ):
+        return str(reference["model_track_name"])
+    return track_id
+
+
+def _default_race_name(race: dict) -> str:
+    """Nome de corrida salva sem escolha do usuario: pista e data local."""
+
+    from datetime import datetime
+
+    track = _track_name(race) or "Sem pista"
+    stamp = datetime.now().astimezone().strftime("%d/%m/%Y %H:%M")
+    return f"{track} · {stamp}"
 
 
 def list_saved_races():
@@ -667,6 +705,35 @@ def read_saved_race(race_id):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
     return document["race"]
+
+
+def _saved_race_path(race_id: str):
+    path = SAVED_RACES_DIR / f"{_safe_id(race_id)}.json"
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"saved race not found: {race_id}",
+        )
+    return path
+
+
+def rename_saved_race(race_id: str, name: str) -> dict:
+    """Troca o nome da corrida salva; o resto do arquivo fica como estava."""
+
+    if not name.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="informe um nome para a corrida",
+        )
+    path = _saved_race_path(race_id)
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["meta"]["name"] = name.strip()
+    _write_json(path, document)
+    return document["meta"]
+
+
+def delete_saved_race(race_id: str) -> None:
+    _saved_race_path(race_id).unlink()
 
 
 def _slug(name: str) -> str:

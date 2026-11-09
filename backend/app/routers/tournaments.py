@@ -12,6 +12,7 @@ from fastapi import APIRouter
 from app.routers.catalog import _grid_response
 from app.schemas.responses import (
     BuildGridResponse,
+    RenameRequest,
     SavedTournamentMeta,
     SavedTournamentsResponse,
     SaveTournamentRequest,
@@ -38,6 +39,19 @@ def list_tournaments() -> SavedTournamentsResponse:
 @router.get("/{tournament_id}")
 def open_tournament(tournament_id: str) -> dict:
     return tournaments.read_saved_tournament(tournament_id)
+
+
+@router.patch("/{tournament_id}", response_model=SavedTournamentMeta)
+def rename_tournament(tournament_id: str, request: RenameRequest) -> SavedTournamentMeta:
+    return SavedTournamentMeta(
+        **tournaments.rename_saved_tournament(tournament_id, request.name)
+    )
+
+
+@router.delete("/{tournament_id}")
+def delete_tournament(tournament_id: str) -> dict:
+    tournaments.delete_saved_tournament(tournament_id)
+    return {"deleted": tournament_id}
 
 
 @router.post("/{tournament_id}/restore-grid", response_model=BuildGridResponse)

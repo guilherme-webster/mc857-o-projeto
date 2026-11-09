@@ -263,7 +263,7 @@ HTTP. Os módulos marcados "puro" não importam Arcade e são testados sem janel
 | `parameters_view.py` | Tela inicial "Configuração do torneio": catálogo de pistas, sequência com drag-and-drop, regras, botão **Pilotos e grid**. "Confirmar torneio" roda o plano no backend (`backend_simulation_runner`) numa thread. |
 | `race_configuration_view.py` | Configuração por etapa. Abas **Sessão** e **Clima** funcionais; Pista, Regras e Carros são placeholders. |
 | `grid_view.py` | Pilotos e grid: montar (aleatório ou largada de 2024), ver perfis, editar atributos. |
-| `track_view.py` | `TrackView` (reprodução volta a volta, controle de prova, classificação rica, navegação do torneio) e `MenuView` (corridas salvas). |
+| `track_view.py` | `TrackView` (reprodução volta a volta, controle de prova, classificação rica, navegação do torneio) e a lista unica de simulacoes salvas, que fica em `saved_tournaments_view.py` (corridas e torneios). |
 | `tournament_view.py` | Resultado do torneio, pedido a `POST /championship/standings`. |
 | `race_playback.py` (puro) | Linha do tempo por carro a partir do `history`: progresso, pneu, parada, abandono, classificação ao vivo. |
 | `race_control_feed.py` (puro) | Status por volta e mensagens de controle de prova. |

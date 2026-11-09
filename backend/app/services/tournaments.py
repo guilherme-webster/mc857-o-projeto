@@ -112,6 +112,36 @@ def read_saved_tournament(tournament_id: str) -> dict:
     return record
 
 
+def rename_saved_tournament(tournament_id: str, name: str) -> dict:
+    """Troca o nome do torneio salvo e devolve o resumo atualizado."""
+
+    from f1_simulator.application.saved_tournament import tournament_summary
+
+    if not name.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="informe um nome para o torneio",
+        )
+    record = read_saved_tournament(tournament_id)
+    record["name"] = name.strip()
+    catalog._write_json(_tournament_path(tournament_id), record)
+    return tournament_summary(record)
+
+
+def delete_saved_tournament(tournament_id: str) -> None:
+    path = _tournament_path(tournament_id)
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"saved tournament not found: {tournament_id}",
+        )
+    path.unlink()
+
+
+def _tournament_path(tournament_id: str):
+    return SAVED_TOURNAMENTS_DIR / f"{catalog._safe_id(tournament_id)}.json"
+
+
 def restore_tournament_grid(tournament_id: str):
     """Torne o grid congelado o grid atual, preparando a reexecucao.
 

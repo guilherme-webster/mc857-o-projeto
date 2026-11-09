@@ -131,7 +131,10 @@ class RunGridRequest(BaseModel):
 
 
 class SaveRaceRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
+    # Sem ``race``, salva a corrida atual do backend; sem ``name``, o backend
+    # escolhe o nome (pista e data).
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    race: dict | None = None
 
 
 class SavedRaceMeta(BaseModel):
@@ -140,6 +143,7 @@ class SavedRaceMeta(BaseModel):
     saved_at: str
     seed: int | None = None
     track_id: str | None = None
+    track_name: str | None = None
     total_laps: int | None = None
     car_count: int
 
@@ -170,12 +174,17 @@ class SaveTournamentRequest(BaseModel):
     stages: list[SavedTournamentStageRequest] = Field(min_length=1, max_length=24)
 
 
+class RenameRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
 class SavedTournamentMeta(BaseModel):
     id: str
     name: str
     saved_at: str
     stage_count: int
     circuits: list[str]
+    stage_names: list[str] = []
     tournament_seed: int | None = None
     grid_seed: int
     car_count: int

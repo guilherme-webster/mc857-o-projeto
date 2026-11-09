@@ -89,7 +89,7 @@ class SavedTournamentViewsTest(unittest.TestCase):
             rerunner=lambda record, progress: self.fail("Abrir nao deve reexecutar"),
         )
         self.window.show_view(view)
-        pump(view, lambda: bool(view._saved))
+        pump(view, lambda: bool(view._tournaments))
         view.on_draw()
 
         shown: list[LaunchOutcome] = []
@@ -112,7 +112,7 @@ class SavedTournamentViewsTest(unittest.TestCase):
             rerunner=failing_rerun,
         )
         self.window.show_view(view)
-        pump(view, lambda: bool(view._saved))
+        pump(view, lambda: bool(view._tournaments))
         rect = view._button_rects()["rerun:copa-abc123"]
         view.on_mouse_press(rect[0] + 5, rect[1] + 5, arcade.MOUSE_BUTTON_LEFT, 0)
         pump(view, lambda: "backend fora do ar" in view._status)
