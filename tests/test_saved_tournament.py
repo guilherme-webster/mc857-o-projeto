@@ -132,6 +132,7 @@ class SavedTournamentContractTest(unittest.TestCase):
                 "saved_at": "2026-10-30T12:00:00+00:00",
                 "stage_count": 2,
                 "circuits": ["circuit:1", "circuit:1"],
+                "stage_names": ["Etapa 1", "Etapa 2"],
                 "tournament_seed": TOURNAMENT_SEED,
                 "grid_seed": GRID_SEED,
                 "car_count": 2,

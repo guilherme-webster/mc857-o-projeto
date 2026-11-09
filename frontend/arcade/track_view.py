@@ -3,6 +3,8 @@ from __future__ import annotations
 import urllib.error
 from bisect import bisect_right
 from collections.abc import Sequence
+from queue import Empty, SimpleQueue
+from threading import Thread
 
 import arcade
 
@@ -17,8 +19,8 @@ from frontend.arcade.theme import (
 from frontend.arcade.track_client import (
     fetch_race,
     fetch_saved_race,
-    fetch_saved_races,
     fetch_track,
+    save_race,
 )
 
 SCREEN_WIDTH = 1000
@@ -32,6 +34,8 @@ _TRACK_LANE_MAX_PX = 34.0
 # Linha de chegada/largada: onde a contagem de voltas recomeca (distancia zero).
 _START_LINE_COLOR = (240, 240, 240)
 _START_LINE_WIDTH = 3.0
+_SAVE_OK_COLOR = (70, 211, 142)
+_SAVE_ERROR_COLOR = (230, 120, 120)
 BASE_PLAYBACK_SPEED = 1_000.0  # 1x = tempo real (1 s de simulacao por 1 s de tela)
 MIN_SPEED = 1.0 / 256.0  # ~0,004x: permite camera lenta extrema
 SPEED_FACTOR = 2.0  # cada toque em up/down dobra ou divide a velocidade
@@ -134,8 +138,6 @@ _TYRE_RADIUS = 8
 STANDINGS_WIDTH = 510
 FUEL_STANDINGS_WIDTH = 580
 
-_MENU_BG = (16, 22, 30)
-_ROW_BG = (30, 41, 53)
 _ROW_HOVER = (46, 62, 80)
 # Linha realcada do carro selecionado para o grafico de decomposicao.
 _SELECTED_ROW_COLOR = (54, 74, 96)
@@ -260,121 +262,25 @@ def _build_speed_lookup(profile):
     return lookup
 
 
-def _load_race_view(saved_id: str | None) -> TrackView:
-    """Monte a TrackView de uma corrida salva (ou da atual, se ``saved_id`` None)."""
+def saved_race_inputs(saved_id: str | None) -> tuple[dict, dict]:
+    """(pista, corrida) de uma corrida salva, ou da atual se ``saved_id`` for None.
+
+    So faz as chamadas HTTP: pode rodar fora da thread do Arcade. A
+    ``TrackView`` e criada depois, na thread da janela.
+    """
 
     race = fetch_saved_race(saved_id) if saved_id else fetch_race()
     circuit_id = _race_circuit_id(race)
     if circuit_id is None:
         raise RuntimeError("a corrida nao tem pista no setup")
-    track = fetch_track(circuit_id)
+    return fetch_track(circuit_id), race
+
+
+def _load_race_view(saved_id: str | None) -> TrackView:
+    """Monte a TrackView de uma corrida salva (ou da atual, se ``saved_id`` None)."""
+
+    track, race = saved_race_inputs(saved_id)
     return TrackView(track, race)
-
-
-class MenuView(arcade.View):
-    """Lista as corridas salvas; um clique abre a corrida selecionada."""
-
-    ROW_H = 44
-    LIST_TOP = 120
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._saved: list[dict] = []
-        self._error: str | None = None
-        self._hover = -1
-        self._title = arcade.Text(
-            "Corridas salvas", 40, 0, PRIMARY_TEXT_COLOR, 24, bold=True
-        )
-        self._subtitle = arcade.Text("", 40, 0, (150, 160, 170), 13)
-        self._refresh()
-
-    def _refresh(self) -> None:
-        try:
-            self._saved = fetch_saved_races().get("saved", [])
-            self._error = None
-        except (urllib.error.URLError, OSError) as error:
-            self._saved = []
-            self._error = f"nao foi possivel listar as corridas: {error}"
-
-    def on_show_view(self) -> None:
-        super().on_show_view()
-        arcade.set_background_color(_MENU_BG)
-
-    def _row_rect(self, index: int):
-        """(left, bottom, width, height) da linha ``index``, do topo para baixo."""
-
-        top = self.window.height - self.LIST_TOP
-        bottom = top - (index + 1) * self.ROW_H + 6
-        return 40, bottom, self.window.width - 80, self.ROW_H - 10
-
-    def on_mouse_motion(self, x, y, dx, dy) -> None:
-        self._hover = -1
-        for i in range(len(self._saved)):
-            left, bottom, width, height = self._row_rect(i)
-            if left <= x <= left + width and bottom <= y <= bottom + height:
-                self._hover = i
-                break
-
-    def on_mouse_press(self, x, y, button, modifiers) -> None:
-        if self._hover < 0 or self._hover >= len(self._saved):
-            return
-        saved_id = self._saved[self._hover]["id"]
-        try:
-            view = _load_race_view(saved_id)
-        except (
-            urllib.error.HTTPError,
-            urllib.error.URLError,
-            RuntimeError,
-            ValueError,
-        ) as error:
-            self._error = f"nao foi possivel abrir a corrida: {error}"
-            return
-        self.window.show_view(view)
-
-    def on_key_press(self, symbol: int, modifiers: int) -> None:
-        if symbol == arcade.key.R:
-            self._refresh()
-
-    def on_draw(self) -> None:
-        self.clear()
-        self._title.y = self.window.height - 60
-        self._title.draw()
-        self._subtitle.text = (
-            self._error
-            if self._error
-            else f"{len(self._saved)} corridas  |  clique para abrir  |  R atualiza"
-        )
-        self._subtitle.y = self.window.height - 90
-        self._subtitle.color = (230, 120, 120) if self._error else (150, 160, 170)
-        self._subtitle.draw()
-
-        for i, item in enumerate(self._saved):
-            left, bottom, width, height = self._row_rect(i)
-            if bottom < 0:
-                break
-            color = _ROW_HOVER if i == self._hover else _ROW_BG
-            arcade.draw_lbwh_rectangle_filled(left, bottom, width, height, color)
-            label = item.get("name", item["id"])
-            detail = (
-                f"{item.get('track_id') or '-'}   "
-                f"{item.get('total_laps') or '?'} voltas   "
-                f"{item.get('car_count') or '?'} carros"
-            )
-            arcade.draw_text(
-                label,
-                left + 16,
-                bottom + height - 24,
-                PRIMARY_TEXT_COLOR,
-                15,
-                bold=True,
-            )
-            arcade.draw_text(
-                detail,
-                left + 16,
-                bottom + 6,
-                (150, 160, 170),
-                11,
-            )
 
 
 class TrackView(arcade.View):
@@ -392,6 +298,8 @@ class TrackView(arcade.View):
         notices: Sequence[str] = (),
         tournament: TournamentSession | None = None,
         stage_index: int = 1,
+        list_view: arcade.View | None = None,
+        saveable: bool = True,
     ) -> None:
         """``notices`` sao avisos de quem disparou a corrida (origem do grid,
         opcoes ignoradas pelo motor), mostrados no canto superior direito.
@@ -402,6 +310,13 @@ class TrackView(arcade.View):
 
         super().__init__()
         self._tournament = tournament
+        # Lista de simulacoes salvas de onde a corrida foi aberta; sem ela, nao
+        # ha botao de voltar. O botao ocupa o lugar do "Proxima etapa", que so
+        # existe em torneio.
+        self._list_view = list_view
+        self._back_hover = False
+        # Corridas abertas das simulacoes salvas ja estao salvas: sem "Salvar".
+        self._saveable = saveable
         self._stage_index = stage_index
         pts = sorted(track["track_points"], key=lambda p: p["sequence"])
         self._cum = [p["cumulative_distance_m"] for p in pts]
@@ -499,6 +414,16 @@ class TrackView(arcade.View):
         self._switch_hover = False
         self._end_hover = False
         self._next_hover = False
+        self._prev_hover = False
+        self._prev_text = arcade.Text(
+            "‹  Etapa anterior",
+            0,
+            0,
+            PRIMARY_TEXT_COLOR,
+            13,
+            anchor_x="center",
+            anchor_y="center",
+        )
 
         self._title = arcade.Text("", 20, 0, PRIMARY_TEXT_COLOR, 18, bold=True)
         self._hud = arcade.Text(
@@ -519,8 +444,24 @@ class TrackView(arcade.View):
             10,
             font_name="monospace",
         )
+        # Salvar a corrida exibida: o pedido roda numa thread e o resultado volta
+        # pela fila, lido em ``on_update`` na thread do Arcade.
+        self._saving = False
+        self._save_results: SimpleQueue[tuple[str, str]] = SimpleQueue()
+        self._save_message = arcade.Text(
+            "", 0, 0, _SAVE_OK_COLOR, 10, anchor_x="right", anchor_y="bottom"
+        )
         self._switch_text = arcade.Text(
-            "Trocar corrida",
+            "Salvar corrida",
+            0,
+            0,
+            PRIMARY_TEXT_COLOR,
+            13,
+            anchor_x="center",
+            anchor_y="center",
+        )
+        self._back_text = arcade.Text(
+            "‹  Voltar à lista",
             0,
             0,
             PRIMARY_TEXT_COLOR,
@@ -604,7 +545,7 @@ class TrackView(arcade.View):
         arcade.set_background_color(BACKGROUND_COLOR)
 
     def _switch_rect(self):
-        """(left, bottom, width, height) do botao 'Trocar corrida'."""
+        """(left, bottom, width, height) do botao 'Salvar corrida'."""
 
         width, height = 150, 34
         return self.window.width - width - 20, 20, width, height
@@ -623,6 +564,33 @@ class TrackView(arcade.View):
         end_left = self._end_rect()[0]
         return end_left - width - 10, 20, width, height
 
+    def _prev_rect(self):
+        """(left, bottom, width, height) do botao de etapa anterior: a esquerda da proxima."""
+
+        left, bottom, width, height = self._next_rect()
+        return left - width - 10, bottom, width, height
+
+    def _has_previous(self) -> bool:
+        return self._tournament is not None and self._stage_index > 1
+
+    def _open_previous(self) -> None:
+        """Volte para a etapa anterior do torneio, numa TrackView nova."""
+
+        tournament = self._tournament
+        assert tournament is not None
+        index = self._stage_index - 1
+        stage = tournament.stage(index)
+        self.window.show_view(
+            TrackView(
+                stage.track,
+                stage.race,
+                notices=tournament.notices,
+                tournament=tournament,
+                stage_index=index,
+                saveable=self._saveable,
+            )
+        )
+
     def _open_next(self) -> None:
         """Avance para a proxima etapa ou abra o resultado do torneio."""
 
@@ -638,12 +606,17 @@ class TrackView(arcade.View):
                     notices=tournament.notices,
                     tournament=tournament,
                     stage_index=index,
+                    saveable=self._saveable,
                 )
             )
             return
         from frontend.arcade.tournament_view import TournamentResultView
 
-        self.window.show_view(TournamentResultView(tournament, return_view=self))
+        self.window.show_view(
+            TournamentResultView(
+                tournament, return_view=self, saveable=self._saveable
+            )
+        )
 
     def _projected(self) -> list[tuple[float, float]]:
         """Projete a geometria normalizada no tamanho atual da janela."""
@@ -676,6 +649,7 @@ class TrackView(arcade.View):
         return "dry"
 
     def on_update(self, dt: float) -> None:
+        self._drain_save_results()
         if self._paused:
             return
         step = dt * BASE_PLAYBACK_SPEED * self._speed * self._direction
@@ -687,18 +661,28 @@ class TrackView(arcade.View):
         return left <= x <= left + width and bottom <= y <= bottom + height
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
-        self._switch_hover = self._in_rect(x, y, self._switch_rect())
+        self._switch_hover = self._saveable and self._in_rect(x, y, self._switch_rect())
         self._end_hover = self._in_rect(x, y, self._end_rect())
+        self._back_hover = self._list_view is not None and self._in_rect(
+            x, y, self._next_rect()
+        )
         self._next_hover = self._next_text is not None and self._in_rect(
             x, y, self._next_rect()
         )
+        self._prev_hover = self._has_previous() and self._in_rect(x, y, self._prev_rect())
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if self._has_previous() and self._in_rect(x, y, self._prev_rect()):
+            self._open_previous()
+            return
         if self._next_text is not None and self._in_rect(x, y, self._next_rect()):
             self._open_next()
             return
-        if self._in_rect(x, y, self._switch_rect()):
-            self.window.show_view(MenuView())
+        if self._list_view is not None and self._in_rect(x, y, self._next_rect()):
+            self.window.show_view(self._list_view)
+            return
+        if self._saveable and self._in_rect(x, y, self._switch_rect()):
+            self._save_race()
             return
         if self._in_rect(x, y, self._end_rect()):
             self._elapsed = self._race_len_ms
@@ -784,7 +768,49 @@ class TrackView(arcade.View):
             self._elapsed = self._playback.lap_start_ms(self._start_lap)
             self._direction = 1
         elif symbol == arcade.key.M:
-            self.window.show_view(MenuView())
+            self._open_saved_list()
+
+    def _save_race(self) -> None:
+        """Grava esta corrida (a exibida, nao o torneio), com nome padrao do backend."""
+
+        if not self._saveable or self._saving:
+            return
+        self._saving = True
+        self._save_message.text = "Salvando corrida…"
+        self._save_message.color = _SAVE_OK_COLOR
+        race = self._race
+        results = self._save_results
+
+        def run() -> None:
+            try:
+                meta = save_race(race)
+            except (RuntimeError, OSError, ValueError) as error:
+                results.put(("error", str(error)))
+            else:
+                results.put(("saved", str(meta.get("name", ""))))
+
+        Thread(target=run, name="save-race", daemon=True).start()
+
+    def _drain_save_results(self) -> None:
+        while True:
+            try:
+                kind, text = self._save_results.get_nowait()
+            except Empty:
+                return
+            self._saving = False
+            if kind == "saved":
+                self._save_message.text = f"Corrida salva como “{text}”."
+                self._save_message.color = _SAVE_OK_COLOR
+            else:
+                self._save_message.text = f"Não foi possível salvar: {text}"
+                self._save_message.color = _SAVE_ERROR_COLOR
+
+    def _open_saved_list(self) -> None:
+        """Corridas e torneios salvos; voltar retorna a esta corrida."""
+
+        from frontend.arcade.saved_tournaments_view import SavedTournamentsView
+
+        self.window.show_view(SavedTournamentsView(return_view=self))
 
     def _pos_at(self, screen, distance_m: float):
         d = distance_m % self._lap_length
@@ -1090,8 +1116,18 @@ class TrackView(arcade.View):
             for panel in self._breakdown_panels:
                 self._draw_breakdown_panel(panel)
         self._draw_race_control(status, width, height)
-        self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
+        if self._saveable:
+            self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
+            if self._save_message.text:
+                left, bottom, width, height = self._switch_rect()
+                self._save_message.x = left + width
+                self._save_message.y = bottom + height + 6
+                self._save_message.draw()
         self._draw_button(self._end_rect(), self._end_text, self._end_hover)
+        if self._list_view is not None:
+            self._draw_button(self._next_rect(), self._back_text, self._back_hover)
+        if self._has_previous():
+            self._draw_button(self._prev_rect(), self._prev_text, self._prev_hover)
         if self._next_text is not None:
             self._draw_button(
                 self._next_rect(), self._next_text, self._next_hover, primary=True
@@ -1512,7 +1548,9 @@ def show(saved_id: str | None = None) -> None:
         ) as error:
             raise SystemExit(f"nao foi possivel abrir a corrida: {error}") from error
     else:
-        window.show_view(MenuView())
+        from frontend.arcade.saved_tournaments_view import SavedTournamentsView
+
+        window.show_view(SavedTournamentsView())
     arcade.run()
 
 

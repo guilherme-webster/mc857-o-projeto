@@ -51,10 +51,15 @@ class TournamentResultView(arcade.View):
         return_view: arcade.View | None = None,
         standings_loader: Callable[[dict], dict] = fetch_championship_standings,
         tournament_saver: Callable[[dict], dict] = save_tournament,
+        saveable: bool = True,
     ) -> None:
+        """``saveable=False`` tira o botao "Salvar torneio": torneio aberto ou
+        reexecutado a partir das simulacoes salvas ja esta salvo."""
+
         super().__init__()
         self._tournament = tournament
         self._tournament_saver = tournament_saver
+        self._saveable = saveable
         self._saving = False
         self._save_status = arcade.Text("", 40, 70, SECONDARY_TEXT_COLOR, 12)
         self._return_view = return_view
@@ -87,8 +92,7 @@ class TournamentResultView(arcade.View):
         self._buttons = {
             "back": "Voltar à última etapa",
             "save": "Salvar torneio",
-            "tournaments": "Torneios salvos",
-            "saved": "Corridas salvas",
+            "saved": "Simulações salvas",
             "new": "Nova simulação",
         }
         self._title = arcade.Text(
@@ -197,7 +201,7 @@ class TournamentResultView(arcade.View):
             if outcome == "saved":
                 self._save_status.text = (
                     f"Torneio salvo como “{payload['name']}” ({payload['id']}). "
-                    "Abra em “Torneios salvos” para rever ou reexecutar."
+                    "Abra em “Simulações salvas” para rever ou reexecutar."
                 )
                 self._save_status.color = SUCCESS_COLOR
             else:
@@ -242,8 +246,10 @@ class TournamentResultView(arcade.View):
         width, height, gap = 180, 36, 10
         right = self.window.width - 40
         rects = {}
-        for key in ("new", "saved", "tournaments", "save", "back"):
+        for key in ("new", "saved", "save", "back"):
             if key == "back" and self._return_view is None:
+                continue
+            if key == "save" and not self._saveable:
                 continue
             rects[key] = (right - width, 24, width, height)
             right -= width + gap
@@ -263,16 +269,12 @@ class TournamentResultView(arcade.View):
                 self.window.show_view(self._return_view)
             elif key == "save":
                 self.save()
-            elif key == "tournaments":
+            elif key == "saved":
                 from frontend.arcade.saved_tournaments_view import (
                     SavedTournamentsView,
                 )
 
                 self.window.show_view(SavedTournamentsView(return_view=self))
-            elif key == "saved":
-                from frontend.arcade.track_view import MenuView
-
-                self.window.show_view(MenuView())
             else:
                 from frontend.arcade.parameters_view import (
                     ParametersView,

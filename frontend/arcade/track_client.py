@@ -229,6 +229,31 @@ def fetch_championship_standings(request: dict, base_url: str = BASE_URL) -> dic
     return _post("/championship/standings", request, base_url)
 
 
+def save_race(race: dict, name: str | None = None, base_url: str = BASE_URL) -> dict:
+    """Grave uma corrida avulsa (``POST /simulation/saved``); sem nome, o backend escolhe."""
+
+    payload: dict = {"race": race}
+    if name:
+        payload["name"] = name
+    return _post("/simulation/saved", payload, base_url)
+
+
+def rename_saved_race(race_id: str, name: str, base_url: str = BASE_URL) -> dict:
+    return _post(f"/simulation/saved/{race_id}", {"name": name}, base_url, method="PATCH")
+
+
+def delete_saved_race(race_id: str, base_url: str = BASE_URL) -> dict:
+    return _post(f"/simulation/saved/{race_id}", {}, base_url, method="DELETE")
+
+
+def rename_saved_tournament(tournament_id: str, name: str, base_url: str = BASE_URL) -> dict:
+    return _post(f"/tournaments/{tournament_id}", {"name": name}, base_url, method="PATCH")
+
+
+def delete_saved_tournament(tournament_id: str, base_url: str = BASE_URL) -> dict:
+    return _post(f"/tournaments/{tournament_id}", {}, base_url, method="DELETE")
+
+
 def save_tournament(payload: dict, base_url: str = BASE_URL) -> dict:
     """Salve um torneio ja simulado (``POST /tournaments``); devolve o resumo."""
 

@@ -114,6 +114,8 @@ def tournament_summary(record: Mapping) -> dict:
         "saved_at": record["saved_at"],
         "stage_count": len(record["stages"]),
         "circuits": [stage["circuit_id"] for stage in record["stages"]],
+        # Nome legivel de cada pista, para a listagem nao mostrar so o id.
+        "stage_names": [stage["name"] for stage in record["stages"]],
         "tournament_seed": record.get("tournament_seed"),
         "grid_seed": record["grid"]["seed"],
         "car_count": len(record["grid"]["grid"]),
