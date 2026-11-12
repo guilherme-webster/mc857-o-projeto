@@ -206,14 +206,21 @@ PYTHONPATH=src uv run python scripts/analyze_dynamic_usage.py --circuit circuit:
 As fórmulas, fontes e hipóteses ficam em
 [Consumo e desgaste dinâmicos](docs/consumo-desgaste-dinamicos.md).
 
-Se o `TestClient` da versão instalada do Starlette pedir `httpx2`, execute a
-suíte completa com a dependência temporária, sem mudar o ambiente do projeto:
+O `TestClient` do Starlette 1.x exige `httpx2`; ele esta declarado no grupo `dev`
+do `pyproject.toml` e travado no `uv.lock`, e `uv sync` o instala. Nao e mais
+preciso `uv run --with httpx2`.
+
+O CI (`.github/workflows/tests.yml`) roda `uv sync --locked` e
+`uv run python -m unittest` com Python 3.12, sem display, em pull requests para
+`develop` e `main` e em push para `develop`; os testes de GUI ficam pulados. Para
+reproduzir localmente:
 
 ```bash
-uv run --with httpx2 python -m unittest -v
+uv sync --locked
+env -u ARCADE_GUI_TEST uv run python -m unittest
 ```
 
-Sem elas, `python3 -m unittest -v` ainda roda os testes do nucleo; os modulos
+Sem as dependencias, `python3 -m unittest -v` ainda roda os testes do nucleo; os modulos
 que importam FastAPI falham na importacao e os de interface sao pulados. Os
 testes de interface grafica abrem janelas Arcade e so rodam com
 `ARCADE_GUI_TEST=1` e um display disponivel. Dois testes do servico de catalogo
