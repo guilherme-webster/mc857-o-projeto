@@ -14,11 +14,7 @@ arquivo: o estado oficial continua no GitHub.
 | Issue | Responsavel | Atualizado em | Etapa em que ficou | Evidencias | Proximo passo ou bloqueio |
 | --- | --- | --- | --- | --- | --- |
 | #40, #61, #66 e #67 | #40: @DaviGabrielBC; #61/#66: @guilherme-webster; #67: sem responsavel atribuido | 2026-09-11 21:40 -03:00 | Revisao documental em `40-planejamento-modelagem`: FastAPI confirmado no ADR 0004; planejamento geral e pesquisa de perfilamento. `67-modelagem-pilotos` criada em worktree separado, sem implementacao. | Diff sem erros de whitespace; links locais conferidos; auditoria de contagens do ZIP Trotman/2024; fontes oficiais consultadas; uma consulta limitada OpenF1; leitura da branch #43 em `0f6255d`. Nenhum teste de execucao ou calibracao realizado. | Revisar e commitar documentos, integrar as decisoes na branch #67, coordenar o calculo com #43 e definir recorte/contrato Python. Expansao de FastF1 alem da geometria permanece proposta. Registro local para posterior publicacao nas issues: esta solicitacao autorizou documentacao e branches, sem envio de comentarios ao GitHub. |
-| #69 | @Jmvjr, @guilherme-webster | 2026-10-02 19:25 -03:00 | Modelo climático por volta implementado no domínio: umidade relativa e índice de água superficial, sem integração com API, Arcade, pneus ou tempo de volta. | 255 testes passaram, 35 ignorados; Ruff e `git diff --check` passaram. `pytest` não está instalado no ambiente `uv`; a suíte foi executada por `unittest` com `PYTHONPATH=src:.`. | Revisar hipóteses e parâmetros ilustrativos; na próxima etapa, mapear rótulos da UI e ligar resultados ao motor. Atualizar a issue #69 no GitHub após autorização para comentário. |
-| #101 | @Jmvjr | 2026-10-26 -03:00 | Pit lane espacial implementada no motor 2D: entrada, fila, serviço de pneus, espera de reinserção e retorno. Trajetória e eventos HTTP permitem ao Arcade desenhar o percurso e mostrar a posição e o instante de troca. ADR 0012 registra o tempo efetivo em substituição à perda diluída. | 134 testes relevantes passaram; 24/24 circuitos simulados com quatro voltas e uma visita completa; tela conferida por captura de janela Arcade invisível. Suíte geral mantém três falhas anteriores em `test_catalog_grid_run`, reproduzidas em checkout separado do HEAD. Ruff e whitespace passaram. | Revisar e gerar uma corrida nova com `setup.engine="2d"` para conferir o visual. Serviço único e parâmetros assumidos; reabastecimento não portado para o 2D. Sem commit, push ou comentário enviado ao GitHub; transferir o handoff para a issue #101 quando o envio for solicitado. |
 | Modelagem do combustível (issue a abrir, ex.: #97); #63 | a definir na issue | 2026-10-23 -03:00 | Combustível por massa por carro, reabastecimento como regra do cenário e paradas estratégicas por piloto (pneus e combustível na mesma parada) implementados para a branch `97-modelagem-combustivel`, ainda sem commit; ADR 0009 proposto e `docs/modelagem-heuristica.md` atualizado. #63: tentativa de calibrar compostos em voltas FastF1 corrigidas pelo combustível **não adotada** e retirada do repositório para o backlog; a reserva de 2024 do plano `profile-evaluation-2024-expanded` foi consultada **duas vezes** nessa tentativa. | 627 testes por `unittest`; só as 3 falhas que já existem na `develop` (`test_catalog_grid_run` ×2, `test_track_geometry_etl`). Hashes do motor legado preservados. Validação do combustível em `data/parameters/fuel-v1.json` (inclinação por corrida 16,1 contra 22,3 ms/volta em 2024–2025). Ruff não executado (ausente no ambiente). App completo (Docker) não executado. | Abrir a issue, fazer os commits e o PR para a `develop`; o grupo decide se o reabastecimento fica ligado por padrão (ADR 0009). Na #63, registrar o uso da reserva e a proveniência do export CSV F1-Tyre-Strategy-Engine antes de retomar a calibração de pneus. Transferir este registro para as issues e remover a linha. |
-| #119 | @DaviGabrielBC | 2026-11-06 -03:00 | Branch `119-aderencia-pista`, sem commit. Velocidade de curva por aderência e downforce com raio em metros (ADR 0015, proposta), `grip_mu`/`C_L·A` estimados contra as 24 voltas de referência (`data/parameters/car-physics-v1.json`, `scripts/calibrate_car_physics.py`); estado dinâmico da pista por volta (água por minuto, temperatura do asfalto, borracha) como fator de aderência nos dois motores (`domain/track_condition.py`); efeito linear de +40% removido; resultado traz `track_conditions`. | Suíte por `unittest`: 753 testes, só as 2 falhas que já existem na `develop` (`test_track_geometry_etl`; `test_saved_tournament` não carrega sem a dependência do `TestClient`). Erro da volta física 0,169 → 0,046 (mediana 0,993). Corridas de distância real com duração próxima da real (Spa 44 voltas ~79 min). Ruff e app completo (Docker/Arcade) não executados. | Revisar e commitar; revisar a taxa de contato do 2D, que sobe com as frenagens mais fortes; seguir para a #120 (pneus de chuva). Transferir este registro para a issue #119 e remover a linha. |
-| #120 | @DaviGabrielBC | 2026-11-06 -03:00 | Branch `120-pneus-de-chuva`, criada sobre a `119-aderencia-pista`. Intermediário e chuva com aderência por água relativa ao melhor composto; troca por clima na `HeuristicPitStrategy` (radar de uma volta, viés por piloto); regra de dois compostos suspensa; largada com pneu de chuva; superaquecimento em pista secando; acidente e contato maiores com água e pneu errado; mesma lógica no 2D; painel de clima com água e temperatura. Corrigido no 2D: carro que abandona no meio da volta voltava ao composto de largada no histórico. | 769 testes por `unittest`, só as 2 falhas que já existem na `develop`. Mônaco, 20 carros, 8 sementes: abandonos 1,6 (seco) → 1,8 (chuva forte) → 2,1 (garoa longa); paradas 0,9 → 1,9 por carro. Arcade não aberto (só import e o rótulo testados). | Revisar e commitar separado da #119. Pendente: janela de temperatura dos pneus (alinhar com a #104), contato do 2D sensível à água, proveniência do export FastF1 usado como âncora. Transferir este registro para a issue #120 e remover a linha. |
 
 ## ETL enriquecido — 2026-09-12 (-03:00)
 
@@ -562,92 +558,3 @@ interface.
 - Pendente: limitações de pneus/severidade (#40) e ponto de volta rápida.
   Commits locais, sem push nem comentário no GitHub; levar este registro à
   #2, #6, #18, #21 e #71.
-
-### Pendência: número de voltas padrão por pista — 2026-10-16 (-03:00)
-
-Sem issue no GitHub ainda; candidata a sub-issue de #2 (tela de configuração).
-Toda etapa nova começa com 69 voltas: `ConfigurationFormData.laps = 69` e
-`DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(69)` em
-`frontend/arcade/configuration_state.py`, e `toggle_selected_track` herda a
-configuração ativa (`setdefault(circuit_id, self.configuration)`), qualquer
-que seja o tamanho da pista. Nenhuma pista do catálogo tem 69 voltas na F1.
-
-Proposta discutida, não implementada: usar como padrão o número de voltas da
-corrida histórica mais recente no circuito (Trotman; exige campo novo em
-`/simulation/tracks` ou endpoint) e, sem histórico, a regra do regulamento
-esportivo da FIA: menor número de voltas completas acima de 305 km (Mônaco,
-260 km), calculado com `lap_length_m`. O comprimento vem da geometria FastF1 e
-erra por uma ou duas voltas em algumas pistas (Yas Marina: 5.240 m no fixture
-contra 5.281 m oficiais, 59 voltas em vez de 58). O valor seria só o padrão; o
-usuário continua editando.
-
-## 2026-10-01 — motor 2D de posicao continua (ADR 0011)
-
-Sem issue no GitHub ainda; candidata a issue nova sob o tema de motor de
-corrida. Trabalho feito nesta sessao sobre a `develop` apos o merge do PR #98
-(combustivel) e #96 (reproducao/telas). Decisao registrada no ADR 0011
-(aceito nesta sessao): motor 2D sub-volta onde a posicao x,y evolui por passos
-de tempo e ultrapassagem e colisao emergem da proximidade espacial, em vez do
-sorteio por volta do motor detalhado. O motor detalhado continua sendo o
-**padrao**; o 2D e selecionavel por `engine="2d"`.
-
-### O que foi feito
-
-- **ADR 0010 (velocidade por trecho), aceito e integrado** antes do 2D: o tempo
-  de volta passa a emergir da velocidade derivada da curvatura quando ha
-  geometria; envelope fisico por piloto a partir dos atributos (`speed_dynamics.py`).
-- **Merge da branch `95-modelagem-da-pista` na `develop`** resolvendo conflitos
-  com combustivel (#98) e reproducao/telas (#96); o ADR de velocidade foi
-  renumerado de 0009 para 0010 (o 0009 e o combustivel).
-- **Motor 2D, fatias 1-5** em `src/f1_simulator/domain/track_space.py`:
-  geometria da pista em faixa com largura e normais (`build_track_space`,
-  `TrackSpace`, `LateralBounds`); estado espacial do carro (`CarSpaceState`);
-  integrador sub-volta de um carro (`integrate_single_car`), validado contra o
-  tempo por distancia do ADR 0010; integrador multi-carro com exclusao espacial
-  e posicao lateral (`integrate_field`); ultrapassagem emergente por troca de
-  faixa com compromisso de manobra; colisao por sobreposicao lateral com culpa
-  ponderada pela agressividade e taxa por segundo (independente de `dt`).
-- **Motor 2D, fatia 6** em `src/f1_simulator/domain/race_simulation_2d.py`:
-  converte a trajetoria continua no mesmo `history`/`classification`/
-  `starting_grid` por volta do motor detalhado (lido pelo `RacePlayback` do
-  frontend sem mudanca). Pneu (degradacao por idade), combustivel (massa que
-  custa tempo e diminui ao queimar), clima (agua penalizando a volta) e
-  abandono mecanico reexpressos como reducao fracionaria da velocidade
-  (`CarSpaceState.speed_scale`) ou sorteio por volta. Todos opt-in.
-- **Motor 2D, fatia 7**: `engine` selecionavel em `run_detailed_grid_simulation`
-  (`_run_2d`), subindo pela cadeia ate `POST /catalog/grid/run` (campo
-  `setup.engine`, schema `RaceSetupRequest`). Padrao continua `"detailed"`.
-
-### Verificacoes
-
-- `tests/test_track_space.py`: 17 testes cobrindo as fatias 1-5 (geometria,
-  ponte com o ADR 0010, exclusao espacial, ultrapassagem, colisao,
-  reprodutibilidade). Passaram.
-- Fatias 6-7 exercitadas por verificacoes manuais (scripts efemeros, ja
-  apagados): degradacao de pneu SOFT>HARD, combustivel acelerando o carro ao
-  queimar, clima ~40% mais lento, abandono mecanico reproduzivel, e a cadeia
-  `run_detailed_grid_simulation(engine="2d")` completa lida pelo `RacePlayback`.
-- `py_compile` em todos os modulos tocados.
-
-### Limitacoes e pendencias (declaradas em `assumptions`, `kind: engine_2d`)
-
-Features que o motor detalhado tem e o 2D **ainda nao converteu**: pit stop,
-reabastecimento, Safety Car, VSC, bandeiras (amarela/vermelha/relargada),
-estrategia de parada por piloto, lift-and-coast e bandeira azul. Enquanto isso,
-o 2D e menos completo que o detalhado e seu resultado e cenario hipotetico, nao
-comparavel ao historico. Limitacao conhecida do integrador: na entrada de curva
-a folga entre carros em fila pode encolher por um ou dois passos (sem
-car-following com frenagem antecipada). Codigo morto confirmado: `speed_at` em
-`speed_dynamics.py` (sem consumidor).
-
-### Estado e proximo passo
-
-**Nada foi commitado e a suite completa do projeto nao foi executada** desde o
-merge da branch 95. Acumulado sem verificacao de suite: o merge 95, as 5 fatias
-do motor 2D, o `race_simulation_2d.py` (sem testes permanentes), as mudancas na
-cadeia backend e os testes do `track_space`. Proximo passo recomendado, em
-ordem: rodar `pytest` completo e corrigir regressoes; escrever testes
-permanentes para `race_simulation_2d.py`; fechar o commit; so entao decidir se
-completa as features que faltam no 2D ou se promove o 2D a padrao (novo ADR).
-O motor detalhado **nao deve** ser aposentado antes da paridade de features e
-de uma decisao de ADR. Levar este registro a uma issue quando houver acesso.
