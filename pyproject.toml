@@ -22,9 +22,10 @@ dev = [
 
 [tool.ruff]
 target-version = "py312"
-# Largura que o codigo ja usa (a maioria das linhas cabe em 100 colunas); E501
-# nao esta nas regras ativas, entao o valor so orienta `ruff format`.
-line-length = 100
+# 88 colunas (padrao do ruff) e a largura que o codigo ja segue: `ruff format`
+# com 88 mexeria em 76 arquivos, com 100 mexeria em 188. E501 nao esta nas
+# regras ativas, entao o valor so orienta o formatador.
+line-length = 88
 extend-exclude = ["TOBEDEFINED"]
 
 [tool.ruff.lint]
