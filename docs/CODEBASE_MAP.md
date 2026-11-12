@@ -294,7 +294,6 @@ HTTP. Os módulos marcados "puro" não importam Arcade e são testados sem janel
 | `configuration_state.py` (puro) | `WeatherSchedule`, `TournamentRules`, `SessionConfiguration`, `ConfigurationFormData`, `SimulationPlan`. |
 | `configuration_layout.py`, `track_preview.py` (puros) | Geometria de layout e da prévia. |
 | `track_client.py` | HTTP com `urllib` (`F1_API_BASE_URL`, padrão `http://localhost:8000`); GET, POST, PATCH, DELETE; SSE (`run_grid_stream`); `BackendError` com o `detail` do FastAPI. Cobre grid, corridas e torneios salvos. |
-| `weather_view.py` | `TrackConfigurationView`, tela **legada** 1280x720, inalcançável no fluxo atual (constantes e helpers reaproveitados). |
 | `theme.py` | Cores. |
 
 ### 4.7 `tests/`
