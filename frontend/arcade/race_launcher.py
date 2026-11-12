@@ -28,7 +28,6 @@ from typing import Protocol
 
 from frontend.arcade import track_client
 from frontend.arcade.configuration_state import (
-    ENGINE_API_VALUES,
     WEATHER_MODE_OPTIONS,
     PlannedRace,
     SimulationPlan,
@@ -136,11 +135,6 @@ def run_setup(
         "track_id": planned.circuit_id,
         "weather": weather,
     }
-    engine = ENGINE_API_VALUES[rules.engine]
-    if engine != "detailed":
-        # Omitido no padrão para que o setup de torneios no motor detalhado
-        # continue idêntico ao de antes desta opção (torneios salvos, #109).
-        setup["engine"] = engine
     if tournament_seed is not None:
         setup["tournament_seed"] = tournament_seed
         setup["stage_index"] = stage_index
