@@ -17,4 +17,17 @@ dependencies = [
 # exige o pacote httpx2 desde o Starlette 1.x. `uv sync` instala este grupo por padrao.
 dev = [
     "httpx2",
+    "ruff>=0.15",
 ]
+
+[tool.ruff]
+target-version = "py312"
+# Largura que o codigo ja usa (a maioria das linhas cabe em 100 colunas); E501
+# nao esta nas regras ativas, entao o valor so orienta `ruff format`.
+line-length = 100
+extend-exclude = ["TOBEDEFINED"]
+
+[tool.ruff.lint]
+# Conjunto padrao classico do ruff (pycodestyle E4/E7/E9 e pyflakes F), fixado
+# explicitamente para nao mudar quando o ruff alterar seus padroes, mais isort (I).
+select = ["E4", "E7", "E9", "F", "I"]
