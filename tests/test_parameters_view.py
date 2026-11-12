@@ -42,11 +42,10 @@ try:
         TIMELINE_WIDTH,
         SUMMARY_NEXT_BOUNDS,
         NAVIGATION_BOUNDS,
-        WEATHER_ICON_PATHS,
         WEATHER_PALETTE_BOUNDS,
-        WEATHER_TIMELINE_COLORS,
         WeatherConfigurationView,
     )
+    from frontend.arcade.theme import WEATHER_ICON_PATHS, WEATHER_TIMELINE_COLORS
 except ModuleNotFoundError as error:
     if error.name != "arcade":
         raise
