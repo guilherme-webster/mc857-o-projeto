@@ -443,7 +443,6 @@ class SimulationLoadingView(arcade.View):
             (f"{laps} voltas", 13, False),
             (f"Voltas {first}–{last}", 12, False),
             (f"Largada: {session.start_mode if session else 'Parada'}", 12, False),
-            (f"Motor: {self._plan.rules.engine}", 12, False),
         )
         for index, (text, size, bold) in enumerate(lines):
             self._text(

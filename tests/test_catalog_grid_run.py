@@ -55,7 +55,6 @@ class CatalogGridRunRouteTest(unittest.TestCase):
             total_laps=5,
             track_id="circuit:1",
             weather=[],
-            engine="detailed",
         )
 
 

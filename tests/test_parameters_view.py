@@ -814,26 +814,6 @@ class ParametersViewTest(unittest.TestCase):
         finally:
             self.window.set_size(*original_size)
 
-    def test_engine_rule_cycles_to_2d_and_reaches_the_race_setup(self) -> None:
-        from frontend.arcade.parameters_view import ENGINE_BOUNDS
-        from frontend.arcade.race_launcher import run_setup
-
-        view = self.ready_view()
-        self.window.show_view(view)
-        view.toggle_selected_track()
-        self.assertEqual(view.rules.engine, "Detalhado (calibrado)")
-        left, bottom, width, height = ENGINE_BOUNDS
-        x, y = self.to_window(view, left + width / 2, bottom + height / 2)
-
-        view.on_mouse_release(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
-
-        self.assertEqual(view.rules.engine, "2D com pit lane")
-        self.assertIn("pit lane", view.status_message)
-        plan = view.build_simulation_plan()
-        self.assertEqual(run_setup(plan.races[0], plan.rules)["engine"], "2d")
-        view.on_mouse_release(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
-        self.assertEqual(view.rules.engine, "Detalhado (calibrado)")
-
     def test_does_not_open_a_track_before_catalog_loads(self) -> None:
         view = ParametersView(track_catalog_loader=lambda: self.CATALOG)
         self.window.show_view(view)

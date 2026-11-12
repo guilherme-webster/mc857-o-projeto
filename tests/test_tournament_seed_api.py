@@ -69,7 +69,6 @@ class TournamentSeedSchemaTest(unittest.TestCase):
             total_laps=5,
             track_id="circuit:1",
             weather=[],
-            engine="detailed",
             tournament_seed=105,
             stage_index=3,
         )
