@@ -8,11 +8,17 @@ rede. ``attribute`` cria atributos neutros de piloto.
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 from f1_simulator.adapters.datasets.mock_track_geometry import MockTrackDatasetAdapter
 from f1_simulator.domain.driver_attributes import ATTRIBUTE_FIELDS, DriverAttributes
-from f1_simulator.domain.track_geometry import TrackGeometry
+from f1_simulator.domain.track_geometry import (
+    GeometryProvenance,
+    PitLanePoint,
+    TrackGeometry,
+    TrackPoint,
+)
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,3 +53,37 @@ def attribute(driver_id: str, **overrides: float) -> DriverAttributes:
         sources={name: "generated" for name in ATTRIBUTE_FIELDS},
         **values,
     )
+
+
+def small_geometry() -> TrackGeometry:
+    """Quadrado sintetico curto para exercitar o motor 2D sem fixture externa."""
+
+    provenance = GeometryProvenance(
+        source_name="test",
+        source_version="1",
+        source_year=2026,
+        generated_on=date(2026, 1, 1),
+        upstream=None,
+        upstream_data_license="CC0",
+        artifact_sha256="a" * 64,
+        manifest_sha256="b" * 64,
+        transformation="synthetic square",
+    )
+    points = tuple(
+        TrackPoint(index, x, y, distance)
+        for index, (x, y, distance) in enumerate(
+            (
+                (0.0, 0.0, 0.0),
+                (100.0, 0.0, 100.0),
+                (100.0, 100.0, 200.0),
+                (0.0, 100.0, 300.0),
+                (0.0, 0.0, 400.0),
+            )
+        )
+    )
+    pit_lane = (
+        PitLanePoint(0, 0.0, 90.0, 0.0, False),
+        PitLanePoint(1, -5.0, 50.0, 0.5, True),
+        PitLanePoint(2, 0.0, 10.0, 1.0, False),
+    )
+    return TrackGeometry("circuit:1", points, pit_lane, provenance, provenance)

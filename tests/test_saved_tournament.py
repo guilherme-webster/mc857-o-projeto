@@ -31,9 +31,11 @@ from f1_simulator.application.saved_tournament import (
     tournament_summary,
 )
 from f1_simulator.domain.driver_attributes import ATTRIBUTE_FIELDS, DriverAttributes
+from tests.geometry_support import fixture_geometry
 from tests.model_support import parameters
 
 GRID_SEED = 42
+GEOMETRY = fixture_geometry()
 TOURNAMENT_SEED = 109
 
 
@@ -290,15 +292,19 @@ class SavedTournamentRerunTest(unittest.TestCase):
                 patch.object(
                     catalog_service,
                     "_track_reference",
-                    return_value=("circuit:1", 4_000.0),
+                    return_value=("circuit:1", GEOMETRY.lap_length_m),
                 )
+            )
+            # O motor 2D exige geometria; usa a do fixture em vez de ler data/.
+            stack.enter_context(
+                patch.object(catalog_service, "_track_geometry", return_value=GEOMETRY)
             )
             client = TestClient(app)
             catalog_service._write_current_grid(*grid_objects())
 
             setups = [
                 {
-                    "total_laps": 4,
+                    "total_laps": 2,
                     "track_id": "circuit:1",
                     "tournament_seed": TOURNAMENT_SEED,
                     "stage_index": index,

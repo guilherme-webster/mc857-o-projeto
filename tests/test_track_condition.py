@@ -35,7 +35,7 @@ from f1_simulator.domain.weather import (
 )
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
 from tests.model_support import parameters
-from tests.test_run_grid_detailed import attribute, small_geometry
+from tests.geometry_support import attribute, small_geometry
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "trotman_v128_tracks_2025"

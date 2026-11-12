@@ -25,7 +25,10 @@ from f1_simulator.application.run_grid_simulation import (
 )
 from f1_simulator.domain.random_source import SeededRandomSource
 from tests.model_support import parameters
-from tests.test_run_grid_detailed import attribute
+from tests.geometry_support import attribute, fixture_geometry
+
+
+GEOMETRY = fixture_geometry()
 
 
 class FakeHistory:
@@ -198,7 +201,7 @@ class ReferenceLapsJsonTest(unittest.TestCase):
         self.assertTrue(80_000 < monza < 95_000)
 
 
-class DetailedGridReferenceTest(unittest.TestCase):
+class GridReferenceTest(unittest.TestCase):
     def setUp(self) -> None:
         self.grid = (GridEntry("driver:1", "Um", "team:x", "X"),)
         self.attributes = {"driver:1": attribute("driver:1")}
@@ -208,7 +211,8 @@ class DetailedGridReferenceTest(unittest.TestCase):
         return run_grid_simulation(
             self.grid,
             self.attributes,
-            RaceSetup(3, "circuit:1"),
+            RaceSetup(2, "circuit:1"),
+            geometry=GEOMETRY,
             parameters=self.parameters,
             rng=SeededRandomSource(1),
             race_control=None,
@@ -221,7 +225,7 @@ class DetailedGridReferenceTest(unittest.TestCase):
 
     def test_historical_reference_wins_over_pace_per_km(self) -> None:
         result = self._run(
-            lap_length_m=4_000.0,
+            lap_length_m=GEOMETRY.lap_length_m,
             reference_lap=ReferenceLap("circuit:1", 81_000.0, 3, (2022, 2023, 2024)),
         )
 
@@ -231,11 +235,11 @@ class DetailedGridReferenceTest(unittest.TestCase):
         self.assertEqual(assumption["historical_reference"]["races"], 3)
 
     def test_without_table_entry_falls_back_to_pace_per_km(self) -> None:
-        result = self._run(lap_length_m=4_000.0)
+        result = self._run(lap_length_m=GEOMETRY.lap_length_m)
 
         self.assertEqual(
             result["reference_lap_time_ms"],
-            4.0 * ASSUMED_REFERENCE_PACE_MS_PER_KM,
+            GEOMETRY.lap_length_m / 1_000.0 * ASSUMED_REFERENCE_PACE_MS_PER_KM,
         )
         assumption = self._reference_assumption(result)
         self.assertEqual(assumption["reference_source"], "assumed_pace_per_km")
@@ -244,7 +248,7 @@ class DetailedGridReferenceTest(unittest.TestCase):
     def test_reference_for_another_circuit_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             self._run(
-                lap_length_m=4_000.0,
+                lap_length_m=GEOMETRY.lap_length_m,
                 reference_lap=ReferenceLap("circuit:6", 77_000.0, 2, (2022, 2023)),
             )
 

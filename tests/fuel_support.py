@@ -9,7 +9,7 @@ calibrados.
 
 from __future__ import annotations
 
-from f1_simulator.domain.fuel import FuelModelParameters
+from f1_simulator.domain.fuel import FuelModelParameters, FuelPlan
 from tests.model_support import provenance
 
 REFERENCE_MS = 90_000.0
@@ -32,3 +32,12 @@ def fuel_parameters(**overrides) -> FuelModelParameters:
     )
     defaults.update(overrides)
     return FuelModelParameters(**defaults)
+
+
+def plan(**overrides) -> FuelPlan:
+    return FuelPlan(
+        parameters=fuel_parameters(**overrides),
+        reference_lap_ms=REFERENCE_MS,
+        lap_length_km=4.0,
+        lap_length_source="track_geometry",
+    )
