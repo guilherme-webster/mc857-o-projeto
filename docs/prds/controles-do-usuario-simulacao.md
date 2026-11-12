@@ -8,7 +8,7 @@ issues (PRs empilhados). Fator de largada final: 0,10, por decisão do usuário
 
 ## 1. Problema
 
-O frontend sempre usa o motor `detailed`. Hoje:
+(Estado em 2026-11-12: o motor `detailed` foi removido e o frontend usa so o 2D; o texto descreve o estado de 2026-10-30.) Na epoca, o frontend sempre usava o motor `detailed`. Hoje:
 
 - a penalidade calibrada de largada (`grid_penalty_ms_per_position = 782,4 ms`,
   `data/parameters/model-v1.json`) deixa P20 cerca de 15 s atrás antes da

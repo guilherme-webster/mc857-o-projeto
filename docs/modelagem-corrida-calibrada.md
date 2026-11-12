@@ -4,6 +4,8 @@ Relatório da fatia que substituiu o núcleo de ritmo constante por um modelo de
 tempo de volta decomposto, calibrado no histórico Trotman v128 e validado contra
 corridas reais não usadas na calibração.
 
+> **Estado em 2026-11-12 (#154).** O motor por volta (`simulate_detailed_race`, `domain/race_simulation.py`) foi removido de `src/` e arquivado em `TOBEDEFINED/`; o único motor é o 2D (`simulate_2d_race`, `domain/race_simulation_2d.py`, [ADR 0011](adr/0011-motor-2d-posicao-continua-ultrapassagem-e-colisao.md)), servido por `POST /catalog/grid/run` (e `/run/stream`). A nota de 16/10/2026 abaixo descreve o estado anterior. Mapa atual: [CODEBASE_MAP](CODEBASE_MAP.md).
+>
 > **Estado em 2026-10-16.** Este relatório registra o trabalho de 2026-09-24 e
 > seus resultados continuam valendo como histórico. Desde então:
 > - o motor detalhado é servido por `POST /catalog/grid/run`, com as

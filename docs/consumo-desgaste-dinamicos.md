@@ -1,7 +1,7 @@
 # Consumo e desgaste dinâmicos — issue #104
 
 Implementação no motor **2D**, conforme o [ADR 0014](adr/0014-consumo-e-desgaste-por-movimento.md).
-O motor `detailed` preserva os contratos por volta. O 2D consome movimento em
+(Em 2026-11-12 o motor `detailed` foi removido; o 2D e o unico motor.) O motor `detailed` preservava os contratos por volta. O 2D consome movimento em
 `domain/dynamic_usage.py`; Arcade apresenta os resultados HTTP sem calcular
 consumo ou desgaste. Nenhuma dependência foi acrescentada.
 

@@ -174,7 +174,7 @@ sorteados por arquetipo, os perfis ficticios nomeados de
 caracterizacao de cada perfil aplicado e o aviso de que os perfis sao
 ficticios.
 
-`POST /catalog/grid/run` roda o motor detalhado (combustivel, pneus, paradas,
+`POST /catalog/grid/run` roda o motor 2D (combustivel, pneus, paradas,
 disputas, abandonos, safety car, bandeiras e clima) e devolve o historico volta
 a volta, a classificacao, a largada (`starting_grid`), os eventos do controle de
 prova e, em `assumptions`, todos os parametros heuristicos e assumidos usados.
@@ -362,12 +362,11 @@ pilotos, se não houver), roda cada etapa em `POST /catalog/grid/run` numa threa
 e abre a reprodução da primeira. Intervalo de voltas da sessão e largada lançada
 ainda não são suportados pelo motor: viram avisos na tela da corrida.
 
-A regra **Motor da corrida** escolhe o motor de todas as etapas e é salva com
-o torneio. **Detalhado (calibrado)** é o padrão (ADR 0011). **2D com pit
-lane** envia `setup.engine="2d"`: os carros se movem no plano da pista e
-entram, param e saem pela pit lane, que a reprodução desenha. Cada etapa do 2D
-leva cerca de 15 s para simular (Interlagos, 71 voltas), contra menos de 1 s
-do detalhado.
+Ha um unico motor, o 2D com pit lane (ADR 0011): os carros se movem no plano da
+pista e entram, param e saem pela pit lane, que a reproducao desenha. Cada etapa
+leva cerca de 15 s para simular (Interlagos, 71 voltas), com progresso por volta
+na tela de carregamento. O antigo motor por volta e o seletor de motor foram
+removidos; registros salvos antigos com `engine` continuam abrindo.
 
 ### Pilotos e grid (`GridView`)
 

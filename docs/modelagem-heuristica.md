@@ -12,6 +12,16 @@ Combustível e reabastecimento (§6 e tabelas) conferidos em 2026-10-23, branch
 [ADR 0009](adr/0009-combustivel-por-massa-e-reabastecimento.md).
 Se um número aqui divergir do código, **vale o código**: atualize este arquivo.
 
+> **Nota de estado (2026-11-12, #154).** O motor por volta (`simulate_detailed_race`,
+> `run_detailed_grid_simulation`, `disputes.py`, `lap_time.py`) foi removido de
+> `src/`; o único motor é o 2D (`simulate_2d_race`, ADR 0011), montado por
+> `run_grid_simulation`. As seções abaixo que falam em "motor detalhado" ou
+> "motor por volta" descrevem o comportamento anterior e valem como registro:
+> o que continua vigente no 2D está dito nas seções 6, 9 e no ADR 0014. O
+> impacto da posição de largada (`grid_start`, §7.2) está arquivado em
+> [`TOBEDEFINED/`](../TOBEDEFINED/README.md) (#152); a #108 pode reaproveitá-lo.
+> Limitações conhecidas do 2D em §9.
+
 ## 1. Princípios
 
 - **Heurístico, não medido.** O professor aceitou modelagem por heurísticas e o
@@ -51,7 +61,7 @@ mesma versão de código, Python, parâmetros e dados, não entre versões.
 | Atributos e arquétipos | `domain/driver_attributes.py`, `application/generate_attributes.py` | `ASSUMED_ARCHETYPES` (`assumed-driver-attributes-v2`) |
 | Perfis fictícios nomeados | `configs/drivers/perfis-ficticios.json`, `adapters/driver_presets_json.py` | `fictional-driver-presets-v1` |
 | Efeito dos atributos no tempo | `domain/attribute_effects.py` | `DETAILED_TYRE_MANAGEMENT` (`detailed-tyre-management-v1`) |
-| Disputa de posição | `domain/disputes.py` | `DEFAULT_DISPUTE_HEURISTICS` (`dispute-pressure-v1`) |
+| Disputa de posição | `domain/disputes.py` (arquivado em `TOBEDEFINED/disputes.py`; no 2D a disputa emerge da proximidade espacial) | `DEFAULT_DISPUTE_HEURISTICS` (`dispute-pressure-v1`) |
 | SC, VSC e bandeiras | `domain/race_control.py` | `HEURISTIC_RACE_CONTROL` (`heuristic-race-control-v2`) |
 | Paradas | `domain/strategy.py` (`HeuristicPitStrategy`) | `DEFAULT_HEURISTIC_PIT_PARAMETERS` (`heuristic-pit-v1`) |
 | Combustível por massa | `domain/fuel.py` (`FuelModelParameters`, `FuelPlan`, `fuel_lap`), `data/parameters/fuel-v1.json` | `fuel-trotman-v128-2022-2023` (coeficiente calibrado; consumo, reserva e fatores `assumed`) |
@@ -63,9 +73,9 @@ mesma versão de código, Python, parâmetros e dados, não entre versões.
 | Clima e estado da pista | `domain/weather.py` (`step_weather`, `simulate_weather`), `domain/track_condition.py` (`simulate_track_conditions`) | `ASSUMED_WEATHER_PARAMETERS` (`assumed-weather-per-lap-v1`, por volta de referência de 1,5 min), `ASSUMED_TRACK_CONDITION` (`assumed-track-condition-v1`) |
 | Tempo de volta físico | `domain/speed_dynamics.py` (`CarPhysics`, `physics_for`, `GripLapTimes`), `application/calibrate_car_physics.py` | `data/parameters/car-physics-v1.json` (`mu` e `C_L·A` estimados; demais campos `assumed`), ADR 0015 |
 | Composto de largada | `application/run_grid_simulation.py` | `assumed-grid-starting-compound-v1` (MEDIUM para todos) |
-| Impacto temporal do grid | `domain/grid_start.py`, aplicado por `domain/race_simulation.py` | `data/parameters/grid-start-v1.json` (`heuristic-grid-start-v1`) |
-| Ligação ao grid | `application/run_grid_simulation.py` (`run_detailed_grid_simulation`) | ritmo de reserva `ASSUMED_REFERENCE_PACE_MS_PER_KM` |
-| Motor | `domain/race_simulation.py` (`simulate_detailed_race`) | — |
+| Impacto temporal do grid (**arquivado**, sem consumidor; #152) | `TOBEDEFINED/grid_start.py` (antes `domain/grid_start.py`, aplicado por `domain/race_simulation.py`) | `TOBEDEFINED/grid-start-v1.json` (antes `data/parameters/grid-start-v1.json`; `heuristic-grid-start-v1`) |
+| Ligação ao grid | `application/run_grid_simulation.py` (`run_grid_simulation`; antes `run_detailed_grid_simulation`) | ritmo de reserva `ASSUMED_REFERENCE_PACE_MS_PER_KM` |
+| Motor | `domain/race_simulation_2d.py` (`simulate_2d_race`); o `simulate_detailed_race` está arquivado em `TOBEDEFINED/race_simulation.py` | — |
 | Física calibrada (colega, #40) | `data/parameters/model-v1.json` | `trotman-v128-2022-2023` |
 
 ## 3. Atributos de piloto
@@ -309,6 +319,12 @@ pode deslocar o resultado em uma ou duas voltas.
 
 ### 7.2 Impacto da posição de largada (#108)
 
+> **Arquivado em 2026-11-12 (#152).** `grid_start.py`, o adaptador
+> `grid_start_parameters_json.py` e `grid-start-v1.json` estão em
+> [`TOBEDEFINED/`](../TOBEDEFINED/README.md), sem consumidor desde a remoção do
+> motor por volta; o 2D larga em filas de dois por física. O texto abaixo
+> descreve o comportamento do motor por volta.
+
 O coeficiente `grid_penalty_ms_per_position = 782,4 ms` continua sendo o valor
 **calibrado** de `model-v1.json`. O motor detalhado multiplica esse coeficiente
 uma única vez pelo fator **heurístico** 0,10 de `grid-start-v1.json`: o efeito
@@ -376,7 +392,7 @@ protocolo sintético e não transforma o fator em coeficiente calibrado.
 | Como os pilotos tratam o combustível | `FuelTraitHeuristics` em `domain/strategy.py` |
 | O efeito do combustível no tempo de volta | `scripts/calibrate_fuel.py --database ... --seasons 2022 2023 --validate-seasons 2024 2025` |
 | Tempos de volta das pistas | `scripts/build_reference_laps.py --database ... --seasons ...` |
-| Impacto temporal da posição de largada | `grid_start_penalty_factor` em `data/parameters/grid-start-v1.json`; depois rode `scripts/analyze_grid_start_sensitivity.py` |
+| Impacto temporal da posição de largada (arquivado) | `grid_start_penalty_factor` em `TOBEDEFINED/grid-start-v1.json`; depois rode `scripts/analyze_grid_start_sensitivity.py` |
 
 Ao mudar um valor: incremente o `parameter_version`, atualize o `rationale` e
 esta página, e rode a suíte. Testes que dependem de valores exatos usam os
@@ -403,6 +419,11 @@ próprios parâmetros, não números fixos.
 - **Deslocamento por equipe fraco em 2025.** Previu as paradas de 2025 pior
   que tratar todas as equipes iguais (131 contra 118 ms).
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
+- **Limitações conhecidas do motor 2D** (registradas em 2026-11-12, sem decisão
+  tomada): não reabastece nem faz lift-and-coast, e todos largam com a mesma
+  carga de combustível; a assumption de gestão de pneus não é declarada em
+  `assumptions`; abandono sem disputa vira `mechanical`; em `speed_breakdown`
+  a troca de pneu aparece defasada uma volta em relação à parada.
 - **Clima só no tempo de volta.** Água e borracha viram um fator de
   aderência (`domain/track_condition.py`, ADR 0015) que o motor físico
   converte em tempo pela geometria: pista saturada custa ~27% em Mônaco e
