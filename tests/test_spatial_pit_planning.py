@@ -17,7 +17,7 @@ from f1_simulator.domain.strategy import (
 from f1_simulator.domain.tyres import TyreSet
 from tests.model_support import parameters, track
 from tests.test_pit_lane import pit_geometry
-from tests.test_run_grid_detailed import attribute
+from tests.geometry_support import attribute
 
 
 class SpatialPitPolicyTest(unittest.TestCase):

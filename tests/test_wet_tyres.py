@@ -31,7 +31,7 @@ from f1_simulator.domain.wet_tyres import (
     wear_factor,
 )
 from tests.model_support import parameters, track
-from tests.test_run_grid_detailed import attribute
+from tests.geometry_support import attribute
 from tests.test_track_condition import _fixture_geometry
 
 

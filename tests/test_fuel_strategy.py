@@ -34,7 +34,7 @@ from f1_simulator.domain.tyres import TyreSet
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
 from tests.model_support import parameters, track
 from tests.test_fuel import REFERENCE_MS, fuel_parameters, plan, quiet_model
-from tests.test_run_grid_detailed import attribute
+from tests.geometry_support import attribute
 
 #: Perda de parada usada nos estados de teste (ms).
 STOP_LOSS_MS = 20_000.0

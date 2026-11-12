@@ -25,7 +25,7 @@ from f1_simulator.application.run_grid_simulation import (
 )
 from f1_simulator.domain.random_source import SeededRandomSource
 from tests.model_support import parameters
-from tests.test_run_grid_detailed import attribute
+from tests.geometry_support import attribute
 
 
 class FakeHistory:
