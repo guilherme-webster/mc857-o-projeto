@@ -1,3 +1,7 @@
+# ARQUIVADO em 2026-11-12 (issue #152): sem consumidor desde a remocao do
+# motor por volta; o motor 2D larga em filas de dois por fisica. Mantido, nao
+# apagado, porque a issue #108 (impacto da posicao de largada) pode
+# reaproveitar o material. Ver TOBEDEFINED/README.md.
 """Leia o artefato versionado da heuristica de largada.
 
 O adaptador e a fronteira entre JSON e o objeto validado do dominio. Ele exige
