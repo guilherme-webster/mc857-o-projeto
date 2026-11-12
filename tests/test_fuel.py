@@ -22,16 +22,7 @@ from f1_simulator.domain.fuel import (
     FuelPlan,
     fuel_lap,
 )
-from tests.fuel_support import REFERENCE_MS, fuel_parameters
-
-def plan(**overrides) -> FuelPlan:
-    return FuelPlan(
-        parameters=fuel_parameters(**overrides),
-        reference_lap_ms=REFERENCE_MS,
-        lap_length_km=4.0,
-        lap_length_source="track_geometry",
-    )
-
+from tests.fuel_support import REFERENCE_MS, fuel_parameters, plan
 
 class FuelPlanTest(unittest.TestCase):
     def test_burn_and_sensitivity_follow_length_and_lap_time(self) -> None:
