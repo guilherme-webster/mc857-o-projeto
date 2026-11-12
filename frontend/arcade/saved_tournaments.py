@@ -24,10 +24,17 @@ from frontend.arcade.configuration_state import (
     ConfigurationFormData,
     PlannedRace,
     SessionConfiguration,
+    SimulationPlan,
     TournamentRules,
     WeatherSchedule,
 )
-from frontend.arcade.race_launcher import LaunchedRace, LaunchOutcome, run_setup
+from frontend.arcade.race_launcher import (
+    LaunchCancelled,
+    LaunchedRace,
+    LaunchOutcome,
+    LaunchProgress,
+    run_setup,
+)
 from frontend.arcade.tournament_session import TournamentSession
 
 
@@ -36,7 +43,9 @@ class TournamentClient(Protocol):
 
     def restore_grid(self, tournament_id: str) -> dict: ...
 
-    def run_grid(self, setup: dict) -> dict: ...
+    def run_grid(
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+    ) -> dict: ...
 
     def fetch_track(self, circuit_id: str) -> dict: ...
 
@@ -95,28 +104,85 @@ def reopen(
     )
 
 
+def plan_from_record(record: dict) -> SimulationPlan:
+    """Plano de exibicao de um torneio salvo, para a tela de carregamento.
+
+    A ``SimulationLoadingView`` desenha o grid, a etapa em foco e o clima a
+    partir de um ``SimulationPlan``. Aqui ele e so a descricao do que sera
+    reexecutado: quem manda no que vai ao backend e o ``setup`` salvo de cada
+    etapa (ver ``rerun``), nunca este plano.
+    """
+
+    return SimulationPlan(
+        tuple(_planned(stage) for stage in record["stages"]),
+        _rules(record),
+        record.get("tournament_seed"),
+    )
+
+
 def rerun(
     record: dict,
     client: TournamentClient,
     progress: Callable[[str], None] = lambda message: None,
+    *,
+    stage_progress: Callable[[LaunchProgress], None] = lambda item: None,
+    cancelled: Callable[[], bool] = lambda: False,
 ) -> LaunchOutcome:
     """Restaure o grid congelado e rode cada etapa de novo com o setup salvo.
 
     O grid e restaurado uma vez, antes da primeira etapa: o ``setup`` nao
     carrega o grid, entao rodar sem restaurar usaria o grid atual do backend.
+
+    ``progress`` recebe frases de status; ``stage_progress`` recebe o mesmo
+    estado estruturado (etapa e volta) que ``launch_plan`` publica, para a tela
+    de carregamento. ``cancelled`` e consultado antes de cada etapa: se
+    disparar, levanta ``LaunchCancelled``. A etapa em curso nao e interrompida
+    (o backend ja a recebeu) e o grid ja restaurado continua sendo o atual.
     """
 
-    progress("Restaurando o grid salvo…")
+    restoring = "Restaurando o grid salvo…"
+    progress(restoring)
+    stage_progress(LaunchProgress(restoring))
     client.restore_grid(record["id"])
     rules = _rules(record)
     total = len(record["stages"])
     races = []
     for index, stage in enumerate(record["stages"]):
-        progress(f"Reexecutando etapa {index + 1}/{total}: {stage['name']}…")
-        race = client.run_grid(stage["setup"])
-        races.append(
-            LaunchedRace(_planned(stage), race, client.fetch_track(stage["circuit_id"]))
+        if cancelled():
+            raise LaunchCancelled()
+        planned = _planned(stage)
+        laps = planned.configuration.laps
+        message = f"Reexecutando etapa {index + 1}/{total}: {stage['name']}…"
+        progress(message)
+        stage_progress(
+            LaunchProgress(
+                message,
+                stage_index=index + 1,
+                total_stages=total,
+                stage_name=stage["name"],
+                laps=laps,
+            )
         )
+
+        def on_lap(
+            lap: int, laps_total: int, _index: int = index, _stage: dict = stage
+        ) -> None:
+            stage_progress(
+                LaunchProgress(
+                    f"Reexecutando etapa {_index + 1}/{total}: {_stage['name']} — "
+                    f"volta {lap}/{laps_total}",
+                    stage_index=_index + 1,
+                    total_stages=total,
+                    stage_name=_stage["name"],
+                    lap=lap,
+                    laps=laps_total,
+                )
+            )
+
+        # O setup salvo e reenviado intacto: e ele (com a semente do torneio e
+        # o indice da etapa) que faz a reexecucao reproduzir a corrida salva.
+        race = client.run_grid(stage["setup"], on_lap)
+        races.append(LaunchedRace(planned, race, client.fetch_track(stage["circuit_id"])))
     return LaunchOutcome(
         tuple(races),
         _note(record, "reexecutado com o grid salvo"),
@@ -124,6 +190,22 @@ def rerun(
         rules,
         record.get("tournament_seed"),
     )
+
+
+def rerun_runner(
+    record: dict, client: TournamentClient
+) -> Callable[[SimulationPlan, Callable[[LaunchProgress], None], Callable[[], bool]], LaunchOutcome]:
+    """Runner no formato da ``SimulationLoadingView`` para reexecutar ``record``.
+
+    O ``plan`` recebido e ignorado de proposito: a tela o usa so para desenhar;
+    o que roda sao os ``setup`` do registro.
+    """
+
+    def runner(plan, progress, cancelled):
+        del plan
+        return rerun(record, client, stage_progress=progress, cancelled=cancelled)
+
+    return runner
 
 
 def session_from_outcome(outcome: LaunchOutcome) -> TournamentSession:
@@ -141,8 +223,11 @@ class HttpTournamentClient:
     def restore_grid(self, tournament_id: str) -> dict:
         return track_client.restore_tournament_grid(tournament_id)
 
-    def run_grid(self, setup: dict) -> dict:
-        return track_client.run_grid(setup)
+    def run_grid(
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+    ) -> dict:
+        # SSE por volta; cai no POST sincrono se o backend nao tem a rota (404).
+        return track_client.run_grid_stream(setup, on_progress=on_lap)
 
     def fetch_track(self, circuit_id: str) -> dict:
         return track_client.fetch_track(circuit_id)

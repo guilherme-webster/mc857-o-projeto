@@ -27,8 +27,9 @@ from frontend.arcade import track_client
 from frontend.arcade.race_launcher import LaunchOutcome
 from frontend.arcade.saved_tournaments import (
     HttpTournamentClient,
+    plan_from_record,
     reopen,
-    rerun,
+    rerun_runner,
     session_from_outcome,
 )
 from frontend.arcade.theme import (
@@ -81,8 +82,8 @@ class SavedTournamentsView(arcade.View):
         lister: Callable[[], dict] = track_client.fetch_saved_tournaments,
         loader: Callable[[str], dict] = track_client.fetch_saved_tournament,
         reopener: Callable[[dict], LaunchOutcome] = reopen,
-        rerunner: Callable[[dict, Callable[[str], None]], LaunchOutcome] = (
-            lambda record, progress: rerun(record, HttpTournamentClient(), progress)
+        rerunner: Callable[[dict], Callable[..., LaunchOutcome]] = (
+            lambda record: rerun_runner(record, HttpTournamentClient())
         ),
         race_lister: Callable[[], dict] = track_client.fetch_saved_races,
         race_renamer: Callable[[str, str], dict] = track_client.rename_saved_race,
@@ -159,12 +160,43 @@ class SavedTournamentsView(arcade.View):
         )
 
     def rerun_saved(self, tournament_id: str) -> None:
-        """Restaure o grid salvo e simule de novo cada etapa."""
+        """Restaure o grid salvo e simule de novo cada etapa.
+
+        So o registro e buscado fora da janela; a reexecucao em si roda na
+        ``SimulationLoadingView`` (grid, etapa em foco, progresso por volta e
+        abortar), a mesma de uma simulacao nova.
+        """
 
         self._run(
-            "open",
-            lambda progress: self._rerunner(self._loader(tournament_id), progress),
-            "Reexecutando o torneio…",
+            "rerun",
+            lambda progress: self._loader(tournament_id),
+            "Carregando o torneio salvo…",
+        )
+
+    def show_message(self, message: str, color) -> None:
+        """Aviso da tela de carregamento ao voltar (abortou ou deu erro)."""
+
+        self._set_status(message, color)
+
+    def _start_rerun(self, record: dict) -> None:
+        from frontend.arcade.simulation_loading_view import SimulationLoadingView
+
+        try:
+            plan = plan_from_record(record)
+            runner = self._rerunner(record)
+        except (KeyError, TypeError, ValueError) as error:
+            self._set_status(f"Não foi possível reexecutar o torneio: {error}", ERROR_COLOR)
+            return
+        self.window.show_view(
+            SimulationLoadingView(
+                plan,
+                runner,
+                return_view=self,
+                on_done=self._show_outcome,
+                # O grid que sera restaurado esta no registro; o grid atual do
+                # backend ainda e outro ate o restore-grid rodar.
+                grid_loader=lambda: record.get("grid"),
+            )
         )
 
     def open_race(self, race_id: str) -> None:
@@ -262,6 +294,8 @@ class SavedTournamentsView(arcade.View):
                 self._show_race(payload)
             elif kind == "open":
                 self._show_outcome(payload)
+            elif kind == "rerun":
+                self._start_rerun(payload)
             elif kind == "renamed":
                 self._apply_rename(payload)
                 self._set_status("Nome atualizado.", SECONDARY_TEXT_COLOR)
