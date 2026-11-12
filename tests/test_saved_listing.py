@@ -14,9 +14,8 @@ BACKEND = str(ROOT / "backend")
 if BACKEND not in sys.path:
     sys.path.insert(0, BACKEND)
 
-from fastapi import HTTPException  # noqa: E402
-
 from app.services import catalog as catalog_service  # noqa: E402
+from fastapi import HTTPException  # noqa: E402
 
 from frontend.arcade.saved_tournaments_view import (  # noqa: E402
     renamed_items,

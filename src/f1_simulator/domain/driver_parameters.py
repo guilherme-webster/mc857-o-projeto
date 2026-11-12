@@ -5,7 +5,7 @@ contract. The exact observed context limits this first experiment to one lap.
 """
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from math import isfinite
 
 from f1_simulator.domain.driver_profile import PaceContext

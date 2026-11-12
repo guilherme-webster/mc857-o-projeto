@@ -21,8 +21,8 @@ from f1_simulator.domain.strategy import (
 from f1_simulator.domain.track_geometry import pit_entry_lap_fraction
 from f1_simulator.domain.tyres import TyreSet
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
-from tests.model_support import parameters, track
 from tests.fuel_support import plan
+from tests.model_support import parameters, track
 
 #: Perda de parada usada nos estados de teste (ms).
 STOP_LOSS_MS = 20_000.0

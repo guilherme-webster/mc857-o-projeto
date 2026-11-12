@@ -10,7 +10,6 @@ from f1_simulator.adapters.datasets.trotman import TrotmanDatasetAdapter
 from f1_simulator.adapters.persistence.sqlite_race_data import SQLiteRaceDataWriter
 from f1_simulator.factories.race_data_factory import RaceDataFactory
 
-
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "trotman_v128_sample"
 

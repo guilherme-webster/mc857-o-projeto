@@ -6,6 +6,7 @@ import json
 import unittest
 from pathlib import Path
 
+
 class TrackGeometryDataTest(unittest.TestCase):
     def test_versioned_interlagos_fixture_matches_its_manifest(self) -> None:
         root = Path(__file__).resolve().parents[1]

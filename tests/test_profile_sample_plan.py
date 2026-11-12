@@ -1,10 +1,10 @@
 """Keep previously inspected races out of the new reserved evaluation sample."""
 
-from dataclasses import asdict
 import hashlib
 import json
-from pathlib import Path
 import unittest
+from dataclasses import asdict
+from pathlib import Path
 
 from scripts.evaluate_profiles import load_plan
 

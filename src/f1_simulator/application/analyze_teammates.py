@@ -1,8 +1,8 @@
 """Build matched teammate evidence through canonical Python repositories."""
 
-from dataclasses import asdict
 import hashlib
 import json
+from dataclasses import asdict
 
 from f1_simulator.application.ports.history import HistoryRepository
 from f1_simulator.application.profile_drivers import profile_drivers

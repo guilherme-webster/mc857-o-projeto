@@ -9,7 +9,6 @@ import sqlite3
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
@@ -64,6 +63,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     """Compose concrete adapters and report expected ingestion errors to the CLI."""
 
+    from f1_simulator.adapters.datasets.mock_track_geometry import (
+        MockTrackDatasetAdapter,
+        MockTrackDatasetError,
+    )
     from f1_simulator.adapters.datasets.trotman import (
         TrotmanDatasetAdapter,
         TrotmanDatasetError,
@@ -71,10 +74,6 @@ def main() -> int:
     from f1_simulator.adapters.persistence.sqlite_race_data import SQLiteRaceDataWriter
     from f1_simulator.application.etl import run_race_etl
     from f1_simulator.factories.race_data_factory import RaceDataValidationError
-    from f1_simulator.adapters.datasets.mock_track_geometry import (
-        MockTrackDatasetAdapter,
-        MockTrackDatasetError,
-    )
     from f1_simulator.factories.track_geometry_factory import (
         TrackGeometryValidationError,
     )

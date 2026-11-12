@@ -14,7 +14,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "docs" / "backlog.md"
 API_VERSION = "2026-03-10"

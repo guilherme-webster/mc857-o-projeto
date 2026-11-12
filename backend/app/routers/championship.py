@@ -24,6 +24,8 @@ def championship_standings(request: ChampionshipRequest) -> ChampionshipResponse
 
     from f1_simulator.domain.championship import (
         StageResult,
+    )
+    from f1_simulator.domain.championship import (
         championship_standings as compute,
     )
 

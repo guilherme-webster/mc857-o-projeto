@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from app.services import race_inspection
 from fastapi import APIRouter, Query
+
+from app.services import race_inspection
 
 router = APIRouter(prefix="/api/etl", tags=["Race Inspector (ETL A)"])
 

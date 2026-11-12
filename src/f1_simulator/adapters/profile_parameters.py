@@ -1,8 +1,8 @@
 """Translate a complete profiling run into scoped simulation parameters."""
 
-from dataclasses import asdict
 import hashlib
 import json
+from dataclasses import asdict
 
 from f1_simulator.application.profile_drivers import ProfileRun
 from f1_simulator.domain.driver_parameters import DriverPaceParameters

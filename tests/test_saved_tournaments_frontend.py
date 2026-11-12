@@ -12,13 +12,17 @@ from frontend.arcade.configuration_state import (
     TournamentRules,
     WeatherSchedule,
 )
-from frontend.arcade.race_launcher import LaunchedRace, launch_plan
-from frontend.arcade.race_launcher import LaunchCancelled, LaunchProgress
+from frontend.arcade.race_launcher import (
+    LaunchCancelled,
+    LaunchedRace,
+    LaunchProgress,
+    launch_plan,
+)
 from frontend.arcade.saved_tournaments import (
     plan_from_record,
     reopen,
-    rerun_runner,
     rerun,
+    rerun_runner,
     save_request,
     session_from_outcome,
 )

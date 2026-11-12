@@ -1,5 +1,4 @@
 from __future__ import annotations
-from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass
@@ -8,17 +7,17 @@ from typing import Literal
 
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.car_presets import CarPreset
-from f1_simulator.application.team_presets import TeamPreset
 from f1_simulator.application.reference_laps import (
     METHOD_VERSION as REFERENCE_LAPS_METHOD_VERSION,
 )
 from f1_simulator.application.reference_laps import ReferenceLap
+from f1_simulator.application.team_presets import TeamPreset
 from f1_simulator.domain.driver_attributes import DriverAttributes
 from f1_simulator.domain.fuel import (
     FuelModelParameters,
     FuelPlan,
 )
-from f1_simulator.domain.model_parameters import ModelParameters
+from f1_simulator.domain.model_parameters import ASSUMED_WET_COMPOUNDS, ModelParameters
 from f1_simulator.domain.race_control import (
     HEURISTIC_RACE_CONTROL,
     RaceControlParameters,
@@ -29,21 +28,14 @@ from f1_simulator.domain.random_source import (
     derive_tournament_stage_random_source,
     uniform_index,
 )
-from f1_simulator.domain.track_geometry import TrackGeometry
-from f1_simulator.domain.strategy import (
-    DEFAULT_HEURISTIC_PIT_PARAMETERS,
-    draw_weather_switch_bias,
-)
-from f1_simulator.domain.wet_tyres import (
-    ASSUMED_WET_TYRES,
-    SLICK,
-    best_tyre_class,
-)
-from f1_simulator.domain.model_parameters import ASSUMED_WET_COMPOUNDS
 from f1_simulator.domain.speed_dynamics import (
     DEFAULT_CAR_PHYSICS,
     CarPhysics,
     car_pace_to_physics,
+)
+from f1_simulator.domain.strategy import (
+    DEFAULT_HEURISTIC_PIT_PARAMETERS,
+    draw_weather_switch_bias,
 )
 from f1_simulator.domain.track_condition import (
     ASSUMED_TRACK_CONDITION,
@@ -51,11 +43,17 @@ from f1_simulator.domain.track_condition import (
     TrackState,
     simulate_track_conditions,
 )
+from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.weather import (
     ASSUMED_WEATHER_PARAMETERS,
     RainLevel,
     WeatherSegment,
     expand_segments,
+)
+from f1_simulator.domain.wet_tyres import (
+    ASSUMED_WET_TYRES,
+    SLICK,
+    best_tyre_class,
 )
 
 _REFERENCE_PACE_RATIONALE = (

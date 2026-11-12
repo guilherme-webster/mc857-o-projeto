@@ -19,7 +19,6 @@ from f1_simulator.application.ports.race_data import (
 )
 from f1_simulator.factories.race_data_factory import RaceDataFactory
 
-
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "trotman_v128_sample"
 

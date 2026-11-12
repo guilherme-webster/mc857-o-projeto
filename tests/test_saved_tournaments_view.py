@@ -17,7 +17,11 @@ try:
         TournamentRules,
         WeatherSchedule,
     )
-    from frontend.arcade.race_launcher import LaunchedRace, LaunchOutcome, LaunchProgress
+    from frontend.arcade.race_launcher import (
+        LaunchedRace,
+        LaunchOutcome,
+        LaunchProgress,
+    )
     from frontend.arcade.saved_tournaments_view import SavedTournamentsView
     from frontend.arcade.tournament_session import TournamentSession
     from frontend.arcade.tournament_view import TournamentResultView

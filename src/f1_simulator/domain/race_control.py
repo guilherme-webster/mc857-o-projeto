@@ -30,7 +30,6 @@ from typing import Literal, TypeAlias
 
 from f1_simulator.domain.random_source import RandomSource
 
-
 IncidentKind: TypeAlias = Literal["contact", "solo_crash", "mechanical"]
 RaceControlEvent: TypeAlias = dict[str, object]
 

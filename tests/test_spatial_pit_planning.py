@@ -1,7 +1,7 @@
 """Regressão: o grid 2D não deve esperar inteiro pelo último prazo comum."""
 
-from dataclasses import replace
 import unittest
+from dataclasses import replace
 
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
@@ -15,9 +15,9 @@ from f1_simulator.domain.strategy import (
     StrategyState,
 )
 from f1_simulator.domain.tyres import TyreSet
+from tests.geometry_support import attribute
 from tests.model_support import parameters, track
 from tests.test_pit_lane import pit_geometry
-from tests.geometry_support import attribute
 
 
 class SpatialPitPolicyTest(unittest.TestCase):

@@ -21,7 +21,6 @@ from math import erf, isfinite, sqrt
 from random import Random
 from typing import Protocol
 
-
 MAX_TRUNCATED_STANDARD_NORMAL_ATTEMPTS = 10_000
 """Numero maximo de sorteios antes de declarar a truncagem inviavel."""
 

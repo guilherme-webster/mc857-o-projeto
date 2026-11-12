@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, time
 from collections.abc import Mapping
+from datetime import date, datetime, time
 
 from f1_simulator.domain.history import HistoricalRecord, Scalar, Table
 

@@ -11,7 +11,6 @@ from threading import Thread
 import arcade
 from arcade.gui import UIDropdown, UIFlatButton, UIInputText, UIView
 
-from frontend.arcade.clipboard import handle_clipboard_shortcut
 from frontend.arcade.canvas_fit import (
     MINIMUM_WINDOW_SIZE,
     CanvasFit,
@@ -19,21 +18,22 @@ from frontend.arcade.canvas_fit import (
     make_canvas_camera,
     screen_size_in_window_units,
 )
+from frontend.arcade.clipboard import handle_clipboard_shortcut
 from frontend.arcade.configuration_layout import (
     Control,
     build_initial_configuration_layout,
 )
 from frontend.arcade.configuration_state import (
     PRESET_OPTIONS,
+    SCORING_OPTIONS,
+    TIEBREAK_OPTIONS,
+    WEATHER_MODE_OPTIONS,
     ConfigurationFormData,
     ConfigurationFormError,
     PlannedRace,
-    SCORING_OPTIONS,
     SessionConfiguration,
     SimulationPlan,
-    TIEBREAK_OPTIONS,
     TournamentRules,
-    WEATHER_MODE_OPTIONS,
     WeatherSchedule,
     automatic_track_order,
     configuration_for_track,
@@ -47,8 +47,6 @@ from frontend.arcade.race_launcher import (
     LaunchProgress,
     launch_plan,
 )
-from frontend.arcade.track_client import fetch_track, fetch_tracks
-from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 from frontend.arcade.theme import (
     ACCENT_COLOR,
     BACKGROUND_COLOR,
@@ -59,6 +57,8 @@ from frontend.arcade.theme import (
     SECONDARY_TEXT_COLOR,
     SUCCESS_COLOR,
 )
+from frontend.arcade.track_client import fetch_track, fetch_tracks
+from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
 RULES_PANEL_BOUNDS = (28, 214, 544, 362)
 TRACK_CARD_BOUNDS = (586, 76, 666, 500)
@@ -666,9 +666,8 @@ class ParametersView(UIView):
         self._set_status(message, color)
 
     def _open_simulated_race(self, outcome: LaunchOutcome) -> None:
-        from frontend.arcade.track_view import TrackView
-
         from frontend.arcade.tournament_session import TournamentSession
+        from frontend.arcade.track_view import TrackView
 
         first = outcome.races[0]
         notices = (outcome.grid_note, *outcome.warnings)

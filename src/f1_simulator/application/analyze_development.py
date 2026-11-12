@@ -1,9 +1,9 @@
 """Explore only development sessions; the reserved sample is never profiled."""
 
-from collections import defaultdict
-from dataclasses import asdict, replace
 import hashlib
 import json
+from collections import defaultdict
+from dataclasses import asdict, replace
 from statistics import median
 
 from f1_simulator.application.ports.history import HistoryRepository

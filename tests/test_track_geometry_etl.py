@@ -33,7 +33,6 @@ from f1_simulator.factories.track_geometry_factory import (
     TrackGeometryValidationError,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "trotman_v128_sample"
 GEOMETRY = ROOT / "tests" / "fixtures" / "trotman_v128_tracks_2025"

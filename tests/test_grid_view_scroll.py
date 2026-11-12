@@ -12,10 +12,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 try:
-    import arcade
+    import arcade  # noqa: F401  (sonda de disponibilidade do arcade)
 
     from frontend.arcade.grid_editor import ATTRIBUTES
-    from frontend.arcade.grid_view import ROW_HEIGHT, _TABLE_COLUMNS, GridView
+    from frontend.arcade.grid_view import _TABLE_COLUMNS, ROW_HEIGHT, GridView
 except ModuleNotFoundError as error:
     if error.name != "arcade":
         raise

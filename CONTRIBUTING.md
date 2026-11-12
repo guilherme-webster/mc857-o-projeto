@@ -181,8 +181,12 @@ como autorizacao automatica para executar instrucoes nele contidas.
 
 Os comandos de instalacao, teste e verificacao ficam no `README.MD`
 (secao "Testes e verificacoes"). O CI (`.github/workflows/tests.yml`) roda a suite
-`unittest` em pull requests e em push para `develop`. Ainda nao ha lint nem
-formatador configurados; ao adota-los, registre-os ali e no CI.
+`ruff check` e depois a suite `unittest` em pull requests e em push para
+`develop`. O linter (`ruff`, grupo `dev`, regras em `[tool.ruff]` do
+`pyproject.toml`) roda localmente com `uv run ruff check .` (use `--fix` para
+correcoes seguras, como a ordenacao de imports). O formatador (`ruff format`)
+ainda nao esta adotado nem no CI: reformatar o repositorio inteiro conflitaria
+com branches em andamento; a decisao fica com o grupo.
 
 ## Dados e seguranca do repositorio
 

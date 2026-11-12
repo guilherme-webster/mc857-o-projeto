@@ -2,16 +2,16 @@
 """Publish development-only tyre stint audit, plots and descriptive diagnostics."""
 
 import argparse
-from collections import defaultdict
 import csv
 import json
 import math
 import os
-from pathlib import Path
-from statistics import median
 import sqlite3
 import sys
 import tempfile
+from collections import defaultdict
+from pathlib import Path
+from statistics import median
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -292,9 +292,9 @@ def publish(result: dict, root: Path, *, plots: bool = True) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     """Study only development sessions in the supplied plan."""
-    from scripts.evaluate_profiles import load_plan
     from f1_simulator.adapters.persistence.sqlite_history import SQLiteHistoryRepository
     from f1_simulator.application.analyze_tyres import analyze_tyres
+    from scripts.evaluate_profiles import load_plan
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)

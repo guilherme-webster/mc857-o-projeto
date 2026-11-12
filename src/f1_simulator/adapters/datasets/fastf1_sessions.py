@@ -8,15 +8,14 @@ this boundary understands vendor columns, missing sentinels and decimetres.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Iterator
+from collections.abc import Iterator, Mapping
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
-from importlib.metadata import version, PackageNotFoundError
 
 from f1_simulator.domain.history import Scalar
-
 from f1_simulator.domain.session_data import SESSION_SCHEMA, SESSION_TABLES
 
 FASTF1_VERSION = "3.8.3"

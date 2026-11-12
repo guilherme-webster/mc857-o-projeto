@@ -5,13 +5,13 @@ from pathlib import Path
 
 from fastapi import HTTPException, status
 
+from f1_simulator.adapters.persistence.sqlite_inspection import (
+    SQLiteDatabaseInspector,
+)
 from f1_simulator.application.ports.inspection import (
     DatabaseInspectionError,
     DatabaseNotFoundError,
     TableNotFoundError,
-)
-from f1_simulator.adapters.persistence.sqlite_inspection import (
-    SQLiteDatabaseInspector,
 )
 
 

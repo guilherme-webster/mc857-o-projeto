@@ -225,9 +225,16 @@ que importam FastAPI falham na importacao e os de interface sao pulados. Os
 testes de interface grafica abrem janelas Arcade e so rodam com
 `ARCADE_GUI_TEST=1` e um display disponivel. Dois testes do servico de catalogo
 gravam em `/data/simulation` e so passam dentro do container do backend.
-Para lint e formatacao tem sido usado o `ruff` (`ruff check`, `ruff format`),
-instalado a parte: ele nao e dependencia declarada e nao ha configuracao
-propria; varios arquivos antigos ainda nao seguem o `ruff format`.
+O lint usa o `ruff`, declarado no grupo `dev` e configurado em `[tool.ruff]` do
+`pyproject.toml` (regras E4/E7/E9, F e isort). O CI roda o mesmo comando:
+
+```bash
+uv run ruff check .          # verificar
+uv run ruff check . --fix    # aplicar correcoes seguras (ex.: ordem dos imports)
+```
+
+O `ruff format` ainda nao e usado nem exigido: varios arquivos antigos nao o
+seguem (ver `CONTRIBUTING.md`).
 
 O projeto usa o layout `src`: o pacote `f1_simulator` fica dentro dessa pasta,
 mas ainda nao e instalado no ambiente Python. A suite configura esse caminho em

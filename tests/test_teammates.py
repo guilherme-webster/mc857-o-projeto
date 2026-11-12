@@ -1,18 +1,18 @@
 """Matched pairing, reference scope and absence cannot be inferred from rankings."""
 
-from dataclasses import replace
-from pathlib import Path
 import tempfile
 import unittest
+from dataclasses import replace
+from pathlib import Path
 from unittest.mock import patch
 
+from f1_simulator.application.analyze_teammates import analyze_teammates
 from f1_simulator.domain.driver_profile import estimate_profiles
 from f1_simulator.domain.profile_reliability import BootstrapConfig
 from f1_simulator.domain.teammates import compare_teammates, context_reference
-from f1_simulator.application.analyze_teammates import analyze_teammates
 from scripts.analyze_teammates import publish
 from tests.test_driver_profile import CONFIG, assess, sample
-from tests.test_profile_evaluation import MemoryHistory, plan, change
+from tests.test_profile_evaluation import MemoryHistory, change, plan
 
 BOOT = BootstrapConfig(100, 42)
 

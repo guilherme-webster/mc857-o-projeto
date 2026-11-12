@@ -18,7 +18,6 @@ import arcade
 from frontend.arcade import track_client
 from frontend.arcade.configuration_state import SimulationPlan
 from frontend.arcade.drawing import draw_rounded_panel
-from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 from frontend.arcade.race_launcher import LaunchCancelled, LaunchOutcome, LaunchProgress
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
@@ -29,6 +28,7 @@ from frontend.arcade.theme import (
     SECONDARY_TEXT_COLOR,
     WEATHER_TIMELINE_COLORS,
 )
+from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
 _WEATHER_FALLBACK_COLOR = (90, 90, 90)
 _BUTTON_BG = (46, 62, 80)

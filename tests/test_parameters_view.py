@@ -19,22 +19,24 @@ try:
         CONFIGURE_TRACK_BOUNDS,
         CONFIRM_SERIES_BOUNDS,
         NEXT_TRACK_BOUNDS,
-        ParametersView,
         PREVIOUS_TRACK_BOUNDS,
         TOGGLE_TRACK_BOUNDS,
         TOURNAMENT_WINDOW_SIZE,
+        ParametersView,
     )
     from frontend.arcade.race_configuration_view import (
-        RaceConfigurationView,
         SESSION_FIELD_BOUNDS,
         SESSION_STEPPER_BOUNDS,
         SIDEBAR_ITEMS,
         WEATHER_APPLY_BOUNDS,
         WEATHER_END_BOUNDS,
         WEATHER_NEXT_BOUNDS,
-        WEATHER_PALETTE_BOUNDS as RACE_WEATHER_PALETTE_BOUNDS,
         WEATHER_START_BOUNDS,
         WEATHER_TIMELINE_BOUNDS,
+        RaceConfigurationView,
+    )
+    from frontend.arcade.race_configuration_view import (
+        WEATHER_PALETTE_BOUNDS as RACE_WEATHER_PALETTE_BOUNDS,
     )
     from frontend.arcade.theme import WEATHER_ICON_PATHS
 except ModuleNotFoundError as error:

@@ -5,10 +5,10 @@ mix tyre condition, race progression, fuel and traffic. Early-lap contrasts are
 operational proxies, not measurements of tyre temperature or warm-up duration.
 """
 
-from collections import Counter, defaultdict
-from dataclasses import asdict
 import hashlib
 import json
+from collections import Counter, defaultdict
+from dataclasses import asdict
 from math import isclose
 from statistics import median
 

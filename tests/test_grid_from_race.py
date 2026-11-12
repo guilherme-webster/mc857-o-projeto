@@ -17,6 +17,7 @@ if BACKEND not in sys.path:
 from app.routers import catalog as catalog_router  # noqa: E402
 from app.schemas.responses import BuildGridRequest  # noqa: E402
 from app.services import catalog as catalog_service  # noqa: E402
+
 from f1_simulator.adapters.driver_presets_json import (  # noqa: E402
     load_driver_preset_file,
     load_driver_presets,

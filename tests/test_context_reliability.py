@@ -1,10 +1,10 @@
 """Regression tests for grouping sensitivity and event-level uncertainty."""
 
-from dataclasses import asdict, replace
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from dataclasses import asdict, replace
+from pathlib import Path
 from unittest.mock import patch
 
 from f1_simulator.application.analyze_contexts import analyze_contexts
@@ -15,7 +15,6 @@ from f1_simulator.domain.profile_reliability import BootstrapConfig, profile_sup
 from scripts.analyze_profile_contexts import publish_study
 from tests.test_driver_profile import CONFIG, assess, sample
 from tests.test_profile_evaluation import MemoryHistory, plan
-
 
 BOOTSTRAP = BootstrapConfig(200, 7)
 

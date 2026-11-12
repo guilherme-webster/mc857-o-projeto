@@ -40,10 +40,14 @@ from f1_simulator.domain.model_parameters import (
     ModelParameters,
     TrackParameters,
 )
-from f1_simulator.domain.pit_lane import PitLaneParameters, PitStopRequest, build_pit_lane
+from f1_simulator.domain.pit_lane import (
+    PitLaneParameters,
+    PitStopRequest,
+    build_pit_lane,
+)
 from f1_simulator.domain.race_control import (
-    HEURISTIC_RACE_CONTROL,
     GREEN,
+    HEURISTIC_RACE_CONTROL,
     Incident,
     LapEffects,
     RaceControlParameters,
@@ -59,12 +63,12 @@ from f1_simulator.domain.speed_dynamics import (
 )
 from f1_simulator.domain.strategy import (
     HeuristicPitStrategy,
+    SpatialPitPlanningParameters,
     StrategyState,
     TyreStrategy,
-    SpatialPitPlanningParameters,
 )
 from f1_simulator.domain.track_condition import TrackState
-from f1_simulator.domain.wet_tyres import relative_grip, wear_factor
+from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
@@ -74,8 +78,8 @@ from f1_simulator.domain.track_space import (
     build_track_space,
     integrate_field,
 )
-from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
+from f1_simulator.domain.wet_tyres import relative_grip, wear_factor
 
 RUNNING = "RUNNING"
 RETIRED = "RETIRED"

@@ -17,4 +17,25 @@ dependencies = [
 # exige o pacote httpx2 desde o Starlette 1.x. `uv sync` instala este grupo por padrao.
 dev = [
     "httpx2",
+    "ruff>=0.15",
 ]
+
+[tool.ruff]
+target-version = "py312"
+# 88 colunas (padrao do ruff) e a largura que o codigo ja segue: `ruff format`
+# com 88 mexeria em 76 arquivos, com 100 mexeria em 188. E501 nao esta nas
+# regras ativas, entao o valor so orienta o formatador.
+line-length = 88
+extend-exclude = ["TOBEDEFINED"]
+
+[tool.ruff.lint]
+# Conjunto padrao classico do ruff (pycodestyle E4/E7/E9 e pyflakes F), fixado
+# explicitamente para nao mudar quando o ruff alterar seus padroes, mais isort (I).
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Estes testes inserem `backend/` em sys.path antes de importar o pacote `app`,
+# entao os imports posteriores nao podem ficar no topo do modulo (E402 intencional).
+"tests/test_catalog_grid_run.py" = ["E402"]
+"tests/test_saved_tournament.py" = ["E402"]
+"tests/test_tournament_seed_api.py" = ["E402"]

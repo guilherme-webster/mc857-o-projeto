@@ -4,16 +4,15 @@ from __future__ import annotations
 
 import unittest
 
-from frontend.arcade.race_control_feed import RaceControlFeed
-
 from f1_simulator.domain.race_control import (
-    HEURISTIC_RACE_CONTROL,
     GREEN,
+    HEURISTIC_RACE_CONTROL,
     Incident,
     RaceControlState,
     step,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
+from frontend.arcade.race_control_feed import RaceControlFeed
 
 NAMES = {"driver:5": "Piloto 5", "driver:6": "Piloto 6", "driver:9": "Piloto 9"}
 

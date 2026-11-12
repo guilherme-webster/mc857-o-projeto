@@ -13,8 +13,8 @@ from pathlib import Path
 from f1_simulator.adapters.datasets.mock_track_geometry import MockTrackDatasetAdapter
 from f1_simulator.adapters.fuel_parameters_json import read_fuel_parameters
 from f1_simulator.domain.dynamic_usage import (
-    DynamicUsageParameters,
     STANDARD_GRAVITY_MS2,
+    DynamicUsageParameters,
     curvature_profile,
     usage_delta,
     usage_reference,
