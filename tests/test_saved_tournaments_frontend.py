@@ -13,8 +13,11 @@ from frontend.arcade.configuration_state import (
     WeatherSchedule,
 )
 from frontend.arcade.race_launcher import LaunchedRace, launch_plan
+from frontend.arcade.race_launcher import LaunchCancelled, LaunchProgress
 from frontend.arcade.saved_tournaments import (
+    plan_from_record,
     reopen,
+    rerun_runner,
     rerun,
     save_request,
     session_from_outcome,
@@ -62,6 +65,9 @@ class FakeClient:
 
     def run_grid(self, setup: dict, on_lap=None) -> dict:
         self.calls.append(("run_grid", setup))
+        if on_lap is not None:
+            for lap in range(1, setup["total_laps"] + 1):
+                on_lap(lap, setup["total_laps"])
         return race_for(setup)
 
     def fetch_track(self, circuit_id: str) -> dict:
@@ -148,6 +154,63 @@ class RerunTest(unittest.TestCase):
         self.assertEqual(len(outcome.races), 2)
         self.assertIn("reexecutado", outcome.grid_note)
         self.assertTrue(messages[0].startswith("Restaurando"))
+
+    def test_rerun_publishes_stage_and_lap_progress(self) -> None:
+        session, _ = simulated_session()
+        record = saved_record(session)
+        seen: list[LaunchProgress] = []
+
+        rerun(record, FakeClient(), stage_progress=seen.append)
+
+        self.assertEqual((seen[0].stage_index, seen[0].lap), (0, 0))
+        self.assertIn("Restaurando", seen[0].message)
+        laps = [(p.stage_index, p.lap, p.laps) for p in seen if p.lap]
+        self.assertEqual(
+            laps,
+            [(1, lap, 3) for lap in (1, 2, 3)] + [(2, lap, 4) for lap in (1, 2, 3, 4)],
+        )
+        self.assertEqual(seen[-1].total_stages, 2)
+        self.assertEqual(seen[-1].stage_name, "Interlagos")
+
+    def test_rerun_can_be_aborted_between_stages(self) -> None:
+        session, _ = simulated_session()
+        record = saved_record(session)
+        client = FakeClient()
+        finished_first = []
+
+        def cancelled() -> bool:
+            return bool(finished_first)
+
+        def progress(item: LaunchProgress) -> None:
+            if item.stage_index == 1 and item.lap == item.laps:
+                finished_first.append(True)
+
+        with self.assertRaises(LaunchCancelled):
+            rerun(record, client, stage_progress=progress, cancelled=cancelled)
+
+        self.assertEqual(sum(call[0] == "run_grid" for call in client.calls), 1)
+
+    def test_runner_resends_same_setups_and_seed_as_saved(self) -> None:
+        session, _ = simulated_session()
+        record = saved_record(session)
+        client = FakeClient()
+        plan = plan_from_record(record)
+
+        outcome = rerun_runner(record, client)(plan, lambda item: None, lambda: False)
+
+        sent = [call[1] for call in client.calls if call[0] == "run_grid"]
+        self.assertEqual(sent, [stage["setup"] for stage in record["stages"]])
+        self.assertEqual([s["tournament_seed"] for s in sent], [109, 109])
+        self.assertEqual([s["stage_index"] for s in sent], [0, 1])
+        self.assertEqual(outcome.tournament_seed, 109)
+
+    def test_plan_from_record_describes_saved_stages(self) -> None:
+        session, _ = simulated_session()
+        plan = plan_from_record(saved_record(session))
+
+        self.assertEqual([r.name for r in plan.races], ["Albert Park", "Interlagos"])
+        self.assertEqual(plan.tournament_seed, 109)
+        self.assertEqual(plan.rules.name, "Copa salva")
 
     def test_record_with_legacy_engine_fields_reopens_and_reruns(self) -> None:
         # Registros anteriores a #146 guardam o motor escolhido; hoje so existe

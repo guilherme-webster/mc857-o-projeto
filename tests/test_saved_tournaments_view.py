@@ -11,12 +11,13 @@ try:
     import arcade
 
     from frontend.arcade.configuration_state import (
+        PRESET_OPTIONS,
         ConfigurationFormData,
         PlannedRace,
         TournamentRules,
         WeatherSchedule,
     )
-    from frontend.arcade.race_launcher import LaunchedRace, LaunchOutcome
+    from frontend.arcade.race_launcher import LaunchedRace, LaunchOutcome, LaunchProgress
     from frontend.arcade.saved_tournaments_view import SavedTournamentsView
     from frontend.arcade.tournament_session import TournamentSession
     from frontend.arcade.tournament_view import TournamentResultView
@@ -86,7 +87,7 @@ class SavedTournamentViewsTest(unittest.TestCase):
                 loaded.append(tournament_id) or {"id": tournament_id}
             ),
             reopener=lambda record: outcome,
-            rerunner=lambda record, progress: self.fail("Abrir nao deve reexecutar"),
+            rerunner=lambda record: self.fail("Abrir nao deve reexecutar"),
         )
         self.window.show_view(view)
         pump(view, lambda: bool(view._tournaments))
@@ -101,24 +102,59 @@ class SavedTournamentViewsTest(unittest.TestCase):
         self.assertEqual(loaded, ["copa-abc123"])
         self.assertIs(shown[0], outcome)
 
-    def test_rerun_click_reports_progress_and_errors(self) -> None:
-        def failing_rerun(record, progress):
-            progress("Reexecutando etapa 1/1: Albert Park…")
+    def test_rerun_click_opens_loading_view_and_error_returns_to_list(self) -> None:
+        from frontend.arcade.simulation_loading_view import SimulationLoadingView
+
+        def failing_runner(plan, progress, cancelled):
+            progress(LaunchProgress("Restaurando o grid salvo…"))
             raise RuntimeError("backend fora do ar")
 
+        record = {
+            "id": "copa-abc123",
+            "name": "Copa",
+            "rules": {"name": "Copa"},
+            "tournament_seed": 109,
+            "grid": {"seed": 42, "grid": []},
+            "stages": [
+                {
+                    "name": "Albert Park",
+                    "circuit_id": "circuit:1",
+                    "plan": {
+                        "preset": PRESET_OPTIONS[0],
+                        "laps": 3,
+                        "weather_by_lap": ["Seco"] * 3,
+                        "session": None,
+                    },
+                    "setup": {},
+                }
+            ],
+        }
         view = SavedTournamentsView(
             lister=lambda: {"saved": [SUMMARY]},
-            loader=lambda tournament_id: {"id": tournament_id},
-            rerunner=failing_rerun,
+            loader=lambda tournament_id: record,
+            rerunner=lambda loaded: failing_runner,
         )
         self.window.show_view(view)
         pump(view, lambda: bool(view._tournaments))
         rect = view._button_rects()["rerun:copa-abc123"]
-        view.on_mouse_press(rect[0] + 5, rect[1] + 5, arcade.MOUSE_BUTTON_LEFT, 0)
-        pump(view, lambda: "backend fora do ar" in view._status)
+        with patch.object(self.window, "show_view") as show:
+            view.on_mouse_press(rect[0] + 5, rect[1] + 5, arcade.MOUSE_BUTTON_LEFT, 0)
+            pump(view, lambda: show.called)
+        loading = show.call_args.args[0]
+        self.assertIsInstance(loading, SimulationLoadingView)
 
+        loading._grid_loader = lambda: None
+        loading._track_loader = lambda circuit_id: {}
+        loading.on_show_view()
+        pump(loading, lambda: loading._error is not None)
+        self.assertIn("backend fora do ar", loading._error)
+        loading.on_draw()
+
+        loading._return_view = view
+        with patch.object(self.window, "show_view"):
+            loading.abort()
+        self.assertIn("backend fora do ar", view._status)
         self.assertFalse(view._busy)
-        view.on_draw()
 
     def test_result_view_saves_tournament_and_shows_the_id(self) -> None:
         requests: list[dict] = []
