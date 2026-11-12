@@ -32,3 +32,10 @@ extend-exclude = ["TOBEDEFINED"]
 # Conjunto padrao classico do ruff (pycodestyle E4/E7/E9 e pyflakes F), fixado
 # explicitamente para nao mudar quando o ruff alterar seus padroes, mais isort (I).
 select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Estes testes inserem `backend/` em sys.path antes de importar o pacote `app`,
+# entao os imports posteriores nao podem ficar no topo do modulo (E402 intencional).
+"tests/test_catalog_grid_run.py" = ["E402"]
+"tests/test_saved_tournament.py" = ["E402"]
+"tests/test_tournament_seed_api.py" = ["E402"]

@@ -36,6 +36,11 @@ jobs:
       - name: Instalar dependencias (uv.lock, incluindo o grupo dev)
         run: uv sync --locked
 
+      # Lint (ruff check; regras em [tool.ruff] do pyproject.toml). `ruff format`
+      # ainda nao entra no CI: ver CONTRIBUTING.md.
+      - name: Lint (ruff check)
+        run: uv run ruff check .
+
       # Testes de GUI abrem janelas Arcade e so rodam com ARCADE_GUI_TEST=1;
       # sem a variavel ficam pulados e o job nao precisa de display. Apos a
       # instalacao dos pacotes, nenhum passo acessa a rede.
