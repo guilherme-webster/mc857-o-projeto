@@ -1,7 +1,7 @@
 ---
 last_mapped: 2026-11-12T20:41:20Z
-mapped_commit: 94e52ab
-mapped_branch: develop
+mapped_commit: 4653216
+mapped_branch: 154-docs-alinhamento (sobre integracao-saneamento, pos issues #144-#153)
 previous_map: 2026-10-16 (be2cdf7, revisão manual); 2026-09-25 (e86fe24, Cartographer)
 ---
 
@@ -30,9 +30,9 @@ O que existe **hoje** e o que não existe:
 
 | Área | Estado |
 |---|---|
-| Motor de corrida | **Um único motor: o 2D** (ADR 0011). `simulate_2d_race` em `domain/race_simulation_2d.py` + `track_space.py`: posição x,y contínua em passos de 0,05 s, ultrapassagem e colisão emergentes, velocidade física por trecho limitada por aderência e downforce (ADR 0010/0015), estado da pista, pneus (inclusive de chuva), combustível por massa, consumo e desgaste por movimento (ADR 0014), pit lane espacial (ADR 0012) com tempo de serviço por equipe, controle de prova (SC/VSC/bandeiras) e abandonos. Perfis, disputas e paradas são **heurísticos** (ADR 0008; valores em `docs/modelagem-heuristica.md`). O motor por volta (`simulate_detailed_race`, `disputes.py`, `lap_time.py`) foi removido de `src/` e está em `TOBEDEFINED/`. **Reabastecimento ainda não é executado no 2D** (`refuel_mode = False`, `TODO(motor-2d)`). `run_grid_simulation` exige geometria da pista. |
+| Motor de corrida | **Um único motor: o 2D** (ADR 0011). `simulate_2d_race` em `domain/race_simulation_2d.py` + `track_space.py`: posição x,y contínua em passos de 0,05 s, ultrapassagem e colisão emergentes, velocidade física por trecho limitada por aderência e downforce (ADR 0010/0015), estado da pista, pneus (inclusive de chuva), combustível por massa, consumo e desgaste por movimento (ADR 0014), pit lane espacial (ADR 0012) com tempo de serviço por equipe, controle de prova (SC/VSC/bandeiras) e abandonos. Perfis, disputas e paradas são **heurísticos** (ADR 0008; valores em `docs/modelagem-heuristica.md`). O motor por volta (`simulate_detailed_race`, `disputes.py`, `lap_time.py`) foi removido de `src/` e está em `TOBEDEFINED/`. **Reabastecimento ainda não é executado no 2D** (`refuel_mode = False`, `TODO(motor-2d)`); limitações conhecidas em §7. `run_grid_simulation` exige geometria da pista. |
 | Grid e pilotos | `POST /catalog/grid` monta o grid por sorteio, à mão ou pela largada de uma corrida histórica (`race`); atributos por arquétipo, perfis fictícios nomeados por cima e edição via `PATCH`. |
-| Torneio | Sequência de etapas montada no frontend; cada etapa é um `POST /catalog/grid/run` (ou `/run/stream`, SSE com progresso por volta) sobre o grid atual, com semente de torneio derivada por etapa. Classificação por `POST /championship/standings`. **Torneio salvo** (ADR 0013): `/tournaments` guarda grid congelado, cenário e resultados; reabrir não simula, reexecutar restaura o grid e reenvia o `setup` de cada etapa. |
+| Torneio | Sequência de etapas montada no frontend; cada etapa é um `POST /catalog/grid/run` (ou `/run/stream`, SSE com progresso por volta) sobre o grid atual, com semente de torneio derivada por etapa. Classificação por `POST /championship/standings`. **Torneio salvo** (ADR 0013): `/tournaments` guarda grid congelado, cenário e resultados; reabrir não simula, reexecutar restaura o grid e reenvia o `setup` de cada etapa, com progresso por volta (SSE) na tela de carregamento. |
 | Frontend | Configuração do torneio (semente copiável, voltas padrão por pista), configuração de etapa, pilotos e grid (inclui reordenação), **tela de carregamento** (grid, progresso por volta, abortar), reprodução volta a volta com controle de prova, classificação rica e decomposição de velocidade, resultado do torneio e **tela de simulações salvas**. Janela redimensionável (`canvas_fit.py`). |
 | Perfis de pilotos orientados a dados | Estudos offline (ritmo por contexto, ranking, companheiros, avaliação entre eventos). Um adaptador alimenta o experimento de **uma volta**; o motor da corrida usa os atributos heurísticos, não esses perfis. |
 | Combustível | Massa por carro (`domain/fuel.py`), calibrada e validada em `data/parameters/fuel-v1.json` (ADR 0009, ainda "proposta" no README dos ADRs). No 2D só a massa atua; o reabastecimento não roda. Sem o artefato, o backend usa o combustível linear de `model-v1.json`. Consumo e desgaste dinâmicos por movimento: `domain/dynamic_usage.py` (ADR 0014). |
@@ -128,8 +128,8 @@ Regras estruturais (ADR 0002, `AGENTS.md`):
 ├── tools/                # race_viewer_template.html (visualizador do race_report.py)
 ├── tests/                # unittest + fixtures/ (Trotman e geometria)
 ├── docs/                 # 15 ADRs, modelagem, ETL, PRDs, backlog.md (espelho gerado), progresso.md
-├── TOBEDEFINED/          # arquivo morto: motor por volta antigo, scripts/testes dele e protótipos (oval, RaceState); fora do pytest, nada em src/ importa de lá
-└── .github/workflows/    # pull-request-rules.yml, sync-backlog.yml
+├── TOBEDEFINED/          # arquivo morto (ver TOBEDEFINED/README.md): motor por volta antigo, grid_start (#152), scripts/testes deles e protótipos (oval, RaceState); o unittest não o descobre, nada ativo importa de lá
+└── .github/workflows/    # pull-request-rules.yml, sync-backlog.yml, tests.yml (unittest em PRs e push para develop)
 ```
 
 ## 4. Guia de módulos
@@ -153,7 +153,6 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `track_space.py` | Pista em faixa com largura (`build_track_space`), `CarSpaceState` e integração sub-volta multi-carro com ultrapassagem, colisão, bandeira azul e pit lane (`integrate_field`). | Largura e dimensões do carro são hipóteses `assumed`. Eixos x,y adimensionais. |
 | `dynamic_usage.py` | Consumo e desgaste por movimento (ADR 0014): proxies de esforço lateral e longitudinal (`curvature_profile`, `usage_reference`, `usage_delta`). | A referência neutraliza a carga média do traçado (não conta a severidade duas vezes). Coeficientes `assumed`. |
 | `pit_lane.py` | Percurso espacial dos boxes (ADR 0012): entrada, fila, serviço, saída (`build_pit_lane`, `PitLaneState`). | Distância física separada do progresso classificatório; o atalho não conta volta. Duração a partir da escala XY/m é hipótese. |
-| `grid_start.py` | Fator heurístico que atenua a penalidade de largada (`initial_grid_delay_ms`). | **Órfão**: só o adaptador `grid_start_parameters_json.py` o importa; o 2D larga em filas de dois por física. |
 | `random_source.py` | `RandomSource`, `SeededRandomSource` (`spawn` por chave via SHA-256), `FrozenRandomSource`, `derive_tournament_stage_random_source`. | Nunca `random` global; a semente do torneio gera fluxos distintos por etapa. |
 | `championship.py` | `championship_standings`: pontos F1 25-18-…-1, abandono não pontua, desempate por média ou vitórias. | Sem ponto de volta mais rápida. |
 | `race_control.py` | Autômato de SC, VSC, amarela, vermelha e relargada. | Voltas sem incidente não consomem aleatoriedade. `disputes.py` foi removido. |
@@ -217,7 +216,6 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `persistence/sqlite_track_geometry.py` | Geometria dentro do mesmo banco da corrida. |
 | `profile_parameters.py` | `ProfileParametersAdapter`: `ProfileRun` → parâmetros por contexto exato. |
 | `driver_presets_json.py`, `car_presets_json.py`, `team_presets_json.py`, `model_parameters_json.py`, `reference_laps_json.py`, `fuel_parameters_json.py`, `car_physics_json.py` | JSON versionados: perfis fictícios de pilotos, ritmo de carro e execução de pit por equipe (com o aviso), parâmetros do motor, voltas de referência, combustível e carro de referência. |
-| `grid_start_parameters_json.py` | Lê `grid-start-v1.json`. **Órfão** (ver `domain/grid_start.py`). |
 | `persistence/sqlite_calibration.py`, `sqlite_race_scenario.py`, `sqlite_inspection.py`, `sqlite_trotman_profiles.py` | Leitura para calibração e backtest, inspeção somente leitura e ponte com os perfis. |
 
 ### 4.4.1 `scripts/` (composition roots das CLIs)
@@ -237,7 +235,7 @@ Convenções: dataclasses `frozen`, tuplas em vez de listas, unidades nos nomes 
 | `main.py` | FastAPI; routers `health`, `etl`, `history`, `simulation`, `catalog`, `championship`, `tournaments`; CORS `*`. |
 | `config.py` | Caminhos fixos no container (`/data/curated`, `/data/simulation`, `/data/parameters`); artefatos de parâmetros (modelo, voltas de referência, combustível) caem em `<repo>/data/parameters` fora do container. `SAVED_RACES_DIR`, `SAVED_TOURNAMENTS_DIR`. |
 | `routers/catalog.py`, `services/catalog.py` | Catálogo, grid (montagem, leitura, edição atômica de atributos e ordem), execução da corrida (síncrona e SSE) e corridas salvas. Composition root do motor: injeta geometria, combustível, presets de carro e equipe e `pit_entry_fraction` quando os artefatos existem. |
-| `routers/tournaments.py`, `services/tournaments.py` | Torneios salvos (ADR 0013): gravam `saved-tournaments/<id>.json`; listam, abrem, renomeiam, excluem e fazem `restore-grid`. Usam `application/saved_tournament.py`. Não há rota de reexecução: o cliente chama `restore-grid` e reenvia o `setup` de cada etapa a `/catalog/grid/run`. Salvar dá 409 se o grid mudou depois de simular. |
+| `routers/tournaments.py`, `services/tournaments.py` | Torneios salvos (ADR 0013): gravam `saved-tournaments/<id>.json`; listam, abrem, renomeiam, excluem e fazem `restore-grid`. Usam `application/saved_tournament.py`. Não há rota de reexecução: o cliente chama `restore-grid` e reenvia o `setup` salvo (intacto, mesmas sementes e índices) de cada etapa a `/catalog/grid/run/stream`. Salvar dá 409 se o grid mudou depois de simular. |
 | `routers/championship.py` | Classificação do torneio sobre `domain/championship.py`. |
 | `routers/simulation.py` | Corrida atual, corridas salvas (criar, renomear, excluir) e geometria. |
 | `routers/history.py`, `services/history.py` | Construção e inspeção do `history.sqlite`; lista de corridas. |
@@ -281,7 +279,7 @@ HTTP. Os módulos marcados "puro" não importam Arcade e são testados sem janel
 | `track_view.py` | `TrackView` (reprodução volta a volta, controle de velocidade, controle de prova, classificação rica, painéis de decomposição de velocidade, navegação do torneio). `saveable=False` esconde "Salvar" em corridas já salvas. |
 | `simulation_loading_view.py` | Tela de carregamento: grid, etapa em foco, progresso por volta (SSE), abortar (vale só antes da próxima etapa). Roda o plano numa thread. |
 | `saved_tournaments_view.py` | Lista única de simulações salvas (torneios e corridas): abrir, reexecutar, renomear, excluir (confirmação em dois cliques). |
-| `saved_tournaments.py` (puro) | Tradução registro salvo <-> apresentação: `save_request`, `reopen`, `rerun`, `HttpTournamentClient`. `rerun` usa o `POST` síncrono (sem progresso por volta). |
+| `saved_tournaments.py` (puro) | Tradução registro salvo <-> apresentação: `save_request`, `reopen`, `rerun`, `HttpTournamentClient`. `rerun` repassa progresso por etapa e volta (`stage_progress`) e cancelamento entre etapas (`cancelled`); `HttpTournamentClient.run_grid` usa o SSE e cai no síncrono se a rota responder 404. `reopen` e `rerun` ignoram o `engine` legado de registros antigos. |
 | `canvas_fit.py` (puro) | Letterbox das telas de design (1280x720 e 1672x900) numa janela redimensionável; eventos de ponteiro passam por `to_logical`. |
 | `clipboard.py` (puro) | Ctrl+C/Ctrl+V nos campos de semente; colar substitui o campo. |
 | `speed_breakdown.py` (puro) | `SpeedBreakdownReader`: fatias da velocidade (efetiva, transiente, curva, penalidades) lidas de `speed_breakdown` e `speed_profiles` do resultado. |
@@ -294,17 +292,17 @@ HTTP. Os módulos marcados "puro" não importam Arcade e são testados sem janel
 | `configuration_state.py` (puro) | `WeatherSchedule`, `TournamentRules`, `SessionConfiguration`, `ConfigurationFormData`, `SimulationPlan`. |
 | `configuration_layout.py`, `track_preview.py` (puros) | Geometria de layout e da prévia. |
 | `track_client.py` | HTTP com `urllib` (`F1_API_BASE_URL`, padrão `http://localhost:8000`); GET, POST, PATCH, DELETE; SSE (`run_grid_stream`); `BackendError` com o `detail` do FastAPI. Cobre grid, corridas e torneios salvos. |
-| `theme.py` | Cores. |
+| `theme.py` | Cores, inclusive `WEATHER_TIMELINE_COLORS` e `WEATHER_ICON_PATHS` da aba Clima. |
+| `drawing.py` | Desenho de painéis (`draw_rounded_panel`, `draw_rounded_rectangle`), extraído da tela legada `weather_view.py` (removida em #151). |
 
 ### 4.7 `tests/`
 
-- Execução: `uv run python -m unittest -v` (a partir da raiz). Sem as dependências, `python3 -m unittest` roda o núcleo e falha na importação dos testes que usam FastAPI. O `pyproject.toml` ainda declara `testpaths` para pytest, que não é dependência.
+- Execução: `uv run python -m unittest -v` (a partir da raiz). Sem as dependências, `python3 -m unittest` roda o núcleo e falha na importação dos testes que usam FastAPI. O `pyproject.toml` não declara mais pytest (#148); `httpx2` está no grupo `dev` porque o `TestClient` do Starlette o exige. O CI (`.github/workflows/tests.yml`) roda `uv sync --locked` e `uv run python -m unittest` em PRs para `develop`/`main` e em push para `develop`.
 - Testes de GUI (`test_parameters_view.py`) exigem `ARCADE_GUI_TEST=1` e um display; ficam pulados por padrão. Três deles falhavam em 2026-10-16 (layout); não reverificado em 2026-11-12.
-- `test_catalog_grid_run.py` gravava em `/data/simulation` e só passava no container; foi alterado para isolar a execução do grid (reconferir antes de assumir).
-- **Áreas novas:** motor 2D e física (`test_speed_dynamics`, `test_track_space`, `test_pit_lane`, `test_spatial_pit_planning`, `test_dynamic_usage`); pista e clima (`test_track_condition`, `test_wet_tyres`); combustível (`test_fuel`, `test_fuel_strategy`); presets (`test_car_presets`, `test_team_presets`, `test_default_laps`); grid e API (`test_grid_ordering`, `test_tournament_seed_api`); torneio salvo (`test_saved_tournament`, `test_saved_listing`, `test_saved_tournaments_*`); frontend sem janela (`test_canvas_fit`, `test_clipboard`, `test_grid_view_scroll`, `test_simulation_loading_view`). Não há teste dedicado de ponta a ponta de `race_simulation_2d`. Os testes do motor por volta (`test_race_engine`, `test_lap_time_model`, `test_disputes`, `test_detailed_race_heuristics`) foram para `TOBEDEFINED/`.
+- **Áreas novas:** motor 2D e física (`test_speed_dynamics`, `test_track_space`, `test_pit_lane`, `test_spatial_pit_planning`, `test_dynamic_usage`); ponta a ponta do 2D (`test_race_simulation_2d`, com invariantes de `tests/race_invariants.py`); montagem do grid (`test_run_grid_simulation`, que cobre `run_grid_simulation`, e `test_tyre_management_factor`); pista e clima (`test_track_condition`, `test_wet_tyres`); combustível (`test_fuel`, `test_fuel_strategy`, sobre `tests/fuel_support.py`); presets (`test_car_presets`, `test_team_presets`, `test_default_laps`); grid e API (`test_grid_ordering`, `test_tournament_seed_api`); torneio salvo (`test_saved_tournament`, `test_saved_listing`, `test_saved_tournaments_*`, inclusive reexecução com progresso e a reexecução no motor 2D com geometria); frontend sem janela (`test_canvas_fit`, `test_clipboard`, `test_grid_view_scroll`, `test_simulation_loading_view`). Os testes do motor por volta (`test_race_engine`, `test_lap_time_model`, `test_disputes`, `test_detailed_race_heuristics`, `test_fuel_motor_por_volta`, `test_fuel_strategy_motor_por_volta`, `test_grid_start`) estão em `TOBEDEFINED/`.
 - Nenhum teste acessa a rede (FastF1 é sintético; download simulado com `file://`).
 - Fixtures: `trotman_v128_history/` (corrida 1141, 14 CSVs), `trotman_v128_sample/`, `trotman_v128_tracks_2025/` (24 pistas x 240 pontos; pit lane 24 x 80).
-- **Helpers compartilhados** (acoplamento implícito): `history_support.py`, e exports de `test_driver_profile.py` (`CONFIG`, `record`, `lap`), `test_profile_evaluation.py` (`MemoryHistory`, `plan`), `test_tyres.py` (`rows`). Mudar esses módulos pode quebrar vários outros.
+- **Helpers compartilhados** (acoplamento implícito): `history_support.py`, `fuel_support.py` (`fuel_parameters`, `plan`), `geometry_support.py` (`fixture_geometry`), `race_invariants.py` (montagem e verificações do resultado do 2D), e exports de `test_driver_profile.py` (`CONFIG`, `record`, `lap`), `test_profile_evaluation.py` (`MemoryHistory`, `plan`), `test_tyres.py` (`rows`). Mudar esses módulos pode quebrar vários outros.
 
 ## 5. Fluxos de dados
 
@@ -339,7 +337,7 @@ sequenceDiagram
     TV->>API: POST /tournaments (salvar; 409 se o grid mudou)
     PV->>SV: Torneios salvos
     SV->>API: GET /tournaments/{id} (abrir, sem simular)
-    SV->>API: restore-grid + POST /catalog/grid/run por etapa (reexecutar, síncrono)
+    SV->>API: restore-grid + POST /catalog/grid/run/stream por etapa (reexecutar, com progresso por volta)
 ```
 
 ### 5.2 ETL (offline, sem HTTP entre os componentes)
@@ -392,9 +390,9 @@ O caminho histórico antigo (`/simulation/load`, `/simulation/simulate`,
 
 1. Estudos e propostas de setembro (`planejamento-modelagem.md`, `contrato-perfil-simulacao.md`, `ranking-e-adaptador-pilotos.md`, `modelagem-pneus-inicial.md`, `perfilamento-pilotos.md`) citam `backend/app/engine/simulation.py`, `frontend/arcade/oval_track.py`, `race_view.py`, `loader.py` ou a série livre. Esses caminhos não existem mais; os documentos ganharam uma nota de estado e continuam como registro histórico.
 2. Estudos de setembro reproduzem comandos com `pipenv run`; não há `Pipfile` versionado. As dependências estão no `pyproject.toml` (`uv run`).
-3. `TOBEDEFINED/` é arquivo morto (≈26 arquivos): motor por volta antigo (`race_simulation.py`, `disputes.py`, `lap_time.py`), serviços, scripts e testes dele, e protótipos (`oval_track`, `race_state`, `race_view`). Nada em `src/`, `backend/`, `scripts/` ou `tests/` importa de lá; o pytest o ignora (`norecursedirs`). `docs/prds/modelagem-pilotos-heuristica.md` ainda o cita.
+3. `TOBEDEFINED/` é arquivo morto (≈26 arquivos): motor por volta antigo (`race_simulation.py`, `disputes.py`, `lap_time.py`), serviços, scripts e testes dele, e protótipos (`oval_track`, `race_state`, `race_view`). Nada em `src/`, `backend/`, `scripts/` ou `tests/` importa de lá; o `unittest` não o descobre. `TOBEDEFINED/README.md` indexa o que veio de `src/`, `scripts/` e `tests/` (grid_start, #152). `docs/prds/modelagem-pilotos-heuristica.md` o cita, com nota de estado no topo.
 4. ADR 0001 e 0002 ainda mencionam Django no corpo; o ADR 0004 (FastAPI) o substitui.
-5. O ADR 0006 (aceito) previa `POST /simulation/series/simulate`; a rota foi removida (PRD v3) e o mecanismo foi atualizado pelo ADR 0013 (torneio salvo). O ADR 0007 segue com contexto a revisar. Os ADRs 0009 e 0015 estão como "proposta" no README apesar de implementados. `docs/handoff-motor-2d.md` está obsoleto (diz que o motor detalhado era o padrão).
+5. O ADR 0006 (aceito) previa `POST /simulation/series/simulate`; a rota foi removida (PRD v3) e o mecanismo foi atualizado pelo ADR 0013 (torneio salvo). O ADR 0007 segue com contexto a revisar. Os ADRs 0009 e 0015 continuam "proposta" no README dos ADRs apesar de implementados; mudar o status é decisão do grupo (proposta na #154). `docs/handoff-motor-2d.md` ganhou nota de estado: o motor detalhado e o seletor foram removidos.
 6. As 6 sessões de validação de 2024 **já foram examinadas** (18/09/2026). `configs/profile-validation-decision-2024.json` registra `reserved_metrics_examined=false` apenas para o momento em que foi escrito. Não tratar a reserva como inédita.
 7. O pacote `f1_simulator` não é instalado (`PYTHONPATH=src`; `tests/__init__.py` insere o caminho).
 
@@ -404,9 +402,10 @@ O caminho histórico antigo (`/simulation/load`, `/simulation/simulate`,
 - **Arquivos do container com dono root:** `data/curated/history.sqlite` e `data/simulation/` são criados pelo container como root no host.
 - **Reload parcial:** o uvicorn recarrega `/app` (backend); mudanças em `src/` exigem reiniciar o container.
 - **Voltas padrão:** vêm de `default_laps` do catálogo (`application/default_laps.py`, #107); 69 é só o fallback no frontend.
-- **Reexecução de torneio salvo** sobrescreve `current-grid.json` do backend com o grid congelado e é síncrona (sem progresso por volta). Erros do SSE chegam como evento, não como status HTTP.
-- **`setup["engine"]`:** o frontend ainda pode enviá-lo, mas o backend não o declara em `RaceSetupRequest` e roda sempre o 2D.
-- **Órfãos:** `domain/grid_start.py`, `adapters/grid_start_parameters_json.py` e `data/parameters/grid-start-v1.json` não têm consumidor desde a remoção do motor por volta.
+- **Reexecução de torneio salvo** sobrescreve `current-grid.json` do backend com o grid congelado e roda por SSE, com progresso por volta e abortar na tela de carregamento. Erros do SSE chegam como evento, não como status HTTP.
+- **Sem seletor de motor:** o frontend não tem mais a regra "Motor da corrida" nem envia `setup.engine` (#146); registros salvos antigos com `engine` são aceitos e o campo é descartado. O backend não o declara em `RaceSetupRequest` e roda sempre o 2D.
+- **Largada arquivada (#152):** `grid_start.py`, `grid_start_parameters_json.py` e `grid-start-v1.json` estão em `TOBEDEFINED/` (os imports internos ainda apontam para os caminhos antigos); o 2D larga em filas de dois por física e a #108 pode reaproveitá-los.
+- **Limitações conhecidas do 2D** (registradas, nenhuma decisão tomada): não reabastece nem faz lift-and-coast, e todos largam com a mesma carga de combustível; a assumption de gestão de pneus não é declarada em `assumptions`; abandono sem disputa vira `mechanical`; em `speed_breakdown` a troca de pneu aparece defasada uma volta em relação à parada.
 - **Passo do 2D:** 0,05 s; desgaste e consumo são por movimento, inclusive na pit lane; o pneu de quem abandona no meio da volta é mantido.
 - **Registros do histórico** (`HistoricalRecord`) só aceitam indexação, sem `.get`.
 - **Geometria vem de fixture de teste** (`data/geometry` está vazio): o compose monta `tests/fixtures/trotman_v128_tracks_2025` sobre `/data/geometry`. Geometria 2025 não é layout verificado de outra temporada, e o comprimento da volta é aproximado.
@@ -415,7 +414,7 @@ O caminho histórico antigo (`/simulation/load`, `/simulation/simulate`,
 - **Valores fixos no código:** `rank_drivers.py` e `analyze_tyre_restarts.py` citam "18 eventos" nos gráficos; `analyze_tyre_restarts.py` tem sessões e pilotos fixos; `compare_tyre_estimators.interval` fixa seed 42 e 2000 réplicas.
 - **Frontend:** `_OPENER` de `track_client.py` é criado no import, na thread da UI, para evitar `ssl.SSLError` no Fedora/Pyglet. A janela é redimensionável: `canvas_fit.py` escala telas de design (1280x720 e 1672x900) com letterbox e converte ponteiro com `to_logical`. A fonte "monospace" não é monoespaçada em todos os sistemas: tabelas usam um texto por coluna. Pistas repetidas compartilham configuração por `circuit_id`.
 - **Testes de GUI** usam coordenadas fixas; ajustes de layout em `parameters_view.py` ou `race_configuration_view.py` os quebram.
-- **CI:** não há CI de testes, lint ou tipos; só a regra de branch de origem e o sync manual do backlog (que faz push direto no branch default).
+- **CI:** `.github/workflows/tests.yml` roda a suite `unittest` (GUI pulada sem `ARCADE_GUI_TEST=1`); há também a regra de branch de origem e o sync manual do backlog (que faz push direto no branch default). Não há CI de lint ou tipos. O check de testes só fica verde com a base integrada.
 - **Licenças:** Trotman é CC0. O software do FastF1 é MIT, mas os **dados** dele seguem os termos do upstream. Dados brutos, telemetria e bancos completos ficam fora do Git.
 
 ## 8. Guia de navegação
@@ -449,13 +448,13 @@ O caminho histórico antigo (`/simulation/load`, `/simulation/simulate`,
 | 0006 | Sequência de corridas livres sem evento histórico obrigatório. A rota prevista foi removida; o torneio atual a realiza pelo frontend sobre `/catalog/grid/run`. |
 | 0007 | (proposta) Não determinismo com parâmetros assumidos; contexto a revisar pelo grupo. |
 | 0008 | Perfis, disputa, SC/VSC/bandeiras e paradas heurísticos sobre o motor calibrado da #40. |
-| 0009 | (proposta) Combustível como massa por carro, reabastecimento como regra do cenário, paradas estratégicas por piloto. |
+| 0009 | (proposta no README; implementado) Combustível como massa por carro, reabastecimento como regra do cenário, paradas estratégicas por piloto. |
 | 0010 | Motor físico de velocidade por trecho; tempo de volta emerge da curvatura (curva revisada pelo 0015). |
 | 0011 | Motor 2D sub-volta com x,y contínuos; ultrapassagem e colisão emergentes. |
 | 0012 | Percurso espacial de pit lane no 2D. |
 | 0013 | Torneio salvo com grid congelado e resultados; reabrir sem simular ou reexecutar. |
 | 0014 | Consumo e desgaste contínuos por esforço e carga de curva, parâmetros assumidos. |
-| 0015 | (proposta) Velocidade de curva por aderência e downforce, com estado dinâmico da pista. |
+| 0015 | (proposta no README; implementado) Velocidade de curva por aderência e downforce, com estado dinâmico da pista. |
 
 **Backlog:** ver `docs/backlog.md` (espelho gerado). Frentes de modelagem no épico
 #40: #51 pistas, #60 carros, #61 pilotos (#66, #67), #62 clima, #63 pneus. Tela de
@@ -463,7 +462,7 @@ simulação: #6 (#16, #18, #19, #21). Consumidoras: #70 e #71, filhas de #8.
 
 **Pendências principais registradas nos docs:**
 
-- Modelagem: composto de largada fixo, `tyre_severity` nos limites de corte e paradas em excesso em pistas severas (`docs/modelagem-heuristica.md`, §9); reabastecimento não executado no 2D; a pole vence com frequência alta. Resolvidos desde 2026-10-16: pneus de chuva (#120), aderência (#119), consumo/desgaste dinâmicos (#104), pit lane espacial (#101/#102), execução de pit por equipe (#128).
-- Interface: abas Pista, Regras e Carros (placeholders); intervalo de sessão; progresso por volta na reexecução de salvos. `docs/progresso.md` ainda tem handoffs das #119/#120 já mergeadas.
+- Modelagem: composto de largada fixo, `tyre_severity` nos limites de corte e paradas em excesso em pistas severas (`docs/modelagem-heuristica.md`, §9); reabastecimento não executado no 2D; a pole vence com frequência alta. Resolvidos desde 2026-10-16 (as #119 e #120 seguem abertas no GitHub; critérios conferidos na #154): pneus de chuva (#120), aderência (#119), consumo/desgaste dinâmicos (#104), pit lane espacial (#101/#102), execução de pit por equipe (#128).
+- Interface: abas Pista, Regras e Carros (placeholders); intervalo de sessão. `docs/progresso.md` contém só handoffs pendentes.
 - Pilotos orientados a dados: integrar ao motor; separar efeito piloto/carro.
-- Decisões: revisar o ADR 0007; atualizar o status dos ADRs 0009 e 0015; decidir o destino de `TOBEDEFINED/` e dos módulos órfãos de `grid_start`.
+- Decisões: revisar o ADR 0007; confirmar o status dos ADRs 0009 e 0015 (proposta na #154); decidir o destino de `TOBEDEFINED/`.
