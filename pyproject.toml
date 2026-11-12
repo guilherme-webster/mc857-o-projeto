@@ -12,6 +12,9 @@ dependencies = [
     "fastf1==3.8.3",
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-norecursedirs = ["TOBEDEFINED"]
+[dependency-groups]
+# Somente para testes: starlette.testclient (usado por fastapi.testclient.TestClient)
+# exige o pacote httpx2 desde o Starlette 1.x. `uv sync` instala este grupo por padrao.
+dev = [
+    "httpx2",
+]
