@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-06T21:35:41Z
-- **Abertas:** 49
-- **Fechadas:** 20
+- **Ultima atividade registrada:** 2026-11-12T21:08:37Z
+- **Abertas:** 38
+- **Fechadas:** 53
 
 ## Issues abertas
 
@@ -160,34 +160,6 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 
 </details>
 
-### [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:04:14Z
-- **Atualizada:** 2026-08-30T06:21:20Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Configuração do usuário deve puxar dados do backend e passar para a etapa de simulação</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:04:40Z — label adicionada: História por @Jmvjr
-
-</details>
-
 ### [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
 
 - **Estado:** aberta
@@ -252,408 +224,6 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - 2026-08-28T23:34:10Z — sub-issue adicionada: #18 por @ViniciusFCoracin
 - 2026-08-28T23:33:20Z — sub-issue adicionada: #16 por @ViniciusFCoracin
 - 2026-08-28T23:06:44Z — label adicionada: História por @Jmvjr
-
-</details>
-
-### [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** [#17 — Processamento da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/17), [#20 — Exibição do progresso da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/20)
-- **Criada:** 2026-08-28T23:06:16Z
-- **Atualizada:** 2026-08-28T23:22:16Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Usuário deve ser capaz de ver tela de loading enquanto simulação é computada.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:35:58Z — sub-issue adicionada: #20 por @DaviGabrielBC
-- 2026-08-28T23:34:04Z — sub-issue adicionada: #17 por @DaviGabrielBC
-- 2026-08-28T23:06:17Z — label adicionada: História por @Jmvjr
-
-</details>
-
-### [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** [#70 — Consumir dados da modelagem](https://github.com/guilherme-webster/mc857-o-projeto/issues/70), [#71 — Executar simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/71), [#102 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/102)
-- **Criada:** 2026-08-28T23:06:39Z
-- **Atualizada:** 2026-08-28T23:25:14Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>A simulação em si deve ser computada de maneira a exibir algo para o usuário. Isto deve ser feito antes de qualquer exibição em si para o usuário, de maneira a evitar problemas de performance.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-26T22:56:43Z — sub-issue adicionada: #102 por @Jmvjr
-- 2026-09-11T23:54:52Z — sub-issue adicionada: #71 por @guilherme-webster
-- 2026-09-11T23:54:09Z — sub-issue adicionada: #70 por @guilherme-webster
-- 2026-08-28T23:06:41Z — label adicionada: História por @Jmvjr
-
-</details>
-
-### [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** Épico
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10), [#11 — Armazenamento de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/11)
-- **Criada:** 2026-08-28T23:07:00Z
-- **Atualizada:** 2026-08-28T23:32:58Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve conseguir ver a tela com os resultados finais da simulação.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:08:16Z — sub-issue adicionada: #11 por @Jmvjr
-- 2026-08-28T23:07:16Z — sub-issue adicionada: #10 por @Jmvjr
-- 2026-08-28T23:07:01Z — label adicionada: Épico por @Jmvjr
-
-</details>
-
-### [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
-- **Sub-issues:** [#23 — Resultado final da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/23)
-- **Criada:** 2026-08-28T23:07:15Z
-- **Atualizada:** 2026-08-28T23:15:26Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve conseguir visualizar os resultados da simulação requisitada</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:48:15Z — sub-issue adicionada: #23 por @DaviGabrielBC
-- 2026-08-28T23:07:17Z — label adicionada: História por @Jmvjr
-
-</details>
-
-### [#11 — Armazenamento de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/11)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:08:15Z
-- **Atualizada:** 2026-08-28T23:28:43Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>É necessário armazenar internamente os resultados e processá-los para que os resultados possam chegar ao usuário.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:08:29Z — label adicionada: História por @Jmvjr
-
-</details>
-
-### [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** @Jmvjr
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:15:24Z
-- **Atualizada:** 2026-08-28T23:38:49Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve conseguir visualizar e alterar aos parâmetros configuráveis da corrida.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:38:49Z — atribuida: @Jmvjr por @Jmvjr
-- 2026-08-28T23:15:25Z — label adicionada: Task por @Jmvjr
-
-</details>
-
-### [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** @Jmvjr
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:19:03Z
-- **Atualizada:** 2026-08-28T23:38:53Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve poder escolher simulações já existentes como base</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:38:53Z — atribuida: @Jmvjr por @Jmvjr
-- 2026-08-28T23:19:04Z — label adicionada: Task por @Jmvjr
-
-</details>
-
-### [#15 — Simulação puxa dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/15)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:24:35Z
-- **Atualizada:** 2026-08-28T23:32:08Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Antes de rodar, a simulação deve puxar dados do backend de maneira coerente com a configuração setada para o usuário. Então, estes dados são consumidos pelo motor do sistema que irá executar a simulação.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:32:08Z — label adicionada: História por @guilherme-webster
-
-</details>
-
-### [#17 — Processamento da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/17)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @DaviGabrielBC
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:34:03Z
-- **Atualizada:** 2026-08-28T23:36:11Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>A simulação deve ser processada do seu início ao fim no back-end.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:36:11Z — label adicionada: Task por @DaviGabrielBC
-
-</details>
-
-### [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @ViniciusFCoracin
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:34:08Z
-- **Atualizada:** 2026-08-28T23:43:44Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>A tela de simulação deve exibir a classificação dos pilotos de forma dinâmica ao longo da corrida.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:36:48Z — label adicionada: Task por @ViniciusFCoracin
-
-</details>
-
-### [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @ViniciusFCoracin
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:34:43Z
-- **Atualizada:** 2026-08-28T23:40:23Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve ser capaz de controlar a velocidade com que a simulação é exibida na tela (exemplo: exibir a corrida em tempo real, exibir em 10x, 50x etc).</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:36:55Z — label adicionada: Task por @ViniciusFCoracin
-
-</details>
-
-### [#20 — Exibição do progresso da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/20)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @DaviGabrielBC
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:35:56Z
-- **Atualizada:** 2026-08-28T23:35:56Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário será informado do progresso da simulação, sabendo quão próxima está de concluida.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:35:57Z — label adicionada: Task por @DaviGabrielBC
-
-</details>
-
-### [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @ViniciusFCoracin
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:36:18Z
-- **Atualizada:** 2026-08-28T23:41:19Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>A tela de simulação deve exibir as condições da corrida, como por exemplo o clima, o tempo de corrida, se há bandeira amarela/vermelha etc).</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:37:02Z — label adicionada: Task por @ViniciusFCoracin
-
-</details>
-
-### [#23 — Resultado final da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/23)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @DaviGabrielBC
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:48:14Z
-- **Atualizada:** 2026-08-28T23:48:14Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Na tela de resultados, o usuário poderá visualizar uma tabela contendo o ranque e os tempos finais de todos os jogadores</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:48:16Z — label adicionada: Task por @DaviGabrielBC
 
 </details>
 
@@ -816,126 +386,6 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 
 </details>
 
-### [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** Épico
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** [#37 — Docker - conteinerizar a aplicação](https://github.com/guilherme-webster/mc857-o-projeto/issues/37), [#38 — Configurar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/38), [#39 — Padronização e Qualidade de Código](https://github.com/guilherme-webster/mc857-o-projeto/issues/39)
-- **Criada:** 2026-09-04T00:07:17Z
-- **Atualizada:** 2026-09-04T00:10:50Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Configurar a infraestrutura do projeto, garantindo um ambiente de desenvolvimento padronizado entre os integrantes do grupo e a automação de validações de código.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-04T00:16:18Z — sub-issue adicionada: #39 por @Gustavo-Jun-Tsuji
-- 2026-09-04T00:15:03Z — sub-issue adicionada: #38 por @Gustavo-Jun-Tsuji
-- 2026-09-04T00:12:30Z — sub-issue adicionada: #37 por @Gustavo-Jun-Tsuji
-- 2026-09-04T00:07:17Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#37 — Docker - conteinerizar a aplicação](https://github.com/guilherme-webster/mc857-o-projeto/issues/37)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** @Gustavo-Jun-Tsuji
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
-- **Sub-issues:** —
-- **Criada:** 2026-09-04T00:12:28Z
-- **Atualizada:** 2026-09-04T22:14:50Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>conteinerizar o backend e o frontend com Docker para padronizar o ambiente de desenvolvimento e execução.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-04T22:14:50Z — label adicionada: História por @Gustavo-Jun-Tsuji
-- 2026-09-04T00:39:57Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#38 — Configurar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/38)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** @Gustavo-Jun-Tsuji
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
-- **Sub-issues:** —
-- **Criada:** 2026-09-04T00:15:02Z
-- **Atualizada:** 2026-09-04T22:14:57Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>configurar um pipeline de Integração Contínua (CI) para validar builds, linters e testes 
-
-Esse ticket será um constante lembrete de implementar boas práticas de CI</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-04T22:14:57Z — label adicionada: História por @Gustavo-Jun-Tsuji
-- 2026-09-04T00:42:15Z — marcada como duplicada por @Gustavo-Jun-Tsuji
-- 2026-09-04T00:17:34Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#39 — Padronização e Qualidade de Código](https://github.com/guilherme-webster/mc857-o-projeto/issues/39)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
-- **Sub-issues:** —
-- **Criada:** 2026-09-04T00:16:17Z
-- **Atualizada:** 2026-09-04T22:15:04Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>padronizar o estilo de código e validações pré-commit para evitar inconsistências e erros de sintaxe no repositório</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-04T22:15:04Z — label adicionada: História por @Gustavo-Jun-Tsuji
-
-</details>
-
 ### [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
 
 - **Estado:** aberta
@@ -994,37 +444,6 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 - 2026-09-11T22:18:58Z — sub-issue adicionada: #60 por @guilherme-webster
 - 2026-09-08T22:18:09Z — sub-issue adicionada: #51 por @Jmvjr
 - 2026-09-04T23:02:44Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** Épico
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43), [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47), [#54 — Carregar dados de pista no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/54)
-- **Criada:** 2026-09-04T23:02:55Z
-- **Atualizada:** 2026-09-04T23:03:36Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Endpoints, integração com o front, fornecer arquivo de reprodução da simulação</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T20:24:01Z — sub-issue adicionada: #54 por @guilherme-webster
-- 2026-09-05T19:56:27Z — sub-issue adicionada: #47 por @Gustavo-Jun-Tsuji
-- 2026-09-05T16:38:00Z — sub-issue adicionada: #43 por @Gustavo-Jun-Tsuji
-- 2026-09-04T23:02:57Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
 
 </details>
 
@@ -1278,35 +697,6 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 </details>
 
-### [#64 — Consumo do backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/64)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T22:26:45Z
-- **Atualizada:** 2026-09-11T22:26:45Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>consumir interface do backend para modelagem posterior dos carros</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T22:26:46Z — label adicionada: Task por @guilherme-webster
-- 2026-09-11T22:26:45Z — atribuida: @guilherme-webster por @guilherme-webster
-
-</details>
-
 ### [#65 — Modelagem posterior](https://github.com/guilherme-webster/mc857-o-projeto/issues/65)
 
 - **Estado:** aberta
@@ -1333,35 +723,6 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 - 2026-09-11T22:32:25Z — label adicionada: Task por @guilherme-webster
 - 2026-09-11T22:32:18Z — atribuida: @guilherme-webster por @guilherme-webster
-
-</details>
-
-### [#66 — Consumir backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/66)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T22:28:39Z
-- **Atualizada:** 2026-09-11T22:32:45Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Consumir dados do backend para termos dados de pilotos</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T22:32:45Z — label adicionada: Task por @guilherme-webster
-- 2026-09-11T22:32:40Z — atribuida: @guilherme-webster por @guilherme-webster
 
 </details>
 
@@ -1430,83 +791,6 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 <summary>Historico de estado</summary>
 
 - 2026-09-11T22:33:16Z — label adicionada: Task por @guilherme-webster
-
-</details>
-
-### [#70 — Consumir dados da modelagem](https://github.com/guilherme-webster/mc857-o-projeto/issues/70)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T23:54:08Z
-- **Atualizada:** 2026-09-11T23:54:57Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Consome dados da etapa de modelagem para rodar a simulação em si</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T23:54:57Z — label adicionada: História por @guilherme-webster
-
-</details>
-
-### [#71 — Executar simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/71)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T23:54:51Z
-- **Atualizada:** 2026-09-11T23:54:51Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Roda a simulação da corrida em geral, que usufrui da modelagem da etapa anterior e modela a corrida em geral</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T23:54:52Z — label adicionada: História por @guilherme-webster
-
-</details>
-
-### [#95 — Modelagem da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/95)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-10-16T19:57:22Z
-- **Atualizada:** 2026-10-16T19:57:22Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
 
 </details>
 
@@ -1588,121 +872,6 @@ Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.1.</pre>
 <summary>Historico de estado</summary>
 
 - 2026-10-30T20:33:03Z — label adicionada: enhancement por @guilherme-webster
-
-</details>
-
-### [#106 — Reordenar livremente o grid de largada](https://github.com/guilherme-webster/mc857-o-projeto/issues/106)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** enhancement
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-10-30T20:33:03Z
-- **Atualizada:** 2026-10-30T21:55:49Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Permitir que o usuário mude a ordem de largada como quiser.
-
-A ordem já chega ao motor, mas a tela só seleciona linhas e o `PATCH /catalog/grid` altera apenas atributos.
-
-Critérios:
-- botões ↑/↓ na tela do grid; ordem pendente no `GridDraft` (descartar, payload);
-- `PATCH /catalog/grid` aceita `order`, permutação exata do grid atual; 422 para duplicata, ausência ou ID desconhecido;
-- atributos, perfis e seed preservados; escrita atômica.
-
-Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.2.</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (4)</summary>
-
-#### [@guilherme-webster em 2026-10-30T20:35:19Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6532928102)
-
-<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `106-reordenar-grid`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
-
-#### [@guilherme-webster em 2026-10-30T20:47:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6533137003)
-
-<pre>Implementado na branch `106-reordenar-grid` (2 commits: `reorder_grid` valida permutacao exata por `driver_id` e `PATCH /catalog/grid` aceita `order` preservando atributos e seed; botoes Subir/Descer e ordem pendente no `GridDraft`). Integrado na `develop` local (merge, sem push). Suite: 650 passed / 0 failed na develop integrada. Pendente: push/PR e conferencia visual dos botoes.</pre>
-
-#### [@guilherme-webster em 2026-10-30T21:31:45Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6533891164)
-
-<pre>Entrega no PR #112 (empilhado sobre o #111, com a branch 105 já mesclada). Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Próximo passo: revisão e merge; conferir visualmente os botões Subir/Descer.</pre>
-
-#### [@guilherme-webster em 2026-10-30T21:55:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6534336804)
-
-<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-30T20:33:04Z — label adicionada: enhancement por @guilherme-webster
-
-</details>
-
-### [#107 — Número de voltas padrão por pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/107)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** bug
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-10-30T20:33:05Z
-- **Atualizada:** 2026-10-30T21:55:50Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Toda pista nova começa com 69 voltas fixas no frontend (`configuration_state.py`, `parameters_view.py`).
-
-Critérios:
-- padrão = máximo de voltas completadas na corrida mais recente do circuito (Trotman v128), com proveniência;
-- sem histórico: menor número de voltas completas acima de 305 km (Mônaco 260 km), rotulado `assumed_distance_rule`;
-- `GET /simulation/tracks` devolve `default_laps` e origem;
-- padrão só para pista não configurada; edição do usuário preservada; clima padrão cobre o novo total.
-
-Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.3. Proposta original em `docs/progresso.md`.</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (4)</summary>
-
-#### [@guilherme-webster em 2026-10-30T20:35:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6532928474)
-
-<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `107-voltas-padrao`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
-
-#### [@guilherme-webster em 2026-10-30T20:47:25Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6533137326)
-
-<pre>Implementado na branch `107-voltas-padrao` (2 commits: caso de uso `default_laps_for_circuit` com historico Trotman e reserva `assumed-distance-rule-v1`; `GET /simulation/tracks` com `default_laps`, origem e corrida; frontend aplica o padrao so em pista nao configurada e ajusta o clima). Conferido com o Trotman v128 bruto: Albert Park 58, Monaco 78, Spa 44, Interlagos 71, Yas Marina 58 (corrida mais recente). Integrado na `develop` local (merge com conflito resolvido em `parameters_view.py`/teste, sem push). Suite: 650 passed / 0 failed.</pre>
-
-#### [@guilherme-webster em 2026-10-30T21:31:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6533891529)
-
-<pre>Entrega no PR #113 (empilhado sobre o #112, conflito com a #105 resolvido no merge da branch). Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Próximo passo: revisão e merge.</pre>
-
-#### [@guilherme-webster em 2026-10-30T21:55:50Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6534337125)
-
-<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-30T20:33:06Z — label adicionada: bug por @guilherme-webster
 
 </details>
 
@@ -1958,7 +1127,1082 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 
 </details>
 
+### [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#137 — Melhorar Tela de corrida salvas](https://github.com/guilherme-webster/mc857-o-projeto/issues/137), [#135 — Carregar corridas salvas na tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/135), [#138 — Tela inicial geral](https://github.com/guilherme-webster/mc857-o-projeto/issues/138), [#142 — Botão resultado do torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/142)
+- **Criada:** 2026-11-08T20:23:47Z
+- **Atualizada:** 2026-11-08T20:23:47Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:49:31Z — sub-issue adicionada: #142 por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:41:05Z — sub-issue adicionada: #138 por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:34:24Z — sub-issue adicionada: #135 por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:24:33Z — sub-issue adicionada: #137 por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:23:48Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#138 — Tela inicial geral](https://github.com/guilherme-webster/mc857-o-projeto/issues/138)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T20:41:03Z
+- **Atualizada:** 2026-11-08T20:41:20Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Textos não alinhados, textos ultrapassando blocos
+
+&lt;img width=&quot;614&quot; height=&quot;113&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/0df17698-192b-4d40-b4e3-b21c399c7c43&quot; /&gt;
+
+&lt;img width=&quot;665&quot; height=&quot;489&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/fc9c5ea5-4709-458d-925c-8bc5e9cd3a58&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:41:20Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140), [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141)
+- **Criada:** 2026-11-08T20:41:54Z
+- **Atualizada:** 2026-11-08T20:46:20Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>&lt;img width=&quot;164&quot; height=&quot;209&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/88799557-4ac8-44a9-b4f4-868b8204adf3&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:48:34Z — sub-issue adicionada: #141 por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:48:13Z — sub-issue adicionada: #140 por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:41:54Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T20:48:12Z
+- **Atualizada:** 2026-11-08T20:51:38Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Obs: Não tenho certeza se esse era o comportamento desejado</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:51:38Z — label removida: Task por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:51:16Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:48:19Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T20:48:33Z
+- **Atualizada:** 2026-11-08T20:51:28Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:51:28Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:51:28Z — label removida: Task por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:48:45Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:48:42Z — responsavel removido: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:48:37Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#142 — Botão resultado do torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/142)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T20:49:29Z
+- **Atualizada:** 2026-11-10T20:43:23Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>&lt;img width=&quot;291&quot; height=&quot;35&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/7cd18454-3464-4b54-a982-62d60f69b8e2&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-10T20:43:23Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#144 — Testes: extrair fuel_parameters para modulo de suporte e destravar test_fuel](https://github.com/guilherme-webster/mc857-o-projeto/issues/144)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:19Z
+- **Atualizada:** 2026-11-12T21:08:19Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+Em `develop` (commit `94e52ab`), `uv run python -m unittest` termina com 5 falhas
+e 21 erros. Parte deles e erro de importacao em cascata:
+
+- `tests/test_fuel.py:39` importa `f1_simulator.domain.lap_time`, removido junto
+  com o motor por volta (hoje em `TOBEDEFINED/`);
+- `tests/test_dynamic_usage.py:26` e `tests/test_race_playback.py:17` importam o
+  helper `fuel_parameters` de `tests.test_fuel` e caem junto.
+
+Resultado: tres modulos de teste inteiros nao executam.
+
+## Escopo
+
+- Mover `fuel_parameters` (e helpers puros que ele usa) para um modulo de suporte
+  em `tests/`, no molde de `tests/history_support.py`, e apontar os tres modulos
+  para ele.
+- Em `test_fuel.py`, remover apenas os testes que dependem de `lap_time`
+  (`fuel_penalty_ms`). Os testes de `domain/fuel.py` continuam.
+
+## Criterios de aceitacao
+
+- `uv run python -m unittest tests.test_fuel tests.test_dynamic_usage tests.test_race_playback`
+  importa e passa.
+- Nenhum teste de `domain/fuel.py` ainda valido foi apagado; liste no comentario
+  de encerramento os testes removidos e o motivo.
+
+## Fora de escopo
+
+`tests/test_fuel_strategy.py` (tratado em outra issue) e qualquer mudanca em `src/`.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:19Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#145 — Testes: portar para o motor 2D os contratos vivos e arquivar os do motor por volta](https://github.com/guilherme-webster/mc857-o-projeto/issues/145)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:20Z
+- **Atualizada:** 2026-11-12T21:08:20Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+O motor por volta foi removido de `src/` (ADR 0011; arquivo morto em
+`TOBEDEFINED/`), mas os testes dele ficaram em `tests/` e quebram a suite:
+
+| Modulo | Sintoma |
+|---|---|
+| `test_run_grid_detailed.py` (11 erros) | `engine=`, patch de `simulate_detailed_race`, execucao sem geometria |
+| `test_detailed_tyre_management.py` | `ValueError: o motor 2D exige geometria da pista` |
+| `test_reference_laps.py` (2 erros, `DetailedGridReferenceTest`) | idem |
+| `test_fuel_strategy.py` | importa `f1_simulator.domain.race_simulation` |
+| `test_catalog_grid_run.py`, `test_tournament_seed_api.py` | patch de `run_detailed_grid_simulation` |
+| `test_saved_tournament.py::test_rerun_after_restore_reproduces_saved_races` | reexecucao sem geometria |
+
+## Decisao do responsavel (2026-11-12)
+
+**Portar para o motor 2D** os testes cujo contrato continua vivo. Arquivar em
+`TOBEDEFINED/` somente o que testa comportamento exclusivo do motor removido.
+
+## Escopo
+
+Reescrever contra `run_grid_simulation` / `simulate_2d_race`, com a geometria de
+`tests/fixtures/trotman_v128_tracks_2025` e poucas voltas, os contratos:
+
+- ordem do grid e atributos chegam ao motor como posicoes de largada;
+- mesma semente reproduz a corrida, inclusive eventos de controle de prova;
+- semente de torneio reproduz a etapa e separa etapas distintas
+  (`derive_tournament_stage_random_source`);
+- atributo de ritmo altera o resultado;
+- volta de referencia historica prevalece sobre o ritmo por km;
+- pista sem calibracao usa o fallback `assumed` e o declara em `assumptions`;
+- metadados de semente devolvidos pela API batem com a derivacao do nucleo;
+- reexecucao de torneio salvo apos `restore-grid` reproduz as corridas salvas;
+- decisoes de `HeuristicPitStrategy` com combustivel que nao dependam do motor
+  antigo (`test_fuel_strategy.py`).
+
+Renomear os modulos que perderem o sentido de &quot;detailed&quot;. Mover para
+`TOBEDEFINED/` o que sobrar, com uma linha no topo dizendo de onde veio.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;detailed\|lap_time\|race_simulation\b&quot; tests/` nao encontra
+  referencia ao motor removido.
+- Os contratos listados acima tem teste passando contra o 2D.
+- O comentario de encerramento lista o que foi portado e o que foi arquivado.
+
+## Dependencias
+
+Depois de #144. O campo `engine` nas asserts de rota e tratado em outra issue.
+
+## Fora de escopo
+
+Alterar regra de simulacao. Se um contrato portado falhar por comportamento real
+do 2D, registre aqui e nao ajuste o motor.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:21Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#146 — Remover o seletor de motor do frontend e a checagem de motor do torneio salvo](https://github.com/guilherme-webster/mc857-o-projeto/issues/146)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:21Z
+- **Atualizada:** 2026-11-12T21:08:21Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+So existe o motor 2D, e `RaceSetupRequest` nao declara `engine`. Mesmo assim:
+
+- `frontend/arcade/configuration_state.py:198` oferece
+  `ENGINE_OPTIONS = (&quot;Detalhado (calibrado)&quot;, &quot;2D com pit lane&quot;)`, com
+  &quot;Detalhado&quot; como padrao; a tela promete um motor que nao roda;
+- `frontend/arcade/race_launcher.py:139-143` e `parameters_view.py` (linhas
+  ~516, ~1002, ~1348) ainda montam e desenham a regra;
+- `tests/test_catalog_grid_run.py::test_route_forwards_setup_to_service` e
+  `tests/test_tournament_seed_api.py::test_route_forwards_explicit_seed_and_stage_index`
+  esperam `engine=&#x27;detailed&#x27;` na chamada do servico;
+- `tests/test_saved_tournament.py::test_rejects_setup_that_would_rerun_a_different_race`
+  tem o subteste `[motor]`, que espera `SavedTournamentError` para motor
+  divergente; `check_saved_tournament` nao faz mais essa checagem.
+
+## Decisao do responsavel (2026-11-12)
+
+Remover a escolha e a checagem, mantendo apenas o motor 2D.
+
+## Escopo
+
+- Tirar `ENGINE_OPTIONS`, `ENGINE_API_VALUES`, o campo `engine` de
+  `TournamentRules` e o controle correspondente da tela; `setup` deixa de
+  enviar `engine`.
+- Ajustar os tres testes acima e os testes de frontend que citem a regra.
+- Torneios ja salvos podem conter `rules.engine` ou `setup.engine`: reabrir e
+  reexecutar devem continuar funcionando, ignorando o campo. Cubra com teste.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;engine&quot; frontend/arcade backend/app` nao encontra a regra de motor.
+- Um torneio salvo antigo com `engine` reabre sem erro.
+- O layout de `ParametersView` nao fica com um buraco onde estava o controle.
+
+## Fora de escopo
+
+Reintroduzir escolha de motor ou alterar o ADR 0011.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:22Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#147 — Investigar a falha de test_pit_lane (25 amostras paradas, esperado mais de 40)](https://github.com/guilherme-webster/mc857-o-projeto/issues/147)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:23Z
+- **Atualizada:** 2026-11-12T21:08:23Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`tests/test_pit_lane.py::PitLaneMotionTest::test_movement_stops_at_service_and_finishes_two_laps`
+falha em `develop` (`94e52ab`):
+
+```
+self.assertGreater(len(stationary), 40)
+AssertionError: 25 not greater than 40
+```
+
+O teste pede um servico de 2,5 s (`PitStopRequest(360, 2.5)`); com `dt_s=0.05`
+seriam cerca de 50 amostras paradas. A duracao entre `service_started` e
+`service_completed` continua correta (a assert anterior passa), entao a
+diferenca pode estar na amostragem de `integrate_field` e nao no servico. A
+causa **nao foi investigada**.
+
+## Escopo
+
+- Descobrir desde qual commit o teste falha (`git bisect` ou `git log` em
+  `domain/track_space.py` e `domain/pit_lane.py`).
+- Decidir, com a causa em maos, se o erro esta no motor ou no teste, e corrigir
+  o lado errado.
+
+## Criterios de aceitacao
+
+- O teste passa e o comentario de encerramento explica a causa.
+- Se o motor mudou, ha teste de regressao; se o teste mudou, a nova assert
+  continua verificando que o carro fica parado durante todo o servico.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:23Z — label adicionada: bug por @guilherme-webster
+
+</details>
+
+### [#148 — CI: rodar a suite de testes em pull requests](https://github.com/guilherme-webster/mc857-o-projeto/issues/148)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:24Z
+- **Atualizada:** 2026-11-12T21:08:24Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+Nao ha CI de testes; `.github/workflows/` tem apenas `pull-request-rules.yml` e
+`sync-backlog.yml`. A suite quebrou em `develop` sem ninguem notar. O
+`CONTRIBUTING.md` pede que as regras objetivas sejam reforcadas por automacao.
+
+## Escopo
+
+- Workflow do GitHub Actions que, em PRs para `develop` e `main` e em push para
+  `develop`, instala com `uv sync` (Python 3.12) e roda
+  `uv run python -m unittest`.
+- Os testes de GUI seguem pulados (`ARCADE_GUI_TEST` ausente); o job nao precisa
+  de display.
+- Se o `TestClient` pedir `httpx2`, resolver de forma declarada (ver a secao
+  &quot;Testes e verificacoes&quot; do `README.MD`), sem dependencia implicita.
+- Remover de `pyproject.toml` o bloco `[tool.pytest.ini_options]`, ou trocar
+  por algo coerente: pytest nao e dependencia e a suite usa unittest.
+- Atualizar o `README.MD` e a frase do `CONTRIBUTING.md` que diz nao haver CI.
+
+## Criterios de aceitacao
+
+- Um PR com teste quebrado fica com o check vermelho.
+- O job nao acessa a rede alem da instalacao de dependencias.
+
+## Dependencias
+
+A suite precisa estar verde antes: #144, #145, #146 e #147.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:25Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#149 — CI: adotar ruff como linter e formatador](https://github.com/guilherme-webster/mc857-o-projeto/issues/149)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:25Z
+- **Atualizada:** 2026-11-12T21:08:25Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+O `CONTRIBUTING.md` preve formatador e linter locais e no CI; nao ha nenhum.
+Decisao do responsavel em 2026-11-12: adotar.
+
+## Escopo
+
+- Adicionar `ruff` como dependencia de desenvolvimento (grupo `dev` do
+  `pyproject.toml`), com configuracao minima: regras padrao mais ordenacao de
+  imports, `target-version = &quot;py312&quot;`, e `TOBEDEFINED/` excluido.
+- Passo de `ruff check` no workflow de CI.
+- Formatacao: **nao** reformatar o repositorio inteiro junto com outra mudanca.
+  Se `ruff format --check` exigir um diff grande, faca-o em commit proprio,
+  mecanico, e registre o hash em `.git-blame-ignore-revs`; se o diff for
+  invasivo demais, deixe o `format` fora do CI e registre a decisao aqui.
+- Corrigir os achados do `ruff check` sem mudar comportamento; o que exigir
+  mudanca de comportamento vira issue separada.
+- Documentar os comandos no `README.MD` e no `CONTRIBUTING.md`.
+
+## Criterios de aceitacao
+
+- `uv run ruff check .` passa localmente e no CI.
+- Nenhum commit mistura reformatacao com mudanca funcional.
+
+## Dependencias
+
+Depois de #148.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:27Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#150 — Teste de ponta a ponta do motor 2D (simulate_2d_race)](https://github.com/guilherme-webster/mc857-o-projeto/issues/150)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:27Z
+- **Atualizada:** 2026-11-12T21:08:27Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`domain/race_simulation_2d.py` e o unico motor e a fonte de verdade da
+classificacao, mas nao tem teste dedicado de ponta a ponta; os testes atuais
+cobrem pecas (`test_track_space`, `test_speed_dynamics`, `test_pit_lane`,
+`test_dynamic_usage`).
+
+## Escopo
+
+Novo modulo de teste que roda `simulate_2d_race` com a geometria de
+`tests/fixtures/trotman_v128_tracks_2025`, poucos carros e poucas voltas, e
+verifica:
+
+- **reprodutibilidade**: mesma semente e mesmos insumos dao `history`,
+  `classification` e `race_control_events` identicos; sementes diferentes dao
+  resultados diferentes;
+- **invariantes**: cada piloto aparece uma vez na classificacao; posicoes sao
+  1..N sem buracos; quem termina completou `total_laps`; voltas e tempos
+  acumulados por carro nao decrescem; abandono tem motivo e volta;
+- **efeitos opcionais**: sem `model_parameters` + `track_params` + `compounds`
+  nao ha paradas; com eles ha ao menos uma troca numa corrida longa o bastante;
+  com `FuelPlan` a massa de combustivel so diminui;
+- **`on_progress`** e chamado uma vez por volta, em ordem.
+
+## Criterios de aceitacao
+
+- O modulo roda em poucos segundos e sem rede.
+- As invariantes estao em helpers reutilizaveis pelos testes de regressao dos
+  bugs #140 e #141.
+
+## Fora de escopo
+
+Mudar o motor. Uma invariante que falhe por comportamento real vira issue de bug.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:28Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#151 — Frontend: apagar a tela legada weather_view.py](https://github.com/guilherme-webster/mc857-o-projeto/issues/151)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:28Z
+- **Atualizada:** 2026-11-12T21:08:28Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`frontend/arcade/weather_view.py` (1291 linhas) contem `TrackConfigurationView`,
+tela legada inalcancavel no fluxo atual. Ela so sobrevive porque outros modulos
+reaproveitam pecas dela:
+
+- `race_configuration_view.py:29` e `:915` usam `WEATHER_ICON_PATHS`,
+  `WEATHER_TIMELINE_COLORS` e `TrackConfigurationView._draw_rounded_panel`;
+- `simulation_loading_view.py:30` e `:573` usam `_draw_rounded_panel` e
+  `WEATHER_TIMELINE_COLORS`;
+- `tests/test_parameters_view.py` tem testes `test_weather_view_*` da tela legada.
+
+## Escopo
+
+- Mover `_draw_rounded_panel` para um modulo compartilhado de desenho e as
+  constantes de clima para onde ja vive o estado de clima (ou `theme.py`).
+- Apagar `weather_view.py` e os testes de GUI que exercitam apenas a tela legada.
+- Antes de apagar, confirmar que nenhum comportamento da aba **Clima** de
+  `race_configuration_view.py` depende de codigo que so existe na tela legada.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;weather_view&quot; frontend tests` vazio.
+- A aba Clima e a tela de carregamento continuam com a mesma aparencia
+  (conferir abrindo a aplicacao).
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:30Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#152 — Arquivar os modulos orfaos de grid_start em TOBEDEFINED/](https://github.com/guilherme-webster/mc857-o-projeto/issues/152)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:30Z
+- **Atualizada:** 2026-11-12T21:08:30Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+Desde a remocao do motor por volta, nao tem consumidor:
+
+- `src/f1_simulator/domain/grid_start.py`;
+- `src/f1_simulator/adapters/grid_start_parameters_json.py`;
+- `data/parameters/grid-start-v1.json`;
+- os testes correspondentes, se existirem.
+
+O motor 2D larga em filas de dois por fisica.
+
+## Decisao do responsavel (2026-11-12)
+
+**Arquivar** (nao apagar) e **deixar indicado** que foi arquivado: a #108
+(impacto da posicao de largada) pode querer reaproveitar o material.
+
+## Escopo
+
+- Mover os arquivos para `TOBEDEFINED/` com `git mv`, preservando o historico.
+- Indicar o arquivamento: nota no topo de cada arquivo movido (data, motivo e
+  esta issue), entrada no indice ou README de `TOBEDEFINED/` (criar se nao
+  houver) e comentario na #108 apontando onde o material esta.
+- Atualizar `docs/CODEBASE_MAP.md` (secoes 4.1, 4.4 e 7), que os lista como orfaos.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;grid_start&quot; src backend scripts tests` vazio.
+- Suite verde.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:31Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#153 — Progresso por volta na reexecucao de torneio salvo](https://github.com/guilherme-webster/mc857-o-projeto/issues/153)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** enhancement
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:31Z
+- **Atualizada:** 2026-11-12T21:08:31Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`frontend/arcade/saved_tournaments.py::rerun` usa o `POST /catalog/grid/run`
+sincrono, entao a reexecucao de um torneio salvo nao mostra progresso. A
+execucao normal ja usa o SSE `POST /catalog/grid/run/stream` atraves de
+`race_launcher.HttpRaceClient.run_grid` e da `SimulationLoadingView`.
+
+## Escopo
+
+- Reexecutar um torneio salvo pelo mesmo caminho da execucao normal:
+  `restore-grid` e, em seguida, as etapas pelo SSE, com a tela de carregamento
+  (grid, etapa em foco, progresso por volta, abortar).
+- Manter o fallback sincrono quando a rota de stream responder 404.
+- Regras de apresentacao em modulo puro, testadas sem janela.
+
+## Criterios de aceitacao
+
+- Reexecutar mostra o progresso por volta e permite abortar entre etapas.
+- A reexecucao continua reproduzindo os resultados salvos (mesmas sementes).
+- Erro vindo como evento SSE `error` aparece para o usuario.
+
+## Fora de escopo
+
+Criar rota de reexecucao no backend (o ADR 0013 deixa a orquestracao no cliente).
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:08:32Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
 ## Issues fechadas
+
+### [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:04:14Z
+- **Atualizada:** 2026-11-08T20:27:37Z
+- **Fechada:** 2026-11-08T20:27:18Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Configuração do usuário deve puxar dados do backend e passar para a etapa de simulação</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:27:38Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:27:18Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:04:40Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
+- **Sub-issues:** [#17 — Processamento da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/17), [#20 — Exibição do progresso da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/20)
+- **Criada:** 2026-08-28T23:06:16Z
+- **Atualizada:** 2026-11-08T20:17:35Z
+- **Fechada:** 2026-11-08T20:17:35Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Usuário deve ser capaz de ver tela de loading enquanto simulação é computada.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:17:35Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:35:58Z — sub-issue adicionada: #20 por @DaviGabrielBC
+- 2026-08-28T23:34:04Z — sub-issue adicionada: #17 por @DaviGabrielBC
+- 2026-08-28T23:06:17Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
+- **Sub-issues:** [#70 — Consumir dados da modelagem](https://github.com/guilherme-webster/mc857-o-projeto/issues/70), [#71 — Executar simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/71), [#102 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/102)
+- **Criada:** 2026-08-28T23:06:39Z
+- **Atualizada:** 2026-11-08T20:50:50Z
+- **Fechada:** 2026-11-08T20:50:50Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>A simulação em si deve ser computada de maneira a exibir algo para o usuário. Isto deve ser feito antes de qualquer exibição em si para o usuário, de maneira a evitar problemas de performance.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:50:50Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-10-26T22:56:43Z — sub-issue adicionada: #102 por @Jmvjr
+- 2026-09-11T23:54:52Z — sub-issue adicionada: #71 por @guilherme-webster
+- 2026-09-11T23:54:09Z — sub-issue adicionada: #70 por @guilherme-webster
+- 2026-08-28T23:06:41Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10), [#11 — Armazenamento de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/11)
+- **Criada:** 2026-08-28T23:07:00Z
+- **Atualizada:** 2026-11-08T20:26:42Z
+- **Fechada:** 2026-11-08T20:26:42Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve conseguir ver a tela com os resultados finais da simulação.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:26:44Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:08:16Z — sub-issue adicionada: #11 por @Jmvjr
+- 2026-08-28T23:07:16Z — sub-issue adicionada: #10 por @Jmvjr
+- 2026-08-28T23:07:01Z — label adicionada: Épico por @Jmvjr
+
+</details>
+
+### [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
+- **Sub-issues:** [#23 — Resultado final da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/23)
+- **Criada:** 2026-08-28T23:07:15Z
+- **Atualizada:** 2026-11-08T20:26:53Z
+- **Fechada:** 2026-11-08T20:26:53Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve conseguir visualizar os resultados da simulação requisitada</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:26:53Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:48:15Z — sub-issue adicionada: #23 por @DaviGabrielBC
+- 2026-08-28T23:07:17Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#11 — Armazenamento de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/11)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#9 — Resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/9)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:08:15Z
+- **Atualizada:** 2026-11-08T20:26:38Z
+- **Fechada:** 2026-11-08T20:26:38Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>É necessário armazenar internamente os resultados e processá-los para que os resultados possam chegar ao usuário.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:26:38Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:08:29Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:15:24Z
+- **Atualizada:** 2026-11-08T20:21:08Z
+- **Fechada:** 2026-11-08T20:21:08Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve conseguir visualizar e alterar aos parâmetros configuráveis da corrida.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Gustavo-Jun-Tsuji em 2026-11-08T20:21:01Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/12#issuecomment-6726620937)
+
+<pre>Versão inicial implementada, fechando por agora
+
+&lt;img width=&quot;1280&quot; height=&quot;800&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/1962075d-9ed4-4c87-9a52-d3c26d7781d1&quot; /&gt;
+
+&lt;img width=&quot;187&quot; height=&quot;248&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/e367ef79-34bf-4fa6-8b8c-cdc535aa0319&quot; /&gt;
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:21:08Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:38:49Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-08-28T23:15:25Z — label adicionada: Task por @Jmvjr
+
+</details>
 
 ### [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13)
 
@@ -2027,6 +2271,65 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 
 </details>
 
+### [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Jmvjr
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:19:03Z
+- **Atualizada:** 2026-11-08T20:21:26Z
+- **Fechada:** 2026-11-08T20:21:26Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve poder escolher simulações já existentes como base</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:21:26Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:38:53Z — atribuida: @Jmvjr por @Jmvjr
+- 2026-08-28T23:19:04Z — label adicionada: Task por @Jmvjr
+
+</details>
+
+### [#15 — Simulação puxa dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/15)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:24:35Z
+- **Atualizada:** 2026-11-08T20:21:44Z
+- **Fechada:** 2026-11-08T20:21:44Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Antes de rodar, a simulação deve puxar dados do backend de maneira coerente com a configuração setada para o usuário. Então, estes dados são consumidos pelo motor do sistema que irá executar a simulação.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:21:44Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:32:08Z — label adicionada: História por @guilherme-webster
+
+</details>
+
 ### [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16)
 
 - **Estado:** fechada
@@ -2053,6 +2356,191 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 
 - 2026-09-05T00:04:59Z — fechada por @ViniciusFCoracin
 - 2026-08-28T23:36:37Z — label adicionada: Task por @ViniciusFCoracin
+
+</details>
+
+### [#17 — Processamento da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/17)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:34:03Z
+- **Atualizada:** 2026-11-08T20:17:23Z
+- **Fechada:** 2026-11-08T20:17:23Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>A simulação deve ser processada do seu início ao fim no back-end.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:17:24Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:36:11Z — label adicionada: Task por @DaviGabrielBC
+
+</details>
+
+### [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:34:08Z
+- **Atualizada:** 2026-11-08T20:29:56Z
+- **Fechada:** 2026-11-08T20:29:56Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>A tela de simulação deve exibir a classificação dos pilotos de forma dinâmica ao longo da corrida.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Gustavo-Jun-Tsuji em 2026-11-08T20:29:56Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/18#issuecomment-6726720060)
+
+<pre>&lt;img width=&quot;304&quot; height=&quot;247&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/c5181fca-c6ac-4705-9d8b-b400590c2619&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:29:56Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:36:48Z — label adicionada: Task por @ViniciusFCoracin
+
+</details>
+
+### [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:34:43Z
+- **Atualizada:** 2026-11-08T20:30:21Z
+- **Fechada:** 2026-11-08T20:30:21Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve ser capaz de controlar a velocidade com que a simulação é exibida na tela (exemplo: exibir a corrida em tempo real, exibir em 10x, 50x etc).</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Gustavo-Jun-Tsuji em 2026-11-08T20:30:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/19#issuecomment-6726724724)
+
+<pre>&lt;img width=&quot;258&quot; height=&quot;24&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/19bdf41b-cdd2-4ba4-96b2-81df808a1283&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:30:22Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:30:07Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:36:55Z — label adicionada: Task por @ViniciusFCoracin
+
+</details>
+
+### [#20 — Exibição do progresso da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/20)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:35:56Z
+- **Atualizada:** 2026-11-08T20:16:57Z
+- **Fechada:** 2026-11-08T20:16:36Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário será informado do progresso da simulação, sabendo quão próxima está de concluida.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Gustavo-Jun-Tsuji em 2026-11-08T20:16:36Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/20#issuecomment-6726571098)
+
+<pre>&lt;img width=&quot;365&quot; height=&quot;63&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/b28234ae-d2d6-4af2-8c76-2628d78a539d&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:16:57Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:16:37Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:35:57Z — label adicionada: Task por @DaviGabrielBC
+
+</details>
+
+### [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:36:18Z
+- **Atualizada:** 2026-11-08T20:33:33Z
+- **Fechada:** 2026-11-08T20:33:33Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>A tela de simulação deve exibir as condições da corrida, como por exemplo o clima, o tempo de corrida, se há bandeira amarela/vermelha etc).</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Gustavo-Jun-Tsuji em 2026-11-08T20:33:33Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/21#issuecomment-6726761203)
+
+<pre>&lt;img width=&quot;798&quot; height=&quot;776&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/af2f7cf6-7566-413c-9b87-cc9ce5ae6f00&quot; /&gt;
+
+Bandeiras verde, vermelha, amarela, saafety, etc</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:33:33Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:37:02Z — label adicionada: Task por @ViniciusFCoracin
 
 </details>
 
@@ -2083,6 +2571,44 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - 2026-10-23T21:58:53Z — fechada por @Gustavo-Jun-Tsuji
 - 2026-09-04T22:15:18Z — responsavel removido: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 - 2026-09-03T23:50:41Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#23 — Resultado final da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/23)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#10 — Tela de resultados](https://github.com/guilherme-webster/mc857-o-projeto/issues/10)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:48:14Z
+- **Atualizada:** 2026-11-08T20:22:53Z
+- **Fechada:** 2026-11-08T20:22:53Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Na tela de resultados, o usuário poderá visualizar uma tabela contendo o ranque e os tempos finais de todos os jogadores</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Gustavo-Jun-Tsuji em 2026-11-08T20:22:53Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/23#issuecomment-6726641829)
+
+<pre>&lt;img width=&quot;572&quot; height=&quot;343&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/11fd4770-02e7-4d39-b2d0-56c6f926f71d&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:22:53Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:48:16Z — label adicionada: Task por @DaviGabrielBC
 
 </details>
 
@@ -2473,18 +2999,174 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 
 </details>
 
-### [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43)
+### [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
 
 - **Estado:** fechada
 - **Motivo do estado:** completed
 - **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#37 — Docker - conteinerizar a aplicação](https://github.com/guilherme-webster/mc857-o-projeto/issues/37), [#38 — Configurar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/38), [#39 — Padronização e Qualidade de Código](https://github.com/guilherme-webster/mc857-o-projeto/issues/39)
+- **Criada:** 2026-09-04T00:07:17Z
+- **Atualizada:** 2026-11-08T20:44:32Z
+- **Fechada:** 2026-11-08T20:44:32Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Configurar a infraestrutura do projeto, garantindo um ambiente de desenvolvimento padronizado entre os integrantes do grupo e a automação de validações de código.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:44:33Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:16:18Z — sub-issue adicionada: #39 por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:15:03Z — sub-issue adicionada: #38 por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:12:30Z — sub-issue adicionada: #37 por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:07:17Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#37 — Docker - conteinerizar a aplicação](https://github.com/guilherme-webster/mc857-o-projeto/issues/37)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
+- **Sub-issues:** —
+- **Criada:** 2026-09-04T00:12:28Z
+- **Atualizada:** 2026-11-08T20:43:43Z
+- **Fechada:** 2026-11-08T20:43:43Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>conteinerizar o backend e o frontend com Docker para padronizar o ambiente de desenvolvimento e execução.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:43:44Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-04T22:14:50Z — label adicionada: História por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:39:57Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#38 — Configurar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/38)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
+- **Sub-issues:** —
+- **Criada:** 2026-09-04T00:15:02Z
+- **Atualizada:** 2026-11-08T20:43:52Z
+- **Fechada:** 2026-11-08T20:43:52Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>configurar um pipeline de Integração Contínua (CI) para validar builds, linters e testes 
+
+Esse ticket será um constante lembrete de implementar boas práticas de CI</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:43:53Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-04T22:14:57Z — label adicionada: História por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:42:15Z — marcada como duplicada por @Gustavo-Jun-Tsuji
+- 2026-09-04T00:17:34Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#39 — Padronização e Qualidade de Código](https://github.com/guilherme-webster/mc857-o-projeto/issues/39)
+
+- **Estado:** fechada
+- **Motivo do estado:** not_planned
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#36 — Setup de Infraestrutura &amp; DevOps](https://github.com/guilherme-webster/mc857-o-projeto/issues/36)
+- **Sub-issues:** —
+- **Criada:** 2026-09-04T00:16:17Z
+- **Atualizada:** 2026-11-08T20:44:06Z
+- **Fechada:** 2026-11-08T20:44:06Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>padronizar o estilo de código e validações pré-commit para evitar inconsistências e erros de sintaxe no repositório</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:44:06Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-04T22:15:04Z — label adicionada: História por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43), [#47 — Carregar trotman no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/47), [#54 — Carregar dados de pista no container](https://github.com/guilherme-webster/mc857-o-projeto/issues/54)
+- **Criada:** 2026-09-04T23:02:55Z
+- **Atualizada:** 2026-11-08T20:50:09Z
+- **Fechada:** 2026-11-08T20:50:09Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Endpoints, integração com o front, fornecer arquivo de reprodução da simulação</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:50:09Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T20:24:01Z — sub-issue adicionada: #54 por @guilherme-webster
+- 2026-09-05T19:56:27Z — sub-issue adicionada: #47 por @Gustavo-Jun-Tsuji
+- 2026-09-05T16:38:00Z — sub-issue adicionada: #43 por @Gustavo-Jun-Tsuji
+- 2026-09-04T23:02:57Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#43 — Criar endpoints](https://github.com/guilherme-webster/mc857-o-projeto/issues/43)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
 - **Sub-issues:** —
 - **Criada:** 2026-09-05T16:37:59Z
-- **Atualizada:** 2026-09-24T18:52:46Z
+- **Atualizada:** 2026-11-08T20:28:55Z
 - **Fechada:** 2026-09-24T18:52:46Z
 
 <details>
@@ -2497,6 +3179,7 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-08T20:28:55Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 - 2026-09-24T18:52:46Z — fechada por @Gustavo-Jun-Tsuji
 - 2026-09-05T16:38:09Z — label adicionada: História por @Gustavo-Jun-Tsuji
 
@@ -2507,13 +3190,13 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - **Estado:** fechada
 - **Motivo do estado:** completed
 - **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
+- **Responsaveis:** @Gustavo-Jun-Tsuji
 - **Labels:** Task
 - **Milestone:** —
 - **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
 - **Sub-issues:** —
 - **Criada:** 2026-09-05T19:56:26Z
-- **Atualizada:** 2026-10-08T16:22:58Z
+- **Atualizada:** 2026-11-08T20:28:52Z
 - **Fechada:** 2026-10-08T16:22:58Z
 
 <details>
@@ -2526,6 +3209,7 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-08T20:28:52Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 - 2026-10-08T16:22:58Z — fechada por @Gustavo-Jun-Tsuji
 - 2026-09-05T19:56:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
@@ -2566,13 +3250,13 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - **Estado:** fechada
 - **Motivo do estado:** completed
 - **Autor:** @guilherme-webster
-- **Responsaveis:** —
+- **Responsaveis:** @Gustavo-Jun-Tsuji
 - **Labels:** —
 - **Milestone:** —
 - **Issue-pai:** [#41 — Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/41)
 - **Sub-issues:** —
 - **Criada:** 2026-09-11T20:24:00Z
-- **Atualizada:** 2026-10-08T16:23:01Z
+- **Atualizada:** 2026-11-08T20:28:43Z
 - **Fechada:** 2026-10-08T16:23:01Z
 
 <details>
@@ -2585,7 +3269,68 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-08T20:28:43Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 - 2026-10-08T16:23:02Z — fechada por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#64 — Consumo do backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/64)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T22:26:45Z
+- **Atualizada:** 2026-11-08T20:51:51Z
+- **Fechada:** 2026-11-08T20:51:51Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>consumir interface do backend para modelagem posterior dos carros</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:51:51Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T22:26:46Z — label adicionada: Task por @guilherme-webster
+- 2026-09-11T22:26:45Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#66 — Consumir backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/66)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T22:28:39Z
+- **Atualizada:** 2026-11-08T20:37:32Z
+- **Fechada:** 2026-11-08T20:37:32Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Consumir dados do backend para termos dados de pilotos</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:37:32Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T22:32:45Z — label adicionada: Task por @guilherme-webster
+- 2026-09-11T22:32:40Z — atribuida: @guilherme-webster por @guilherme-webster
 
 </details>
 
@@ -2649,6 +3394,64 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-10-02T22:13:51Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-09-11T22:33:46Z — label adicionada: Task por @guilherme-webster
 - 2026-09-11T22:33:42Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#70 — Consumir dados da modelagem](https://github.com/guilherme-webster/mc857-o-projeto/issues/70)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T23:54:08Z
+- **Atualizada:** 2026-11-08T20:50:47Z
+- **Fechada:** 2026-11-08T20:50:47Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Consome dados da etapa de modelagem para rodar a simulação em si</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:50:47Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T23:54:57Z — label adicionada: História por @guilherme-webster
+
+</details>
+
+### [#71 — Executar simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/71)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T23:54:51Z
+- **Atualizada:** 2026-11-08T20:50:41Z
+- **Fechada:** 2026-11-08T20:50:41Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Roda a simulação da corrida em geral, que usufrui da modelagem da etapa anterior e modela a corrida em geral</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:50:41Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T23:54:52Z — label adicionada: História por @guilherme-webster
 
 </details>
 
@@ -2722,6 +3525,35 @@ Verificações: git check-ignore confirma as exclusões; git diff --check e git 
 - 2026-09-26T00:40:21Z — fechada por @Jmvjr
 - 2026-09-26T00:29:35Z — atribuida: @Jmvjr por @Jmvjr
 - 2026-09-26T00:29:33Z — label adicionada: Task por @Jmvjr
+
+</details>
+
+### [#95 — Modelagem da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/95)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-16T19:57:22Z
+- **Atualizada:** 2026-11-08T20:28:37Z
+- **Fechada:** 2026-11-07T19:01:07Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:28:37Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-11-07T19:01:07Z — fechada por @Gustavo-Jun-Tsuji
 
 </details>
 
@@ -2831,5 +3663,316 @@ Limites registrados: pesos heurísticos/assumidos, curvatura derivada do mock co
 
 - 2026-11-06T21:35:40Z — fechada por @Jmvjr
 - 2026-10-26T23:12:04Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
+### [#106 — Reordenar livremente o grid de largada](https://github.com/guilherme-webster/mc857-o-projeto/issues/106)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** enhancement
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-30T20:33:03Z
+- **Atualizada:** 2026-11-08T20:36:33Z
+- **Fechada:** 2026-11-08T20:36:33Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Permitir que o usuário mude a ordem de largada como quiser.
+
+A ordem já chega ao motor, mas a tela só seleciona linhas e o `PATCH /catalog/grid` altera apenas atributos.
+
+Critérios:
+- botões ↑/↓ na tela do grid; ordem pendente no `GridDraft` (descartar, payload);
+- `PATCH /catalog/grid` aceita `order`, permutação exata do grid atual; 422 para duplicata, ausência ou ID desconhecido;
+- atributos, perfis e seed preservados; escrita atômica.
+
+Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.2.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-10-30T20:35:19Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6532928102)
+
+<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `106-reordenar-grid`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
+
+#### [@guilherme-webster em 2026-10-30T20:47:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6533137003)
+
+<pre>Implementado na branch `106-reordenar-grid` (2 commits: `reorder_grid` valida permutacao exata por `driver_id` e `PATCH /catalog/grid` aceita `order` preservando atributos e seed; botoes Subir/Descer e ordem pendente no `GridDraft`). Integrado na `develop` local (merge, sem push). Suite: 650 passed / 0 failed na develop integrada. Pendente: push/PR e conferencia visual dos botoes.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:31:45Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6533891164)
+
+<pre>Entrega no PR #112 (empilhado sobre o #111, com a branch 105 já mesclada). Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Próximo passo: revisão e merge; conferir visualmente os botões Subir/Descer.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:55:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/106#issuecomment-6534336804)
+
+<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:36:33Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:36:30Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-11-08T20:36:29Z — responsavel removido: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:36:25Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-10-30T20:33:04Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
+### [#107 — Número de voltas padrão por pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/107)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-10-30T20:33:05Z
+- **Atualizada:** 2026-11-08T20:36:16Z
+- **Fechada:** 2026-11-08T20:36:16Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Toda pista nova começa com 69 voltas fixas no frontend (`configuration_state.py`, `parameters_view.py`).
+
+Critérios:
+- padrão = máximo de voltas completadas na corrida mais recente do circuito (Trotman v128), com proveniência;
+- sem histórico: menor número de voltas completas acima de 305 km (Mônaco 260 km), rotulado `assumed_distance_rule`;
+- `GET /simulation/tracks` devolve `default_laps` e origem;
+- padrão só para pista não configurada; edição do usuário preservada; clima padrão cobre o novo total.
+
+Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.3. Proposta original em `docs/progresso.md`.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-10-30T20:35:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6532928474)
+
+<pre>Iniciado em 2026-10-30. Implementacao delegada a um agente Codex (gpt-5.6-sol) na branch `107-voltas-padrao`, a partir da `develop` (1200f6e, com o PRD `docs/prds/controles-do-usuario-simulacao.md`). Linha de base da suite na develop: 614 passam, 3 falhas pre-existentes em `tests/test_catalog_grid_run.py`.</pre>
+
+#### [@guilherme-webster em 2026-10-30T20:47:25Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6533137326)
+
+<pre>Implementado na branch `107-voltas-padrao` (2 commits: caso de uso `default_laps_for_circuit` com historico Trotman e reserva `assumed-distance-rule-v1`; `GET /simulation/tracks` com `default_laps`, origem e corrida; frontend aplica o padrao so em pista nao configurada e ajusta o clima). Conferido com o Trotman v128 bruto: Albert Park 58, Monaco 78, Spa 44, Interlagos 71, Yas Marina 58 (corrida mais recente). Integrado na `develop` local (merge com conflito resolvido em `parameters_view.py`/teste, sem push). Suite: 650 passed / 0 failed.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:31:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6533891529)
+
+<pre>Entrega no PR #113 (empilhado sobre o #112, conflito com a #105 resolvido no merge da branch). Ordem de merge: #111 (105) → #112 (106) → #113 (107) → #114 (108) → #115 (109); cada PR tem como base a branch anterior. Próximo passo: revisão e merge.</pre>
+
+#### [@guilherme-webster em 2026-10-30T21:55:50Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/107#issuecomment-6534337125)
+
+<pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:36:16Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-10-30T20:33:06Z — label adicionada: bug por @guilherme-webster
+
+</details>
+
+### [#125 — Feature: Decomposicao de velocidade](https://github.com/guilherme-webster/mc857-o-projeto/issues/125)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-07T19:03:31Z
+- **Atualizada:** 2026-11-08T20:34:53Z
+- **Fechada:** 2026-11-08T20:34:53Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Gustavo-Jun-Tsuji em 2026-11-08T20:34:53Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/125#issuecomment-6726776427)
+
+<pre>&lt;img width=&quot;267&quot; height=&quot;234&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/de975f96-e2fa-4543-bbe3-f5e2400feaff&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:34:53Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-11-08T20:34:52Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#128 — Desempenho de equipes no pit-stop](https://github.com/guilherme-webster/mc857-o-projeto/issues/128)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** @ViniciusFCoracin
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T01:07:46Z
+- **Atualizada:** 2026-11-08T20:28:26Z
+- **Fechada:** 2026-11-08T19:13:45Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:28:26Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
+- 2026-11-08T19:13:45Z — fechada por @ViniciusFCoracin
+
+</details>
+
+### [#130 — Correções de bugs no frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/130)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** @ViniciusFCoracin
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T16:23:18Z
+- **Atualizada:** 2026-11-08T20:28:05Z
+- **Fechada:** 2026-11-08T19:13:37Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Alguns bugs foram identificados no frontend:
+1) Na tela de configuração, a seta para a esquerda para visualizar a pista anterior não está funcionando.
+2) Na tela de grid, não estão sendo exibidos todos os pilotos
+3) Está havendo sobreposição dos pilotos com a caixa de configuração das estatísticas
+Necessário corrigir esses bugs</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:28:05Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
+- 2026-11-08T19:13:37Z — fechada por @ViniciusFCoracin
+
+</details>
+
+### [#132 — Simulação leva em conta o número de voltas definido pelo usuário](https://github.com/guilherme-webster/mc857-o-projeto/issues/132)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @ViniciusFCoracin
+- **Responsaveis:** @ViniciusFCoracin
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T17:10:21Z
+- **Atualizada:** 2026-11-08T20:27:55Z
+- **Fechada:** 2026-11-08T19:13:30Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Até então, o usuário tem a possibilidade de customizar a volta inicial e o número de voltas, mas nem a simulação e nem a exibição levam em conta esse número customizado (continuam utilizando o padrão definido na pista)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-08T20:27:55Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
+- 2026-11-08T19:13:30Z — fechada por @ViniciusFCoracin
+
+</details>
+
+### [#135 — Carregar corridas salvas na tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/135)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @ViniciusFCoracin
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T20:20:26Z
+- **Atualizada:** 2026-11-09T22:36:53Z
+- **Fechada:** 2026-11-09T22:36:53Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-09T22:36:53Z — fechada por @ViniciusFCoracin
+- 2026-11-09T21:46:29Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
+- 2026-11-08T20:20:27Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#137 — Melhorar Tela de corrida salvas](https://github.com/guilherme-webster/mc857-o-projeto/issues/137)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @ViniciusFCoracin
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
+- **Sub-issues:** —
+- **Criada:** 2026-11-08T20:24:31Z
+- **Atualizada:** 2026-11-09T22:36:41Z
+- **Fechada:** 2026-11-09T22:36:41Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Escritas sobrepostas e não existe botão de retorno
+
+&lt;img width=&quot;779&quot; height=&quot;588&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/3145cd1a-37be-4232-8c3f-bb495eefd5a5&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-09T22:36:42Z — fechada por @ViniciusFCoracin
+- 2026-11-09T21:46:34Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
+- 2026-11-08T20:24:40Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
