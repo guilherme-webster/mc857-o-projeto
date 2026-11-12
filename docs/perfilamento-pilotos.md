@@ -1,5 +1,7 @@
 # Perfilamento de pilotos: dados, limites e plano de implementação
 
+> **Estado em 2026-11-12 (#154).** O motor por volta (`simulate_detailed_race`, `domain/race_simulation.py`) foi removido de `src/` e arquivado em `TOBEDEFINED/`; o único motor é o 2D (`simulate_2d_race`, `domain/race_simulation_2d.py`, [ADR 0011](adr/0011-motor-2d-posicao-continua-ultrapassagem-e-colisao.md)), servido por `POST /catalog/grid/run` (e `/run/stream`). A nota de 16/10/2026 abaixo descreve o estado anterior. Mapa atual: [CODEBASE_MAP](CODEBASE_MAP.md).
+>
 > Atualização em 16/10/2026: `backend/app/engine/loader.py`, `models.py` e a
 > rota histórica citados abaixo foram removidos. Hoje o motor da corrida é `simulate_detailed_race` (`src/f1_simulator/domain/race_simulation.py`), servido por `POST /catalog/grid/run`, com atributos de piloto heurísticos ([ADR 0008](adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md)); o plano de
 > perfilamento orientado a dados permanece como estudo.

@@ -1,5 +1,15 @@
 # Handoff — motor 2D de corrida (continue daqui)
 
+> **Nota de estado (2026-11-12, #154).** Documento historico de 2026-10-01; o
+> texto abaixo descreve o estado de entao e **nao** o atual. O que mudou: o
+> motor 2D foi commitado, testado e promovido a **unico motor** (ADR 0011); o
+> motor por volta/`detailed`, o seletor `engine="2d"` e a regra "Motor da
+> corrida" do frontend foram removidos (#145, #146); `run_detailed_grid_simulation`
+> virou `run_grid_simulation`, que exige geometria; pit lane, controle de prova,
+> estrategia, combustivel por massa, aderencia e pneus de chuva ja rodam no 2D.
+> Ainda nao roda no 2D: reabastecimento e lift-and-coast. Estado vigente:
+> [CODEBASE_MAP](CODEBASE_MAP.md) e [modelagem-heuristica](modelagem-heuristica.md).
+
 Este documento passa o contexto do trabalho do **motor 2D** de uma sessao para
 quem continuar (outra conta ou outra pessoa). Ele resume intencao, decisoes,
 estado e proximos passos. Nao substitui as fontes de verdade: `AGENTS.md`, os

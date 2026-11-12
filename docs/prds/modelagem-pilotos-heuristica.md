@@ -1,5 +1,13 @@
 # Integração do motor calibrado com perfis, paradas e bandeiras heurísticos
 
+> **Nota de estado (2026-11-12, #154).** PRD historico de 2026-10-03. O motor
+> por volta (`simulate_detailed_race`, `disputes.py`, `lap_time.py`) e os
+> arquivos de `TOBEDEFINED/` citados abaixo foram arquivados; o motor vigente e
+> o 2D (ADR 0011), com perfis, paradas e controle de prova heuristicos
+> (ADR 0008) portados para ele. Valores atuais em
+> [modelagem-heuristica](../modelagem-heuristica.md); mapa em
+> [CODEBASE_MAP](../CODEBASE_MAP.md). Os caminhos abaixo valem como registro.
+
 **Status:** implementado em 2026-10-03 (v3.1). Valores atuais em
 [`docs/modelagem-heuristica.md`](../modelagem-heuristica.md); decisão no
 [ADR 0008](../adr/0008-modelagem-heuristica-sobre-o-motor-calibrado.md).
