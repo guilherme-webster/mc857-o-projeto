@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import unittest
 
-from frontend.arcade.race_playback import RacePlayback
-
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
@@ -13,6 +11,7 @@ from f1_simulator.application.run_grid_simulation import (
 )
 from f1_simulator.domain.driver_attributes import ATTRIBUTE_FIELDS, DriverAttributes
 from f1_simulator.domain.random_source import SeededRandomSource
+from frontend.arcade.race_playback import RacePlayback
 from tests.fuel_support import fuel_parameters
 from tests.geometry_support import fixture_geometry
 from tests.model_support import parameters

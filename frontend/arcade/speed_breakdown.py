@@ -16,9 +16,8 @@ resultado; nao simula nem corrige o motor.
 from __future__ import annotations
 
 from bisect import bisect_right
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
-from math import floor
 
 #: Ordem de empilhamento e rotulos das penalidades, do mais proximo da
 #: velocidade efetiva para o topo da barra.

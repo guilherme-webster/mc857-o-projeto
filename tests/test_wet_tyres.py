@@ -30,8 +30,8 @@ from f1_simulator.domain.wet_tyres import (
     relative_grip,
     wear_factor,
 )
-from tests.model_support import parameters, track
 from tests.geometry_support import attribute
+from tests.model_support import parameters, track
 from tests.test_track_condition import _fixture_geometry
 
 

@@ -17,7 +17,6 @@ from f1_simulator.adapters.datasets.trotman_source import (
     TROTMAN_DOWNLOAD_URL,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

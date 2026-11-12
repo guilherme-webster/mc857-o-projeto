@@ -1,11 +1,11 @@
 """Guard the reserved sample and verify descriptive event influence."""
 
-from copy import deepcopy
-from dataclasses import replace
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from copy import deepcopy
+from dataclasses import replace
+from pathlib import Path
 from unittest.mock import patch
 
 from f1_simulator.application.analyze_development import analyze_development

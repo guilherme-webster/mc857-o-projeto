@@ -5,16 +5,16 @@ from copy import deepcopy
 from random import Random
 from statistics import median
 
+from f1_simulator.application.analyze_tyre_restarts import (
+    mark_windows,
+    restart_times,
+    summarize,
+)
 from f1_simulator.application.analyze_tyres import (
+    DRY,
     analyze_tyres,
     describe_stint,
     fit_trend,
-    DRY,
-)
-from f1_simulator.application.analyze_tyre_restarts import (
-    restart_times,
-    mark_windows,
-    summarize,
 )
 
 

@@ -394,7 +394,6 @@ def _pit_entry_fraction(track_id):
     if track_id is None:
         return None
     from app.services.track_geometry import geometry_dataset
-
     from f1_simulator.adapters.datasets.mock_track_geometry import (
         MockTrackDatasetError,
     )

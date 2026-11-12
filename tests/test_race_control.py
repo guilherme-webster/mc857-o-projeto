@@ -6,14 +6,12 @@ from dataclasses import FrozenInstanceError, replace
 
 from f1_simulator.domain.race_control import (
     GREEN,
+    HEURISTIC_RACE_CONTROL,
     RED,
     SC,
     VSC,
     YELLOW,
-    HEURISTIC_RACE_CONTROL,
     Incident,
-    LapEffects,
-    RaceControlParameters,
     RaceControlState,
     RaceStatus,
     effects,
@@ -22,7 +20,6 @@ from f1_simulator.domain.race_control import (
     step,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
-
 
 
 def _crash_response_draw(status: RaceStatus) -> float:

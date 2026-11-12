@@ -10,12 +10,12 @@ import arcade
 
 from frontend.arcade.race_control_feed import RaceControlFeed
 from frontend.arcade.race_playback import RacePlayback, track_condition_label
-from frontend.arcade.tournament_session import TournamentSession
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
     PRIMARY_TEXT_COLOR,
     TRACK_EDGE_COLOR,
 )
+from frontend.arcade.tournament_session import TournamentSession
 from frontend.arcade.track_client import (
     fetch_race,
     fetch_saved_race,

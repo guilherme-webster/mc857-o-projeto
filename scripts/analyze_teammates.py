@@ -7,10 +7,10 @@ import argparse
 import csv
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import tempfile
+from pathlib import Path
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -122,9 +122,9 @@ def publish(result: dict, root: Path, *, plots: bool = True) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     """Analyze development IDs from the plan, never silently include its reserve."""
-    from scripts.evaluate_profiles import load_plan
     from f1_simulator.adapters.persistence.sqlite_history import SQLiteHistoryRepository
     from f1_simulator.application.analyze_teammates import analyze_teammates
+    from scripts.evaluate_profiles import load_plan
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--database", type=Path, required=True)

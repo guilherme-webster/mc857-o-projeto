@@ -1,7 +1,7 @@
 """Known synthetic observations verify the experimental method, not calibration."""
 
-from dataclasses import replace
 import unittest
+from dataclasses import replace
 
 from f1_simulator.domain.driver_profile import (
     ProfileConfig,

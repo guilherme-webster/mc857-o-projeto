@@ -1,21 +1,21 @@
 """Known event samples test separation, stability and publication without network."""
 
+import io
+import json
+import tempfile
+import unittest
 from collections import defaultdict
 from contextlib import redirect_stdout
 from dataclasses import asdict, replace
-import io
-import json
 from pathlib import Path
-import tempfile
-import unittest
 from unittest.mock import patch
 
 from f1_simulator.application.evaluate_profiles import evaluate_profiles
+from f1_simulator.domain.driver_profile import estimate_profiles
 from f1_simulator.domain.history import HistoricalRecord
 from f1_simulator.domain.profile_evaluation import EvaluationPlan, compare_profiles
 from scripts.evaluate_profiles import load_plan, main, publish_report
 from tests.test_driver_profile import CONFIG, assess, record, sample, status, weather
-from f1_simulator.domain.driver_profile import estimate_profiles
 
 
 def change(row, **values):

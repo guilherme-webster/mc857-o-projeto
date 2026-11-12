@@ -1,18 +1,18 @@
 """Exercise the model against the real ETL contract without network or UI."""
 
-from dataclasses import replace
-from datetime import timedelta
 import hashlib
 import io
 import json
-from contextlib import redirect_stdout
-from pathlib import Path
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from dataclasses import replace
+from datetime import timedelta
+from pathlib import Path
 
 from f1_simulator.adapters.datasets.fastf1_sessions import (
-    FastF1SessionAdapter,
     MAPPINGS,
+    FastF1SessionAdapter,
 )
 from f1_simulator.adapters.persistence.sqlite_history import (
     SQLiteHistoryRepository,
@@ -20,7 +20,7 @@ from f1_simulator.adapters.persistence.sqlite_history import (
 )
 from f1_simulator.application.history_etl import run_history_etl
 from f1_simulator.application.profile_drivers import profile_drivers
-from tests.history_support import make_history, synthetic_session, RACE, DRIVERS
+from tests.history_support import DRIVERS, RACE, make_history, synthetic_session
 from tests.test_driver_profile import CONFIG
 
 

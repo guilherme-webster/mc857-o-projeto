@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import argparse
 import csv
-from dataclasses import asdict, fields
 import json
 import os
-from pathlib import Path
 import sqlite3
-from statistics import median
 import sys
 import tempfile
-from uuid import uuid4
+from dataclasses import asdict, fields
+from pathlib import Path
+from statistics import median
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -33,8 +33,8 @@ def publish_study(
     plots: bool = True,
 ) -> Path:
     """Publish all variants atomically; inputs and previous outputs stay untouched."""
-    from scripts.evaluate_profiles import publish_report
     from f1_simulator.application.analyze_contexts import ContextChange
+    from scripts.evaluate_profiles import publish_report
 
     root = root.resolve()
     if root.is_relative_to(ROOT / "data" / "raw"):

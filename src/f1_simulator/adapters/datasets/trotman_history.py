@@ -6,10 +6,10 @@ import csv
 import hashlib
 import io
 import zipfile
-from contextlib import contextmanager
 from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 
 from f1_simulator.adapters.datasets.trotman import (
@@ -18,7 +18,6 @@ from f1_simulator.adapters.datasets.trotman import (
 )
 from f1_simulator.adapters.datasets.trotman_source import TROTMAN_DATASET_REF
 from f1_simulator.domain.history import HISTORY_TABLES, Scalar
-
 
 # Explicit mappings make coverage reviewable: even original display strings
 # with different semantics (e.g. '+1 lap' versus elapsed milliseconds) survive.

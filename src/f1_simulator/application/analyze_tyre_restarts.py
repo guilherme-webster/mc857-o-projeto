@@ -4,7 +4,7 @@ from collections import defaultdict
 from copy import deepcopy
 from statistics import median
 
-from f1_simulator.application.analyze_tyres import analyze_tyres, describe_stint, DRY
+from f1_simulator.application.analyze_tyres import DRY, analyze_tyres, describe_stint
 
 
 def restart_times(statuses: list[dict]) -> tuple[int, ...]:

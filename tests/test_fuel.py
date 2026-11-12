@@ -24,6 +24,7 @@ from f1_simulator.domain.fuel import (
 )
 from tests.fuel_support import REFERENCE_MS, fuel_parameters, plan
 
+
 class FuelPlanTest(unittest.TestCase):
     def test_burn_and_sensitivity_follow_length_and_lap_time(self) -> None:
         fuel = plan()

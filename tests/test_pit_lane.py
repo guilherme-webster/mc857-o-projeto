@@ -1,11 +1,10 @@
 """Percurso dos boxes: relógio, progresso de corrida, serviço e reprodução."""
 
-from dataclasses import replace
 import json
-from pathlib import Path
 import unittest
+from dataclasses import replace
+from pathlib import Path
 
-from frontend.arcade.race_playback import RacePlayback
 from f1_simulator.adapters.datasets.mock_track_geometry import MockTrackDatasetAdapter
 from f1_simulator.domain.pit_lane import (
     PitLaneParameters,
@@ -24,6 +23,7 @@ from f1_simulator.domain.track_space import (
     integrate_field,
 )
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
+from frontend.arcade.race_playback import RacePlayback
 from tests.model_support import parameters, track
 from tests.test_track_space import _square
 

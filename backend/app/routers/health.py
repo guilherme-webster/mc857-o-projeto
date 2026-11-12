@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from app.config import DEFAULT_RACE_DB
 from fastapi import APIRouter
+
+from app.config import DEFAULT_RACE_DB
 
 router = APIRouter(tags=["Health"])
 

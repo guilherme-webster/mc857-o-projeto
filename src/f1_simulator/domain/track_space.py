@@ -25,7 +25,6 @@ from f1_simulator.domain.pit_lane import (
     PitLaneState,
     PitStopRequest,
 )
-
 from f1_simulator.domain.random_source import RandomSource
 from f1_simulator.domain.speed_dynamics import (
     DEFAULT_CAR_PHYSICS,

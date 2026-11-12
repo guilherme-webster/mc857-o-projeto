@@ -24,9 +24,8 @@ from f1_simulator.application.run_grid_simulation import (
     run_grid_simulation,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
-from tests.model_support import parameters
 from tests.geometry_support import attribute, fixture_geometry
-
+from tests.model_support import parameters
 
 GEOMETRY = fixture_geometry()
 

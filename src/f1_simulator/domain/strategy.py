@@ -31,7 +31,6 @@ from f1_simulator.domain.wet_tyres import (
     wet_compound_used,
 )
 
-
 _DEFAULT_DRY_COMPOUNDS = ("SOFT", "MEDIUM", "HARD")
 
 #: Tolerancia de ponto flutuante para comparar massas de combustivel (kg).

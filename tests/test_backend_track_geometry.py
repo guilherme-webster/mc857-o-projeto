@@ -14,6 +14,7 @@ if BACKEND not in sys.path:
     sys.path.insert(0, BACKEND)
 
 from app.services import track_geometry  # noqa: E402
+
 from f1_simulator.domain.history import HistoricalRecord  # noqa: E402
 
 GEOMETRY = ROOT / "tests" / "fixtures" / "trotman_v128_tracks_2025"

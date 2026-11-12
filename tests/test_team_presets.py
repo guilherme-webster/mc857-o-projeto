@@ -25,9 +25,7 @@ from f1_simulator.application.team_presets import TeamPreset
 from f1_simulator.domain.pit_lane import PitLaneParameters
 from f1_simulator.domain.race_simulation_2d import simulate_2d_race
 from f1_simulator.domain.random_source import SeededRandomSource
-from f1_simulator.domain.speed_dynamics import car_pace_to_physics
 from tests.test_pit_lane import pit_geometry
-from tests.test_track_space import _square
 
 ROOT = Path(__file__).resolve().parents[1]
 CAR_PRESETS = ROOT / "configs" / "cars" / "perfis-ficticios.json"
@@ -195,9 +193,10 @@ class PitExecutionWiringTest(unittest.TestCase):
         }
 
     def test_slow_box_costs_more_time_on_a_forced_stop(self):
-        from tests.model_support import parameters, track as track_params
         from f1_simulator.domain.model_parameters import ASSUMED_WET_COMPOUNDS
         from f1_simulator.domain.strategy import PlannedStopStrategy
+        from tests.model_support import parameters
+        from tests.model_support import track as track_params
 
         geometry = pit_geometry()
         model = parameters()

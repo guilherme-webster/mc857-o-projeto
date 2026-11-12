@@ -22,6 +22,7 @@ from app.schemas.responses import (  # noqa: E402
     EditGridAttributesRequest,
 )
 from app.services import catalog as catalog_service  # noqa: E402
+
 from f1_simulator.adapters.driver_presets_json import (  # noqa: E402
     DriverPresetError,
     load_driver_presets,

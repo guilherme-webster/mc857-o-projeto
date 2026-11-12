@@ -1,7 +1,7 @@
 """Contratos do modelo climático isolado do backend e do Arcade."""
 
-from dataclasses import replace
 import unittest
+from dataclasses import replace
 
 from f1_simulator.domain.weather import (
     ASSUMED_WEATHER_PARAMETERS,

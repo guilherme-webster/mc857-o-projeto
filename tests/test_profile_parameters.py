@@ -1,10 +1,10 @@
 """Ranking and profiling-to-core boundary tested without database, GUI or HTTP."""
 
+import tempfile
+import unittest
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
-import tempfile
-import unittest
 from unittest.mock import patch
 
 from f1_simulator.adapters.profile_parameters import ProfileParametersAdapter

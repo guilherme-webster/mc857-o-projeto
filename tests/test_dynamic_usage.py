@@ -1,10 +1,9 @@
 """Tendências físicas, conservação de recursos e integração 2D, sem GPU."""
 
-from dataclasses import replace
 import json
 import unittest
+from dataclasses import replace
 
-from frontend.arcade.race_playback import RacePlayback
 from f1_simulator.domain.dynamic_usage import (
     DynamicUsageParameters,
     UsageReference,
@@ -22,10 +21,11 @@ from f1_simulator.domain.strategy import (
     TyreLifeStrategy,
 )
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
-from tests.model_support import parameters, track
+from frontend.arcade.race_playback import RacePlayback
 from tests.fuel_support import fuel_parameters
-from tests.test_track_space import _circle
+from tests.model_support import parameters, track
 from tests.test_pit_lane import pit_geometry
+from tests.test_track_space import _circle
 
 
 def delta(**overrides):

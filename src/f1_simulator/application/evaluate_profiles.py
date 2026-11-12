@@ -8,20 +8,20 @@ from collections import Counter
 from dataclasses import asdict, dataclass, replace
 from statistics import median
 
-from f1_simulator.domain.context_sensitivity import ContextVariant, separate_stints
-from f1_simulator.domain.driver_profile import estimate_profiles
-from f1_simulator.domain.profile_reliability import (
-    BootstrapConfig,
-    ProfileSupport,
-    profile_support,
-)
 from f1_simulator.application.ports.history import HistoryRepository
 from f1_simulator.application.profile_drivers import ProfileRun, profile_drivers
+from f1_simulator.domain.context_sensitivity import ContextVariant, separate_stints
+from f1_simulator.domain.driver_profile import estimate_profiles
 from f1_simulator.domain.profile_evaluation import (
     DriverStability,
     EvaluationPlan,
     StabilitySummary,
     compare_profiles,
+)
+from f1_simulator.domain.profile_reliability import (
+    BootstrapConfig,
+    ProfileSupport,
+    profile_support,
 )
 
 

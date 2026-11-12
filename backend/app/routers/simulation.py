@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import json
 
+from fastapi import APIRouter, HTTPException
+
 from app.config import CURRENT_RACE_JSON
 from app.schemas.responses import (
     RenameRequest,
-    SaveRaceRequest,
     SavedRaceMeta,
     SavedRacesResponse,
+    SaveRaceRequest,
 )
 from app.services import catalog
 from app.services.track_geometry import list_available_tracks, track_geometry_for
-from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/simulation", tags=["Simulation"])
 

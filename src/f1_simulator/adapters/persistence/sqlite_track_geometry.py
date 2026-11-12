@@ -13,7 +13,6 @@ from f1_simulator.application.track_geometry_dto import NormalizedTrackGeometry
 from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
 
-
 GEOMETRY_SCHEMA = """
 CREATE TABLE geometry_sources (
     circuit_id TEXT NOT NULL REFERENCES circuits(circuit_id),

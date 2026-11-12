@@ -23,6 +23,7 @@ from app.schemas.responses import (  # noqa: E402
     EditGridAttributesRequest,
 )
 from app.services import catalog as catalog_service  # noqa: E402
+
 from f1_simulator.application.build_grid import (  # noqa: E402
     GridEntry,
     GridOrderError,

@@ -18,8 +18,6 @@ from frontend.arcade.configuration_state import (
     WeatherSchedule,
 )
 from frontend.arcade.drawing import draw_rounded_panel
-from frontend.arcade.track_client import fetch_track
-from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 from frontend.arcade.theme import (
     ACCENT_COLOR,
     BACKGROUND_COLOR,
@@ -29,6 +27,8 @@ from frontend.arcade.theme import (
     WEATHER_ICON_PATHS,
     WEATHER_TIMELINE_COLORS,
 )
+from frontend.arcade.track_client import fetch_track
+from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
 if TYPE_CHECKING:
     from frontend.arcade.parameters_view import ParametersView

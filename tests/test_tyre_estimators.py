@@ -1,15 +1,15 @@
 """Neutralization boundaries, influence and held-event leakage regressions."""
 
-from copy import deepcopy
 import unittest
+from copy import deepcopy
 
+from f1_simulator.application.analyze_tyres import describe_stint
 from f1_simulator.application.compare_tyre_estimators import (
-    neutralizations,
     apply_windows,
     influence,
+    neutralizations,
     transfer_benchmark,
 )
-from f1_simulator.application.analyze_tyres import describe_stint
 from tests.test_tyres import rows
 
 

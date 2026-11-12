@@ -1,9 +1,9 @@
 """Known trends, early-lap missingness and selection boundaries for tyre studies."""
 
-from copy import deepcopy
-from pathlib import Path
 import tempfile
 import unittest
+from copy import deepcopy
+from pathlib import Path
 from unittest.mock import patch
 
 from f1_simulator.application.analyze_tyres import (
@@ -12,8 +12,8 @@ from f1_simulator.application.analyze_tyres import (
     fit_trend,
 )
 from scripts.analyze_tyres import publish
-from tests.test_profile_evaluation import MemoryHistory
 from tests.test_driver_profile import CONFIG
+from tests.test_profile_evaluation import MemoryHistory
 
 
 def rows(slope=100):

@@ -4,12 +4,12 @@ import unittest
 from copy import deepcopy
 
 from f1_simulator.application.analyze_tyre_restarts import (
-    restart_times,
-    mark_windows,
     analyze_restarts,
+    mark_windows,
+    restart_times,
 )
-from tests.test_profile_evaluation import MemoryHistory
 from tests.test_driver_profile import CONFIG
+from tests.test_profile_evaluation import MemoryHistory
 
 
 class TyreRestartTests(unittest.TestCase):

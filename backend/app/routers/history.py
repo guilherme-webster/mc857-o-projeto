@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from fastapi import APIRouter, Query, status
+
 from app.schemas.responses import (
     HistoryBuildErrorResponse,
     HistoryBuildResponse,
@@ -8,7 +10,6 @@ from app.schemas.responses import (
 )
 from app.services import history
 from app.services.errors import ETLError, http_from
-from fastapi import APIRouter, Query, status
 
 router = APIRouter(prefix="/api/history", tags=["Historical Archive (ETL B)"])
 

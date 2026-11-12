@@ -21,12 +21,12 @@ from frontend.arcade.theme import (
     SECONDARY_TEXT_COLOR,
     SUCCESS_COLOR,
 )
-from frontend.arcade.track_client import fetch_championship_standings, save_tournament
 from frontend.arcade.tournament_session import (
     StandingLine,
     TournamentSession,
     parse_standings,
 )
+from frontend.arcade.track_client import fetch_championship_standings, save_tournament
 
 _HEADER_COLOR = (130, 140, 150)
 _GOLD = (245, 197, 66)
