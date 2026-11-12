@@ -87,11 +87,16 @@ class PitLaneMotionTest(unittest.TestCase):
         car = CarSpaceState("a", distance_m=340, pit_request=PitStopRequest(360, 2.5))
         events = []
         crossings = []
+        # Passo explicito: o teste nao deve depender do ASSUMED_TIME_STEP_S padrao
+        # (que ja mudou de 0,05 s para 0,1 s) para contar amostras do servico.
+        dt_s = 0.05
+        service_s = 2.5
         samples = integrate_field(
             [car],
             build_track_space(geo),
             {"a": CarPhysics()},
             total_laps=2,
+            dt_s=dt_s,
             pit_lane=path,
             on_pit_event=lambda c, kind, t: events.append((kind, t)),
             on_lap_complete=lambda c, lap: crossings.append(lap),
@@ -109,7 +114,9 @@ class PitLaneMotionTest(unittest.TestCase):
         self.assertTrue(pit_samples)
         self.assertLessEqual(max(c.speed_ms * 3.6 for c in pit_samples), 80.000001)
         stationary = [c for c in pit_samples if c.pit_state.service_remaining_s > 0]
-        self.assertGreater(len(stationary), 40)
+        # O carro fica parado por service_s: ha ao menos service_s / dt_s amostras
+        # com servico restante (margem de uma por arredondamento de passo).
+        self.assertGreaterEqual(len(stationary), round(service_s / dt_s) - 1)
         self.assertTrue(all(c.speed_ms == 0 for c in stationary))
         self.assertAlmostEqual(
             min(c.distance_m for c in stationary), max(c.distance_m for c in stationary)
