@@ -16,7 +16,7 @@ guarda sem interpretar, e so este modulo os reconstroi.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from typing import Protocol
 
 from frontend.arcade import track_client
@@ -179,9 +179,10 @@ def rerun(
                 )
             )
 
-        # O setup salvo e reenviado intacto: e ele (com a semente do torneio e
-        # o indice da etapa) que faz a reexecucao reproduzir a corrida salva.
-        race = client.run_grid(stage["setup"], on_lap)
+        # O setup salvo e reenviado (sem o campo legado ``engine``, ver
+        # ``_rerun_setup``): e ele, com a semente do torneio e o indice da
+        # etapa, que faz a reexecucao reproduzir a corrida salva.
+        race = client.run_grid(_rerun_setup(stage), on_lap)
         races.append(LaunchedRace(planned, race, client.fetch_track(stage["circuit_id"])))
     return LaunchOutcome(
         tuple(races),
@@ -261,7 +262,21 @@ def _planned(stage: dict) -> PlannedRace:
 
 
 def _rules(record: dict) -> TournamentRules:
-    return TournamentRules(**record["rules"])
+    """Regras do registro, ignorando campos que a tela nao tem mais.
+
+    Torneios salvos antes da remocao do seletor de motor (#146) guardam
+    ``rules.engine``; so existe o motor 2D, entao o campo e descartado em vez
+    de recusar o registro.
+    """
+
+    known = {field.name for field in fields(TournamentRules)}
+    return TournamentRules(**{k: v for k, v in record["rules"].items() if k in known})
+
+
+def _rerun_setup(stage: dict) -> dict:
+    """``setup`` salvo da etapa sem o ``engine`` de registros antigos (#146)."""
+
+    return {key: value for key, value in stage["setup"].items() if key != "engine"}
 
 
 def _note(record: dict, action: str) -> str:

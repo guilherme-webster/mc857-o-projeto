@@ -23,7 +23,7 @@ from f1_simulator.domain.strategy import (
 )
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
 from tests.model_support import parameters, track
-from tests.test_fuel import fuel_parameters
+from tests.fuel_support import fuel_parameters
 from tests.test_track_space import _circle
 from tests.test_pit_lane import pit_geometry
 

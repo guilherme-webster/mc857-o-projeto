@@ -35,8 +35,9 @@ from f1_simulator.domain.speed_dynamics import (
 from f1_simulator.domain.track_geometry import TrackGeometry
 
 #: Passo de tempo da integracao sub-volta (s). Hipotese assumida (ADR 0011):
-#: menor passo aproxima melhor o continuo e custa mais. 50 ms equilibra as duas
-#: coisas para o uso educacional.
+#: menor passo aproxima melhor o continuo e custa mais. 100 ms (era 50 ms ate a
+#: otimizacao de desempenho do commit 9c94abd) equilibra as duas coisas para o
+#: uso educacional.
 ASSUMED_TIME_STEP_S = 0.1
 
 #: Velocidade lateral maxima de troca de faixa (m/s). Hipotese assumida: um

@@ -5,7 +5,6 @@ from __future__ import annotations
 import unittest
 
 from frontend.arcade.configuration_state import (
-    ENGINE_OPTIONS,
     ConfigurationFormData,
     PlannedRace,
     SessionConfiguration,
@@ -213,29 +212,25 @@ class RerunTest(unittest.TestCase):
         self.assertEqual(plan.tournament_seed, 109)
         self.assertEqual(plan.rules.name, "Copa salva")
 
-    def test_2d_engine_choice_survives_save_and_rerun(self) -> None:
-        rules = TournamentRules(
-            name="Copa 2D", total_stages=2, engine="2D com pit lane"
-        )
-        launch = FakeClient()
-        session = session_from_outcome(
-            launch_plan(SimulationPlan(PLANNED, rules, 109), launch)
-        )
-        record = saved_record(session)
-        client = FakeClient()
-
-        outcome = rerun(record, client)
-
-        sent = [call[1] for call in client.calls if call[0] == "run_grid"]
-        self.assertEqual([setup["engine"] for setup in sent], ["2d", "2d"])
-        self.assertEqual(outcome.rules.engine, "2D com pit lane")
-
-    def test_record_saved_before_engine_option_loads_as_detailed(self) -> None:
+    def test_record_with_legacy_engine_fields_reopens_and_reruns(self) -> None:
+        # Registros anteriores a #146 guardam o motor escolhido; hoje so existe
+        # o 2D e o campo deve ser ignorado, nao recusado nem reenviado.
         session, _ = simulated_session()
         record = saved_record(session)
-        del record["rules"]["engine"]
+        record["rules"]["engine"] = "2D com pit lane"
+        for stage in record["stages"]:
+            stage["setup"]["engine"] = "2d"
+        client = FakeClient()
 
-        self.assertEqual(reopen(record, lambda _: {}).rules.engine, ENGINE_OPTIONS[0])
+        reopened = reopen(record, lambda _: {})
+        outcome = rerun(record, client)
+
+        self.assertEqual(reopened.rules, session.rules)
+        self.assertEqual(outcome.rules, session.rules)
+        sent = [call[1] for call in client.calls if call[0] == "run_grid"]
+        self.assertEqual(len(sent), 2)
+        for setup in sent:
+            self.assertNotIn("engine", setup)
 
     def test_session_without_tournament_seed_round_trips(self) -> None:
         session, _ = simulated_session(seed=None)

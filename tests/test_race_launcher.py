@@ -8,7 +8,6 @@ import urllib.error
 
 from frontend.arcade.configuration_state import (
     ConfigurationFormData,
-    ConfigurationFormError,
     PlannedRace,
     SessionConfiguration,
     SimulationPlan,
@@ -97,16 +96,8 @@ class RunSetupTest(unittest.TestCase):
             setup["weather"], [{"from_lap": 1, "to_lap": 10, "rain": "dry"}]
         )
 
-    def test_engine_is_sent_only_when_the_2d_engine_is_chosen(self) -> None:
-        detailed = run_setup(planned(), TournamentRules())
-        spatial = run_setup(planned(), TournamentRules(engine="2D com pit lane"))
-
-        self.assertNotIn("engine", detailed)
-        self.assertEqual(spatial["engine"], "2d")
-
-    def test_unknown_engine_label_is_rejected(self) -> None:
-        with self.assertRaises(ConfigurationFormError):
-            TournamentRules(engine="Turbo")
+    def test_setup_does_not_declare_an_engine(self) -> None:
+        self.assertNotIn("engine", run_setup(planned(), TournamentRules()))
 
     def test_tournament_seed_and_stage_index_are_sent_when_present(self) -> None:
         setup = run_setup(

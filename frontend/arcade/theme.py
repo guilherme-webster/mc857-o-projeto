@@ -1,4 +1,6 @@
-"""Shared colors for the Arcade desktop screens."""
+"""Shared colors and weather presentation constants for the Arcade screens."""
+
+from pathlib import Path
 
 BACKGROUND_COLOR = (0, 0, 0)
 PANEL_COLOR = (24, 32, 48)
@@ -17,3 +19,20 @@ CAR_COLOR_TWO = (58, 134, 218)
 TRACK_SURFACE_COLOR = (255, 255, 255)
 TRACK_EDGE_COLOR = (255, 255, 255)
 GRASS_COLOR = (0, 0, 0)
+
+# Weather condition labels (as in `configuration_state.WEATHER_OPTIONS`) mapped
+# to the timeline color and to the icon drawn in the weather tab.
+WEATHER_TIMELINE_COLORS = {
+    "Seco": (244, 183, 64),
+    "Chuva leve": (75, 142, 214),
+    "Chuva intensa": (40, 82, 174),
+}
+WEATHER_ICON_PATHS = {
+    "Seco": Path(__file__).with_name("assets") / "icons" / "weather-dry.png",
+    "Chuva leve": Path(__file__).with_name("assets")
+    / "icons"
+    / "weather-light-rain.png",
+    "Chuva intensa": Path(__file__).with_name("assets")
+    / "icons"
+    / "weather-heavy-rain.png",
+}

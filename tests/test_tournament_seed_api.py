@@ -69,7 +69,6 @@ class TournamentSeedSchemaTest(unittest.TestCase):
             total_laps=5,
             track_id="circuit:1",
             weather=[],
-            engine="detailed",
             tournament_seed=105,
             stage_index=3,
         )
@@ -77,7 +76,7 @@ class TournamentSeedSchemaTest(unittest.TestCase):
 
 class TournamentSeedResponseTest(unittest.TestCase):
     def test_response_metadata_matches_the_core_derivation(self) -> None:
-        detailed_result = {"total_laps": 1, "history": [], "classification": []}
+        race_result = {"total_laps": 1, "history": [], "classification": []}
         with (
             patch.object(
                 catalog_service, "read_current_grid", return_value=current_grid()
@@ -88,8 +87,8 @@ class TournamentSeedResponseTest(unittest.TestCase):
             patch.object(catalog_service, "_track_geometry", return_value=None),
             patch.object(catalog_service, "_model_parameters", return_value=parameters()),
             patch(
-                "f1_simulator.application.run_grid_simulation.run_detailed_grid_simulation",
-                return_value=detailed_result,
+                "f1_simulator.application.run_grid_simulation.run_grid_simulation",
+                return_value=race_result,
             ) as run,
             patch.object(catalog_service, "_write_json"),
             patch.object(catalog_service, "_persist_saved_race"),
@@ -114,7 +113,7 @@ class TournamentSeedResponseTest(unittest.TestCase):
         self.assertEqual(result["race_stream_id"], "tournament-stage-v1:3")
 
     def test_legacy_response_identifies_the_unchanged_grid_race_stream(self) -> None:
-        detailed_result = {"total_laps": 1, "history": [], "classification": []}
+        race_result = {"total_laps": 1, "history": [], "classification": []}
         with (
             patch.object(
                 catalog_service, "read_current_grid", return_value=current_grid()
@@ -125,8 +124,8 @@ class TournamentSeedResponseTest(unittest.TestCase):
             patch.object(catalog_service, "_track_geometry", return_value=None),
             patch.object(catalog_service, "_model_parameters", return_value=parameters()),
             patch(
-                "f1_simulator.application.run_grid_simulation.run_detailed_grid_simulation",
-                return_value=detailed_result,
+                "f1_simulator.application.run_grid_simulation.run_grid_simulation",
+                return_value=race_result,
             ),
             patch.object(catalog_service, "_write_json"),
             patch.object(catalog_service, "_persist_saved_race"),

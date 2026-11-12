@@ -17,6 +17,7 @@ from frontend.arcade.configuration_state import (
     SessionConfiguration,
     WeatherSchedule,
 )
+from frontend.arcade.drawing import draw_rounded_panel
 from frontend.arcade.track_client import fetch_track
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 from frontend.arcade.theme import (
@@ -25,8 +26,9 @@ from frontend.arcade.theme import (
     ERROR_COLOR,
     PRIMARY_TEXT_COLOR,
     SECONDARY_TEXT_COLOR,
+    WEATHER_ICON_PATHS,
+    WEATHER_TIMELINE_COLORS,
 )
-from frontend.arcade.weather_view import WEATHER_ICON_PATHS, WEATHER_TIMELINE_COLORS
 
 if TYPE_CHECKING:
     from frontend.arcade.parameters_view import ParametersView
@@ -912,9 +914,7 @@ class RaceConfigurationView(arcade.View):
         fill: tuple[int, ...] = (20, 30, 42),
         border: tuple[int, ...] = (49, 65, 83),
     ) -> None:
-        from frontend.arcade.weather_view import TrackConfigurationView
-
-        TrackConfigurationView._draw_rounded_panel(*bounds, 8, fill, border)
+        draw_rounded_panel(*bounds, 8, fill, border)
 
     def _button(
         self, bounds: tuple[int, int, int, int], label: str, *, primary: bool = False

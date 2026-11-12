@@ -31,9 +31,11 @@ from f1_simulator.application.saved_tournament import (
     tournament_summary,
 )
 from f1_simulator.domain.driver_attributes import ATTRIBUTE_FIELDS, DriverAttributes
+from tests.geometry_support import fixture_geometry
 from tests.model_support import parameters
 
 GRID_SEED = 42
+GEOMETRY = fixture_geometry()
 TOURNAMENT_SEED = 109
 
 
@@ -91,7 +93,6 @@ def stage(stage_index: int, **race_options) -> dict:
             "total_laps": 3,
             "track_id": "circuit:1",
             "weather": [],
-            "engine": "detailed",
             "tournament_seed": TOURNAMENT_SEED,
             "stage_index": stage_index,
         },
@@ -153,18 +154,22 @@ class SavedTournamentContractTest(unittest.TestCase):
         wrong_index["setup"]["stage_index"] = 0
         wrong_laps = stage(0)
         wrong_laps["setup"]["total_laps"] = 4
-        wrong_engine = stage(0)
-        wrong_engine["setup"]["engine"] = "2d"
         cases = {
             "indice": [stage(0), wrong_index],
             "voltas": [wrong_laps],
-            "motor": [wrong_engine],
             "seed do torneio": [stage(0)],
         }
         for label, stages in cases.items():
             seed = 1 if label == "seed do torneio" else TOURNAMENT_SEED
             with self.subTest(label), self.assertRaises(SavedTournamentError):
                 build(stages=stages, tournament_seed=seed)
+
+    def test_legacy_setup_engine_is_ignored_by_the_check(self) -> None:
+        # Registros anteriores a #146 guardam ``setup.engine``; so existe o
+        # motor 2D, entao qualquer valor e aceito e ignorado.
+        legacy = stage(0)
+        legacy["setup"]["engine"] = "detailed"
+        check_saved_tournament(build(stages=[legacy]))
 
     def test_rejects_unknown_schema_version_on_read(self) -> None:
         record = build()
@@ -290,15 +295,19 @@ class SavedTournamentRerunTest(unittest.TestCase):
                 patch.object(
                     catalog_service,
                     "_track_reference",
-                    return_value=("circuit:1", 4_000.0),
+                    return_value=("circuit:1", GEOMETRY.lap_length_m),
                 )
+            )
+            # O motor 2D exige geometria; usa a do fixture em vez de ler data/.
+            stack.enter_context(
+                patch.object(catalog_service, "_track_geometry", return_value=GEOMETRY)
             )
             client = TestClient(app)
             catalog_service._write_current_grid(*grid_objects())
 
             setups = [
                 {
-                    "total_laps": 4,
+                    "total_laps": 2,
                     "track_id": "circuit:1",
                     "tournament_seed": TOURNAMENT_SEED,
                     "stage_index": index,

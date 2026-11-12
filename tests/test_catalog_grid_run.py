@@ -55,14 +55,13 @@ class CatalogGridRunRouteTest(unittest.TestCase):
             total_laps=5,
             track_id="circuit:1",
             weather=[],
-            engine="detailed",
         )
 
 
 class CatalogGridRunServiceTest(unittest.TestCase):
-    def test_detailed_engine_loads_model_track_length_and_keeps_seed(self) -> None:
+    def test_loads_model_track_length_and_keeps_seed(self) -> None:
         model = parameters()
-        detailed_result = {"total_laps": 5, "history": [], "classification": []}
+        race_result = {"total_laps": 5, "history": [], "classification": []}
         with tempfile.TemporaryDirectory() as directory:
             output_dir = Path(directory)
             with (
@@ -82,8 +81,8 @@ class CatalogGridRunServiceTest(unittest.TestCase):
                     catalog_service, "SAVED_RACES_DIR", output_dir / "saved-races"
                 ),
                 patch(
-                    "f1_simulator.application.run_grid_simulation.run_detailed_grid_simulation",
-                    return_value=detailed_result,
+                    "f1_simulator.application.run_grid_simulation.run_grid_simulation",
+                    return_value=race_result,
                 ) as run,
             ):
                 result = catalog_service.run_grid(
