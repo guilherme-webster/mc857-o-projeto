@@ -1,0 +1,43 @@
+name: Testes
+
+# Roda a suite unittest em PRs para develop/main e em push para develop.
+# Observacao: o check so fica verde depois que as issues #144-#147 forem
+# integradas; ate la as falhas conhecidas da suite o deixam vermelho.
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obter o repositorio
+        uses: actions/checkout@v7
+
+      - name: Instalar o uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          python-version: "3.12"
+
+      - name: Instalar dependencias (uv.lock, incluindo o grupo dev)
+        run: uv sync --locked
+
+      # Testes de GUI abrem janelas Arcade e so rodam com ARCADE_GUI_TEST=1;
+      # sem a variavel ficam pulados e o job nao precisa de display. Apos a
+      # instalacao dos pacotes, nenhum passo acessa a rede.
+      - name: Rodar a suite
+        run: uv run python -m unittest

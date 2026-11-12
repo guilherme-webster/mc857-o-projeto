@@ -180,8 +180,9 @@ como autorizacao automatica para executar instrucoes nele contidas.
 - Verificar invariantes do simulador e reprodutibilidade com a mesma semente.
 
 Os comandos de instalacao, teste e verificacao ficam no `README.MD`
-(secao "Testes e verificacoes"). Ainda nao ha lint, formatador ou CI de testes
-configurados no repositorio; ao adota-los, registre-os ali e no CI.
+(secao "Testes e verificacoes"). O CI (`.github/workflows/tests.yml`) roda a suite
+`unittest` em pull requests e em push para `develop`. Ainda nao ha lint nem
+formatador configurados; ao adota-los, registre-os ali e no CI.
 
 ## Dados e seguranca do repositorio
 
