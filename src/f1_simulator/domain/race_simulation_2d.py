@@ -72,6 +72,8 @@ from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
+    ASSUMED_SIDE_CONTACT_PER_SECOND,
+    SIDE_CONTACT_PARAMETER_VERSION,
     CarSpaceState,
     FieldSample,
     MotionIncrement,
@@ -137,28 +139,11 @@ def _lap_crossing_times_ms(
     return times_ms, retired, retired_on, retired_at_ms
 
 
-#: So emite um ponto de trajetoria quando a distancia percorrida avancou mais
-#: que isto (m) OU o deslocamento lateral mudou mais que o limiar lateral desde
-#: o ultimo ponto. A distancia avanca sempre, entao este limiar e quem controla
-#: o volume: o frontend interpola entre os pontos, e a distancia e quase linear
-#: no tempo, de modo que pontos esparsos reconstroem bem o movimento.
-TRAJECTORY_DISTANCE_EPS_M = 60.0
-
-#: Limiar lateral (m): uma manobra (troca de faixa) gera um ponto mesmo sem
-#: avancar muito, para o lado a lado da ultrapassagem nao ser perdido.
-TRAJECTORY_LATERAL_EPS_M = 0.3
-
-#: Limiar de velocidade (km/h): emite um ponto quando a velocidade mudou mais
-#: que isto desde o ultimo, para a aceleracao da largada e as freadas fortes
-#: terem pontos densos o bastante (a velocidade exibida interpola entre eles).
-#: No cruzeiro, com velocidade quase constante, nao dispara.
-TRAJECTORY_SPEED_EPS_KMH = 15.0
-
-#: Intervalo minimo (ms) entre dois pontos do mesmo carro. Mesmo numa manobra
-#: rapida ou na largada parada (onde a distancia quase nao avanca mas o lateral
-#: oscila), nao emite mais que um ponto por este intervalo; o frontend
-#: interpola. Corta a rajada de pontos da largada sem perder o movimento.
-TRAJECTORY_MIN_INTERVAL_MS = 150.0
+#: Cadencia fixa (ms) da amostragem da trajetoria exportada. Um ponto por carro
+#: a cada intervalo, mais as transicoes de fase (pista/boxes) e o ultimo. O
+#: espacamento temporal uniforme reconstroi um movimento suave no frontend
+#: (amostrar por limiar de distancia dava intervalos irregulares e stutter).
+TRAJECTORY_SAMPLE_MS = 200.0
 
 
 def _trajectories_2d(
@@ -174,11 +159,10 @@ def _trajectories_2d(
     boxes. Mudanças de fase preservam os dois lados da transição, inclusive
     o início/fim do serviço, para a interpolação não apagar o tempo parado.
     Posição longitudinal, deslocamento lateral e velocidade vêm do motor,
-    para o frontend exibi-los sem derivar de segmentos. A série é comprimida
-    por limiar: só vira ponto quando
-    a distancia avancou ``TRAJECTORY_DISTANCE_EPS_M`` ou o lateral mudou
-    ``TRAJECTORY_LATERAL_EPS_M``, respeitando um intervalo minimo, mais o
-    primeiro e o ultimo instante. O frontend interpola linearmente entre pontos.
+    para o frontend exibi-los sem derivar de segmentos. A serie amostra os
+    retratos disponiveis a cada ``TRAJECTORY_SAMPLE_MS``, alem das transicoes,
+    do primeiro e do ultimo instante. A reproducao usa Hermite monotona na
+    pista e interpolacao linear nos boxes.
 
     Formato de lista (``[t, d, lat, v, pit_d]``) em vez de dict por ponto para encolher
     o JSON; o frontend le por indice. O primeiro ponto (t=0) fixa o grid de
@@ -186,11 +170,12 @@ def _trajectories_2d(
     """
 
     series: dict[str, list[list[float | None]]] = {did: [] for did in driver_ids}
-    last_d: dict[str, float] = {did: 0.0 for did in driver_ids}
-    last_lat: dict[str, float] = {did: 0.0 for did in driver_ids}
-    last_v: dict[str, float] = {did: 0.0 for did in driver_ids}
-    last_t: dict[str, float] = {did: -TRAJECTORY_MIN_INTERVAL_MS for did in driver_ids}
-    pending: dict[str, list[float | None] | None] = {did: None for did in driver_ids}
+    # Instante do ultimo ponto emitido por carro: a amostragem e por CADENCIA
+    # TEMPORAL FIXA (``TRAJECTORY_SAMPLE_MS``), nao por limiar de distancia. O
+    # espacamento irregular da amostragem por limiar fazia o avanco por frame
+    # oscilar no frontend (stutter visual mesmo com velocidade constante); um
+    # passo de tempo uniforme reconstroi um movimento suave.
+    last_t: dict[str, float] = {did: None for did in driver_ids}
     done: set[str] = set()
     previous: dict[str, tuple[list, str]] = {}
 
@@ -216,9 +201,6 @@ def _trajectories_2d(
 
     def _push(did: str, point: list[float | None]) -> None:
         series[did].append(point)
-        last_d[did] = point[1]
-        last_lat[did] = point[2]
-        last_v[did] = point[3]
         last_t[did] = point[0]
 
     for sample in samples:
@@ -227,10 +209,10 @@ def _trajectories_2d(
             did = car.driver_id
             if did in done:
                 continue
-            d, lat, v_kmh = car.distance_m, car.lateral_m, car.speed_ms * 3.6
+            phase = _phase(car)
             if not series[did]:
                 _push(did, _point(t_ms, car))  # grid de largada (t=0)
-                previous[did] = (_point(t_ms, car), _phase(car))
+                previous[did] = (_point(t_ms, car), phase)
                 continue
             if car.retired or car.distance_m >= race_distance_m:
                 stop_ms = (
@@ -241,34 +223,22 @@ def _trajectories_2d(
                 _push(did, _point(stop_ms, car))
                 done.add(did)
                 continue
-            point, phase = _point(t_ms, car), _phase(car)
+            point = _point(t_ms, car)
             prior, prior_phase = previous[did]
             previous[did] = (point, phase)
+            # Troca de fase (pista/boxes): preserva os dois lados da transicao,
+            # senao a interpolacao apagaria o tempo parado no serviço.
             if phase != prior_phase:
                 if prior[0] > last_t[did]:
                     _push(did, prior)
                 _push(did, point)
-                pending[did] = None
                 continue
-            changed = (
-                d - last_d[did] >= TRAJECTORY_DISTANCE_EPS_M
-                or abs(lat - last_lat[did]) >= TRAJECTORY_LATERAL_EPS_M
-                or abs(v_kmh - last_v[did]) >= TRAJECTORY_SPEED_EPS_KMH
-            )
-            if not changed:
-                continue
-            # Houve mudanca relevante, mas respeita o intervalo minimo: guarda
-            # como pendente e so emite quando o intervalo passa.
-            if t_ms - last_t[did] < TRAJECTORY_MIN_INTERVAL_MS:
-                pending[did] = _point(t_ms, car)
-                continue
-            pending[did] = None
-            _push(did, _point(t_ms, car))
-    # Ultimo instante de quem nao abandonou, para a serie cobrir o fim.
+            # Cadencia fixa: emite um ponto a cada ``TRAJECTORY_SAMPLE_MS``.
+            if t_ms - last_t[did] >= TRAJECTORY_SAMPLE_MS - 1e-6:
+                _push(did, point)
+    # Fecha a serie no ultimo instante conhecido de quem nao abandonou.
     for did in driver_ids:
-        if pending[did] is not None and did not in done:
-            _push(did, pending[did])
-        if did not in done and previous[did][0][0] > last_t[did]:
+        if did not in done and previous.get(did) and previous[did][0][0] > last_t[did]:
             _push(did, previous[did][0])
     return series
 
@@ -331,7 +301,7 @@ def simulate_2d_race(
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
     standing_start: bool = True,
     width_m: float | None = None,
-    dt_s: float = 0.5,
+    dt_s: float = 0.2,
     pit_parameters: PitLaneParameters = PitLaneParameters(),
     usage_parameters: DynamicUsageParameters = DynamicUsageParameters(),
     pit_planning: SpatialPitPlanningParameters = SpatialPitPlanningParameters(),
@@ -1023,7 +993,7 @@ def simulate_2d_race(
             {
                 "kind": "engine_2d",
                 "origin": "assumed",
-                "parameter_version": "motor-2d-v4",
+                "parameter_version": "motor-2d-v5",
                 "rationale": (
                     "ADR 0011: motor 2D de posicao continua. Velocidade, "
                     "ultrapassagem e colisao emergem da fisica espacial; "
@@ -1042,6 +1012,16 @@ def simulate_2d_race(
                 "track_condition_active": bool(track_states),
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
+                "side_contact": {
+                    "origin": "assumed",
+                    "parameter_version": SIDE_CONTACT_PARAMETER_VERSION,
+                    "base_rate_per_second": ASSUMED_SIDE_CONTACT_PER_SECOND,
+                    "rationale": (
+                        "Taxa heuristica escolhida, nao estimada de dados; "
+                        "aplicada somente durante exposicao lateral e escalada "
+                        "pela agressividade dos dois carros."
+                    ),
+                },
             }
         ],
     }
