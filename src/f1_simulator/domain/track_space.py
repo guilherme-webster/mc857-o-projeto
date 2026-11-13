@@ -18,7 +18,7 @@ from __future__ import annotations
 from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from math import exp
+from math import exp, hypot
 
 from f1_simulator.domain.pit_lane import (
     PitLaneParameters,
@@ -742,6 +742,15 @@ def integrate_field(
                 if proposed > limit:
                     proposed = max(car.distance_m, limit)
                     car.speed_ms = min(car.speed_ms, ahead.speed_ms)
+            # Janela local evita projecoes para carros distantes; nao cobre
+            # encontros de trechos muito separados no eixo acumulado.
+            if (ahead is not None and proposed > car.distance_m
+                    and _forward_gap(proposed, ahead.distance_m, lap_length)
+                    <= 2 * (car.length_m + ahead.length_m)):
+                constrained = _limit_projected_advance(track, car, ahead, proposed)
+                if constrained < proposed:
+                    proposed = constrained
+                    car.speed_ms = min(car.speed_ms, ahead.speed_ms)
             request = car.pit_request
             if request is not None and proposed >= request.entry_distance_m:
                 if pit_lane is None:
@@ -835,6 +844,97 @@ def _forward_gap(origin: float, destination: float, lap_length_m: float) -> floa
     """Distancia para a frente no anel, sem alterar o progresso da corrida."""
 
     return (destination - origin) % lap_length_m
+
+
+def _projected_rectangle(
+    track: TrackSpace, car: CarSpaceState, distance_m: float
+) -> tuple[float, float, float, float]:
+    """Centro em metros e normal unitaria, como na projecao do frontend.
+
+    A distancia de corrida permanece no eixo original: so a consulta espacial
+    usa a escala media XY. Normalizar a normal interpolada corresponde ao
+    desenho dos corpos; a geometria e a calibracao nao sao reparametrizadas.
+    """
+    d = distance_m % track.lap_length_m
+    points = track.points
+    lo, hi = 0, len(points) - 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if points[mid].distance_m < d:
+            lo = mid + 1
+        else:
+            hi = mid
+    a, b = points[max(1, lo) - 1], points[max(1, lo)]
+    span = b.distance_m - a.distance_m
+    f = (d - a.distance_m) / span if span > 0 else 0.0
+    nx = a.nx + (b.nx - a.nx) * f
+    ny = a.ny + (b.ny - a.ny) * f
+    length = hypot(nx, ny)
+    if length <= 1e-12:
+        nx, ny = a.nx, a.ny
+    else:
+        nx, ny = nx / length, ny / length
+    return (
+        (a.cx + (b.cx - a.cx) * f) / track.xy_per_metre + nx * car.lateral_m,
+        (a.cy + (b.cy - a.cy) * f) / track.xy_per_metre + ny * car.lateral_m,
+        nx,
+        ny,
+    )
+
+
+def _rectangles_overlap(
+    a: CarSpaceState, pose_a: tuple[float, float, float, float],
+    b: CarSpaceState, pose_b: tuple[float, float, float, float],
+) -> bool:
+    """Intersecao estrita de retangulos orientados; tangencia e permitida."""
+    x, y, nx, ny = pose_a
+    bx, by, mx, my = pose_b
+    dx, dy = bx - x, by - y
+    for ax, ay in ((nx, ny), (-ny, nx), (mx, my), (-my, mx)):
+        radius_a = (abs(ax * nx + ay * ny) * a.width_m / 2
+                    + abs(-ax * ny + ay * nx) * a.length_m / 2)
+        radius_b = (abs(ax * mx + ay * my) * b.width_m / 2
+                    + abs(-ax * my + ay * mx) * b.length_m / 2)
+        if abs(dx * ax + dy * ay) >= radius_a + radius_b - 1e-9:
+            return False
+    return True
+
+
+def _limit_projected_advance(
+    track: TrackSpace, car: CarSpaceState, ahead: CarSpaceState, proposed: float
+) -> float:
+    """Limite sobreposicao final com o proximo carro da mesma faixa.
+
+    Busca um limite entre o estado atual livre e a posicao proposta
+    sobreposta, supondo uma unica transicao nesse intervalo. Estados ja sobrepostos nao sao corrigidos por teletransporte.
+    Este recorte nao detecta atravessamentos entre extremos livres, nem
+    substitui a regra de contato ou a exclusao lateral.
+    """
+    if track.xy_per_metre <= 0:
+        return proposed
+    ahead_pose = _projected_rectangle(track, ahead, ahead.distance_m)
+    end_pose = _projected_rectangle(track, car, proposed)
+    # Círculos envolventes evitam SAT e busca binaria para carros distantes.
+    reach = (hypot(car.length_m, car.width_m)
+             + hypot(ahead.length_m, ahead.width_m)) / 2
+    if hypot(end_pose[0] - ahead_pose[0], end_pose[1] - ahead_pose[1]) >= reach:
+        return proposed
+    if not _rectangles_overlap(car, end_pose, ahead, ahead_pose):
+        return proposed
+    if _rectangles_overlap(car, _projected_rectangle(track, car, car.distance_m),
+                           ahead, ahead_pose):
+        return proposed
+    lo, hi = car.distance_m, proposed
+    # A extremidade livre e conservada; a precisao e de cerca de 5 mm para
+    # um avanco de 20 m, sem custo de dezenas de projecoes por contato.
+    for _ in range(12):
+        mid = (lo + hi) / 2
+        if _rectangles_overlap(car, _projected_rectangle(track, car, mid),
+                               ahead, ahead_pose):
+            hi = mid
+        else:
+            lo = mid
+    return lo
 
 
 def _signed_gap(origin: float, destination: float, lap_length_m: float) -> float:

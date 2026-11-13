@@ -200,7 +200,7 @@ class SpatialExclusionTest(unittest.TestCase):
         a.lateral_m = 0.0
         self.assertFalse(_rubbing(a, b, 800))
 
-    def test_monaco_seed_three_does_not_create_contact_by_clamping(self):
+    def test_monaco_seed_three_keeps_exclusion_when_contacts_occur(self):
         from itertools import combinations
         from unittest.mock import patch
 
@@ -217,8 +217,28 @@ class SpatialExclusionTest(unittest.TestCase):
                             "aggression": attrs.aggression})
         geometry = fixture_geometry()
         original = race_simulation_2d.integrate_field
+        contacts_are_geometric = []
         def check_samples(*args, **kwargs):
+            from f1_simulator.domain.track_space import (
+                _projected_rectangle,
+                _rectangles_overlap,
+            )
+
             samples = original(*args, **kwargs)
+            track = args[1]
+            for before, after in zip(samples, samples[1:]):
+                previous = {c.driver_id: c for c in before.cars}
+                for car in after.cars:
+                    if not car.retired or previous[car.driver_id].retired:
+                        continue
+                    pose = _projected_rectangle(track, car, car.distance_m)
+                    contacts_are_geometric.append(any(
+                        other.driver_id != car.driver_id and not other.retired
+                        and _rectangles_overlap(
+                            car, pose, other,
+                            _projected_rectangle(track, other, other.distance_m),
+                        ) for other in after.cars
+                    ))
             for sample in samples:
                 cars = [c for c in sample.cars if not c.retired and c.pit_state is None
                         and c.distance_m < geometry.lap_length_m]
@@ -234,8 +254,36 @@ class SpatialExclusionTest(unittest.TestCase):
             race = race_simulation_2d.simulate_2d_race(
                 entries, geometry, total_laps=1, rng=SeededRandomSource(3), dt_s=0.2
             )
-        self.assertFalse([r for r in race["classification"]
-                          if r["retirement_cause"] == "CONTACT"])
+        self.assertEqual(sum(r["retirement_cause"] == "CONTACT"
+                             for r in race["classification"]), 1)
+        self.assertEqual(contacts_are_geometric, [True])
+
+    def test_projected_advance_respects_compressed_monaco_segment(self):
+        from f1_simulator.domain.track_space import (
+            _limit_projected_advance,
+            _projected_rectangle,
+            _rectangles_overlap,
+        )
+        from tests.geometry_support import fixture_geometry
+
+        track = build_track_space(fixture_geometry())
+        leader = CarSpaceState("leader", distance_m=1002.512)
+        follower = CarSpaceState("follower", distance_m=980.0)
+        proposed = 997.512
+        leader_pose = _projected_rectangle(track, leader, leader.distance_m)
+        self.assertTrue(_rectangles_overlap(
+            follower, _projected_rectangle(track, follower, proposed), leader, leader_pose
+        ))
+        limit = _limit_projected_advance(track, follower, leader, proposed)
+        self.assertGreater(limit, follower.distance_m)
+        self.assertLess(limit, proposed)
+        self.assertFalse(_rectangles_overlap(
+            follower, _projected_rectangle(track, follower, limit), leader, leader_pose
+        ))
+        # O estado nao e deslocado e faixas separadas continuam disponiveis.
+        self.assertEqual(follower.distance_m, 980.0)
+        follower.lateral_m = 8.0
+        self.assertEqual(_limit_projected_advance(track, follower, leader, proposed), proposed)
 
     def test_same_lane_keeps_car_length_gap_on_straight(self):
         # Carros identicos colados na mesma faixa: o de tras nunca e mais rapido
