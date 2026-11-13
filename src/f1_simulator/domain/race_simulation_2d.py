@@ -62,6 +62,7 @@ from f1_simulator.domain.speed_dynamics import (
     physics_for,
 )
 from f1_simulator.domain.strategy import (
+    FuelStatus,
     HeuristicPitStrategy,
     SpatialPitPlanningParameters,
     StrategyState,
@@ -330,8 +331,9 @@ def simulate_2d_race(
     uma ``HeuristicPitStrategy``. Uma estratégia explícita no entrante pode
     substituí-la. A decisão reserva a próxima entrada, o serviço troca pneus
     e a saída devolve o carro à pista. A perda histórica de boxes só informa
-    a decisão: não é somada ao tempo efetivamente gasto. Reabastecimento
-    continua fora deste caminho 2D. Sem aqueles parâmetros não há paradas.
+    a decisão: não é somada ao tempo efetivamente gasto. O reabastecimento,
+    quando habilitado, ocorre simultaneamente à troca. Sem aqueles parâmetros
+    não há paradas.
 
     Com ``race_control``, o automato de ``race_control`` roda uma vez por volta
     da corrida (lider) e neutraliza o pelotao sob SC/VSC/vermelha, modulando o
@@ -361,21 +363,12 @@ def simulate_2d_race(
     reference_usage = usage_reference(geometry, curvature, base_physics, usage_parameters) if usage_active else None
     pit_active = tyre_active and model_parameters is not None
     pit_lane = build_pit_lane(geometry) if pit_active else None
-    refuel_mode = False  # O 2D ainda executa apenas serviço de pneus.
+    refuel_mode = pit_active and fuel is not None and fuel.parameters.refuelling_allowed
     pit_events: list[dict] = []
     pending_compounds: dict[str, str] = {}
 
-    # TODO(motor-2d): duas features do motor detalhado ficaram de fora por
-    # decisao, e este e o ponto de entrada para quando forem portadas:
-    #
-    # 1. Reabastecimento. Hoje ``refuel_mode`` e sempre False e o pit so troca
-    #    pneu. Para ligar: respeitar ``fuel.parameters.refuelling_allowed``,
-    #    abastecer no serviço (``PitStopRequest`` + vazao ``refuel_rate_kg_per_s``)
-    #    e recalcular ``fuel_kg``/``speed_scale`` do carro ao sair dos boxes.
-    # 2. Perda historica de boxes calibrada. Hoje o tempo de parada vem so da
-    #    geometria mockada + serviço; falta somar ``track_params.pit_loss_ms``
-    #    (a perda medida por circuito) como no motor detalhado, para o tempo de
-    #    parada deixar de ser puramente assumido.
+    # A perda histórica orienta a estratégia; o relógio espacial não a soma.
+    pending_refuel: dict[str, dict] = {}
 
     cars: list[CarSpaceState] = []
     physics_by_id: dict[str, CarPhysics] = {}
@@ -676,6 +669,26 @@ def simulate_2d_race(
             management_factor=management[did],
             in_pit=motion.in_pit,
         )
+        # Abastecimento e marcha lenta ocorrem simultaneamente no serviço.
+        # O limite inclui o espaço aberto pela queima neste subpasso; registrar
+        # a massa entregue separadamente permite auditar a conservação.
+        service = pending_refuel.get(did)
+        if (
+            fuel is not None
+            and service is not None
+            and service.get("active")
+            and motion.in_pit
+            and motion.distance_m == 0
+        ):
+            assert car.fuel_kg is not None
+            added = min(
+                max(0.0, service["remaining_kg"]),
+                fuel.parameters.refuel_rate_kg_per_s * motion.dt_s,
+                max(0.0, fuel.parameters.max_fuel_kg - car.fuel_kg + delta.fuel_kg),
+            )
+            car.fuel_kg += added
+            service["remaining_kg"] -= added
+            service["added_kg"] += added
         fraction = 1.0
         burned = 0.0
         if fuel is not None:
@@ -734,7 +747,11 @@ def simulate_2d_race(
             pit_loss_factor=eff.pit_loss_factor,
             compounds_used=compounds_used[did],
             free_tyre_change=eff.free_tyre_change,
-            fuel=None,
+            fuel=(
+                FuelStatus(fuel, car.fuel_kg, fuel.burn_kg_per_lap, track_params.pit_loss_ms)
+                if refuel_mode
+                else None
+            ),
             tyre_wear_laps=car.tyre_wear_laps,
             # Radar: a agua prevista para a volta que comeca (como no detalhado).
             surface_water=_water(lap_number) if track_states else None,
@@ -756,6 +773,8 @@ def simulate_2d_race(
             if exit_d >= total_laps * lap_length_m:
                 return
             pending_compounds[did] = decision.compound
+            if refuel_mode:
+                pending_refuel[did] = {"requested_kg": decision.refuel_kg}
             # Execucao de box da equipe (heuristico): escala o tempo de
             # servico deste carro. Neutro em 1.0 (sem preset de equipe).
             execution = (
@@ -770,7 +789,37 @@ def simulate_2d_race(
 
         did = car.driver_id
         compound = pending_compounds[did]
+        if kind == "service_started" and did in pending_refuel:
+            assert fuel is not None and car.fuel_kg is not None
+            assert car.pit_request is not None and car.pit_state is not None
+            service = pending_refuel[did]
+            requested = service["requested_kg"]
+            if requested is None:
+                laps_left = max(0, total_laps - int(car.distance_m // lap_length_m))
+                requested = max(0.0, fuel.refuel_target_kg(laps_left) - car.fuel_kg)
+            # Limite a carga ao espaço disponível na chegada; a marcha lenta
+            # durante o serviço continua contabilizada separadamente.
+            amount = min(requested, fuel.parameters.max_fuel_kg - car.fuel_kg)
+            service.update(
+                active=True, remaining_kg=amount, added_kg=0.0, before_kg=car.fuel_kg
+            )
+            duration = max(
+                car.pit_request.service_time_s, amount / fuel.parameters.refuel_rate_kg_per_s
+            )
+            car.pit_state = replace(car.pit_state, service_remaining_s=duration)
         if kind == "service_completed":
+            service = pending_refuel.get(did)
+            if service is not None:
+                service["active"] = False
+                if service["added_kg"] > 0:
+                    refuels_made[did] += 1
+                    refuel_events.append({
+                        "driver_id": did,
+                        "lap": min(total_laps, int(car.distance_m // lap_length_m) + 1),
+                        "time_ms": round(time_s * 1000, 3),
+                        "fuel_before_kg": service["before_kg"],
+                        "added_kg": service["added_kg"],
+                    })
             tyre_by_id[did] = TyreSet(compound, 0)
             car.tyre_wear_laps = 0.0
             stops_made[did] += 1
@@ -788,6 +837,7 @@ def simulate_2d_race(
         )
         if kind == "exit":
             pending_compounds.pop(did)
+            pending_refuel.pop(did, None)
 
     def _neutralization_name(lap_number: int) -> str | None:
         eff = lap_effects_by_lap.get(lap_number)
@@ -1003,7 +1053,7 @@ def simulate_2d_race(
                     "a exposicao acumulada, o clima e o controle de prova "
                     "modulam a velocidade com parametros assumidos."
                     " Pit stop percorre geometria mockada e serviço de pneus; "
-                    "não soma a perda histórica nem executa reabastecimento."
+                    "não soma a perda histórica; abastecimento e pneus são simultâneos."
                 ),
                 "tyre_active": tyre_active,
                 "fuel_active": fuel is not None,
@@ -1132,6 +1182,9 @@ def simulate_2d_race(
                 "speed_limit_kmh": pit_parameters.speed_limit_kmh,
                 "service_time_s": pit_parameters.service_time_s,
                 "merge_gap_m": pit_parameters.merge_gap_m,
+                "refuel_rate_kg_per_s": (
+                    fuel.parameters.refuel_rate_kg_per_s if refuel_mode else None
+                ),
                 "rationale": "Comprimento estimado da polilinha mockada pela escala da pista; "
                 "não calibrado. Serviço único representativo, fila sem ultrapassagem, "
                 "limite aplicado na entrada e espera por folga na saída. "

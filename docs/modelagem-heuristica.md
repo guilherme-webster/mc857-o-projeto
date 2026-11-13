@@ -189,8 +189,15 @@ folga são injetáveis em `PitLaneParameters` e declarados como `assumed` no
 resultado. A extensão em metros vem da escala do mock, não de uma medição
 oficial da pit lane. `pit_loss_ms` só orienta a estratégia nesse modo: o
 relógio cobra o deslocamento e o serviço, sem somar outra perda nem aplicar
-desconto artificial de SC/VSC. A estratégia do 2D continua só de pneus;
-o reabastecimento descrito abaixo pertence ao motor por volta.
+desconto artificial de SC/VSC. Com combustível e `refuelling_allowed`, a
+estratégia 2D também recebe a massa e a queima nominal por volta. No ponto de
+serviço, pneus e combustível são tratados simultaneamente: a duração é o
+máximo entre o serviço de pneus e a massa solicitada dividida pela vazão
+assumida, limitada à capacidade disponível na chegada. Há marcha lenta durante
+o serviço. A trajetória registra a variação de massa e o evento informa massa
+inicial, massa adicionada e instante de conclusão. Uma troca gratuita sob
+bandeira vermelha não abastece. Sem o modelo de pneus e parâmetros de boxes,
+não há paradas no 2D.
 
 `HeuristicPitStrategy` decide no início de cada volta:
 
@@ -207,6 +214,13 @@ Composto inicial: MEDIUM para todos (hipótese). Próximo composto: o mais macio
 cuja vida típica cobre o restante da corrida.
 
 ### Com reabastecimento ligado (combustível por massa)
+
+As regras detalhadas a seguir descrevem o planejador por volta. No 2D, a
+estratégia usa a queima nominal como estimativa, embora o consumo real seja
+contínuo e limitado pela vazão de 2025 (ADR 0014). A carga inicial permanece
+a do cenário, sem planejamento por piloto; os traços de combustível usam o
+padrão neutro e estratégias explícitas não recebem uma parada de segurança.
+A estimativa pode falhar e resultar em pane seca; não é uma previsão calibrada.
 
 Quando a corrida usa o modelo de massa (`fuel-v1.json`) com
 `refuelling_allowed`, toda parada troca pneus **e** reabastece, e a mesma

@@ -608,16 +608,9 @@ class RacePlaybackEngineFuelContractTest(unittest.TestCase):
 
 
 class RacePlaybackEngineRefuelContractTest(unittest.TestCase):
-    """Reabastecimento: volta marcada como boxes e medidor sem subida falsa.
-
-    ``expectedFailure`` no cenario forcado: com a estrategia padrao o motor 2D
-    nao reabastece (o carro seca antes); os demais testes da classe passam sem
-    evento algum e portanto vacuamente. Registrado na issue #144.
-    """
+    """Reabastecimento e troca acontecem no serviço espacial, não na linha."""
 
     def setUp(self) -> None:
-        # 6,5 kg por volta e tanque reduzido de 30 kg: as 6 voltas pedem 39 kg
-        # e 30 kg cobrem 4 voltas (sobram 4 kg < 6,5 kg), entao o carro para.
         self.result = run_engine_race(
             fuel_parameters=fuel_parameters(
                 burn_kg_per_km=6.5 / LAP_KM, max_fuel_kg=9.0
@@ -626,42 +619,36 @@ class RacePlaybackEngineRefuelContractTest(unittest.TestCase):
         self.playback = RacePlayback(self.result)
         self.events = self.result["fuel"]["refuel_stops"]
 
-    @unittest.expectedFailure
     def test_scenario_forces_a_refuel_stop(self) -> None:
         self.assertTrue(self.events, "o cenario deveria forcar reabastecimento")
 
-    def test_refuel_lap_is_flagged_as_pit_and_tank_jumps_at_lap_end(self) -> None:
+    def test_fuel_rises_during_the_actual_service(self) -> None:
+        self.assertTrue(self.events)
         for event in self.events:
             timeline = self.playback.car(event["driver_id"])
-            lap = event["lap"]
-            lap_start = timeline.lap_end_times_ms[lap - 2] if lap > 1 else 0.0
-            lap_end = timeline.lap_end_times_ms[lap - 1]
-            middle = (lap_start + lap_end) / 2
-            self.assertTrue(timeline.in_pit_lap_at(middle))
-            # Durante a volta de entrada o tanque so desce.
-            self.assertLessEqual(
-                timeline.fuel_at(middle), timeline.fuel_at(lap_start) + 1e-9
-            )
-            self.assertAlmostEqual(
-                timeline.fuel_at(lap_end - 1e-6), event["fuel_before_kg"], places=3
-            )
-            self.assertAlmostEqual(
-                timeline.fuel_at(lap_end),
-                event["fuel_before_kg"] + event["added_kg"],
-                places=3,
-            )
+            stops = [e for e in self.result["pit_stop_events"]
+                     if e["driver_id"] == event["driver_id"]]
+            end_index = next(i for i, e in enumerate(stops)
+                             if e["type"] == "service_completed"
+                             and e["time_ms"] == event["time_ms"])
+            start = stops[end_index - 1]["time_ms"]
+            end = event["time_ms"]
+            early = start
+            late = start + min(500.0, (end - start) * 0.5)
+            self.assertTrue(timeline.in_pit_lap_at(early))
+            self.assertGreater(timeline.fuel_at(late), timeline.fuel_at(early))
+            self.assertLessEqual(timeline.fuel_at(late), self.playback.max_fuel_kg)
 
-    def test_refuel_stop_also_counts_as_a_tyre_stop(self) -> None:
-        # Com reabastecimento, toda parada troca pneus: a contagem sobe na
-        # volta do reabastecimento e o pneu recomeca do zero.
+    def test_refuel_stop_also_changes_tyres(self) -> None:
+        self.assertTrue(self.events)
         for event in self.events:
-            timeline = self.playback.car(event["driver_id"])
-            lap = event["lap"]
-            self.assertEqual(
-                timeline.tyre_states[lap].stops,
-                timeline.tyre_states[lap - 1].stops + 1,
-            )
-            self.assertEqual(timeline.tyre_states[lap].age_laps, 0)
+            stops = [e for e in self.result["pit_stop_events"]
+                     if e["driver_id"] == event["driver_id"]]
+            completed = next(e for e in stops
+                             if e["type"] == "service_completed"
+                             and e["time_ms"] == event["time_ms"])
+            self.assertGreaterEqual(completed["stops_made"], 1)
+            self.assertIsNotNone(completed["compound"])
 
 
 if __name__ == "__main__":

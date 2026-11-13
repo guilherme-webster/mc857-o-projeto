@@ -452,6 +452,9 @@ def _advance_pit_lane(
                 car.pit_state = state
                 car.speed_ms = 0.0
                 event("service_started")
+                # O callback pode ampliar o serviço para o abastecimento.
+                state = car.pit_state
+                assert state is not None
             used = min(remaining, state.service_remaining_s)
             remaining -= used
             car.speed_ms = 0.0
