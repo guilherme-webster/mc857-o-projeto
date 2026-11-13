@@ -334,6 +334,28 @@ class EngineIntegrationTest(unittest.TestCase):
         self.assertTrue(inside)
         self.assertTrue(all(value == 0 for value in inside))
 
+    def test_cancellation_interrupts_dynamic_track_integration(self):
+        calls = 0
+
+        def cancel_after_two_steps():
+            nonlocal calls
+            calls += 1
+            if calls == 3:
+                raise RuntimeError("cancelada")
+
+        with patch(
+            "f1_simulator.domain.race_simulation_2d.step_track_condition",
+            wraps=step_track_condition,
+        ) as evolve:
+            with self.assertRaisesRegex(RuntimeError, "cancelada"):
+                simulate_2d_race(
+                    [{"driver_id": "a", "name": "A", "grid_position": 1}],
+                    small_geometry(), total_laps=1, rng=SeededRandomSource(1),
+                    track_rain=(HEAVY,), race_control=None,
+                    check_cancelled=cancel_after_two_steps,
+                )
+        self.assertEqual(evolve.call_count, 2)
+
     def test_real_elapsed_time_and_seed_reproducibility(self):
         rain = (WeatherSegment(1, 3, HEAVY),)
         first = self._run(rain, 3)

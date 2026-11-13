@@ -421,6 +421,7 @@ def run_grid(
     tournament_seed=None,
     stage_index=0,
     on_progress=None,
+    cancellation=None,
 ):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
@@ -477,6 +478,7 @@ def run_grid(
             team_presets=team_presets,
             team_preset_disclaimer=team_preset_disclaimer,
             on_progress=on_progress,
+            **({"check_cancelled": cancellation.check} if cancellation else {}),
         )
     except ValueError as error:
         raise HTTPException(
@@ -499,8 +501,13 @@ def run_grid(
         result["race_stream_id"] = (
             f"{TOURNAMENT_STAGE_STREAM_VERSION}:{stage_index}"
         )
-    _write_json(CURRENT_RACE_JSON, result)
-    _persist_saved_race(result, _default_race_name(result))
+    # A decisao de cancelar e as duas gravacoes compartilham o mesmo lock.
+    # Uma corrida cancelada nunca chega a substituir o resultado anterior.
+    from contextlib import nullcontext
+
+    with cancellation.commit() if cancellation else nullcontext():
+        _write_json(CURRENT_RACE_JSON, result)
+        _persist_saved_race(result, _default_race_name(result))
     return result
 
 
@@ -599,16 +606,21 @@ def _write_json(destination, payload: dict) -> None:
 def save_current_race(name=None, race=None):
     """Grave a corrida enviada (a que a tela mostra) ou, sem ela, a atual.
 
-    Corrida enviada precisa de ``setup`` e ``classification``, o minimo para a
-    listagem e a reabertura funcionarem. Sem ``name``, usa o nome padrao.
+    Corrida enviada precisa de ``setup`` como objeto e ``classification`` como
+    lista, o minimo para a listagem e a reabertura funcionarem. Os demais campos
+    sao preservados sem conversao. Sem ``name``, usa o nome padrao.
     """
 
     if race is None:
         race = _read_current_race()
-    elif not isinstance(race, dict) or "setup" not in race or "classification" not in race:
+    elif (
+        not isinstance(race, dict)
+        or not isinstance(race.get("setup"), dict)
+        or not isinstance(race.get("classification"), list)
+    ):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="corrida incompleta: faltam setup ou classification",
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="corrida invalida: setup deve ser objeto e classification lista",
         )
     return _persist_saved_race(race, name or _default_race_name(race))
 

@@ -4,7 +4,9 @@ import json
 import os
 import urllib.error
 import urllib.request
+import uuid
 from collections.abc import Callable
+from threading import Event, Thread
 
 BASE_URL = os.environ.get("F1_API_BASE_URL", "http://localhost:8000").rstrip("/")
 
@@ -18,6 +20,10 @@ _OPENER = urllib.request.build_opener()
 # Rodar o grid no motor detalhado leva alguns segundos numa corrida longa;
 # as consultas de catalogo continuam com o limite curto.
 RUN_TIMEOUT_S = 120
+
+
+class SimulationCancelled(Exception):
+    """O backend confirmou o cancelamento da corrida."""
 
 
 class BackendError(RuntimeError):
@@ -159,38 +165,61 @@ def run_grid_stream(
     setup: dict,
     base_url: str = BASE_URL,
     on_progress: Callable[[int, int], None] = lambda lap, total: None,
+    cancelled: Callable[[], bool] = lambda: False,
 ) -> dict:
     """Rode o grid transmitindo o progresso por volta (SSE) e devolva a corrida.
 
     Le o fluxo ``POST /catalog/grid/run/stream`` evento a evento: cada
     ``progress`` chama ``on_progress(lap, total)``; ``done`` traz a corrida;
-    ``error`` vira ``BackendError``. Cai no ``run_grid`` sincrono se a rota de
-    stream nao existir (backend antigo).
+    ``error`` vira ``BackendError``. O backend deve suportar cancelamento;
+    nao se recorre a uma execucao sincrona que nao possa ser interrompida.
     """
 
+    if cancelled():
+        raise SimulationCancelled()
+    run_id = uuid.uuid4().hex
     request = urllib.request.Request(
         f"{base_url}/catalog/grid/run/stream",
         data=json.dumps({"setup": setup}).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+            "X-Run-Id": run_id,
+        },
         method="POST",
     )
     try:
         response = _OPENER.open(request, timeout=RUN_TIMEOUT_S)
     except urllib.error.HTTPError as error:
-        if error.code == 404:
-            # Backend sem a rota de stream: usa o caminho sincrono.
-            return run_grid(setup, base_url)
         raise BackendError(error.code, _error_detail(error)) from error
 
+    finished = Event()
+
+    def watch_cancel() -> None:
+        while not finished.wait(0.05):
+            if cancelled():
+                try:
+                    _post(f"/catalog/grid/run/stream/{run_id}/cancel", {}, base_url)
+                except (BackendError, OSError):
+                    # Tente novamente enquanto o stream estiver ativo.
+                    continue
+                return
+
+    Thread(target=watch_cancel, name="simulation-cancel", daemon=True).start()
     result: dict | None = None
-    with response:
-        for event, data in _iter_sse(response):
-            if event == "progress":
-                on_progress(int(data["lap"]), int(data["total"]))
-            elif event == "done":
-                result = data
-            elif event == "error":
-                raise BackendError(500, str(data.get("detail", "erro no backend")))
+    try:
+        with response:
+            for event, data in _iter_sse(response):
+                if event == "progress":
+                    on_progress(int(data["lap"]), int(data["total"]))
+                elif event == "done":
+                    result = data
+                elif event == "error":
+                    raise BackendError(500, str(data.get("detail", "erro no backend")))
+                elif event == "cancelled":
+                    raise SimulationCancelled()
+    finally:
+        finished.set()
     if result is None:
         raise BackendError(500, "stream encerrou sem resultado da corrida")
     return result

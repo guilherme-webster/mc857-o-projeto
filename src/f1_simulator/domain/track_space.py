@@ -18,6 +18,7 @@ from __future__ import annotations
 from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from math import exp
 
 from f1_simulator.domain.pit_lane import (
     PitLaneParameters,
@@ -51,9 +52,10 @@ ASSUMED_FOLLOW_TRIGGER_M = 20.0
 
 #: Taxa de contato por SEGUNDO de corpos rocando lado a lado, com perfis
 #: neutros. Expressa por segundo (nao por passo) para a frequencia de colisao
-#: nao depender de ``dt``: a chance de um passo e ``taxa * dt``. Hipotese nao
-#: calibrada; escalada pela agressividade dos envolvidos.
-ASSUMED_SIDE_CONTACT_PER_SECOND = 0.6
+#: nao depender de ``dt``: a chance de um passo e ``1 - exp(-taxa * dt)``.
+#: Hipotese nao calibrada; escalada pela agressividade dos envolvidos.
+ASSUMED_SIDE_CONTACT_PER_SECOND = 0.15
+SIDE_CONTACT_PARAMETER_VERSION = "spatial-contact-assumed-v1"
 
 #: Margem lateral (m) abaixo da qual os corpos lado a lado "roçam": soma das
 #: meias-larguras mais esta folga. Nao calibrada.
@@ -450,6 +452,9 @@ def _advance_pit_lane(
                 car.pit_state = state
                 car.speed_ms = 0.0
                 event("service_started")
+                # O callback pode ampliar o serviço para o abastecimento.
+                state = car.pit_state
+                assert state is not None
             used = min(remaining, state.service_remaining_s)
             remaining -= used
             car.speed_ms = 0.0
@@ -576,9 +581,14 @@ def integrate_field(
     on_pit_event=None,
     on_motion=None,
     on_step=None,
+    check_cancelled=None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
+
+    ``check_cancelled``, quando fornecido, e chamado a cada passo e pode
+    interromper o calculo por excecao; o integrador nao conhece transporte ou
+    persistencia e nao devolve uma corrida parcial como resultado completo.
 
     A cada passo, um carro preso atras de outro mais lento na sua faixa tenta se
     deslocar para um lado livre e passar; a passagem acontece pela posicao, nao
@@ -635,16 +645,17 @@ def integrate_field(
     usable = track.bounds.usable_m
     by_id = {c.driver_id: c for c in cars}
     laps_done = {c.driver_id: 0 for c in cars}
-    # A composicao de ``cars`` e o ``driver_id`` de cada um nao mudam durante a
-    # corrida (so os atributos dos carros sao mutados). A ordem por driver_id e,
-    # portanto, fixa: calcula-se uma vez e reusa-se a cada passo, em vez de
-    # reordenar os carros milhoes de vezes. Resultado identico.
+    # Ordem estavel por ``driver_id`` para o retrato (``FieldSample``) e para a
+    # montagem do ``plan_by_id``. Nao e a ordem de PROCESSAMENTO do passo, que e
+    # por posicao (ver o laco abaixo).
     order = sorted(cars, key=lambda c: c.driver_id)
-    # Plano fixo por carro na ordem de iteracao: fisica e teto nao mudam, entao
-    # resolve-se o lookup de dict uma vez, nao a cada um dos milhoes de passos.
-    step_plan = [
-        (car, physics_by_id[car.driver_id], *ceilings[car.driver_id]) for car in order
-    ]
+    # Fisica e teto por carro nao mudam: resolve-se o lookup uma vez, nao a cada
+    # um dos milhoes de passos. A ORDEM de processamento, porem, e por posicao
+    # (frente para tras) dentro do laco -- ver abaixo.
+    plan_by_id = {
+        car.driver_id: (physics_by_id[car.driver_id], *ceilings[car.driver_id])
+        for car in order
+    }
     # Passo lateral maximo por iteracao: invariante no laco (constantes).
     max_step_lat = ASSUMED_LANE_CHANGE_MS * dt_s
     samples = [FieldSample(0.0, tuple(_frozen(c) for c in order))]
@@ -653,11 +664,19 @@ def integrate_field(
     while steps < max_steps and any(
         c.distance_m < race_distance and not c.retired for c in cars
     ):
+        if check_cancelled is not None:
+            check_cancelled()
         time_s += dt_s
         by_distance = sorted((c for c in cars if c.pit_state is None), key=lambda c: c.distance_m)
-        for car, physics, cum, ceiling in step_plan:
+        # Processa da FRENTE para TRAS (maior distancia primeiro): assim o carro
+        # de tras reage a posicao JA atualizada do da frente neste passo, e a
+        # exclusao longitudinal separa os carros em vez de deixa-los sobrepostos
+        # (processar em ordem arbitraria permitia dois carros no mesmo ponto,
+        # que visualmente oscilavam trocando de frente sem colidir).
+        for car in sorted(cars, key=lambda c: -c.distance_m):
             if car.retired or car.distance_m >= race_distance:
                 continue
+            physics, cum, ceiling = plan_by_id[car.driver_id]
             if car.pit_state is not None:
                 assert pit_lane is not None
                 _advance_pit_lane(
@@ -714,10 +733,6 @@ def integrate_field(
 
             # (4) avanco com exclusao: usa a faixa lateral JA atualizada, entao
             # um carro que saiu da esteira do da frente deixa de ser bloqueado.
-            # Limitacao conhecida: a folga e imposta no avanco, nao por frenagem
-            # antecipada. Quando o carro da frente freia forte (entrada de curva),
-            # a folga instantanea pode encolher por um ou dois passos antes de
-            # estabilizar; um modelo de car-following preciso e trabalho futuro.
             proposed = car.distance_m + car.speed_ms * dt_s
             ahead = _nearest_ahead_same_lane(car, by_distance, race_distance)
             if ahead is not None:
@@ -864,7 +879,11 @@ def _resolve_collisions(
                 continue
             agg_a = aggression_by_id.get(a.driver_id, 1.0)
             agg_b = aggression_by_id.get(b.driver_id, 1.0)
-            chance = ASSUMED_SIDE_CONTACT_PER_SECOND * dt_s * (agg_a + agg_b) / 2.0
+            # Forma exponencial: a probabilidade por segundo e constante,
+            # independente de ``dt``. A antiga ``taxa * dt`` so aproxima para
+            # ``dt`` pequeno e estoura com passo grande (ex.: 0,5 s).
+            rate = ASSUMED_SIDE_CONTACT_PER_SECOND * (agg_a + agg_b) / 2.0
+            chance = 1.0 - exp(-rate * dt_s)
             label = f"collision:{a.driver_id}:{b.driver_id}"
             if rng.uniform01(f"{label}:contact") >= chance:
                 continue

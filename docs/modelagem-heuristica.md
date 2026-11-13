@@ -189,8 +189,15 @@ folga são injetáveis em `PitLaneParameters` e declarados como `assumed` no
 resultado. A extensão em metros vem da escala do mock, não de uma medição
 oficial da pit lane. `pit_loss_ms` só orienta a estratégia nesse modo: o
 relógio cobra o deslocamento e o serviço, sem somar outra perda nem aplicar
-desconto artificial de SC/VSC. A estratégia do 2D continua só de pneus;
-o reabastecimento descrito abaixo pertence ao motor por volta.
+desconto artificial de SC/VSC. Com combustível e `refuelling_allowed`, a
+estratégia 2D também recebe a massa e a queima nominal por volta. No ponto de
+serviço, pneus e combustível são tratados simultaneamente: a duração é o
+máximo entre o serviço de pneus e a massa solicitada dividida pela vazão
+assumida, limitada à capacidade disponível na chegada. Há marcha lenta durante
+o serviço. A trajetória registra a variação de massa e o evento informa massa
+inicial, massa adicionada e instante de conclusão. Uma troca gratuita sob
+bandeira vermelha não abastece. Sem o modelo de pneus e parâmetros de boxes,
+não há paradas no 2D.
 
 `HeuristicPitStrategy` decide no início de cada volta:
 
@@ -207,6 +214,13 @@ Composto inicial: MEDIUM para todos (hipótese). Próximo composto: o mais macio
 cuja vida típica cobre o restante da corrida.
 
 ### Com reabastecimento ligado (combustível por massa)
+
+As regras detalhadas a seguir descrevem o planejador por volta. No 2D, a
+estratégia usa a queima nominal como estimativa, embora o consumo real seja
+contínuo e limitado pela vazão de 2025 (ADR 0014). A carga inicial permanece
+a do cenário, sem planejamento por piloto; os traços de combustível usam o
+padrão neutro e estratégias explícitas não recebem uma parada de segurança.
+A estimativa pode falhar e resultar em pane seca; não é uma previsão calibrada.
 
 Quando a corrida usa o modelo de massa (`fuel-v1.json`) com
 `refuelling_allowed`, toda parada troca pneus **e** reabastece, e a mesma
@@ -420,8 +434,8 @@ próprios parâmetros, não números fixos.
   que tratar todas as equipes iguais (131 contra 118 ms).
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
 - **Limitações conhecidas do motor 2D** (registradas em 2026-11-12, sem decisão
-  tomada): não reabastece nem faz lift-and-coast, e todos largam com a mesma
-  carga de combustível; a assumption de gestão de pneus não é declarada em
+  tomada): não faz lift-and-coast, e todos largam com a mesma carga de
+  combustível; a assumption de gestão de pneus não é declarada em
   `assumptions`; abandono sem disputa vira `mechanical`; em `speed_breakdown`
   a troca de pneu aparece defasada uma volta em relação à parada.
 - **Clima só no tempo de volta.** Água e borracha viram um fator de
@@ -436,10 +450,14 @@ próprios parâmetros, não números fixos.
   (`car-physics-v1.json`) reproduz a mediana das voltas de referência, mas
   Zandvoort (curvas inclinadas) e Losail saem ~11-12% lentas e Monza (chicanes
   que 240 pontos não resolvem) ~7% rápida.
-- **Frenagens fortes aumentam os toques no 2D.** Com freada de até ~4-5 g, o
-  carro de trás sai da esteira na freada com mais frequência; a taxa de
-  contato do 2D (`ASSUMED_SIDE_CONTACT_PER_SECOND`) ainda não foi revista para
-  isso.
+- **Frequência de contato no 2D é heurística.** `spatial-contact-assumed-v1`
+  usa taxa base assumida de 0,15 por segundo de exposição lateral, multiplicada
+  pela média das agressividades; a chance no passo é `1 - exp(-taxa * dt)`.
+  Esse ajuste é escolhido, não estimado nem calibrado com dados de colisões.
+  A exposição depende também da geometria, manobras e passo da simulação; a
+  fórmula não garante que corridas completas sejam invariantes ao passo. A
+  avaliação exploratória e suas limitações estão em [contato e reprodução
+  espacial](contato-e-reproducao-espacial.md).
 - **Composto de largada fixo e médio quase sem volta.** Todos largam de MEDIUM
   no seco (hipótese; com chuva na volta 1, o pneu de chuva indicado). Enquanto a regra de dois compostos não foi cumprida, o médio fica
   fora da escolha; depois vence o mais macio cuja vida típica (macio 14, médio

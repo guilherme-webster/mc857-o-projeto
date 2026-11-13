@@ -100,6 +100,10 @@ class EditGridAttributesRequest(BaseModel):
     def _require_change(self) -> EditGridAttributesRequest:
         if self.overrides is None and self.order is None:
             raise ValueError("at least one of overrides or order is required")
+        if self.overrides is not None:
+            ids = [item.driver_id for item in self.overrides]
+            if len(ids) != len(set(ids)):
+                raise ValueError("duplicate driver_id in overrides")
         return self
 
 

@@ -569,8 +569,8 @@ pista; a previsão por volta de referência só escolhe o composto inicial. Alvo
 de temperatura de seis circuitos são assumidos; os demais usam 35 °C. Modelos
 de desgaste e pneus de chuva existentes foram preservados. ADR 0015 segue em
 proposta; equivalência com motor detalhado arquivado depende de decisão e não
-foi dada como atendida. Após o PR #179, o responsável deve revisar hipóteses, cobertura de circuitos
-e precisão temporal antes de integrar. A revisão ajustou o alvo térmico da
+foi dada como atendida. O responsável deve revisar hipóteses, cobertura de
+circuitos e precisão temporal antes de integrar. A revisão ajustou o alvo térmico da
 previsão inicial e limitou a distância contada após a chegada. Sem alterações ou comentários no
 GitHub; esta informação deve ser registrada na issue #119 pelo agente principal.
 
@@ -580,3 +580,11 @@ Verificação: `uv run ruff check .` passou; testes de clima/pneus passaram
 separadamente em cópia limpa da base: serviço de pneu, interpolação de parada,
 interpolação de combustível, corrida sem abandono e causa de abandono. A issue
 não foi fechada, nem houve push ou PR.
+
+Atualização: merge local de `origin/develop` em `f88704a` (PRs #179, #180,
+#182 e #183); reabastecimento, cancelamento e condição dinâmica foram mantidos.
+Teste combinado cobre abastecimento durante chuva, conservação de massa e
+ausência de borracha depositada no serviço; outro cobre cancelamento com
+evolução da pista ativa. A suíte atual passou com 761 testes, 42 pulados e uma
+falha esperada; `uv run ruff check .` passou. Handoff aguarda comentário na
+issue #119 pelo agente principal.

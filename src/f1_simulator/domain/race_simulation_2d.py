@@ -62,6 +62,7 @@ from f1_simulator.domain.speed_dynamics import (
     physics_for,
 )
 from f1_simulator.domain.strategy import (
+    FuelStatus,
     HeuristicPitStrategy,
     SpatialPitPlanningParameters,
     StrategyState,
@@ -77,6 +78,8 @@ from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
+    ASSUMED_SIDE_CONTACT_PER_SECOND,
+    SIDE_CONTACT_PARAMETER_VERSION,
     CarSpaceState,
     FieldSample,
     MotionIncrement,
@@ -143,28 +146,11 @@ def _lap_crossing_times_ms(
     return times_ms, retired, retired_on, retired_at_ms
 
 
-#: So emite um ponto de trajetoria quando a distancia percorrida avancou mais
-#: que isto (m) OU o deslocamento lateral mudou mais que o limiar lateral desde
-#: o ultimo ponto. A distancia avanca sempre, entao este limiar e quem controla
-#: o volume: o frontend interpola entre os pontos, e a distancia e quase linear
-#: no tempo, de modo que pontos esparsos reconstroem bem o movimento.
-TRAJECTORY_DISTANCE_EPS_M = 60.0
-
-#: Limiar lateral (m): uma manobra (troca de faixa) gera um ponto mesmo sem
-#: avancar muito, para o lado a lado da ultrapassagem nao ser perdido.
-TRAJECTORY_LATERAL_EPS_M = 0.3
-
-#: Limiar de velocidade (km/h): emite um ponto quando a velocidade mudou mais
-#: que isto desde o ultimo, para a aceleracao da largada e as freadas fortes
-#: terem pontos densos o bastante (a velocidade exibida interpola entre eles).
-#: No cruzeiro, com velocidade quase constante, nao dispara.
-TRAJECTORY_SPEED_EPS_KMH = 15.0
-
-#: Intervalo minimo (ms) entre dois pontos do mesmo carro. Mesmo numa manobra
-#: rapida ou na largada parada (onde a distancia quase nao avanca mas o lateral
-#: oscila), nao emite mais que um ponto por este intervalo; o frontend
-#: interpola. Corta a rajada de pontos da largada sem perder o movimento.
-TRAJECTORY_MIN_INTERVAL_MS = 150.0
+#: Cadencia fixa (ms) da amostragem da trajetoria exportada. Um ponto por carro
+#: a cada intervalo, mais as transicoes de fase (pista/boxes) e o ultimo. O
+#: espacamento temporal uniforme reconstroi um movimento suave no frontend
+#: (amostrar por limiar de distancia dava intervalos irregulares e stutter).
+TRAJECTORY_SAMPLE_MS = 200.0
 
 
 def _trajectories_2d(
@@ -180,11 +166,10 @@ def _trajectories_2d(
     boxes. Mudanças de fase preservam os dois lados da transição, inclusive
     o início/fim do serviço, para a interpolação não apagar o tempo parado.
     Posição longitudinal, deslocamento lateral e velocidade vêm do motor,
-    para o frontend exibi-los sem derivar de segmentos. A série é comprimida
-    por limiar: só vira ponto quando
-    a distancia avancou ``TRAJECTORY_DISTANCE_EPS_M`` ou o lateral mudou
-    ``TRAJECTORY_LATERAL_EPS_M``, respeitando um intervalo minimo, mais o
-    primeiro e o ultimo instante. O frontend interpola linearmente entre pontos.
+    para o frontend exibi-los sem derivar de segmentos. A serie amostra os
+    retratos disponiveis a cada ``TRAJECTORY_SAMPLE_MS``, alem das transicoes,
+    do primeiro e do ultimo instante. A reproducao usa Hermite monotona na
+    pista e interpolacao linear nos boxes.
 
     Formato de lista (``[t, d, lat, v, pit_d]``) em vez de dict por ponto para encolher
     o JSON; o frontend le por indice. O primeiro ponto (t=0) fixa o grid de
@@ -192,11 +177,12 @@ def _trajectories_2d(
     """
 
     series: dict[str, list[list[float | None]]] = {did: [] for did in driver_ids}
-    last_d: dict[str, float] = {did: 0.0 for did in driver_ids}
-    last_lat: dict[str, float] = {did: 0.0 for did in driver_ids}
-    last_v: dict[str, float] = {did: 0.0 for did in driver_ids}
-    last_t: dict[str, float] = {did: -TRAJECTORY_MIN_INTERVAL_MS for did in driver_ids}
-    pending: dict[str, list[float | None] | None] = {did: None for did in driver_ids}
+    # Instante do ultimo ponto emitido por carro: a amostragem e por CADENCIA
+    # TEMPORAL FIXA (``TRAJECTORY_SAMPLE_MS``), nao por limiar de distancia. O
+    # espacamento irregular da amostragem por limiar fazia o avanco por frame
+    # oscilar no frontend (stutter visual mesmo com velocidade constante); um
+    # passo de tempo uniforme reconstroi um movimento suave.
+    last_t: dict[str, float] = {did: None for did in driver_ids}
     done: set[str] = set()
     previous: dict[str, tuple[list, str]] = {}
 
@@ -222,9 +208,6 @@ def _trajectories_2d(
 
     def _push(did: str, point: list[float | None]) -> None:
         series[did].append(point)
-        last_d[did] = point[1]
-        last_lat[did] = point[2]
-        last_v[did] = point[3]
         last_t[did] = point[0]
 
     for sample in samples:
@@ -233,10 +216,10 @@ def _trajectories_2d(
             did = car.driver_id
             if did in done:
                 continue
-            d, lat, v_kmh = car.distance_m, car.lateral_m, car.speed_ms * 3.6
+            phase = _phase(car)
             if not series[did]:
                 _push(did, _point(t_ms, car))  # grid de largada (t=0)
-                previous[did] = (_point(t_ms, car), _phase(car))
+                previous[did] = (_point(t_ms, car), phase)
                 continue
             if car.retired or car.distance_m >= race_distance_m:
                 stop_ms = (
@@ -247,34 +230,22 @@ def _trajectories_2d(
                 _push(did, _point(stop_ms, car))
                 done.add(did)
                 continue
-            point, phase = _point(t_ms, car), _phase(car)
+            point = _point(t_ms, car)
             prior, prior_phase = previous[did]
             previous[did] = (point, phase)
+            # Troca de fase (pista/boxes): preserva os dois lados da transicao,
+            # senao a interpolacao apagaria o tempo parado no serviço.
             if phase != prior_phase:
                 if prior[0] > last_t[did]:
                     _push(did, prior)
                 _push(did, point)
-                pending[did] = None
                 continue
-            changed = (
-                d - last_d[did] >= TRAJECTORY_DISTANCE_EPS_M
-                or abs(lat - last_lat[did]) >= TRAJECTORY_LATERAL_EPS_M
-                or abs(v_kmh - last_v[did]) >= TRAJECTORY_SPEED_EPS_KMH
-            )
-            if not changed:
-                continue
-            # Houve mudanca relevante, mas respeita o intervalo minimo: guarda
-            # como pendente e so emite quando o intervalo passa.
-            if t_ms - last_t[did] < TRAJECTORY_MIN_INTERVAL_MS:
-                pending[did] = _point(t_ms, car)
-                continue
-            pending[did] = None
-            _push(did, _point(t_ms, car))
-    # Ultimo instante de quem nao abandonou, para a serie cobrir o fim.
+            # Cadencia fixa: emite um ponto a cada ``TRAJECTORY_SAMPLE_MS``.
+            if t_ms - last_t[did] >= TRAJECTORY_SAMPLE_MS - 1e-6:
+                _push(did, point)
+    # Fecha a serie no ultimo instante conhecido de quem nao abandonou.
     for did in driver_ids:
-        if pending[did] is not None and did not in done:
-            _push(did, pending[did])
-        if did not in done and previous[did][0][0] > last_t[did]:
+        if did not in done and previous.get(did) and previous[did][0][0] > last_t[did]:
             _push(did, previous[did][0])
     return series
 
@@ -339,11 +310,12 @@ def simulate_2d_race(
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
     standing_start: bool = True,
     width_m: float | None = None,
-    dt_s: float = 0.5,
+    dt_s: float = 0.2,
     pit_parameters: PitLaneParameters = PitLaneParameters(),
     usage_parameters: DynamicUsageParameters = DynamicUsageParameters(),
     pit_planning: SpatialPitPlanningParameters = SpatialPitPlanningParameters(),
     on_progress: Callable[[int, int], None] | None = None,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> dict:
     """Simule a corrida no motor 2D e devolva ``history`` + ``classification``.
 
@@ -367,8 +339,9 @@ def simulate_2d_race(
     uma ``HeuristicPitStrategy``. Uma estratégia explícita no entrante pode
     substituí-la. A decisão reserva a próxima entrada, o serviço troca pneus
     e a saída devolve o carro à pista. A perda histórica de boxes só informa
-    a decisão: não é somada ao tempo efetivamente gasto. Reabastecimento
-    continua fora deste caminho 2D. Sem aqueles parâmetros não há paradas.
+    a decisão: não é somada ao tempo efetivamente gasto. O reabastecimento,
+    quando habilitado, ocorre simultaneamente à troca. Sem aqueles parâmetros
+    não há paradas.
 
     Com ``race_control``, o automato de ``race_control`` roda uma vez por volta
     da corrida (lider) e neutraliza o pelotao sob SC/VSC/vermelha, modulando o
@@ -406,21 +379,12 @@ def simulate_2d_race(
     reference_usage = usage_reference(geometry, curvature, base_physics, usage_parameters) if usage_active else None
     pit_active = tyre_active and model_parameters is not None
     pit_lane = build_pit_lane(geometry) if pit_active else None
-    refuel_mode = False  # O 2D ainda executa apenas serviço de pneus.
+    refuel_mode = pit_active and fuel is not None and fuel.parameters.refuelling_allowed
     pit_events: list[dict] = []
     pending_compounds: dict[str, str] = {}
 
-    # TODO(motor-2d): duas features do motor detalhado ficaram de fora por
-    # decisao, e este e o ponto de entrada para quando forem portadas:
-    #
-    # 1. Reabastecimento. Hoje ``refuel_mode`` e sempre False e o pit so troca
-    #    pneu. Para ligar: respeitar ``fuel.parameters.refuelling_allowed``,
-    #    abastecer no serviço (``PitStopRequest`` + vazao ``refuel_rate_kg_per_s``)
-    #    e recalcular ``fuel_kg``/``speed_scale`` do carro ao sair dos boxes.
-    # 2. Perda historica de boxes calibrada. Hoje o tempo de parada vem so da
-    #    geometria mockada + serviço; falta somar ``track_params.pit_loss_ms``
-    #    (a perda medida por circuito) como no motor detalhado, para o tempo de
-    #    parada deixar de ser puramente assumido.
+    # A perda histórica orienta a estratégia; o relógio espacial não a soma.
+    pending_refuel: dict[str, dict] = {}
 
     cars: list[CarSpaceState] = []
     physics_by_id: dict[str, CarPhysics] = {}
@@ -744,6 +708,26 @@ def simulate_2d_race(
             management_factor=management[did],
             in_pit=motion.in_pit,
         )
+        # Abastecimento e marcha lenta ocorrem simultaneamente no serviço.
+        # O limite inclui o espaço aberto pela queima neste subpasso; registrar
+        # a massa entregue separadamente permite auditar a conservação.
+        service = pending_refuel.get(did)
+        if (
+            fuel is not None
+            and service is not None
+            and service.get("active")
+            and motion.in_pit
+            and motion.distance_m == 0
+        ):
+            assert car.fuel_kg is not None
+            added = min(
+                max(0.0, service["remaining_kg"]),
+                fuel.parameters.refuel_rate_kg_per_s * motion.dt_s,
+                max(0.0, fuel.parameters.max_fuel_kg - car.fuel_kg + delta.fuel_kg),
+            )
+            car.fuel_kg += added
+            service["remaining_kg"] -= added
+            service["added_kg"] += added
         fraction = 1.0
         burned = 0.0
         if fuel is not None:
@@ -804,7 +788,11 @@ def simulate_2d_race(
             pit_loss_factor=eff.pit_loss_factor,
             compounds_used=compounds_used[did],
             free_tyre_change=eff.free_tyre_change,
-            fuel=None,
+            fuel=(
+                FuelStatus(fuel, car.fuel_kg, fuel.burn_kg_per_lap, track_params.pit_loss_ms)
+                if refuel_mode
+                else None
+            ),
             tyre_wear_laps=car.tyre_wear_laps,
             # A estrategia consulta a agua atual do estado compartilhado.
             surface_water=_water(lap_number) if (track_states or track_rain is not None) else None,
@@ -826,6 +814,8 @@ def simulate_2d_race(
             if exit_d >= total_laps * lap_length_m:
                 return
             pending_compounds[did] = decision.compound
+            if refuel_mode:
+                pending_refuel[did] = {"requested_kg": decision.refuel_kg}
             # Execucao de box da equipe (heuristico): escala o tempo de
             # servico deste carro. Neutro em 1.0 (sem preset de equipe).
             execution = (
@@ -840,7 +830,37 @@ def simulate_2d_race(
 
         did = car.driver_id
         compound = pending_compounds[did]
+        if kind == "service_started" and did in pending_refuel:
+            assert fuel is not None and car.fuel_kg is not None
+            assert car.pit_request is not None and car.pit_state is not None
+            service = pending_refuel[did]
+            requested = service["requested_kg"]
+            if requested is None:
+                laps_left = max(0, total_laps - int(car.distance_m // lap_length_m))
+                requested = max(0.0, fuel.refuel_target_kg(laps_left) - car.fuel_kg)
+            # Limite a carga ao espaço disponível na chegada; a marcha lenta
+            # durante o serviço continua contabilizada separadamente.
+            amount = min(requested, fuel.parameters.max_fuel_kg - car.fuel_kg)
+            service.update(
+                active=True, remaining_kg=amount, added_kg=0.0, before_kg=car.fuel_kg
+            )
+            duration = max(
+                car.pit_request.service_time_s, amount / fuel.parameters.refuel_rate_kg_per_s
+            )
+            car.pit_state = replace(car.pit_state, service_remaining_s=duration)
         if kind == "service_completed":
+            service = pending_refuel.get(did)
+            if service is not None:
+                service["active"] = False
+                if service["added_kg"] > 0:
+                    refuels_made[did] += 1
+                    refuel_events.append({
+                        "driver_id": did,
+                        "lap": min(total_laps, int(car.distance_m // lap_length_m) + 1),
+                        "time_ms": round(time_s * 1000, 3),
+                        "fuel_before_kg": service["before_kg"],
+                        "added_kg": service["added_kg"],
+                    })
             tyre_by_id[did] = TyreSet(compound, 0)
             car.tyre_wear_laps = 0.0
             stops_made[did] += 1
@@ -858,6 +878,7 @@ def simulate_2d_race(
         )
         if kind == "exit":
             pending_compounds.pop(did)
+            pending_refuel.pop(did, None)
 
     def _neutralization_name(lap_number: int) -> str | None:
         eff = lap_effects_by_lap.get(lap_number)
@@ -969,6 +990,7 @@ def simulate_2d_race(
         on_pit_event=_pit_event,
         on_motion=_on_motion,
         on_step=_on_step if track_rain is not None else None,
+        check_cancelled=check_cancelled,
     )
 
     per_car: dict[str, list[float]] = {}
@@ -1094,7 +1116,7 @@ def simulate_2d_race(
             {
                 "kind": "engine_2d",
                 "origin": "assumed",
-                "parameter_version": "motor-2d-v4",
+                "parameter_version": "motor-2d-v5",
                 "rationale": (
                     "ADR 0011: motor 2D de posicao continua. Velocidade, "
                     "ultrapassagem e colisao emergem da fisica espacial; "
@@ -1102,7 +1124,7 @@ def simulate_2d_race(
                     "a exposicao acumulada, o clima e o controle de prova "
                     "modulam a velocidade com parametros assumidos."
                     " Pit stop percorre geometria mockada e serviço de pneus; "
-                    "não soma a perda histórica nem executa reabastecimento."
+                    "não soma a perda histórica; abastecimento e pneus são simultâneos."
                 ),
                 "tyre_active": tyre_active,
                 "fuel_active": fuel is not None,
@@ -1115,6 +1137,16 @@ def simulate_2d_race(
                 "track_condition_active": bool(track_states) or track_rain is not None,
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
+                "side_contact": {
+                    "origin": "assumed",
+                    "parameter_version": SIDE_CONTACT_PARAMETER_VERSION,
+                    "base_rate_per_second": ASSUMED_SIDE_CONTACT_PER_SECOND,
+                    "rationale": (
+                        "Taxa heuristica escolhida, nao estimada de dados; "
+                        "aplicada somente durante exposicao lateral e escalada "
+                        "pela agressividade dos dois carros."
+                    ),
+                },
             }
         ],
     }
@@ -1223,6 +1255,9 @@ def simulate_2d_race(
                 "speed_limit_kmh": pit_parameters.speed_limit_kmh,
                 "service_time_s": pit_parameters.service_time_s,
                 "merge_gap_m": pit_parameters.merge_gap_m,
+                "refuel_rate_kg_per_s": (
+                    fuel.parameters.refuel_rate_kg_per_s if refuel_mode else None
+                ),
                 "rationale": "Comprimento estimado da polilinha mockada pela escala da pista; "
                 "não calibrado. Serviço único representativo, fila sem ultrapassagem, "
                 "limite aplicado na entrada e espera por folga na saída. "

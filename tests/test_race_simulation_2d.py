@@ -84,6 +84,12 @@ class RaceSimulation2DTest(unittest.TestCase):
             **kwargs,
         )
 
+    def test_contact_rate_is_disclosed_as_assumed_and_versioned(self):
+        contact = self.plain["assumptions"][0]["side_contact"]
+        self.assertEqual(contact["origin"], "assumed")
+        self.assertEqual(contact["parameter_version"], "spatial-contact-assumed-v1")
+        self.assertEqual(contact["base_rate_per_second"], 0.15)
+
     # --- reprodutibilidade -------------------------------------------------
 
     def test_same_seed_and_inputs_give_identical_outputs(self):
@@ -187,6 +193,15 @@ class RaceSimulation2DTest(unittest.TestCase):
             assert_effect_moves_only_with_stops(
                 self, self.long, did, "fuel_ms", direction="nonincreasing"
             )
+
+    def test_fuel_share_decreases_when_other_effects_are_absent(self):
+        for did in self.ids:
+            laps = self.fuel_only["speed_breakdown"]["cars"][did]["laps"]
+            rows = [row for _, row in sorted(laps.items(), key=lambda item: int(item[0]))]
+            shares = [row["delta_shares"]["fuel"] for row in rows]
+            self.assertGreater(shares[0], shares[-1])
+            for before, after in zip(shares, shares[1:]):
+                self.assertLessEqual(after, before + 1e-6, did)
 
     def test_speed_effect_of_tyre_wear_only_grows_between_stops(self):
         for did in self.ids:
