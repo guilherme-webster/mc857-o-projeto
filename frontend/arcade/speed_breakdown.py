@@ -11,6 +11,11 @@ instante, as fatias que somam a velocidade maxima de reta do carro:
 
 As fatias sao fracoes de ``v_max`` e somam ~1.0. Fronteira: o modulo so le o
 resultado; nao simula nem corrige o motor.
+
+A parcela de combustivel pode oscilar mesmo com massa constante: ela escala
+com o teto local da pista, menor nas curvas. Entre voltas, a conversao das
+penalidades de tempo em velocidade tambem depende dos demais fatores. Para
+acompanhar o efeito isolado da massa, consulte ``fuel_ms`` no resultado.
 """
 
 from __future__ import annotations
