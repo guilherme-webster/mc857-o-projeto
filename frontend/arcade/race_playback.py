@@ -147,6 +147,24 @@ class CarTimeline:
         pb = b[4] if len(b) > 4 else None
         pit = pa + (pb - pa) * f if pa is not None and pb is not None else pa
 
+        # Distancia por Hermite cubica: respeita a velocidade (campo 3, km/h ->
+        # m/s) como derivada nos dois extremos. A interpolacao linear da
+        # distancia assume velocidade constante no segmento; na reta, onde a
+        # velocidade cresce, isso faz a velocidade visual saltar entre segmentos
+        # de duracoes diferentes (efeito sanfona). A Hermite reconstroi a curva
+        # com a aceleracao e remove o solavanco. Fora dos boxes (campo pit nulo).
+        def _distance() -> float:
+            if span <= 0 or pit is not None:
+                return a[1] + (b[1] - a[1]) * f
+            h_s = span / 1000.0
+            va = a[3] / 3.6
+            vb = b[3] / 3.6
+            h00 = 2 * f**3 - 3 * f**2 + 1
+            h10 = f**3 - 2 * f**2 + f
+            h01 = -2 * f**3 + 3 * f**2
+            h11 = f**3 - f**2
+            return h00 * a[1] + h10 * h_s * va + h01 * b[1] + h11 * h_s * vb
+
         def resource(index: int) -> float | None:
             if (
                 len(a) <= index
@@ -162,7 +180,8 @@ class CarTimeline:
             return a[index] + (b[index] - a[index]) * f
 
         return SpatialPosition(
-            *(a[i] + (b[i] - a[i]) * f for i in (1, 2, 3)),
+            _distance(),
+            *(a[i] + (b[i] - a[i]) * f for i in (2, 3)),
             pit,
             resource(5),
             resource(6),

@@ -43,6 +43,12 @@ AIR_DENSITY_KG_M3 = 1.2
 #: fechada do calendario, tem raio da ordem de 10-15 m.
 MIN_CORNER_RADIUS_M = 8.0
 
+#: Raio (m) acima do qual o trecho e tratado como reta (curvatura zero). O
+#: calculo de curvatura por 3 pontos gera "curvas fantasma" de raio grande na
+#: reta por arredondamento das coordenadas; acima deste raio a curva nao
+#: limitaria a velocidade de qualquer forma. Curvas reais ficam bem abaixo.
+MAX_STRAIGHT_RADIUS_M = 1000.0
+
 #: Meia-janela da media movel da curvatura (pontos). Com 1, cada ponto usa a
 #: media de tres curvaturas vizinhas. Escolhida na calibracao: 0 e 2 erraram
 #: mais contra as voltas de referencia (ver ``calibrate_car_physics``).
@@ -301,6 +307,14 @@ def track_curvature_per_m(geometry: TrackGeometry) -> tuple[float, ...]:
         twice_area = abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax))
         product = ab * bc * ca
         raw.append(2.0 * twice_area / product if product > 0 else 0.0)
+
+    # Dead-band: raio acima de ``MAX_STRAIGHT_RADIUS_M`` e reta. O calculo de
+    # curvatura por 3 pontos e sensivel ao arredondamento das coordenadas, e
+    # numa reta isso gera "curvas fantasma" de raio grande (ex.: 1700 m) que
+    # fazem o teto serrilhar e o carro frear sem motivo. Zerar essas curvaturas
+    # espurias limpa a reta sem afetar as curvas reais (raio bem menor).
+    straight = 1.0 / MAX_STRAIGHT_RADIUS_M
+    raw = [0.0 if k < straight else k for k in raw]
 
     half = CURVATURE_SMOOTHING_POINTS
     width = 2 * half + 1
