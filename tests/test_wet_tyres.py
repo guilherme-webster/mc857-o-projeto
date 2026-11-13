@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 
 from f1_simulator.application.build_grid import GridEntry
 from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
     run_grid_simulation,
 )
+from f1_simulator.domain.model_parameters import ASSUMED_WET_COMPOUNDS
+from f1_simulator.domain.race_simulation_2d import simulate_2d_race
 from f1_simulator.domain.random_source import SeededRandomSource
 from f1_simulator.domain.strategy import (
     HeuristicPitStrategy,
+    PitDecision,
+    PlannedStopStrategy,
     StrategyState,
     draw_weather_switch_bias,
 )
@@ -32,6 +37,7 @@ from f1_simulator.domain.wet_tyres import (
 )
 from tests.geometry_support import attribute
 from tests.model_support import parameters, track
+from tests.test_pit_lane import pit_geometry
 from tests.test_track_condition import _fixture_geometry
 
 
@@ -124,6 +130,13 @@ class WeatherStrategyTest(unittest.TestCase):
         self.assertTrue(forced.pit)
         self.assertFalse(free.pit)
 
+    def test_another_car_using_wet_tyres_lifts_the_rule(self):
+        state = _state("MEDIUM", 0.0, lap=47)
+        self.assertTrue(self.strategy.decide(state).pit)
+        self.assertFalse(self.strategy.decide(replace(state, wet_tyres_used_in_race=True)).pit)
+        with self.assertRaises(ValueError):
+            replace(state, wet_tyres_used_in_race=1)
+
     def test_without_water_the_legacy_contract_holds(self):
         legacy = StrategyState(20, 50, TyreSet("MEDIUM", 5), 0)
         self.assertFalse(self.strategy.decide(legacy).pit)
@@ -169,6 +182,32 @@ class WetRaceTest(unittest.TestCase):
 
     def test_a_dry_race_never_sees_wet_tyres(self):
         self.assertFalse(self._compounds(self._race(())) & set(WET_COMPOUNDS))
+
+    def test_rule_changes_only_after_another_cars_wet_service(self):
+        class Observe:
+            def __init__(self):
+                self.states = []
+
+            def decide(self, state):
+                self.states.append(state.wet_tyres_used_in_race)
+                return PitDecision(False)
+
+        observer = Observe()
+        model = parameters()
+        result = simulate_2d_race(
+            [
+                {"driver_id": "a", "name": "A", "grid_position": 1,
+                 "strategy": PlannedStopStrategy(1, (WET,))},
+                {"driver_id": "b", "name": "B", "grid_position": 2,
+                 "strategy": observer},
+            ],
+            pit_geometry(), total_laps=6, rng=SeededRandomSource(1),
+            compounds={c.name: c for c in (*model.compounds, *ASSUMED_WET_COMPOUNDS)},
+            track_params=track(), model_parameters=model, race_control=None,
+        )
+        self.assertIn("service_completed", [e["type"] for e in result["pit_stop_events"]])
+        self.assertFalse(observer.states[0])
+        self.assertIn(True, observer.states)
 
 
 if __name__ == "__main__":

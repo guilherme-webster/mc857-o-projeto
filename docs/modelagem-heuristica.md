@@ -293,8 +293,9 @@ Código em `domain/wet_tyres.py` (`ASSUMED_WET_TYRES`,
   pneu certo. Paradas por desgaste ou combustível com pista molhada montam o
   pneu de chuva indicado; com pneu de chuva montado não há parada por
   desgaste.
-- **Regra de dois compostos** suspensa quando o carro usou intermediário ou
-  chuva, como no regulamento.
+- **Regra de dois compostos** suspensa para todo o pelotão quando qualquer
+  carro usou intermediário ou chuva. Uma troca solicitada só conta após o
+  serviço nos boxes; uma troca gratuita conta quando realizada.
 - **Largada.** MEDIUM no seco; se a água prevista ao fim da volta 1 pede pneu
   de chuva, todos largam com ele.
 - **Desgaste.** Intermediário (20 ms/volta, vida 30) e chuva (15 ms/volta, vida
