@@ -275,6 +275,8 @@ class StrategyState:
     #: Agua na pista (0-1) prevista para a volta decidida (o radar da
     #: equipe); ``None`` desliga a decisao por clima (contrato anterior).
     surface_water: float | None = None
+    #: Uso efetivo por qualquer carro ate a decisao, nao uma parada solicitada.
+    wet_tyres_used_in_race: bool = False
 
     def __post_init__(self) -> None:
         """Valide somente o contexto novo, preservando o contrato legado.
@@ -300,6 +302,8 @@ class StrategyState:
             raise ValueError("compounds_used deve conter nomes nao vazios")
         if type(self.free_tyre_change) is not bool:
             raise ValueError("free_tyre_change deve ser bool")
+        if type(self.wet_tyres_used_in_race) is not bool:
+            raise ValueError("wet_tyres_used_in_race deve ser bool")
         if self.fuel is not None and not isinstance(self.fuel, FuelStatus):
             raise ValueError("fuel deve ser FuelStatus")
         if self.tyre_wear_laps is not None and (
@@ -722,7 +726,7 @@ class HeuristicPitStrategy:
         """Regra de dois compostos secos, suspensa se houve pneu de chuva."""
 
         used = (*state.compounds_used, state.tyre.compound)
-        if wet_compound_used(used):
+        if state.wet_tyres_used_in_race or wet_compound_used(used):
             return False
         return len(frozenset(used)) < 2
 

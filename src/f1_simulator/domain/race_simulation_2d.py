@@ -88,7 +88,7 @@ from f1_simulator.domain.track_space import (
 )
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
 from f1_simulator.domain.weather import RainLevel
-from f1_simulator.domain.wet_tyres import relative_grip, wear_factor
+from f1_simulator.domain.wet_tyres import relative_grip, wear_factor, wet_compound_used
 
 RUNNING = "RUNNING"
 RETIRED = "RETIRED"
@@ -787,6 +787,11 @@ def simulate_2d_race(
             neutralization=_neutralization_name(lap_number),
             pit_loss_factor=eff.pit_loss_factor,
             compounds_used=compounds_used[did],
+            # Historico muda somente na largada ou ao concluir a troca; um
+            # pedido pendente nao suspende antecipadamente a regra do pelotao.
+            wet_tyres_used_in_race=any(
+                wet_compound_used(used) for used in compounds_used.values()
+            ),
             free_tyre_change=eff.free_tyre_change,
             fuel=(
                 FuelStatus(fuel, car.fuel_kg, fuel.burn_kg_per_lap, track_params.pit_loss_ms)
