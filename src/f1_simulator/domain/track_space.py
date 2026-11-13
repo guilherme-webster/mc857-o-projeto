@@ -55,6 +55,7 @@ ASSUMED_FOLLOW_TRIGGER_M = 20.0
 #: nao depender de ``dt``: a chance de um passo e ``1 - exp(-taxa * dt)``.
 #: Hipotese nao calibrada; escalada pela agressividade dos envolvidos.
 ASSUMED_SIDE_CONTACT_PER_SECOND = 0.15
+SIDE_CONTACT_PARAMETER_VERSION = "spatial-contact-assumed-v1"
 
 #: Margem lateral (m) abaixo da qual os corpos lado a lado "roçam": soma das
 #: meias-larguras mais esta folga. Nao calibrada.

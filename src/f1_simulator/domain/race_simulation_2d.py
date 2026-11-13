@@ -40,10 +40,14 @@ from f1_simulator.domain.model_parameters import (
     ModelParameters,
     TrackParameters,
 )
-from f1_simulator.domain.pit_lane import PitLaneParameters, PitStopRequest, build_pit_lane
+from f1_simulator.domain.pit_lane import (
+    PitLaneParameters,
+    PitStopRequest,
+    build_pit_lane,
+)
 from f1_simulator.domain.race_control import (
-    HEURISTIC_RACE_CONTROL,
     GREEN,
+    HEURISTIC_RACE_CONTROL,
     Incident,
     LapEffects,
     RaceControlParameters,
@@ -59,23 +63,25 @@ from f1_simulator.domain.speed_dynamics import (
 )
 from f1_simulator.domain.strategy import (
     HeuristicPitStrategy,
+    SpatialPitPlanningParameters,
     StrategyState,
     TyreStrategy,
-    SpatialPitPlanningParameters,
 )
 from f1_simulator.domain.track_condition import TrackState
-from f1_simulator.domain.wet_tyres import relative_grip, wear_factor
+from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
+    ASSUMED_SIDE_CONTACT_PER_SECOND,
+    SIDE_CONTACT_PARAMETER_VERSION,
     CarSpaceState,
     FieldSample,
     MotionIncrement,
     build_track_space,
     integrate_field,
 )
-from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
+from f1_simulator.domain.wet_tyres import relative_grip, wear_factor
 
 RUNNING = "RUNNING"
 RETIRED = "RETIRED"
@@ -153,11 +159,10 @@ def _trajectories_2d(
     boxes. Mudanças de fase preservam os dois lados da transição, inclusive
     o início/fim do serviço, para a interpolação não apagar o tempo parado.
     Posição longitudinal, deslocamento lateral e velocidade vêm do motor,
-    para o frontend exibi-los sem derivar de segmentos. A série é comprimida
-    por limiar: só vira ponto quando
-    a distancia avancou ``TRAJECTORY_DISTANCE_EPS_M`` ou o lateral mudou
-    ``TRAJECTORY_LATERAL_EPS_M``, respeitando um intervalo minimo, mais o
-    primeiro e o ultimo instante. O frontend interpola linearmente entre pontos.
+    para o frontend exibi-los sem derivar de segmentos. A serie amostra os
+    retratos disponiveis a cada ``TRAJECTORY_SAMPLE_MS``, alem das transicoes,
+    do primeiro e do ultimo instante. A reproducao usa Hermite monotona na
+    pista e interpolacao linear nos boxes.
 
     Formato de lista (``[t, d, lat, v, pit_d]``) em vez de dict por ponto para encolher
     o JSON; o frontend le por indice. O primeiro ponto (t=0) fixa o grid de
@@ -229,7 +234,7 @@ def _trajectories_2d(
                 _push(did, point)
                 continue
             # Cadencia fixa: emite um ponto a cada ``TRAJECTORY_SAMPLE_MS``.
-            if t_ms - last_t[did] >= TRAJECTORY_SAMPLE_MS:
+            if t_ms - last_t[did] >= TRAJECTORY_SAMPLE_MS - 1e-6:
                 _push(did, point)
     # Fecha a serie no ultimo instante conhecido de quem nao abandonou.
     for did in driver_ids:
@@ -988,7 +993,7 @@ def simulate_2d_race(
             {
                 "kind": "engine_2d",
                 "origin": "assumed",
-                "parameter_version": "motor-2d-v4",
+                "parameter_version": "motor-2d-v5",
                 "rationale": (
                     "ADR 0011: motor 2D de posicao continua. Velocidade, "
                     "ultrapassagem e colisao emergem da fisica espacial; "
@@ -1007,6 +1012,16 @@ def simulate_2d_race(
                 "track_condition_active": bool(track_states),
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
+                "side_contact": {
+                    "origin": "assumed",
+                    "parameter_version": SIDE_CONTACT_PARAMETER_VERSION,
+                    "base_rate_per_second": ASSUMED_SIDE_CONTACT_PER_SECOND,
+                    "rationale": (
+                        "Taxa heuristica escolhida, nao estimada de dados; "
+                        "aplicada somente durante exposicao lateral e escalada "
+                        "pela agressividade dos dois carros."
+                    ),
+                },
             }
         ],
     }

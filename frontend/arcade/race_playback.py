@@ -154,11 +154,21 @@ class CarTimeline:
         # de duracoes diferentes (efeito sanfona). A Hermite reconstroi a curva
         # com a aceleracao e remove o solavanco. Fora dos boxes (campo pit nulo).
         def _distance() -> float:
-            if span <= 0 or pit is not None:
+            if span <= 0 or pa is not None or pb is not None:
                 return a[1] + (b[1] - a[1]) * f
             h_s = span / 1000.0
-            va = a[3] / 3.6
-            vb = b[3] / 3.6
+            va = max(0.0, a[3] / 3.6)
+            vb = max(0.0, b[3] / 3.6)
+            # A exclusao pode limitar o deslocamento sem que as velocidades
+            # nas pontas descrevam a velocidade media desse intervalo. Uma
+            # cubica com tangentes grandes demais pode voltar ou ultrapassar o
+            # proximo ponto. Limitar sua soma a 3 vezes a secante garante uma
+            # curva monotona, inclusive para distancia constante (arredondada).
+            mean_speed = max(0.0, (b[1] - a[1]) / h_s)
+            if va + vb > 3.0 * mean_speed:
+                scale = 3.0 * mean_speed / (va + vb)
+                va *= scale
+                vb *= scale
             h00 = 2 * f**3 - 3 * f**2 + 1
             h10 = f**3 - 2 * f**2 + f
             h01 = -2 * f**3 + 3 * f**2
