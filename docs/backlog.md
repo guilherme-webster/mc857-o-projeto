@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-12T21:08:37Z
-- **Abertas:** 38
-- **Fechadas:** 53
+- **Ultima atividade registrada:** 2026-11-13T22:22:31Z
+- **Abertas:** 36
+- **Fechadas:** 66
 
 ## Issues abertas
 
@@ -55,53 +55,6 @@
 - 2026-08-28T23:04:02Z — sub-issue adicionada: #3 por @Jmvjr
 - 2026-08-28T23:03:17Z — sub-issue adicionada: #2 por @Jmvjr
 - 2026-08-28T22:59:40Z — label adicionada: Épico por @Jmvjr
-
-</details>
-
-### [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14), [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26), [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29), [#86 — Otimização de UI\\UX](https://github.com/guilherme-webster/mc857-o-projeto/issues/86)
-- **Criada:** 2026-08-28T23:03:16Z
-- **Atualizada:** 2026-09-24T23:05:46Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Nessa tela o usuário poderá visualizar dados e poder alterá-los</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (2)</summary>
-
-#### [@Jmvjr em 2026-09-24T22:57:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823587802)
-
-<pre>Etapa da interface: tela inicial de torneio ampliada para 1672x900, com texto renderizado em resolução nativa; segunda tela de configuração por corrida criada conforme referência, com aba Sessão funcional, resumo de pista/clima, navegação para o editor de Clima existente e sem Assistências. Pista, Regras e Carros permanecem placeholders por pedido do usuário. Sessão e clima são incluídos no plano salvo. Verificações: 192 testes passaram na suíte padrão (28 GUI pulados), 28 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff e git diff --check passaram. Próximos passos: implementar as abas adiadas e integrar confirmação do Arcade à execução/acompanhamento da simulação. Limitação atual: configurações de etapas com pista repetida ainda são compartilhadas por ID de circuito. Nenhum commit criado pelo agente.</pre>
-
-#### [@Jmvjr em 2026-09-24T23:05:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823695300)
-
-<pre>Correção do fluxo da segunda tela: a aba Clima agora edita a programação por volta dentro da própria RaceConfigurationView, sem abrir WeatherConfigurationView nem redimensionar a janela. Preservados seleção de condição, pintura inclusiva por arraste, campos de intervalo, aplicação e resumo paginado; salvar/avançar persiste o clima e cancelar descarta alterações não salvas. README atualizado. Verificações: suíte geral 194 testes OK (30 GUI pulados), 31 testes GUI OK, Ruff/Black/diff check OK; captura da aba em 1672x900 inspecionada. Próximo passo: abas Pista/Regras/Carros e integração da confirmação com a simulação. Nenhum commit criado pelo agente.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-26T00:29:21Z — sub-issue adicionada: #86 por @Jmvjr
-- 2026-09-01T21:06:20Z — sub-issue adicionada: #29 por @Jmvjr
-- 2026-09-01T15:38:19Z — sub-issue adicionada: #26 por @Jmvjr
-- 2026-08-28T23:19:05Z — sub-issue adicionada: #14 por @Jmvjr
-- 2026-08-28T23:16:53Z — sub-issue adicionada: #13 por @Jmvjr
-- 2026-08-28T23:15:25Z — sub-issue adicionada: #12 por @Jmvjr
-- 2026-08-28T23:03:17Z — label adicionada: História por @Jmvjr
 
 </details>
 
@@ -189,41 +142,6 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 - 2026-08-28T23:06:17Z — sub-issue adicionada: #7 por @Jmvjr
 - 2026-08-28T23:06:05Z — sub-issue adicionada: #6 por @Jmvjr
 - 2026-08-28T23:04:58Z — label adicionada: Épico por @Jmvjr
-
-</details>
-
-### [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** @ViniciusFCoracin, @guilherme-webster
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-- **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18), [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19), [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21), [#101 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/101)
-- **Criada:** 2026-08-28T23:06:03Z
-- **Atualizada:** 2026-10-16T20:24:01Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve conseguir visualizar a pista, os carros e as posições. </pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-26T22:30:35Z — sub-issue adicionada: #101 por @Jmvjr
-- 2026-10-16T20:24:01Z — atribuida: @guilherme-webster por @guilherme-webster
-- 2026-08-28T23:39:04Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
-- 2026-08-28T23:36:19Z — sub-issue adicionada: #21 por @ViniciusFCoracin
-- 2026-08-28T23:34:45Z — sub-issue adicionada: #19 por @ViniciusFCoracin
-- 2026-08-28T23:34:10Z — sub-issue adicionada: #18 por @ViniciusFCoracin
-- 2026-08-28T23:33:20Z — sub-issue adicionada: #16 por @ViniciusFCoracin
-- 2026-08-28T23:06:44Z — label adicionada: História por @Jmvjr
 
 </details>
 
@@ -805,13 +723,22 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
 - **Sub-issues:** —
 - **Criada:** 2026-10-22T23:41:50Z
-- **Atualizada:** 2026-10-22T23:41:50Z
+- **Atualizada:** 2026-11-13T22:22:30Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>Fazer modelagem do consumo de combustível e implementar o reabastecimento (junto com troca de pneus)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:22:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/97#issuecomment-6866381998)
+
+<pre>Implementação de reabastecimento durante o serviço de pneus no motor 2D concluída em branch isolada e em revisão. Os 15 testes direcionados e o Ruff passaram; a suíte completa apresenta as mesmas cinco falhas existentes na develop. Permanecem limitações de planejamento inicial de carga e garantia de chegada aos boxes, que estão sendo avaliadas antes do fechamento.</pre>
 
 </details>
 
@@ -886,7 +813,7 @@ Contrato: `docs/prds/controles-do-usuario-simulacao.md`, seção 3.1.</pre>
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-10-30T20:33:06Z
-- **Atualizada:** 2026-10-30T21:55:51Z
+- **Atualizada:** 2026-11-12T21:18:24Z
 - **Fechada:** —
 
 <details>
@@ -905,7 +832,7 @@ Contrato: `docs/prds/controles-do-usuario-simulacao.md`, item 1 da seção 2.</p
 </details>
 
 <details>
-<summary>Comentarios (4)</summary>
+<summary>Comentarios (5)</summary>
 
 #### [@guilherme-webster em 2026-10-30T20:35:21Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/108#issuecomment-6532928838)
 
@@ -922,6 +849,10 @@ Contrato: `docs/prds/controles-do-usuario-simulacao.md`, item 1 da seção 2.</p
 #### [@guilherme-webster em 2026-10-30T21:55:51Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/108#issuecomment-6534337429)
 
 <pre>Mergeado na `develop` em 2026-10-30 (PRs #111–#115, na ordem). Suite na develop resultante (0668268): 672 passed, 0 failed. Pendente apenas a conferencia visual das telas no app rodando; a issue fica aberta ate essa conferencia e o merge na `main`.</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:18:24Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/108#issuecomment-6836213430)
+
+<pre>Material de largada arquivado na #152 (branch local 152-arquivar-grid-start, ainda sem push): TOBEDEFINED/grid_start.py, grid_start_parameters_json.py, grid-start-v1.json, analyze_grid_start_sensitivity.py, test_grid_start.py. Indice em TOBEDEFINED/README.md. Pode ser reaproveitado aqui.</pre>
 
 </details>
 
@@ -1136,7 +1067,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Labels:** Épico
 - **Milestone:** —
 - **Issue-pai:** —
-- **Sub-issues:** [#137 — Melhorar Tela de corrida salvas](https://github.com/guilherme-webster/mc857-o-projeto/issues/137), [#135 — Carregar corridas salvas na tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/135), [#138 — Tela inicial geral](https://github.com/guilherme-webster/mc857-o-projeto/issues/138), [#142 — Botão resultado do torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/142)
+- **Sub-issues:** [#137 — Melhorar Tela de corrida salvas](https://github.com/guilherme-webster/mc857-o-projeto/issues/137), [#135 — Carregar corridas salvas na tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/135), [#138 — Tela inicial geral](https://github.com/guilherme-webster/mc857-o-projeto/issues/138), [#142 — Botão resultado do torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/142), [#167 — Melhorar tela de atributos](https://github.com/guilherme-webster/mc857-o-projeto/issues/167), [#168 — Tela Pilotos e Grid: Não tem como selecionar o número de corredores](https://github.com/guilherme-webster/mc857-o-projeto/issues/168), [#169 — Tela de Simulação: Texto de contato](https://github.com/guilherme-webster/mc857-o-projeto/issues/169), [#172 — Tela Inicial: Caminho para telas de Clima e etc sumiu](https://github.com/guilherme-webster/mc857-o-projeto/issues/172), [#173 — Janela decomposição de velocidade: sobreposição de texto quando o nome é extenso](https://github.com/guilherme-webster/mc857-o-projeto/issues/173)
 - **Criada:** 2026-11-08T20:23:47Z
 - **Atualizada:** 2026-11-08T20:23:47Z
 - **Fechada:** —
@@ -1151,6 +1082,11 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-13T17:59:24Z — sub-issue adicionada: #173 por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:39:12Z — sub-issue adicionada: #172 por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:18:37Z — sub-issue adicionada: #169 por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:03:12Z — sub-issue adicionada: #168 por @Gustavo-Jun-Tsuji
+- 2026-11-13T16:58:28Z — sub-issue adicionada: #167 por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:49:31Z — sub-issue adicionada: #142 por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:41:05Z — sub-issue adicionada: #138 por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:34:24Z — sub-issue adicionada: #135 por @Gustavo-Jun-Tsuji
@@ -1165,18 +1101,22 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Motivo do estado:** —
 - **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** bug
 - **Milestone:** —
 - **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
 - **Sub-issues:** —
 - **Criada:** 2026-11-08T20:41:03Z
-- **Atualizada:** 2026-11-08T20:41:20Z
+- **Atualizada:** 2026-11-13T18:00:18Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>Textos não alinhados, textos ultrapassando blocos
+<pre>- Textos não alinhados
+- Textos ultrapassando blocos
+- Botão de &quot;voltar&quot; não funcional
+- Botão de &quot;ajuda&quot;
+
 
 &lt;img width=&quot;614&quot; height=&quot;113&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/0df17698-192b-4d40-b4e3-b21c399c7c43&quot; /&gt;
 
@@ -1187,6 +1127,8 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-13T18:00:18Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T18:00:18Z — label removida: Task por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:41:20Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
@@ -1197,12 +1139,12 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Motivo do estado:** —
 - **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Épico
+- **Labels:** História
 - **Milestone:** —
-- **Issue-pai:** —
+- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140), [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141)
 - **Criada:** 2026-11-08T20:41:54Z
-- **Atualizada:** 2026-11-08T20:46:20Z
+- **Atualizada:** 2026-11-13T17:35:21Z
 - **Fechada:** —
 
 <details>
@@ -1215,6 +1157,8 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-13T17:35:21Z — label adicionada: História por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:35:21Z — label removida: Épico por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:48:34Z — sub-issue adicionada: #141 por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:48:13Z — sub-issue adicionada: #140 por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:41:54Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
@@ -1232,13 +1176,22 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
 - **Sub-issues:** —
 - **Criada:** 2026-11-08T20:48:12Z
-- **Atualizada:** 2026-11-08T20:51:38Z
+- **Atualizada:** 2026-11-13T22:22:30Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>Obs: Não tenho certeza se esse era o comportamento desejado</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:22:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/140#issuecomment-6866381990)
+
+<pre>Investigação: a porcentagem exibida representa a contribuição na velocidade local e varia com o limite do trecho e outras penalidades, mesmo quando a massa de combustível só diminui. Foram adicionados testes e documentação; vou submetê-los para revisão. A suíte completa apresenta cinco falhas preexistentes na develop.</pre>
 
 </details>
 
@@ -1289,12 +1242,12 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Motivo do estado:** —
 - **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** bug
 - **Milestone:** —
 - **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
 - **Sub-issues:** —
 - **Criada:** 2026-11-08T20:49:29Z
-- **Atualizada:** 2026-11-10T20:43:23Z
+- **Atualizada:** 2026-11-13T18:00:22Z
 - **Fechada:** —
 
 <details>
@@ -1307,22 +1260,24 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 <details>
 <summary>Historico de estado</summary>
 
+- 2026-11-13T18:00:22Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T18:00:21Z — label removida: Task por @Gustavo-Jun-Tsuji
 - 2026-11-10T20:43:23Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
 
-### [#144 — Testes: extrair fuel_parameters para modulo de suporte e destravar test_fuel](https://github.com/guilherme-webster/mc857-o-projeto/issues/144)
+### [#155 — Saneamento pos-motor 2D: suite verde, CI e limpeza](https://github.com/guilherme-webster/mc857-o-projeto/issues/155)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @guilherme-webster
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** Épico
 - **Milestone:** —
 - **Issue-pai:** —
 - **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:19Z
-- **Atualizada:** 2026-11-12T21:08:19Z
+- **Criada:** 2026-11-12T21:08:34Z
+- **Atualizada:** 2026-11-12T21:58:13Z
 - **Fechada:** —
 
 <details>
@@ -1331,34 +1286,45 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 <pre>
 ## Contexto
 
-Em `develop` (commit `94e52ab`), `uv run python -m unittest` termina com 5 falhas
-e 21 erros. Parte deles e erro de importacao em cascata:
+Levantamento de 2026-11-12 sobre `develop` (`94e52ab`): a suite termina com 5
+falhas e 21 erros em 637 testes, quase todos restos da remocao do motor por
+volta, e nao ha CI de testes. Este epico ordena o saneamento em fatias pequenas.
 
-- `tests/test_fuel.py:39` importa `f1_simulator.domain.lap_time`, removido junto
-  com o motor por volta (hoje em `TOBEDEFINED/`);
-- `tests/test_dynamic_usage.py:26` e `tests/test_race_playback.py:17` importam o
-  helper `fuel_parameters` de `tests.test_fuel` e caem junto.
+## Ordem sugerida
 
-Resultado: tres modulos de teste inteiros nao executam.
+**Suite verde**
 
-## Escopo
+- [x] #144
+- [x] #145
+- [x] #146
+- [x] #147
 
-- Mover `fuel_parameters` (e helpers puros que ele usa) para um modulo de suporte
-  em `tests/`, no molde de `tests/history_support.py`, e apontar os tres modulos
-  para ele.
-- Em `test_fuel.py`, remover apenas os testes que dependem de `lap_time`
-  (`fuel_penalty_ms`). Os testes de `domain/fuel.py` continuam.
+**Barreira automatica**
 
-## Criterios de aceitacao
+- [x] #148
+- [x] #149
+- [x] #150
 
-- `uv run python -m unittest tests.test_fuel tests.test_dynamic_usage tests.test_race_playback`
-  importa e passa.
-- Nenhum teste de `domain/fuel.py` ainda valido foi apagado; liste no comentario
-  de encerramento os testes removidos e o motivo.
+**Bugs (depois do teste de ponta a ponta)**
 
-## Fora de escopo
+- [ ] #140 (confirmar antes se o comportamento e o desejado)
+- [ ] #141
 
-`tests/test_fuel_strategy.py` (tratado em outra issue) e qualquer mudanca em `src/`.
+**Limpeza e interface**
+
+- [x] #151
+- [x] #152
+- [x] #153
+- [ ] #138
+- [ ] #142
+- [x] #154
+
+## Fora deste epico
+
+Dependem de decisao de modelagem do grupo: reabastecimento no 2D e
+`pit_loss_ms` calibrado (`TODO(motor-2d)` em `race_simulation_2d.py:393`), peso
+da pole (#108) e balanceamento (#139). Tambem nao esta previsto quebrar as
+views grandes sem um problema concreto.
 
 ## Como trabalhar
 
@@ -1370,90 +1336,42 @@ Commits so com autorizacao do usuario.
 </details>
 
 <details>
-<summary>Historico de estado</summary>
+<summary>Comentarios (1)</summary>
 
-- 2026-11-12T21:08:19Z — label adicionada: Task por @guilherme-webster
+#### [@guilherme-webster em 2026-11-12T21:35:40Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/155#issuecomment-6836581010)
 
-</details>
+<pre>## Andamento do epico (2026-11-12)
 
-### [#145 — Testes: portar para o motor 2D os contratos vivos e arquivar os do motor por volta](https://github.com/guilherme-webster/mc857-o-projeto/issues/145)
+Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com commits e comentario de encerramento na propria issue. **Ainda sem push nem PR**, por isso nenhuma issue foi fechada.
 
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:20Z
-- **Atualizada:** 2026-11-12T21:08:20Z
-- **Fechada:** —
+| Issue | Branch | Base |
+|---|---|---|
+| #144 | `144-fuel-parameters-support` | develop |
+| #145 | `145-portar-testes-motor-2d` | empilhada sobre a 144 |
+| #146 | `146-remover-seletor-motor` | develop |
+| #147 | `147-pit-lane-amostras-paradas` | develop |
+| #148 | `148-ci-testes` | develop |
+| #149 | `149-ruff` | integracao-saneamento |
+| #150 | `150-teste-ponta-a-ponta-2d` | develop |
+| #151 | `151-apagar-weather-view` | develop |
+| #152 | `152-arquivar-grid-start` | 94e52ab |
+| #153 | `153-progresso-reexecucao-torneio` | develop |
+| #154 | `154-docs-alinhamento` | integracao-saneamento |
 
-<details>
-<summary>Descricao original</summary>
+### Verificacao na branch local `integracao-saneamento` (todas mescladas)
 
-<pre>
-## Contexto
+- `uv run python -m unittest`: **732 testes, OK** (skipped=42, expected failures=2). Baseline em develop: 637 testes, 5 falhas, 21 erros.
+- `uv run ruff check .`: limpo.
+- Conflito #146 x #153 em `saved_tournaments.py` resolvido na integracao: a reexecucao usa o SSE e reenvia o `setup` salvo sem o `engine` legado.
+- Com `ARCADE_GUI_TEST=1`: 4 falhas e 1 erro em `tests.test_parameters_view` (`test_visible_controls_add_track_and_confirm_sequence`, `test_large_window_draws_full_panels_and_maps_clicks`, `test_preview_click_still_opens_the_configurator`, `test_resizing_keeps_size_and_refits_both_configuration_screens`, `test_selects_another_backend_track_and_preserves_it_after_return`). Ja existiam em develop antes desta rodada; precisam de issue propria.
 
-O motor por volta foi removido de `src/` (ADR 0011; arquivo morto em
-`TOBEDEFINED/`), mas os testes dele ficaram em `tests/` e quebram a suite:
+### Pendencias que dependem do grupo
 
-| Modulo | Sintoma |
-|---|---|
-| `test_run_grid_detailed.py` (11 erros) | `engine=`, patch de `simulate_detailed_race`, execucao sem geometria |
-| `test_detailed_tyre_management.py` | `ValueError: o motor 2D exige geometria da pista` |
-| `test_reference_laps.py` (2 erros, `DetailedGridReferenceTest`) | idem |
-| `test_fuel_strategy.py` | importa `f1_simulator.domain.race_simulation` |
-| `test_catalog_grid_run.py`, `test_tournament_seed_api.py` | patch de `run_detailed_grid_simulation` |
-| `test_saved_tournament.py::test_rerun_after_restore_reproduces_saved_races` | reexecucao sem geometria |
-
-## Decisao do responsavel (2026-11-12)
-
-**Portar para o motor 2D** os testes cujo contrato continua vivo. Arquivar em
-`TOBEDEFINED/` somente o que testa comportamento exclusivo do motor removido.
-
-## Escopo
-
-Reescrever contra `run_grid_simulation` / `simulate_2d_race`, com a geometria de
-`tests/fixtures/trotman_v128_tracks_2025` e poucas voltas, os contratos:
-
-- ordem do grid e atributos chegam ao motor como posicoes de largada;
-- mesma semente reproduz a corrida, inclusive eventos de controle de prova;
-- semente de torneio reproduz a etapa e separa etapas distintas
-  (`derive_tournament_stage_random_source`);
-- atributo de ritmo altera o resultado;
-- volta de referencia historica prevalece sobre o ritmo por km;
-- pista sem calibracao usa o fallback `assumed` e o declara em `assumptions`;
-- metadados de semente devolvidos pela API batem com a derivacao do nucleo;
-- reexecucao de torneio salvo apos `restore-grid` reproduz as corridas salvas;
-- decisoes de `HeuristicPitStrategy` com combustivel que nao dependam do motor
-  antigo (`test_fuel_strategy.py`).
-
-Renomear os modulos que perderem o sentido de &quot;detailed&quot;. Mover para
-`TOBEDEFINED/` o que sobrar, com uma linha no topo dizendo de onde veio.
-
-## Criterios de aceitacao
-
-- `grep -rn &quot;detailed\|lap_time\|race_simulation\b&quot; tests/` nao encontra
-  referencia ao motor removido.
-- Os contratos listados acima tem teste passando contra o 2D.
-- O comentario de encerramento lista o que foi portado e o que foi arquivado.
-
-## Dependencias
-
-Depois de #144. O campo `engine` nas asserts de rota e tratado em outra issue.
-
-## Fora de escopo
-
-Alterar regra de simulacao. Se um contrato portado falhar por comportamento real
-do 2D, registre aqui e nao ajuste o motor.
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
+- Status dos ADRs 0009 e 0015 (proposta na #154).
+- `ruff format`: 76 arquivos seriam reformatados; adiado por causa de branches abertas (ver #149).
+- Limitacoes do 2D registradas na #145/#154: nao reabastece nem faz lift-and-coast (2 `expectedFailure` em `test_race_playback`), nao declara a assumption de gestao de pneus, abandono solo vira `mechanical`, troca de pneu defasada uma volta em `speed_breakdown`.
+- #140 e #141 nao se reproduziram no cenario do teste de ponta a ponta (#150) sem clima nem controle de prova; os helpers de `tests/race_invariants.py` estao prontos para os regressivos.
+- Conferencia visual: painel de regras sem o seletor de motor (#146), aba Clima e tela de carregamento (#151), reexecucao com progresso (#153).
 </pre>
 
 </details>
@@ -1461,387 +1379,166 @@ Commits so com autorizacao do usuario.
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:21Z — label adicionada: Task por @guilherme-webster
+- 2026-11-12T21:08:36Z — label adicionada: Épico por @guilherme-webster
 
 </details>
 
-### [#146 — Remover o seletor de motor do frontend e a checagem de motor do torneio salvo](https://github.com/guilherme-webster/mc857-o-projeto/issues/146)
+### [#167 — Melhorar tela de atributos](https://github.com/guilherme-webster/mc857-o-projeto/issues/167)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:21Z
-- **Atualizada:** 2026-11-12T21:08:21Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>
-## Contexto
-
-So existe o motor 2D, e `RaceSetupRequest` nao declara `engine`. Mesmo assim:
-
-- `frontend/arcade/configuration_state.py:198` oferece
-  `ENGINE_OPTIONS = (&quot;Detalhado (calibrado)&quot;, &quot;2D com pit lane&quot;)`, com
-  &quot;Detalhado&quot; como padrao; a tela promete um motor que nao roda;
-- `frontend/arcade/race_launcher.py:139-143` e `parameters_view.py` (linhas
-  ~516, ~1002, ~1348) ainda montam e desenham a regra;
-- `tests/test_catalog_grid_run.py::test_route_forwards_setup_to_service` e
-  `tests/test_tournament_seed_api.py::test_route_forwards_explicit_seed_and_stage_index`
-  esperam `engine=&#x27;detailed&#x27;` na chamada do servico;
-- `tests/test_saved_tournament.py::test_rejects_setup_that_would_rerun_a_different_race`
-  tem o subteste `[motor]`, que espera `SavedTournamentError` para motor
-  divergente; `check_saved_tournament` nao faz mais essa checagem.
-
-## Decisao do responsavel (2026-11-12)
-
-Remover a escolha e a checagem, mantendo apenas o motor 2D.
-
-## Escopo
-
-- Tirar `ENGINE_OPTIONS`, `ENGINE_API_VALUES`, o campo `engine` de
-  `TournamentRules` e o controle correspondente da tela; `setup` deixa de
-  enviar `engine`.
-- Ajustar os tres testes acima e os testes de frontend que citem a regra.
-- Torneios ja salvos podem conter `rules.engine` ou `setup.engine`: reabrir e
-  reexecutar devem continuar funcionando, ignorando o campo. Cubra com teste.
-
-## Criterios de aceitacao
-
-- `grep -rn &quot;engine&quot; frontend/arcade backend/app` nao encontra a regra de motor.
-- Um torneio salvo antigo com `engine` reabre sem erro.
-- O layout de `ParametersView` nao fica com um buraco onde estava o controle.
-
-## Fora de escopo
-
-Reintroduzir escolha de motor ou alterar o ADR 0011.
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
-</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-11-12T21:08:22Z — label adicionada: Task por @guilherme-webster
-
-</details>
-
-### [#147 — Investigar a falha de test_pit_lane (25 amostras paradas, esperado mais de 40)](https://github.com/guilherme-webster/mc857-o-projeto/issues/147)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
+- **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
 - **Labels:** bug
 - **Milestone:** —
-- **Issue-pai:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
 - **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:23Z
-- **Atualizada:** 2026-11-12T21:08:23Z
+- **Criada:** 2026-11-13T16:58:27Z
+- **Atualizada:** 2026-11-13T18:00:26Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>
-## Contexto
-
-`tests/test_pit_lane.py::PitLaneMotionTest::test_movement_stops_at_service_and_finishes_two_laps`
-falha em `develop` (`94e52ab`):
-
-```
-self.assertGreater(len(stationary), 40)
-AssertionError: 25 not greater than 40
-```
-
-O teste pede um servico de 2,5 s (`PitStopRequest(360, 2.5)`); com `dt_s=0.05`
-seriam cerca de 50 amostras paradas. A duracao entre `service_started` e
-`service_completed` continua correta (a assert anterior passa), entao a
-diferenca pode estar na amostragem de `integrate_field` e nao no servico. A
-causa **nao foi investigada**.
-
-## Escopo
-
-- Descobrir desde qual commit o teste falha (`git bisect` ou `git log` em
-  `domain/track_space.py` e `domain/pit_lane.py`).
-- Decidir, com a causa em maos, se o erro esta no motor ou no teste, e corrigir
-  o lado errado.
-
-## Criterios de aceitacao
-
-- O teste passa e o comentario de encerramento explica a causa.
-- Se o motor mudou, ha teste de regressao; se o teste mudou, a nova assert
-  continua verificando que o carro fica parado durante todo o servico.
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
-</pre>
+<pre>&lt;img width=&quot;219&quot; height=&quot;667&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/7d49dc1b-5fc7-4e3e-839a-8fb9b6c36386&quot; /&gt;</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:23Z — label adicionada: bug por @guilherme-webster
+- 2026-11-13T18:00:26Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T18:00:26Z — label removida: Task por @Gustavo-Jun-Tsuji
+- 2026-11-13T16:58:39Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
 
-### [#148 — CI: rodar a suite de testes em pull requests](https://github.com/guilherme-webster/mc857-o-projeto/issues/148)
+### [#168 — Tela Pilotos e Grid: Não tem como selecionar o número de corredores](https://github.com/guilherme-webster/mc857-o-projeto/issues/168)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @guilherme-webster
+- **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** bug
 - **Milestone:** —
-- **Issue-pai:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
 - **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:24Z
-- **Atualizada:** 2026-11-12T21:08:24Z
+- **Criada:** 2026-11-13T17:03:11Z
+- **Atualizada:** 2026-11-13T17:59:47Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>
-## Contexto
-
-Nao ha CI de testes; `.github/workflows/` tem apenas `pull-request-rules.yml` e
-`sync-backlog.yml`. A suite quebrou em `develop` sem ninguem notar. O
-`CONTRIBUTING.md` pede que as regras objetivas sejam reforcadas por automacao.
-
-## Escopo
-
-- Workflow do GitHub Actions que, em PRs para `develop` e `main` e em push para
-  `develop`, instala com `uv sync` (Python 3.12) e roda
-  `uv run python -m unittest`.
-- Os testes de GUI seguem pulados (`ARCADE_GUI_TEST` ausente); o job nao precisa
-  de display.
-- Se o `TestClient` pedir `httpx2`, resolver de forma declarada (ver a secao
-  &quot;Testes e verificacoes&quot; do `README.MD`), sem dependencia implicita.
-- Remover de `pyproject.toml` o bloco `[tool.pytest.ini_options]`, ou trocar
-  por algo coerente: pytest nao e dependencia e a suite usa unittest.
-- Atualizar o `README.MD` e a frase do `CONTRIBUTING.md` que diz nao haver CI.
-
-## Criterios de aceitacao
-
-- Um PR com teste quebrado fica com o check vermelho.
-- O job nao acessa a rede alem da instalacao de dependencias.
-
-## Dependencias
-
-A suite precisa estar verde antes: #144, #145, #146 e #147.
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
-</pre>
+<pre>(sem descricao)</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:25Z — label adicionada: Task por @guilherme-webster
+- 2026-11-13T17:59:47Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:59:47Z — label removida: Task por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:03:26Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
 
-### [#149 — CI: adotar ruff como linter e formatador](https://github.com/guilherme-webster/mc857-o-projeto/issues/149)
+### [#169 — Tela de Simulação: Texto de contato](https://github.com/guilherme-webster/mc857-o-projeto/issues/169)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @guilherme-webster
+- **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** bug
 - **Milestone:** —
-- **Issue-pai:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
 - **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:25Z
-- **Atualizada:** 2026-11-12T21:08:25Z
+- **Criada:** 2026-11-13T17:18:36Z
+- **Atualizada:** 2026-11-13T17:59:56Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>
-## Contexto
+<pre>- Texto Contato
+- Sobreposição Time e Intervalo
 
-O `CONTRIBUTING.md` preve formatador e linter locais e no CI; nao ha nenhum.
-Decisao do responsavel em 2026-11-12: adotar.
+&lt;img width=&quot;146&quot; height=&quot;30&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/86458486-2c96-4762-976f-9f257947aec4&quot; /&gt;
 
-## Escopo
-
-- Adicionar `ruff` como dependencia de desenvolvimento (grupo `dev` do
-  `pyproject.toml`), com configuracao minima: regras padrao mais ordenacao de
-  imports, `target-version = &quot;py312&quot;`, e `TOBEDEFINED/` excluido.
-- Passo de `ruff check` no workflow de CI.
-- Formatacao: **nao** reformatar o repositorio inteiro junto com outra mudanca.
-  Se `ruff format --check` exigir um diff grande, faca-o em commit proprio,
-  mecanico, e registre o hash em `.git-blame-ignore-revs`; se o diff for
-  invasivo demais, deixe o `format` fora do CI e registre a decisao aqui.
-- Corrigir os achados do `ruff check` sem mudar comportamento; o que exigir
-  mudanca de comportamento vira issue separada.
-- Documentar os comandos no `README.MD` e no `CONTRIBUTING.md`.
-
-## Criterios de aceitacao
-
-- `uv run ruff check .` passa localmente e no CI.
-- Nenhum commit mistura reformatacao com mudanca funcional.
-
-## Dependencias
-
-Depois de #148.
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
-</pre>
+&lt;img width=&quot;294&quot; height=&quot;26&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/2286265a-f6ab-41ce-8041-780faeacdcca&quot; /&gt;</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:27Z — label adicionada: Task por @guilherme-webster
+- 2026-11-13T17:59:56Z — label adicionada: bug por @Gustavo-Jun-Tsuji
 
 </details>
 
-### [#150 — Teste de ponta a ponta do motor 2D (simulate_2d_race)](https://github.com/guilherme-webster/mc857-o-projeto/issues/150)
+### [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @guilherme-webster
+- **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** Épico
 - **Milestone:** —
 - **Issue-pai:** —
-- **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:27Z
-- **Atualizada:** 2026-11-12T21:08:27Z
+- **Sub-issues:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139), [#171 — Botão &quot;abortar simulação&quot; não aborta a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/171), [#174 — Corrida atual com muitas colisões](https://github.com/guilherme-webster/mc857-o-projeto/issues/174), [#175 — Efeito &quot;sanfona&quot; nos carros durante a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/175)
+- **Criada:** 2026-11-13T17:34:34Z
+- **Atualizada:** 2026-11-13T22:22:31Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>
-## Contexto
+<pre>(sem descricao)</pre>
 
-`domain/race_simulation_2d.py` e o unico motor e a fonte de verdade da
-classificacao, mas nao tem teste dedicado de ponta a ponta; os testes atuais
-cobrem pecas (`test_track_space`, `test_speed_dynamics`, `test_pit_lane`,
-`test_dynamic_usage`).
+</details>
 
-## Escopo
+<details>
+<summary>Comentarios (1)</summary>
 
-Novo modulo de teste que roda `simulate_2d_race` com a geometria de
-`tests/fixtures/trotman_v128_tracks_2025`, poucos carros e poucas voltas, e
-verifica:
+#### [@Jmvjr em 2026-11-13T22:22:31Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/170#issuecomment-6866382308)
 
-- **reprodutibilidade**: mesma semente e mesmos insumos dao `history`,
-  `classification` e `race_control_events` identicos; sementes diferentes dao
-  resultados diferentes;
-- **invariantes**: cada piloto aparece uma vez na classificacao; posicoes sao
-  1..N sem buracos; quem termina completou `total_laps`; voltas e tempos
-  acumulados por carro nao decrescem; abandono tem motivo e volta;
-- **efeitos opcionais**: sem `model_parameters` + `track_params` + `compounds`
-  nao ha paradas; com eles ha ao menos uma troca numa corrida longa o bastante;
-  com `FuelPlan` a massa de combustivel so diminui;
-- **`on_progress`** e chamado uma vez por volta, em ordem.
-
-## Criterios de aceitacao
-
-- O modulo roda em poucos segundos e sem rede.
-- As invariantes estao em helpers reutilizaveis pelos testes de regressao dos
-  bugs #140 e #141.
-
-## Fora de escopo
-
-Mudar o motor. Uma invariante que falhe por comportamento real vira issue de bug.
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
-</pre>
+<pre>Investigação: foram reproduzidos e corrigidos três casos de validação (overrides duplicados, corrida salva inválida e etapa vazia). Os testes direcionados passaram; a suíte completa apresenta cinco falhas já existentes na develop. Vou abrir um PR para revisão. A issue principal permanece aberta enquanto suas subissues não estiverem concluídas.</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:28Z — label adicionada: Task por @guilherme-webster
+- 2026-11-13T18:01:50Z — sub-issue adicionada: #175 por @Gustavo-Jun-Tsuji
+- 2026-11-13T18:01:21Z — sub-issue adicionada: #174 por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:37:29Z — sub-issue adicionada: #171 por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:35:41Z — sub-issue adicionada: #139 por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:35:07Z — renomeada: “Bugs Backend” → “Bugs no Backend” por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:34:40Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
 
 </details>
 
-### [#151 — Frontend: apagar a tela legada weather_view.py](https://github.com/guilherme-webster/mc857-o-projeto/issues/151)
+### [#171 — Botão &quot;abortar simulação&quot; não aborta a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/171)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @guilherme-webster
+- **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** bug, Task
 - **Milestone:** —
-- **Issue-pai:** —
+- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:28Z
-- **Atualizada:** 2026-11-12T21:08:28Z
+- **Criada:** 2026-11-13T17:37:27Z
+- **Atualizada:** 2026-11-13T18:00:39Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>
-## Contexto
+<pre>Mesmo &quot;abortando a simulação&quot; ela aparece em corridas salvas após um tempo
 
-`frontend/arcade/weather_view.py` (1291 linhas) contem `TrackConfigurationView`,
-tela legada inalcancavel no fluxo atual. Ela so sobrevive porque outros modulos
-reaproveitam pecas dela:
+&lt;img width=&quot;136&quot; height=&quot;46&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/bff4e4b1-3a8f-4979-9527-6fe398a50e51&quot; /&gt;
 
-- `race_configuration_view.py:29` e `:915` usam `WEATHER_ICON_PATHS`,
-  `WEATHER_TIMELINE_COLORS` e `TrackConfigurationView._draw_rounded_panel`;
-- `simulation_loading_view.py:30` e `:573` usam `_draw_rounded_panel` e
-  `WEATHER_TIMELINE_COLORS`;
-- `tests/test_parameters_view.py` tem testes `test_weather_view_*` da tela legada.
-
-## Escopo
-
-- Mover `_draw_rounded_panel` para um modulo compartilhado de desenho e as
-  constantes de clima para onde ja vive o estado de clima (ou `theme.py`).
-- Apagar `weather_view.py` e os testes de GUI que exercitam apenas a tela legada.
-- Antes de apagar, confirmar que nenhum comportamento da aba **Clima** de
-  `race_configuration_view.py` depende de codigo que so existe na tela legada.
-
-## Criterios de aceitacao
-
-- `grep -rn &quot;weather_view&quot; frontend tests` vazio.
-- A aba Clima e a tela de carregamento continuam com a mesma aparencia
-  (conferir abrindo a aplicacao).
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
 </pre>
 
 </details>
@@ -1849,133 +1546,175 @@ Commits so com autorizacao do usuario.
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:30Z — label adicionada: Task por @guilherme-webster
+- 2026-11-13T18:00:39Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:37:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
 
-### [#152 — Arquivar os modulos orfaos de grid_start em TOBEDEFINED/](https://github.com/guilherme-webster/mc857-o-projeto/issues/152)
+### [#172 — Tela Inicial: Caminho para telas de Clima e etc sumiu](https://github.com/guilherme-webster/mc857-o-projeto/issues/172)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @guilherme-webster
+- **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** Task
+- **Labels:** bug
 - **Milestone:** —
-- **Issue-pai:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
 - **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:30Z
-- **Atualizada:** 2026-11-12T21:08:30Z
+- **Criada:** 2026-11-13T17:39:11Z
+- **Atualizada:** 2026-11-13T18:00:07Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>
-## Contexto
-
-Desde a remocao do motor por volta, nao tem consumidor:
-
-- `src/f1_simulator/domain/grid_start.py`;
-- `src/f1_simulator/adapters/grid_start_parameters_json.py`;
-- `data/parameters/grid-start-v1.json`;
-- os testes correspondentes, se existirem.
-
-O motor 2D larga em filas de dois por fisica.
-
-## Decisao do responsavel (2026-11-12)
-
-**Arquivar** (nao apagar) e **deixar indicado** que foi arquivado: a #108
-(impacto da posicao de largada) pode querer reaproveitar o material.
-
-## Escopo
-
-- Mover os arquivos para `TOBEDEFINED/` com `git mv`, preservando o historico.
-- Indicar o arquivamento: nota no topo de cada arquivo movido (data, motivo e
-  esta issue), entrada no indice ou README de `TOBEDEFINED/` (criar se nao
-  houver) e comentario na #108 apontando onde o material esta.
-- Atualizar `docs/CODEBASE_MAP.md` (secoes 4.1, 4.4 e 7), que os lista como orfaos.
-
-## Criterios de aceitacao
-
-- `grep -rn &quot;grid_start&quot; src backend scripts tests` vazio.
-- Suite verde.
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
-</pre>
+<pre>&lt;img width=&quot;1280&quot; height=&quot;800&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/62e3cf36-1464-4312-b1e0-29e5d37d3193&quot; /&gt;</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:31Z — label adicionada: Task por @guilherme-webster
+- 2026-11-13T18:00:07Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T18:00:07Z — label removida: Task por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:39:13Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
 
-### [#153 — Progresso por volta na reexecucao de torneio salvo](https://github.com/guilherme-webster/mc857-o-projeto/issues/153)
+### [#173 — Janela decomposição de velocidade: sobreposição de texto quando o nome é extenso](https://github.com/guilherme-webster/mc857-o-projeto/issues/173)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
-- **Autor:** @guilherme-webster
+- **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** enhancement
+- **Labels:** bug
 - **Milestone:** —
-- **Issue-pai:** —
+- **Issue-pai:** [#136 — Bugs no Frontend](https://github.com/guilherme-webster/mc857-o-projeto/issues/136)
 - **Sub-issues:** —
-- **Criada:** 2026-11-12T21:08:31Z
-- **Atualizada:** 2026-11-12T21:08:31Z
+- **Criada:** 2026-11-13T17:59:22Z
+- **Atualizada:** 2026-11-13T18:00:12Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>
-## Contexto
-
-`frontend/arcade/saved_tournaments.py::rerun` usa o `POST /catalog/grid/run`
-sincrono, entao a reexecucao de um torneio salvo nao mostra progresso. A
-execucao normal ja usa o SSE `POST /catalog/grid/run/stream` atraves de
-`race_launcher.HttpRaceClient.run_grid` e da `SimulationLoadingView`.
-
-## Escopo
-
-- Reexecutar um torneio salvo pelo mesmo caminho da execucao normal:
-  `restore-grid` e, em seguida, as etapas pelo SSE, com a tela de carregamento
-  (grid, etapa em foco, progresso por volta, abortar).
-- Manter o fallback sincrono quando a rota de stream responder 404.
-- Regras de apresentacao em modulo puro, testadas sem janela.
-
-## Criterios de aceitacao
-
-- Reexecutar mostra o progresso por volta e permite abortar entre etapas.
-- A reexecucao continua reproduzindo os resultados salvos (mesmas sementes).
-- Erro vindo como evento SSE `error` aparece para o usuario.
-
-## Fora de escopo
-
-Criar rota de reexecucao no backend (o ADR 0013 deixa a orquestracao no cliente).
-
-## Como trabalhar
-
-Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
-issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
-Commits so com autorizacao do usuario.
-</pre>
+<pre>&lt;img width=&quot;156&quot; height=&quot;130&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/8fa10a45-46e2-45d8-b503-0fcf1faae80c&quot; /&gt;</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-12T21:08:32Z — label adicionada: enhancement por @guilherme-webster
+- 2026-11-13T18:00:12Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#174 — Corrida atual com muitas colisões](https://github.com/guilherme-webster/mc857-o-projeto/issues/174)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
+- **Sub-issues:** —
+- **Criada:** 2026-11-13T18:01:19Z
+- **Atualizada:** 2026-11-13T18:54:43Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T18:54:43Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-11-13T18:01:20Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#175 — Efeito &quot;sanfona&quot; nos carros durante a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/175)
+
+- **Estado:** aberta
+- **Motivo do estado:** —
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
+- **Sub-issues:** —
+- **Criada:** 2026-11-13T18:01:48Z
+- **Atualizada:** 2026-11-13T18:01:48Z
+- **Fechada:** —
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T18:01:50Z — label adicionada: bug por @Gustavo-Jun-Tsuji
 
 </details>
 
 ## Issues fechadas
+
+### [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
+- **Sub-issues:** [#12 — Exibição de parâmetros](https://github.com/guilherme-webster/mc857-o-projeto/issues/12), [#13 — Exibição de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/13), [#14 — Simulações pré-definidas](https://github.com/guilherme-webster/mc857-o-projeto/issues/14), [#26 — Tela inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/26), [#29 — Tela de configuração de clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/29), [#86 — Otimização de UI\\UX](https://github.com/guilherme-webster/mc857-o-projeto/issues/86)
+- **Criada:** 2026-08-28T23:03:16Z
+- **Atualizada:** 2026-11-13T17:34:08Z
+- **Fechada:** 2026-11-13T17:34:08Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Nessa tela o usuário poderá visualizar dados e poder alterá-los</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-09-24T22:57:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823587802)
+
+<pre>Etapa da interface: tela inicial de torneio ampliada para 1672x900, com texto renderizado em resolução nativa; segunda tela de configuração por corrida criada conforme referência, com aba Sessão funcional, resumo de pista/clima, navegação para o editor de Clima existente e sem Assistências. Pista, Regras e Carros permanecem placeholders por pedido do usuário. Sessão e clima são incluídos no plano salvo. Verificações: 192 testes passaram na suíte padrão (28 GUI pulados), 28 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff e git diff --check passaram. Próximos passos: implementar as abas adiadas e integrar confirmação do Arcade à execução/acompanhamento da simulação. Limitação atual: configurações de etapas com pista repetida ainda são compartilhadas por ID de circuito. Nenhum commit criado pelo agente.</pre>
+
+#### [@Jmvjr em 2026-09-24T23:05:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/2#issuecomment-5823695300)
+
+<pre>Correção do fluxo da segunda tela: a aba Clima agora edita a programação por volta dentro da própria RaceConfigurationView, sem abrir WeatherConfigurationView nem redimensionar a janela. Preservados seleção de condição, pintura inclusiva por arraste, campos de intervalo, aplicação e resumo paginado; salvar/avançar persiste o clima e cancelar descarta alterações não salvas. README atualizado. Verificações: suíte geral 194 testes OK (30 GUI pulados), 31 testes GUI OK, Ruff/Black/diff check OK; captura da aba em 1672x900 inspecionada. Próximo passo: abas Pista/Regras/Carros e integração da confirmação com a simulação. Nenhum commit criado pelo agente.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T17:34:09Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-26T00:29:21Z — sub-issue adicionada: #86 por @Jmvjr
+- 2026-09-01T21:06:20Z — sub-issue adicionada: #29 por @Jmvjr
+- 2026-09-01T15:38:19Z — sub-issue adicionada: #26 por @Jmvjr
+- 2026-08-28T23:19:05Z — sub-issue adicionada: #14 por @Jmvjr
+- 2026-08-28T23:16:53Z — sub-issue adicionada: #13 por @Jmvjr
+- 2026-08-28T23:15:25Z — sub-issue adicionada: #12 por @Jmvjr
+- 2026-08-28T23:03:17Z — label adicionada: História por @Jmvjr
+
+</details>
 
 ### [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4)
 
@@ -2004,6 +1743,42 @@ Commits so com autorizacao do usuario.
 - 2026-11-08T20:27:38Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:27:18Z — fechada por @Gustavo-Jun-Tsuji
 - 2026-08-28T23:04:40Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @ViniciusFCoracin, @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
+- **Sub-issues:** [#16 — Exibição da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/16), [#18 — Exibição das classificações](https://github.com/guilherme-webster/mc857-o-projeto/issues/18), [#19 — Controle da velocidade da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/19), [#21 — Exibição de condições da corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/21), [#101 — Simular entrada, parada e saída dos carros pela pit lane no motor 2D](https://github.com/guilherme-webster/mc857-o-projeto/issues/101)
+- **Criada:** 2026-08-28T23:06:03Z
+- **Atualizada:** 2026-11-13T22:09:50Z
+- **Fechada:** 2026-11-13T22:09:50Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve conseguir visualizar a pista, os carros e as posições. </pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T22:09:50Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-10-26T22:30:35Z — sub-issue adicionada: #101 por @Jmvjr
+- 2026-10-16T20:24:01Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-08-28T23:39:04Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
+- 2026-08-28T23:36:19Z — sub-issue adicionada: #21 por @ViniciusFCoracin
+- 2026-08-28T23:34:45Z — sub-issue adicionada: #19 por @ViniciusFCoracin
+- 2026-08-28T23:34:10Z — sub-issue adicionada: #18 por @ViniciusFCoracin
+- 2026-08-28T23:33:20Z — sub-issue adicionada: #16 por @ViniciusFCoracin
+- 2026-08-28T23:06:44Z — label adicionada: História por @Jmvjr
 
 </details>
 
@@ -3974,5 +3749,1052 @@ Necessário corrigir esses bugs</pre>
 - 2026-11-09T22:36:42Z — fechada por @ViniciusFCoracin
 - 2026-11-09T21:46:34Z — atribuida: @ViniciusFCoracin por @ViniciusFCoracin
 - 2026-11-08T20:24:40Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#144 — Testes: extrair fuel_parameters para modulo de suporte e destravar test_fuel](https://github.com/guilherme-webster/mc857-o-projeto/issues/144)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:19Z
+- **Atualizada:** 2026-11-12T21:57:58Z
+- **Fechada:** 2026-11-12T21:57:58Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+Em `develop` (commit `94e52ab`), `uv run python -m unittest` termina com 5 falhas
+e 21 erros. Parte deles e erro de importacao em cascata:
+
+- `tests/test_fuel.py:39` importa `f1_simulator.domain.lap_time`, removido junto
+  com o motor por volta (hoje em `TOBEDEFINED/`);
+- `tests/test_dynamic_usage.py:26` e `tests/test_race_playback.py:17` importam o
+  helper `fuel_parameters` de `tests.test_fuel` e caem junto.
+
+Resultado: tres modulos de teste inteiros nao executam.
+
+## Escopo
+
+- Mover `fuel_parameters` (e helpers puros que ele usa) para um modulo de suporte
+  em `tests/`, no molde de `tests/history_support.py`, e apontar os tres modulos
+  para ele.
+- Em `test_fuel.py`, remover apenas os testes que dependem de `lap_time`
+  (`fuel_penalty_ms`). Os testes de `domain/fuel.py` continuam.
+
+## Criterios de aceitacao
+
+- `uv run python -m unittest tests.test_fuel tests.test_dynamic_usage tests.test_race_playback`
+  importa e passa.
+- Nenhum teste de `domain/fuel.py` ainda valido foi apagado; liste no comentario
+  de encerramento os testes removidos e o motivo.
+
+## Fora de escopo
+
+`tests/test_fuel_strategy.py` (tratado em outra issue) e qualquer mudanca em `src/`.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:27:36Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/144#issuecomment-6836408292)
+
+<pre>Branch local `144-fuel-parameters-support` (sem push), commit `d0a6ef0` sobre develop (59bef6a).
+
+**O que mudou (so `tests/` e `TOBEDEFINED/`)**
+- Novo `tests/fuel_support.py` com `fuel_parameters` e `REFERENCE_MS`; `test_dynamic_usage` e `test_race_playback` importam dele.
+- Novo `tests/geometry_support.py` (geometria do fixture Trotman + `attribute`).
+- `test_fuel.py`: removidos os testes que dependiam do motor por volta, arquivados em `TOBEDEFINED/test_fuel_motor_por_volta.py`.
+- `test_race_playback.py`: `run_engine_race` agora usa o 2D (geometria de Monaco, 4 carros, 6 voltas).
+
+**Testes removidos de `test_fuel.py` (motivo)**
+- `EngineFuelTest` (7 testes: `test_clean_race_reproduces_the_linear_model` usa `fuel_penalty_ms`/`lap_time`; os demais usam `simulate_detailed_race`).
+- `RefuelStopEngineTest` (7 testes) e helpers `entrants`/`quiet_model`: `simulate_detailed_race`/`Entrant`.
+- `GridFuelTest` (2) e `GridRefuelTest` (1): rodavam `run_grid_simulation` sem geometria (o 2D recusa) e usavam `attribute` do modulo detalhado.
+- Nenhum teste de `domain/fuel.py`, calibracao ou artefato foi apagado (20 testes permanecem).
+
+**Achados do motor 2D (motor nao alterado)** — em `test_race_playback`, dois testes ficaram `expectedFailure`:
+- `test_lift_and_coast_laps_match_the_engine_count`: no 2D o consumo real em Monaco (~1,6 kg/volta) fica bem abaixo do `burn_kg_per_lap` do plano (5,5) por causa do fluxo limitado pela dinamica de uso; o carro seca sem fazer lift-and-coast.
+- `test_scenario_forces_a_refuel_stop`: com a estrategia padrao o 2D nao reabastece; os demais testes da classe passam vacuamente (sem eventos).
+- Tolerancias: `laps_at` com delta 0,01 (passos de tempo discretos) e combustivel com delta 0,01 (snapshot arredondado a 2 casas).
+
+**Verificacoes**: `tests.test_fuel tests.test_dynamic_usage tests.test_race_playback`: 86 testes OK (2 expected failures). Suite completa nesta branch: 712 testes, 3 falhas, 19 erros (restos das issues #145/#146), nenhuma nova.
+
+Proximo passo: decidir se o 2D deve ter lift-and-coast/reabastecimento coerentes com o plano (fora do escopo desta issue).
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:57:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/144#issuecomment-6837051010)
+
+<pre>Mesclado em `develop` pelo PR #160. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:57:58Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:19Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#145 — Testes: portar para o motor 2D os contratos vivos e arquivar os do motor por volta](https://github.com/guilherme-webster/mc857-o-projeto/issues/145)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:20Z
+- **Atualizada:** 2026-11-12T21:58:00Z
+- **Fechada:** 2026-11-12T21:58:00Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+O motor por volta foi removido de `src/` (ADR 0011; arquivo morto em
+`TOBEDEFINED/`), mas os testes dele ficaram em `tests/` e quebram a suite:
+
+| Modulo | Sintoma |
+|---|---|
+| `test_run_grid_detailed.py` (11 erros) | `engine=`, patch de `simulate_detailed_race`, execucao sem geometria |
+| `test_detailed_tyre_management.py` | `ValueError: o motor 2D exige geometria da pista` |
+| `test_reference_laps.py` (2 erros, `DetailedGridReferenceTest`) | idem |
+| `test_fuel_strategy.py` | importa `f1_simulator.domain.race_simulation` |
+| `test_catalog_grid_run.py`, `test_tournament_seed_api.py` | patch de `run_detailed_grid_simulation` |
+| `test_saved_tournament.py::test_rerun_after_restore_reproduces_saved_races` | reexecucao sem geometria |
+
+## Decisao do responsavel (2026-11-12)
+
+**Portar para o motor 2D** os testes cujo contrato continua vivo. Arquivar em
+`TOBEDEFINED/` somente o que testa comportamento exclusivo do motor removido.
+
+## Escopo
+
+Reescrever contra `run_grid_simulation` / `simulate_2d_race`, com a geometria de
+`tests/fixtures/trotman_v128_tracks_2025` e poucas voltas, os contratos:
+
+- ordem do grid e atributos chegam ao motor como posicoes de largada;
+- mesma semente reproduz a corrida, inclusive eventos de controle de prova;
+- semente de torneio reproduz a etapa e separa etapas distintas
+  (`derive_tournament_stage_random_source`);
+- atributo de ritmo altera o resultado;
+- volta de referencia historica prevalece sobre o ritmo por km;
+- pista sem calibracao usa o fallback `assumed` e o declara em `assumptions`;
+- metadados de semente devolvidos pela API batem com a derivacao do nucleo;
+- reexecucao de torneio salvo apos `restore-grid` reproduz as corridas salvas;
+- decisoes de `HeuristicPitStrategy` com combustivel que nao dependam do motor
+  antigo (`test_fuel_strategy.py`).
+
+Renomear os modulos que perderem o sentido de &quot;detailed&quot;. Mover para
+`TOBEDEFINED/` o que sobrar, com uma linha no topo dizendo de onde veio.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;detailed\|lap_time\|race_simulation\b&quot; tests/` nao encontra
+  referencia ao motor removido.
+- Os contratos listados acima tem teste passando contra o 2D.
+- O comentario de encerramento lista o que foi portado e o que foi arquivado.
+
+## Dependencias
+
+Depois de #144. O campo `engine` nas asserts de rota e tratado em outra issue.
+
+## Fora de escopo
+
+Alterar regra de simulacao. Se um contrato portado falhar por comportamento real
+do 2D, registre aqui e nao ajuste o motor.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:27:37Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/145#issuecomment-6836408821)
+
+<pre>Branch local `145-portar-testes-motor-2d` (pilha sobre `144-fuel-parameters-support`; sem push). Commits: `b88c4d6`, `7426d6f`, `4698005`, `d6069ce`.
+
+**Portado para o 2D (geometria de `tests/fixtures/trotman_v128_tracks_2025`, 1 a 4 voltas)**
+- `test_run_grid_detailed.py` -&gt; `test_run_grid_simulation.py` (9 testes): ordem do grid e atributos chegam ao motor como posicoes de largada (patch de `simulate_2d_race`); mesma semente reproduz corrida e eventos de controle; semente de torneio reproduz e separa etapas; atributo de ritmo altera resultado; pista sem calibracao usa fallback `assumed`; sem pista usa volta nominal declarada em `assumptions`; referencia por geometria.
+- `test_reference_laps.py::GridReferenceTest`: volta historica prevalece sobre ritmo por km, fallback por km, referencia de outro circuito rejeitada.
+- `test_detailed_tyre_management.py` -&gt; `test_tyre_management_factor.py`: efeito do fator de gestao de pneus no tempo de corrida.
+- `test_catalog_grid_run.py`, `test_tournament_seed_api.py`: patch de `run_detailed_grid_simulation` -&gt; `run_grid_simulation` (metadados de semente batem com a derivacao do nucleo). Nao toquei nos asserts `engine=` (issue #146).
+- `test_saved_tournament.py::test_rerun_after_restore_reproduces_saved_races`: injeta a geometria do fixture; reexecucao reproduz as corridas salvas.
+- `test_fuel_strategy.py`: decisoes de `HeuristicPitStrategy` com combustivel (unitarias) continuam; import do motor antigo removido.
+- Helpers `attribute` e `small_geometry` foram para `tests/geometry_support.py`; importadores atualizados.
+
+**Arquivado em `TOBEDEFINED/`**: `test_fuel_motor_por_volta.py` (da #144) e `test_fuel_strategy_motor_por_volta.py` (teste de grid com cargas iniciais distintas, paradas de reabastecimento decididas pela estrategia e assumption `fuel_strategy`; teste de queima ate a entrada dos boxes).
+
+**Divergencias do 2D (motor nao alterado)**
+1. Abandono sem disputa e `mechanical` (nao `solo_crash`), e so vira evento de controle de prova se outro carro completar a volta; teste ajustado para esse contrato.
+2. O 2D aplica o fator de gestao de pneus mas nao declara a assumption `detailed_tyre_management`; removi essa asserção.
+3. No 2D, todos os carros largam com a mesma carga, nao ha `refuel_stops` decididos pela estrategia nem assumption `fuel_strategy` (contrato arquivado acima).
+
+**Verificacoes**: suite completa: 727 testes, 4 falhas, 0 erros, 51 skipped, 2 expected failures. Falhas restantes: `test_route_forwards_*` (2) e subteste `[motor]` de saved_tournament (issue #146, campo `engine`) e `test_pit_lane::test_movement_stops_at_service_and_finishes_two_laps` (ja falhava, fora desta issue). `grep detailed` ainda acha: `engine=&quot;detailed&quot;` (#146) e nomes de `src` (`DETAILED_TYRE_MANAGEMENT`), que sao fora do escopo de testes. Rodei `uv pip install httpx2` so no ambiente local, sem alterar pyproject/uv.lock.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:57:59Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/145#issuecomment-6837051650)
+
+<pre>Mesclado em `develop` pelo PR #161. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:58:00Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:21Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#146 — Remover o seletor de motor do frontend e a checagem de motor do torneio salvo](https://github.com/guilherme-webster/mc857-o-projeto/issues/146)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:21Z
+- **Atualizada:** 2026-11-12T21:58:03Z
+- **Fechada:** 2026-11-12T21:58:03Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+So existe o motor 2D, e `RaceSetupRequest` nao declara `engine`. Mesmo assim:
+
+- `frontend/arcade/configuration_state.py:198` oferece
+  `ENGINE_OPTIONS = (&quot;Detalhado (calibrado)&quot;, &quot;2D com pit lane&quot;)`, com
+  &quot;Detalhado&quot; como padrao; a tela promete um motor que nao roda;
+- `frontend/arcade/race_launcher.py:139-143` e `parameters_view.py` (linhas
+  ~516, ~1002, ~1348) ainda montam e desenham a regra;
+- `tests/test_catalog_grid_run.py::test_route_forwards_setup_to_service` e
+  `tests/test_tournament_seed_api.py::test_route_forwards_explicit_seed_and_stage_index`
+  esperam `engine=&#x27;detailed&#x27;` na chamada do servico;
+- `tests/test_saved_tournament.py::test_rejects_setup_that_would_rerun_a_different_race`
+  tem o subteste `[motor]`, que espera `SavedTournamentError` para motor
+  divergente; `check_saved_tournament` nao faz mais essa checagem.
+
+## Decisao do responsavel (2026-11-12)
+
+Remover a escolha e a checagem, mantendo apenas o motor 2D.
+
+## Escopo
+
+- Tirar `ENGINE_OPTIONS`, `ENGINE_API_VALUES`, o campo `engine` de
+  `TournamentRules` e o controle correspondente da tela; `setup` deixa de
+  enviar `engine`.
+- Ajustar os tres testes acima e os testes de frontend que citem a regra.
+- Torneios ja salvos podem conter `rules.engine` ou `setup.engine`: reabrir e
+  reexecutar devem continuar funcionando, ignorando o campo. Cubra com teste.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;engine&quot; frontend/arcade backend/app` nao encontra a regra de motor.
+- Um torneio salvo antigo com `engine` reabre sem erro.
+- O layout de `ParametersView` nao fica com um buraco onde estava o controle.
+
+## Fora de escopo
+
+Reintroduzir escolha de motor ou alterar o ADR 0011.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:23:08Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/146#issuecomment-6836314243)
+
+<pre>Implementado localmente na branch `146-remover-seletor-motor` (commit 0243479, sem push).
+
+- Removidos `ENGINE_OPTIONS`, `ENGINE_API_VALUES`, `TournamentRules.engine`, o controle/rotulo/clique em `parameters_view.py`, o envio de `setup.engine` em `race_launcher.py` e a linha &quot;Motor&quot; da tela de carregamento.
+- `saved_tournaments.py`: `reopen`/`rerun` ignoram `rules.engine` e `setup.engine` de registros antigos (e nao reenviam ao backend). Testes novos cobrem reabrir, reexecutar e `check_saved_tournament`.
+- Layout: `RULES_PANEL_BOUNDS` encolhido de (28,184,544,392) para (28,214,544,362), para nao sobrar painel vazio abaixo do campo de semente (conferido pelo codigo; conferencia visual fica para o usuario).
+- Testes ajustados: test_catalog_grid_run, test_tournament_seed_api (sem `engine=`), test_saved_tournament (sem subteste &quot;motor&quot;), test_race_launcher, test_parameters_view, test_saved_tournaments_frontend.
+- `grep -rn engine frontend/arcade backend/app` so acha o tratamento de legado.
+
+Suite (com httpx2 so na .venv): 635 testes, 2 falhas, 21 erros (baseline 637/5/21). Restantes sao do motor removido (#145: geometria exigida, patch de run_detailed_grid_simulation) e test_pit_lane. test_parameters_view com ARCADE_GUI_TEST=1 tem as mesmas 4 falhas + 1 erro de antes da mudanca (display/tamanho de janela), nao relacionadas.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:58:01Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/146#issuecomment-6837052551)
+
+<pre>Mesclado em `develop` pelo PR #162. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:58:03Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:22Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#147 — Investigar a falha de test_pit_lane (25 amostras paradas, esperado mais de 40)](https://github.com/guilherme-webster/mc857-o-projeto/issues/147)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:23Z
+- **Atualizada:** 2026-11-12T21:57:50Z
+- **Fechada:** 2026-11-12T21:57:50Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`tests/test_pit_lane.py::PitLaneMotionTest::test_movement_stops_at_service_and_finishes_two_laps`
+falha em `develop` (`94e52ab`):
+
+```
+self.assertGreater(len(stationary), 40)
+AssertionError: 25 not greater than 40
+```
+
+O teste pede um servico de 2,5 s (`PitStopRequest(360, 2.5)`); com `dt_s=0.05`
+seriam cerca de 50 amostras paradas. A duracao entre `service_started` e
+`service_completed` continua correta (a assert anterior passa), entao a
+diferenca pode estar na amostragem de `integrate_field` e nao no servico. A
+causa **nao foi investigada**.
+
+## Escopo
+
+- Descobrir desde qual commit o teste falha (`git bisect` ou `git log` em
+  `domain/track_space.py` e `domain/pit_lane.py`).
+- Decidir, com a causa em maos, se o erro esta no motor ou no teste, e corrigir
+  o lado errado.
+
+## Criterios de aceitacao
+
+- O teste passa e o comentario de encerramento explica a causa.
+- Se o motor mudou, ha teste de regressao; se o teste mudou, a nova assert
+  continua verificando que o carro fica parado durante todo o servico.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:16:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/147#issuecomment-6836177730)
+
+<pre>## Causa e correcao (branch local `147-pit-lane-amostras-paradas`, commit 413b10b, sem push)
+
+**Causa:** o erro estava no teste, nao no motor. O commit 9c94abd (&quot;feat: visualizacao impacto dos parametros no frontend&quot;, 07/11) mudou `ASSUMED_TIME_STEP_S` de 0,05 s para 0,1 s em `domain/track_space.py`. O teste usava o passo padrao e fixava &quot;&gt; 40 amostras&quot;, valido so para 0,05 s (2,5 / 0,05 = 50). Com 0,1 s o servico gera ~25 amostras, o que e correto: a duracao service_started -&gt; service_completed continua 2,5 s. Identificado por `git log -S` no valor da constante (mudanca de uma linha; bisect desnecessario).
+
+**Correcao:** o teste passa `dt_s=0.05` explicito e a assert passa a ser `len(stationary) &gt;= round(service_s / dt_s) - 1`; as asserts de velocidade zero e posicao constante durante o servico foram mantidas. Corrigi tambem o comentario obsoleto de `ASSUMED_TIME_STEP_S` (dizia 50 ms). Nenhuma regra de simulacao mudou.
+
+**Verificacao:** `tests.test_pit_lane` 12/12 OK; suite completa: 629 testes, 2 falhas, 22 erros, 51 skipped (restos de outras issues; nenhum de test_pit_lane).
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:57:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/147#issuecomment-6837048276)
+
+<pre>Mesclado em `develop` pelo PR #156. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:57:50Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:23Z — label adicionada: bug por @guilherme-webster
+
+</details>
+
+### [#148 — CI: rodar a suite de testes em pull requests](https://github.com/guilherme-webster/mc857-o-projeto/issues/148)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:24Z
+- **Atualizada:** 2026-11-12T21:58:08Z
+- **Fechada:** 2026-11-12T21:58:08Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+Nao ha CI de testes; `.github/workflows/` tem apenas `pull-request-rules.yml` e
+`sync-backlog.yml`. A suite quebrou em `develop` sem ninguem notar. O
+`CONTRIBUTING.md` pede que as regras objetivas sejam reforcadas por automacao.
+
+## Escopo
+
+- Workflow do GitHub Actions que, em PRs para `develop` e `main` e em push para
+  `develop`, instala com `uv sync` (Python 3.12) e roda
+  `uv run python -m unittest`.
+- Os testes de GUI seguem pulados (`ARCADE_GUI_TEST` ausente); o job nao precisa
+  de display.
+- Se o `TestClient` pedir `httpx2`, resolver de forma declarada (ver a secao
+  &quot;Testes e verificacoes&quot; do `README.MD`), sem dependencia implicita.
+- Remover de `pyproject.toml` o bloco `[tool.pytest.ini_options]`, ou trocar
+  por algo coerente: pytest nao e dependencia e a suite usa unittest.
+- Atualizar o `README.MD` e a frase do `CONTRIBUTING.md` que diz nao haver CI.
+
+## Criterios de aceitacao
+
+- Um PR com teste quebrado fica com o check vermelho.
+- O job nao acessa a rede alem da instalacao de dependencias.
+
+## Dependencias
+
+A suite precisa estar verde antes: #144, #145, #146 e #147.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:19:42Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/148#issuecomment-6836241339)
+
+<pre>Branch local `148-ci-testes` (sem push), a partir de develop 59bef6a.
+
+Commits:
+- 6e526f2 build(deps): declara httpx2 no grupo dev para o TestClient
+- 0766a27 ci(tests): roda a suite unittest em pull requests
+
+O que mudou:
+- `.github/workflows/tests.yml`: PRs para develop/main e push para develop; `permissions: contents: read`; `concurrency` cancela runs antigos; actions/checkout@v7, astral-sh/setup-uv@v10.3.3 com uv 0.13.6 e Python 3.12; `uv sync --locked` e `uv run python -m unittest`. Sem ARCADE_GUI_TEST, GUI fica pulada; sem rede apos a instalacao.
+- `pyproject.toml`: grupo `dev` com `httpx2` (o starlette 1.7.0 travado exige httpx2 em `starlette.testclient`; numa venv limpa `tests.test_saved_tournament` nao importava). `uv.lock` atualizado. Removido `[tool.pytest.ini_options]`.
+- README.MD (secao Testes e verificacoes) e CONTRIBUTING.md atualizados (CI existe; nao ha mais `--with httpx2`).
+
+Verificacao local (env -u ARCADE_GUI_TEST -u DISPLAY -u WAYLAND_DISPLAY, apos `uv sync --locked`): 637 testes, 5 falhas, 21 erros, 51 pulados - as mesmas do baseline de develop. Importar arcade sem display nao quebra a descoberta. actionlint indisponivel; YAML validado com python.
+
+Importante: o check so ficara verde apos o merge de #144-#147 (falhas conhecidas). Sugestao: ao ficar verde, marcar o check como obrigatorio na protecao de branch.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:58:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/148#issuecomment-6837054370)
+
+<pre>Mesclado em `develop` pelo PR #164. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:58:08Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:25Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#149 — CI: adotar ruff como linter e formatador](https://github.com/guilherme-webster/mc857-o-projeto/issues/149)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:25Z
+- **Atualizada:** 2026-11-12T21:58:10Z
+- **Fechada:** 2026-11-12T21:58:10Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+O `CONTRIBUTING.md` preve formatador e linter locais e no CI; nao ha nenhum.
+Decisao do responsavel em 2026-11-12: adotar.
+
+## Escopo
+
+- Adicionar `ruff` como dependencia de desenvolvimento (grupo `dev` do
+  `pyproject.toml`), com configuracao minima: regras padrao mais ordenacao de
+  imports, `target-version = &quot;py312&quot;`, e `TOBEDEFINED/` excluido.
+- Passo de `ruff check` no workflow de CI.
+- Formatacao: **nao** reformatar o repositorio inteiro junto com outra mudanca.
+  Se `ruff format --check` exigir um diff grande, faca-o em commit proprio,
+  mecanico, e registre o hash em `.git-blame-ignore-revs`; se o diff for
+  invasivo demais, deixe o `format` fora do CI e registre a decisao aqui.
+- Corrigir os achados do `ruff check` sem mudar comportamento; o que exigir
+  mudanca de comportamento vira issue separada.
+- Documentar os comandos no `README.MD` e no `CONTRIBUTING.md`.
+
+## Criterios de aceitacao
+
+- `uv run ruff check .` passa localmente e no CI.
+- Nenhum commit mistura reformatacao com mudanca funcional.
+
+## Dependencias
+
+Depois de #148.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:31:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/149#issuecomment-6836497166)
+
+<pre>Implementado localmente na branch `149-ruff` (base `integracao-saneamento`; sem push/PR).
+
+**Mudancas**
+- `ruff&gt;=0.15` no grupo `dev` do `pyproject.toml`, `uv.lock` atualizado (resolve ruff 0.17.5).
+- `[tool.ruff]`: `target-version = &quot;py312&quot;`, `line-length = 88`, `extend-exclude = [&quot;TOBEDEFINED&quot;]`; lint com `select = [&quot;E4&quot;,&quot;E7&quot;,&quot;E9&quot;,&quot;F&quot;,&quot;I&quot;]` (conjunto padrao classico + isort, fixado explicitamente porque o ruff 0.17 ampliou os padroes e geraria 439 achados, muitos de estilo).
+- Correcoes automaticas seguras (`--fix`, sem `--unsafe-fixes`): 102 achados em 88 arquivos (imports ordenados + F401 triviais), commit mecanico proprio.
+- Manuais: `per-file-ignores` de E402 em 3 testes que inserem `backend/` em `sys.path` antes de importar `app` (intencional); `# noqa: F401` na sonda de disponibilidade do `arcade` em `tests/test_grid_view_scroll.py`. Nenhum achado exigiu mudar comportamento (nada a abrir como issue).
+- `.github/workflows/tests.yml`: passo `uv run ruff check .` antes da suite. README.MD e CONTRIBUTING.md atualizados.
+
+**Commits**: 9a438d3 (config+dependencia), segundo commit (line-length 88), commit mecanico de `--fix`, commit final (ci/docs/ignores); ver `git log 149-ruff`.
+
+**Verificacao**: `uv run ruff check .` limpo; `uv run python -m unittest` = 732 testes, OK (skipped=42, expected failures=2), igual ao baseline.
+
+**Formatador (decisao do grupo)**: `ruff format --check` com line-length 88: 76 de 295 arquivos seriam reformatados (~1234 linhas alteradas); com 100: 188 arquivos (~4264 linhas), por isso fixei 88. NAO reformatei nem pus `ruff format` no CI, para evitar conflito com #119, #120 e outras branches em andamento. Recomendacao: quando nao houver branches abertas grandes, fazer um unico commit `style: ruff format` em main/develop, registrar o hash em `.git-blame-ignore-revs` (e `git config blame.ignoreRevsFile .git-blame-ignore-revs`), e so entao adicionar `ruff format --check` ao CI. Os colegas devem rodar `ruff format` nas suas branches antes de rebasear.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:58:09Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/149#issuecomment-6837055146)
+
+<pre>Mesclado em `develop` pelo PR #165. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:58:10Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:27Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#150 — Teste de ponta a ponta do motor 2D (simulate_2d_race)](https://github.com/guilherme-webster/mc857-o-projeto/issues/150)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:27Z
+- **Atualizada:** 2026-11-12T21:57:54Z
+- **Fechada:** 2026-11-12T21:57:54Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`domain/race_simulation_2d.py` e o unico motor e a fonte de verdade da
+classificacao, mas nao tem teste dedicado de ponta a ponta; os testes atuais
+cobrem pecas (`test_track_space`, `test_speed_dynamics`, `test_pit_lane`,
+`test_dynamic_usage`).
+
+## Escopo
+
+Novo modulo de teste que roda `simulate_2d_race` com a geometria de
+`tests/fixtures/trotman_v128_tracks_2025`, poucos carros e poucas voltas, e
+verifica:
+
+- **reprodutibilidade**: mesma semente e mesmos insumos dao `history`,
+  `classification` e `race_control_events` identicos; sementes diferentes dao
+  resultados diferentes;
+- **invariantes**: cada piloto aparece uma vez na classificacao; posicoes sao
+  1..N sem buracos; quem termina completou `total_laps`; voltas e tempos
+  acumulados por carro nao decrescem; abandono tem motivo e volta;
+- **efeitos opcionais**: sem `model_parameters` + `track_params` + `compounds`
+  nao ha paradas; com eles ha ao menos uma troca numa corrida longa o bastante;
+  com `FuelPlan` a massa de combustivel so diminui;
+- **`on_progress`** e chamado uma vez por volta, em ordem.
+
+## Criterios de aceitacao
+
+- O modulo roda em poucos segundos e sem rede.
+- As invariantes estao em helpers reutilizaveis pelos testes de regressao dos
+  bugs #140 e #141.
+
+## Fora de escopo
+
+Mudar o motor. Uma invariante que falhe por comportamento real vira issue de bug.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:19:17Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/150#issuecomment-6836232203)
+
+<pre>Implementado na branch local `150-teste-ponta-a-ponta-2d` (sem push), commit 599243b, a partir de develop 59bef6a.
+
+- `tests/test_race_simulation_2d.py`: 11 testes sobre `simulate_2d_race` na geometria real do fixture `trotman_v128_tracks_2025` (circuito 1, 4 carros, 5 e 12 voltas, ~6 s, sem rede; corridas simuladas uma vez em setUpClass). Cobre reproducibilidade (history/classification/race_control_events; sementes diferentes via falha mecanica sorteada), invariantes de classificacao e history, abandono com causa e volta, ausencia de paradas sem model_parameters+track_params+compounds, parada na corrida longa, massa de combustivel nao crescente, efeitos de combustivel/pneu so em um sentido entre paradas, e on_progress uma vez por volta em ordem.
+- `tests/race_invariants.py`: helpers reutilizaveis (geometria real, entrantes, FuelPlan de teste, assert_same_race, assert_classification_invariants, assert_history_invariants, stop_laps, breakdown_series, assert_effect_moves_only_with_stops, assert_fuel_never_increases) para os regressivos de #140 e #141.
+
+Verificacao: suite completa sem httpx2 = 640 testes, 3 falhas, 22 erros (baseline 629 + 11 novos, mesmas falhas/erros pre-existentes); modulo novo passa 11/11.
+
+Decisoes: o FuelPlan de teste e definido no helper porque `tests/test_fuel.py` esta quebrado no baseline (importa modulo removido) e test_dynamic_usage depende dele. Nenhuma invariante falhou, entao nao ha expectedFailure; as invariantes de #140/#141 passam com os parametros usados (nao reproduzem os bugs neste cenario), portanto os bugs podem depender de clima/controle de prova ou de outros parametros.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:57:53Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/150#issuecomment-6837049597)
+
+<pre>Mesclado em `develop` pelo PR #158. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:57:54Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:28Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#151 — Frontend: apagar a tela legada weather_view.py](https://github.com/guilherme-webster/mc857-o-projeto/issues/151)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:28Z
+- **Atualizada:** 2026-11-12T21:57:56Z
+- **Fechada:** 2026-11-12T21:57:56Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`frontend/arcade/weather_view.py` (1291 linhas) contem `TrackConfigurationView`,
+tela legada inalcancavel no fluxo atual. Ela so sobrevive porque outros modulos
+reaproveitam pecas dela:
+
+- `race_configuration_view.py:29` e `:915` usam `WEATHER_ICON_PATHS`,
+  `WEATHER_TIMELINE_COLORS` e `TrackConfigurationView._draw_rounded_panel`;
+- `simulation_loading_view.py:30` e `:573` usam `_draw_rounded_panel` e
+  `WEATHER_TIMELINE_COLORS`;
+- `tests/test_parameters_view.py` tem testes `test_weather_view_*` da tela legada.
+
+## Escopo
+
+- Mover `_draw_rounded_panel` para um modulo compartilhado de desenho e as
+  constantes de clima para onde ja vive o estado de clima (ou `theme.py`).
+- Apagar `weather_view.py` e os testes de GUI que exercitam apenas a tela legada.
+- Antes de apagar, confirmar que nenhum comportamento da aba **Clima** de
+  `race_configuration_view.py` depende de codigo que so existe na tela legada.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;weather_view&quot; frontend tests` vazio.
+- A aba Clima e a tela de carregamento continuam com a mesma aparencia
+  (conferir abrindo a aplicacao).
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (3)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:16:51Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/151#issuecomment-6836179418)
+
+<pre>Implementado na branch local `151-apagar-weather-view` (sem push).
+
+Commits: ver `git log` da branch (2 commits: refactor de extracao e remocao).
+- Extracao: `draw_rounded_panel` (+ `draw_rounded_rectangle`) em `frontend/arcade/drawing.py`; `WEATHER_TIMELINE_COLORS` e `WEATHER_ICON_PATHS` em `frontend/arcade/theme.py`; `race_configuration_view.py` atualizado. Mesma logica de desenho (codigo movido sem alteracao).
+- Remocao: `frontend/arcade/weather_view.py` apagado e 8 testes que so exercitavam a tela legada removidos (o teste dos icones foi mantido). Nenhuma outra referencia no codigo.
+
+Verificacoes: `uv run python -m unittest` -&gt; 247 testes, OK (27 skipped). Com `ARCADE_GUI_TEST=1`, test_parameters_view: 3 falhas/erros, identicos ao estado anterior as mudancas (test_visible_controls_add_track_and_confirm_sequence, test_large_window_draws_full_panels_and_maps_clicks, test_selects_another_backend_track_and_preserves_it_after_return), nao introduzidos aqui.
+
+Notas: `simulation_loading_view.py` nao existe nesta base; a conferencia visual da aba Clima (pixels do painel) fica pendente para o usuario. `docs/CODEBASE_MAP.md` ainda cita weather_view.py (nao editado por instrucao).
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:20:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/151#issuecomment-6836258372)
+
+<pre>Correcao: meu comentario anterior foi feito sobre uma base errada e antiga (b9170b6); desconsidere os hashes dele. Refeito sobre develop (59bef6a), branch local `151-apagar-weather-view` (sem push):
+
+- a4fbb2c refactor(frontend): extrai desenho de painel e constantes de clima da tela legada
+  (`draw_rounded_panel` em `frontend/arcade/drawing.py`; `WEATHER_TIMELINE_COLORS`/`WEATHER_ICON_PATHS` em `theme.py`; consumidores migrados: `race_configuration_view.py` e `simulation_loading_view.py`)
+- 2158d0d refactor(frontend): remove a tela legada weather_view
+  (apaga `weather_view.py`, 8 testes so da tela legada e a linha do CODEBASE_MAP; mantido o teste dos icones)
+
+Verificacao: grep sem referencias restantes a weather_view/TrackConfigurationView/WeatherConfigurationView em frontend/ e tests/.
+Suite `uv run python -m unittest`: antes 629 testes (3 falhas, 22 erros, 51 skipped); depois 621 (3 falhas, 22 erros, 43 skipped) -- os 8 a menos sao os testes removidos; falhas/erros inalterados. Com ARCADE_GUI_TEST=1, tests.test_parameters_view: develop tem 4 falhas + 1 erro e a branch os mesmos 5 (preexistentes).
+Pendente: conferencia visual da aba Clima e da tela de carregamento fica para o usuario.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:57:55Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/151#issuecomment-6837050374)
+
+<pre>Mesclado em `develop` pelo PR #159. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:57:56Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:30Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#152 — Arquivar os modulos orfaos de grid_start em TOBEDEFINED/](https://github.com/guilherme-webster/mc857-o-projeto/issues/152)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:30Z
+- **Atualizada:** 2026-11-12T21:57:52Z
+- **Fechada:** 2026-11-12T21:57:52Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+Desde a remocao do motor por volta, nao tem consumidor:
+
+- `src/f1_simulator/domain/grid_start.py`;
+- `src/f1_simulator/adapters/grid_start_parameters_json.py`;
+- `data/parameters/grid-start-v1.json`;
+- os testes correspondentes, se existirem.
+
+O motor 2D larga em filas de dois por fisica.
+
+## Decisao do responsavel (2026-11-12)
+
+**Arquivar** (nao apagar) e **deixar indicado** que foi arquivado: a #108
+(impacto da posicao de largada) pode querer reaproveitar o material.
+
+## Escopo
+
+- Mover os arquivos para `TOBEDEFINED/` com `git mv`, preservando o historico.
+- Indicar o arquivamento: nota no topo de cada arquivo movido (data, motivo e
+  esta issue), entrada no indice ou README de `TOBEDEFINED/` (criar se nao
+  houver) e comentario na #108 apontando onde o material esta.
+- Atualizar `docs/CODEBASE_MAP.md` (secoes 4.1, 4.4 e 7), que os lista como orfaos.
+
+## Criterios de aceitacao
+
+- `grep -rn &quot;grid_start&quot; src backend scripts tests` vazio.
+- Suite verde.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:18:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/152#issuecomment-6836213049)
+
+<pre>Arquivamento feito na branch local `152-arquivar-grid-start` (commit 8d0c2ff, sem push).
+
+- Movidos com `git mv` para `TOBEDEFINED/` (layout plano, como os demais): `grid_start.py`, `grid_start_parameters_json.py`, `grid-start-v1.json`. O script de sensibilidade e `test_grid_start.py` ja estavam la.
+- Nota de arquivamento (2026-11-12, motivo, #152, #108 pode reaproveitar) no topo dos dois .py. O JSON nao aceita comentario: a nota esta no novo `TOBEDEFINED/README.md` (indice com a origem de cada arquivo).
+- `grep -rn grid_start src backend scripts tests frontend` vazio.
+- `uv run python -m unittest`: 629 testes, 3 falhas, 22 erros, 51 skipped; nenhum relacionado a grid_start (restos do motor por volta e outras issues da rodada).
+- NAO editei `docs/CODEBASE_MAP.md` (sera ajustado na #154). `docs/modelagem-heuristica.md` ainda cita os caminhos antigos; nao tocado.
+- Imports dentro dos arquivos arquivados ainda apontam para os caminhos antigos; ajustar ao reativar.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:57:51Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/152#issuecomment-6837048943)
+
+<pre>Mesclado em `develop` pelo PR #157. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:57:52Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:31Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
+### [#153 — Progresso por volta na reexecucao de torneio salvo](https://github.com/guilherme-webster/mc857-o-projeto/issues/153)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** enhancement
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:31Z
+- **Atualizada:** 2026-11-12T21:58:05Z
+- **Fechada:** 2026-11-12T21:58:05Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+`frontend/arcade/saved_tournaments.py::rerun` usa o `POST /catalog/grid/run`
+sincrono, entao a reexecucao de um torneio salvo nao mostra progresso. A
+execucao normal ja usa o SSE `POST /catalog/grid/run/stream` atraves de
+`race_launcher.HttpRaceClient.run_grid` e da `SimulationLoadingView`.
+
+## Escopo
+
+- Reexecutar um torneio salvo pelo mesmo caminho da execucao normal:
+  `restore-grid` e, em seguida, as etapas pelo SSE, com a tela de carregamento
+  (grid, etapa em foco, progresso por volta, abortar).
+- Manter o fallback sincrono quando a rota de stream responder 404.
+- Regras de apresentacao em modulo puro, testadas sem janela.
+
+## Criterios de aceitacao
+
+- Reexecutar mostra o progresso por volta e permite abortar entre etapas.
+- A reexecucao continua reproduzindo os resultados salvos (mesmas sementes).
+- Erro vindo como evento SSE `error` aparece para o usuario.
+
+## Fora de escopo
+
+Criar rota de reexecucao no backend (o ADR 0013 deixa a orquestracao no cliente).
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:21:06Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/153#issuecomment-6836271431)
+
+<pre>Implementado localmente (sem push) na branch `153-progresso-reexecucao-torneio`, commit abaixo.
+
+- `frontend/arcade/saved_tournaments.py`: `rerun` ganhou `stage_progress` (LaunchProgress por etapa e volta) e `cancelled` (LaunchCancelled entre etapas); novos `plan_from_record` e `rerun_runner`; `HttpTournamentClient.run_grid` usa `track_client.run_grid_stream` (SSE, com fallback sincrono em 404; evento `error` vira BackendError).
+- `frontend/arcade/saved_tournaments_view.py`: Reexecutar carrega o registro e abre a `SimulationLoadingView` (grid salvo do registro, etapa em foco, progresso por volta, abortar); erro aparece na tela de carregamento e ao voltar na lista (`show_message`).
+- Sem rota nova no backend. O `setup` salvo e reenviado intacto (mesmas sementes/indices); testado.
+- Testes: 4 novos em tests/test_saved_tournaments_frontend.py (progresso, abortar, setups reenviados, plano) e teste de GUI atualizado (ARCADE_GUI_TEST=1, 3 OK).
+- Suite sem httpx2: 633 testes, 3 falhas, 22 erros (baseline 629/3/22 + 4 novos); falhas restantes sao de outras issues. Nao consegui instalar httpx2 (bloqueado), entao test_saved_tournament ficou sem rodar.
+- Pendente: conferencia visual real da tela.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:58:05Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/153#issuecomment-6837053658)
+
+<pre>Mesclado em `develop` pelo PR #163. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:58:05Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:32Z — label adicionada: enhancement por @guilherme-webster
+
+</details>
+
+### [#154 — Docs: alinhar ADRs, handoffs e mapa ao estado atual do codigo](https://github.com/guilherme-webster/mc857-o-projeto/issues/154)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** —
+- **Labels:** documentation
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** —
+- **Criada:** 2026-11-12T21:08:32Z
+- **Atualizada:** 2026-11-12T21:58:12Z
+- **Fechada:** 2026-11-12T21:58:12Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>
+## Contexto
+
+Divergencias entre documentacao e codigo encontradas em 2026-11-12:
+
+- `docs/adr/README.md` lista os ADRs 0009 e 0015 como &quot;proposta&quot;, embora
+  estejam implementados. **Mudar status de ADR e decisao do grupo**: proponha a
+  mudanca e peca confirmacao antes de aplicar.
+- `docs/handoff-motor-2d.md` diz que o motor detalhado era o padrao.
+- `docs/progresso.md` ainda tem handoffs das #119 e #120, ja mergeadas.
+- `docs/prds/modelagem-pilotos-heuristica.md` cita caminhos de `TOBEDEFINED/`.
+- `docs/CODEBASE_MAP.md`, secao 4.7, lista `test_fuel`, `test_fuel_strategy` e
+  `test_dynamic_usage` como cobertura nova, mas eles nao importavam em
+  `94e52ab`; revisar depois de #144 e #145.
+- As issues #119 e #120 seguem abertas com o trabalho mergeado: conferir os
+  criterios e sugerir o fechamento ao responsavel.
+
+## Escopo
+
+Corrigir os pontos acima; documentos historicos ganham nota de estado em vez de
+serem reescritos. Nao editar `docs/backlog.md` a mao (espelho gerado).
+
+## Criterios de aceitacao
+
+- Nenhum documento vigente descreve o motor por volta como ativo.
+- `docs/progresso.md` contem apenas handoffs pendentes.
+
+## Dependencias
+
+Por ultimo, depois de #145, #146 e #152.
+
+## Como trabalhar
+
+Leia `AGENTS.md` e `CONTRIBUTING.md` antes de comecar. Limite o diff a esta
+issue, rode `uv run python -m unittest` ao final e registre aqui o resultado.
+Commits so com autorizacao do usuario.
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@guilherme-webster em 2026-11-12T21:33:33Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/154#issuecomment-6836535264)
+
+<pre>Implementado localmente (sem push) na branch `154-docs-alinhamento`, sobre `integracao-saneamento` (pos #144-#148 e #150-#153). So documentacao.
+
+Commits:
+- 0e3e8f4 docs(progresso): remove handoffs de issues ja mergeadas ou fechadas
+- d306b5c docs(mapa): atualiza o CODEBASE_MAP ao estado pos-saneamento
+- 6481426 docs(modelagem): aponta grid_start para TOBEDEFINED e registra limitacoes do 2D
+- 9ec9994 docs: notas de estado sobre a remocao do motor por volta
+- 7a46b6e docs(mapa): corrige a nota de gestao de pneus amortecida
+
+O que mudou
+- `docs/progresso.md`: removidos os handoffs das #119 e #120 (PRs #122 e #123 mergeados), #69, #101, #107 (fechadas) e o registro do motor 2D de 2026-10-01 (ADR 0011 aceito, motor unico). Restam so handoffs de issues abertas.
+- `docs/CODEBASE_MAP.md`: grid_start em `TOBEDEFINED/`; secao 4.7 (testes novos, `fuel_support`, `geometry_support`, `race_invariants`, sem pytest); CI `tests.yml`; `drawing.py` no lugar de `weather_view.py`; sem seletor de motor; reexecucao de torneio salvo com SSE; limitacoes do 2D.
+- `docs/modelagem-heuristica.md`: nota de estado, `grid_start`/adaptador/JSON apontando para `TOBEDEFINED/` com nota de arquivado, motor 2D e `run_grid_simulation` na tabela, limitacoes conhecidas do 2D em §9.
+- Notas de estado curtas (2026-11-12) em `handoff-motor-2d.md`, `prds/modelagem-pilotos-heuristica.md`, `prds/controles-do-usuario-simulacao.md`, `contrato-perfil-simulacao.md`, `planejamento-modelagem.md`, `ranking-e-adaptador-pilotos.md`, `perfilamento-pilotos.md`, `modelagem-corrida-calibrada.md`, `consumo-desgaste-dinamicos.md`, `modelagem-clima.md`; `README.MD` deixa de descrever o seletor de motor.
+- ADRs aceitos e `AGENTS.md` nao foram tocados.
+
+Limitacoes conhecidas do 2D (registradas, sem decisao): nao reabastece nem faz lift-and-coast e todos largam com a mesma carga; assumption de gestao de pneus nao declarada; abandono sem disputa vira `mechanical`; em `speed_breakdown` a troca de pneu aparece defasada uma volta em relacao a parada.
+
+Verificacao: `uv run python -m unittest` = 732 testes, OK (42 skipped, 2 expected failures).
+
+## Proposta para o grupo (nao aplicada): status dos ADRs
+- ADR 0009 (combustivel por massa): implementado (`domain/fuel.py`, `fuel-v1.json`, `HeuristicPitStrategy` com `FuelStatus`). Ressalva: o reabastecimento nao roda no 2D (`refuel_mode = False`); so a massa atua. Proposta: `aceita`, anotando essa ressalva (ou `aceita parcialmente`), conforme o grupo preferir.
+- ADR 0015 (aderencia e estado da pista): implementado (`track_condition.py`, `speed_dynamics.py`, `car-physics-v1.json`, `calibrate_car_physics.py`, testes). Proposta: `aceita`.
+- Peco confirmacao antes de alterar `docs/adr/README.md` e os cabecalhos dos ADRs (e a linha correspondente do CODEBASE_MAP, hoje marcada &quot;proposta no README; implementado&quot;).
+- Ainda aberto, fora desta issue: ADR 0007 segue &quot;proposta, nao implementada; contexto a revisar&quot;.
+
+## AGENTS.md (proposta, nao editado)
+Descreve o estado correto (nao cita o motor por volta). Sem mudanca necessaria.
+
+## #119 e #120
+Trabalho mergeado (PRs #122 e #123). Conferencia de criterios feita no relatorio ao orquestrador; fechamento fica com os responsaveis.
+
+Pendencias: `docs/progresso.md` ainda guarda handoffs de setembro/outubro (#40/#61/#66/#67, #24, #63, #97, #6) cujas issues estao abertas; nao removi sem confirmacao dos responsaveis.
+</pre>
+
+#### [@guilherme-webster em 2026-11-12T21:58:12Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/154#issuecomment-6837056068)
+
+<pre>Mesclado em `develop` pelo PR #166. Na integracao de todas as issues do epico #155: `uv run python -m unittest` com 732 testes OK (skipped=42, expected failures=2) e `ruff check` limpo; o workflow de testes passou no GitHub Actions nos PRs #165 e #166.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-12T21:58:12Z — fechada por @guilherme-webster
+- 2026-11-12T21:08:34Z — label adicionada: documentation por @guilherme-webster
 
 </details>

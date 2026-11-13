@@ -558,16 +558,3 @@ interface.
 - Pendente: limitações de pneus/severidade (#40) e ponto de volta rápida.
   Commits locais, sem push nem comentário no GitHub; levar este registro à
   #2, #6, #18, #21 e #71.
-
-## Handoff temporario — #170 (validacoes do backend)
-
-- Implementadas em worktree isolada as rejeicoes atomicas de overrides de grid
-  duplicados, de tipos invalidos em corrida enviada para salvar e de etapa vazia
-  no dominio do campeonato. As tres rotas respondem 422 nesses casos.
-- Verificacoes: 41 testes direcionados e Ruff passaram. A suite completa rodou
-  736 testes: 5 falhas, 42 ignorados e 2 falhas esperadas. As mesmas 5 falhas
-  foram reproduzidas em `origin/develop` (consumo/desgaste, pit lane,
-  reproducao de combustivel e dois testes do motor 2D).
-- Proximo passo: agente principal integrar a branch e levar este relato a issue
-  #170; nao houve alteracao no GitHub nesta sessao. As demais sub-issues seguem
-  em suas respectivas worktrees e nao foram alteradas.
