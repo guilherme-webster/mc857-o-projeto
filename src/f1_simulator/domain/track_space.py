@@ -1129,12 +1129,26 @@ def _lane_decision(
     gap = _forward_gap(car.distance_m, ahead.distance_m, lap_length_m)
     if gap > ASSUMED_FOLLOW_TRIGGER_M:
         return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
-    if car.speed_ms <= ahead.speed_ms:
-        return car.lateral_m
-    my_ceiling = _ceiling_at(*ceilings[car.driver_id], car.distance_m) * car.speed_scale
+    # O seguidor pode ter sido freado ate a velocidade do lider pela exclusao.
+    # Seu teto efetivo em pista livre ainda revela se existe vantagem para passar.
+    # Compare ambos na mesma posicao para nao criar vantagem apenas porque o
+    # carro da frente ja chegou ao trecho mais lento de uma curva.
+    my_ceiling = _ceiling_at(*ceilings[car.driver_id], ahead.distance_m) * car.speed_scale
     ahead_ceiling = _ceiling_at(*ceilings[ahead.driver_id], ahead.distance_m) * ahead.speed_scale
     if my_ceiling <= ahead_ceiling:
-        return car.lateral_m
+        # Tetos iguais nao revelam uma fila: o lider pode estar limitado por
+        # outro carro. So trate isso como oportunidade quando o par da frente
+        # estiver na folga minima longitudinal existente. Consultar o teto do
+        # atacante na posicao do lider evita confundir aproximacao de curva com
+        # diferenca de ritmo entre posicoes distintas. Nao infere outros motivos
+        # para reducao de velocidade nem antecipa trafego traseiro.
+        obstruction = _nearest_ahead_same_lane(ahead, by_distance, race_distance_m, lap_length_m)
+        minimum_gap = (ahead.length_m + obstruction.length_m) / 2 if obstruction else 0.0
+        queued = (obstruction is not None
+                  and _forward_gap(ahead.distance_m, obstruction.distance_m, lap_length_m)
+                  <= minimum_gap + 1e-7)
+        if not queued or my_ceiling <= ahead.speed_ms:
+            return car.lateral_m
 
     reach = car.width_m * (0.8 + 0.4 * aggression)
     for side in (1.0, -1.0):

@@ -268,8 +268,8 @@ class SpatialExclusionTest(unittest.TestCase):
                 entries, geometry, total_laps=1, rng=SeededRandomSource(3), dt_s=0.2
             )
         self.assertEqual(sum(r["retirement_cause"] == "CONTACT"
-                             for r in race["classification"]), 1)
-        self.assertEqual(contacts_are_geometric, [True])
+                             for r in race["classification"]), 2)
+        self.assertEqual(contacts_are_geometric, [True, True])
 
     def test_projected_advance_respects_compressed_monaco_segment(self):
         from f1_simulator.domain.track_space import (
@@ -377,6 +377,105 @@ class SpatialExclusionTest(unittest.TestCase):
 
 
 class EmergentOvertakeTest(unittest.TestCase):
+    def test_blocked_follower_plans_pass_from_free_track_ceiling(self):
+        from f1_simulator.domain.track_space import _lane_decision
+
+        leader = CarSpaceState("leader", distance_m=40, speed_ms=40)
+        follower = CarSpaceState("follower", distance_m=30, speed_ms=40)
+        cars = [follower, leader]
+        by_id = {c.driver_id: c for c in cars}
+        ceilings = {"follower": ([0.0, 800.0], [60.0, 60.0]),
+                    "leader": ([0.0, 800.0], [40.0, 40.0])}
+        target = _lane_decision(follower, by_id, cars, ceilings, 800, 5, 1.0, 800)
+        self.assertGreater(target, 0.0)
+        self.assertEqual(follower.overtaking, "leader")
+        follower.speed_ms = 35
+        self.assertGreater(_lane_decision(follower, by_id, cars, ceilings,
+                                          800, 5, 1.0, 800), 0.0)
+        self.assertEqual(follower.overtaking, "leader")
+
+    def test_blocked_follower_waits_when_both_sides_are_occupied(self):
+        from f1_simulator.domain.track_space import _lane_decision
+
+        cars = [CarSpaceState("follower", distance_m=30, speed_ms=40),
+                CarSpaceState("leader", distance_m=40, speed_ms=40),
+                CarSpaceState("left", distance_m=30, lateral_m=2.4),
+                CarSpaceState("right", distance_m=30, lateral_m=-2.4)]
+        ceilings = {c.driver_id: ([0.0, 800.0], [40.0, 40.0]) for c in cars}
+        ceilings["follower"] = ([0.0, 800.0], [60.0, 60.0])
+        target = _lane_decision(cars[0], {c.driver_id: c for c in cars}, cars,
+                                ceilings, 800, 5, 1.0, 800)
+        self.assertEqual(target, 0.0)
+        self.assertIsNone(cars[0].overtaking)
+
+    def test_equal_free_track_ceiling_does_not_start_pass(self):
+        from f1_simulator.domain.track_space import _lane_decision
+
+        leader = CarSpaceState("leader", distance_m=40, speed_ms=40)
+        follower = CarSpaceState("follower", distance_m=30, speed_ms=40)
+        cars = [follower, leader]
+        ceilings = {c.driver_id: ([0.0, 800.0], [60.0, 60.0]) for c in cars}
+        target = _lane_decision(follower, {c.driver_id: c for c in cars}, cars,
+                                ceilings, 800, 5, 1.0, 800)
+        self.assertEqual(target, 0.0)
+        self.assertIsNone(follower.overtaking)
+
+    def test_equal_ceiling_leader_queued_behind_third_car_can_be_passed(self):
+        from f1_simulator.domain.track_space import _lane_decision
+
+        cars = [CarSpaceState("follower", distance_m=30, speed_ms=40),
+                CarSpaceState("leader", distance_m=40, speed_ms=40),
+                CarSpaceState("obstruction", distance_m=45, speed_ms=40)]
+        ceilings = {c.driver_id: ([0.0, 800.0], [60.0, 60.0]) for c in cars}
+        target = _lane_decision(cars[0], {c.driver_id: c for c in cars}, cars,
+                                ceilings, 800, 5, 1.0, 800)
+        self.assertGreater(target, 0.0)
+        self.assertEqual(cars[0].overtaking, "leader")
+
+    def test_curve_without_obstruction_does_not_create_passing_advantage(self):
+        from f1_simulator.domain.track_space import _lane_decision
+
+        cars = [CarSpaceState("follower", distance_m=30, speed_ms=40),
+                CarSpaceState("leader", distance_m=40, speed_ms=35)]
+        ceilings = {c.driver_id: ([0.0, 30.0, 40.0, 800.0], [60.0, 45.0, 35.0, 35.0])
+                    for c in cars}
+        target = _lane_decision(cars[0], {c.driver_id: c for c in cars}, cars,
+                                ceilings, 800, 5, 1.0, 800)
+        self.assertEqual(target, 0.0)
+        self.assertIsNone(cars[0].overtaking)
+
+    def test_return_keeps_clearance_from_car_alongside(self):
+        from f1_simulator.domain.track_space import _safe_center
+
+        passing = CarSpaceState("passing", distance_m=110, lateral_m=2.4)
+        other = CarSpaceState("other", distance_m=108, lateral_m=0)
+        target = _safe_center(passing, [passing, other], 800, 5, 800)
+        self.assertAlmostEqual(target, 2.3)
+        other.distance_m = 104
+        self.assertEqual(_safe_center(passing, [passing, other], 800, 5, 800), 0.0)
+
+    def test_three_car_field_produces_persistent_passes(self):
+        sp = build_track_space(_rectangle_with_straight(straight_m=1000), width_m=12)
+        physics = CarPhysics(v_max_straight_kmh=260)
+        cars = [
+            CarSpaceState("slow", distance_m=80, speed_ms=45, speed_scale=0.7),
+            CarSpaceState("mid", distance_m=55, speed_ms=48, speed_scale=0.85),
+            CarSpaceState("fast", distance_m=30, speed_ms=50, speed_scale=1.0),
+        ]
+        samples = integrate_field(
+            cars, sp, {c.driver_id: physics for c in cars},
+            total_laps=1, dt_s=0.2, max_steps=5000,
+        )
+        states = [{c.driver_id: c for c in sample.cars} for sample in samples]
+        for attacker, leader in (("fast", "mid"), ("fast", "slow"), ("mid", "slow")):
+            gaps = [state[attacker].distance_m - state[leader].distance_m for state in states]
+            self.assertTrue(all(gap <= -5.0 for gap in gaps[:5]))
+            # Cinco amostras consecutivas com um corpo de folga evitam
+            # classificar uma simples oscilacao instantanea como passagem.
+            self.assertTrue(any(all(gap >= 5.0 for gap in gaps[i:i + 5])
+                                for i in range(len(gaps) - 4)))
+            self.assertGreater(max(abs(s[attacker].lateral_m) for s in states), 0.5)
+
     def test_slower_speed_scale_triggers_overtake_with_same_physics(self):
         sp = build_track_space(_rectangle_with_straight(straight_m=1000), width_m=12)
         physics = CarPhysics(v_max_straight_kmh=260)
