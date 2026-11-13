@@ -89,6 +89,7 @@ class TrackConditionParameters:
     saturated_grip: float = 0.69
     initial_rubber: float = 0.8
     rubber_gain_per_lap: float = 0.08
+    traffic_reference_cars: int = 20
     rubber_wash_per_lap_saturated: float = 0.3
     green_track_grip_loss: float = 0.03
     dry_track_temp_c: float = 35.0
@@ -96,7 +97,7 @@ class TrackConditionParameters:
     temp_response_per_min: float = 0.1
     evaporation_per_degree: float = 0.03
     source_kind: Literal["assumed", "estimated"] = "assumed"
-    parameter_version: str = "assumed-track-condition-v1"
+    parameter_version: str = "assumed-track-condition-v2"
     rationale: str = (
         "Hipoteses de ordem de grandeza. Agua: aderencia com o pneu adequado "
         "ancorada em voltas de intermediario ~11-16% e de chuva ~25% mais "
@@ -119,10 +120,19 @@ class TrackConditionParameters:
             "green_track_grip_loss",
         ):
             _check_fraction(name, getattr(self, name))
-        for name in ("wet_cooling_c", "temp_response_per_min", "evaporation_per_degree"):
+        for name in (
+            "wet_cooling_c",
+            "temp_response_per_min",
+            "evaporation_per_degree",
+        ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isfinite(value) or value < 0:
                 raise ValueError(f"{name} nao pode ser negativo")
+        if (
+            type(self.traffic_reference_cars) is not int
+            or self.traffic_reference_cars < 1
+        ):
+            raise ValueError("traffic_reference_cars deve ser inteiro positivo")
         if not isfinite(self.dry_track_temp_c):
             raise ValueError("dry_track_temp_c deve ser finito")
         if self.source_kind not in ("assumed", "estimated"):
@@ -163,7 +173,7 @@ def approximate_lap_time_ratio(grip_factor: float) -> float:
 
     if isinstance(grip_factor, bool) or not isfinite(grip_factor) or grip_factor <= 0:
         raise ValueError("grip_factor deve ser positivo")
-    return grip_factor ** -GRIP_LAP_TIME_EXPONENT
+    return grip_factor**-GRIP_LAP_TIME_EXPONENT
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,6 +198,85 @@ class TrackState:
             "rubber": round(self.rubber, 3),
             "grip_factor": round(self.grip_factor, 4),
         }
+
+
+# Temperaturas ilustrativas de asfalto seco, nao observacoes climaticas.
+# IDs ausentes usam explicitamente o padrao global.
+ASSUMED_CIRCUIT_TEMPERATURES_C = {
+    "circuit:1": 32.0,
+    "circuit:3": 28.0,
+    "circuit:6": 35.0,
+    "circuit:13": 27.0,
+    "circuit:14": 36.0,
+    "circuit:69": 42.0,
+}
+CIRCUIT_TEMPERATURE_VERSION = "assumed-circuit-track-temperature-v1"
+
+
+def circuit_dry_temperature_c(circuit_id: str | None) -> float:
+    """Alvo seco assumido por circuito, com reserva global para IDs ausentes."""
+    return ASSUMED_CIRCUIT_TEMPERATURES_C.get(
+        circuit_id, ASSUMED_TRACK_CONDITION.dry_track_temp_c
+    )
+
+
+def step_track_condition(
+    state: TrackState,
+    rain: RainLevel,
+    *,
+    elapsed_s: float,
+    traffic_laps: float,
+    dry_temp_c: float,
+    parameters: TrackConditionParameters = ASSUMED_TRACK_CONDITION,
+    weather_parameters: WeatherParameters = ASSUMED_WEATHER_PARAMETERS,
+) -> TrackState:
+    """Avance pelo tempo simulado e pelas voltas equivalentes de carros na pista.
+
+    Uma volta de referencia de 20 carros deposita 8% da borracha faltante;
+    trafego zero nao deposita. Lavagem depende do tempo e da agua, nao do grid.
+    Passos pequenos permitem ao motor responder ao clima sem usar tempo de tela.
+    """
+    if not isfinite(elapsed_s) or elapsed_s <= 0:
+        raise ValueError("elapsed_s deve ser positivo e finito")
+    if not isfinite(traffic_laps) or traffic_laps < 0 or not isfinite(dry_temp_c):
+        raise ValueError("trafego e temperatura invalidos")
+    minutes = elapsed_s / 60.0
+    evaporation = min(
+        2.0,
+        max(0.3, 1.0 + parameters.evaporation_per_degree * (state.track_temp_c - 30.0)),
+    )
+    weather = step_weather(
+        WeatherState(state.humidity_pct, state.surface_water),
+        rain,
+        weather_parameters,
+        lap_minutes=minutes,
+        evaporation_scale=evaporation,
+    )
+    temp = state.track_temp_c + (
+        1.0 - exp(-parameters.temp_response_per_min * minutes)
+    ) * (
+        dry_temp_c
+        - parameters.wet_cooling_c * weather.surface_water
+        - state.track_temp_c
+    )
+    gain = 1.0 - (1.0 - parameters.rubber_gain_per_lap) ** (
+        traffic_laps / parameters.traffic_reference_cars
+    )
+    rubber = state.rubber + gain * (1.0 - state.rubber)
+    wash = (1.0 - parameters.rubber_wash_per_lap_saturated) ** (
+        weather.surface_water * minutes / weather_parameters.reference_lap_minutes
+    )
+    rubber *= wash
+    return TrackState(
+        state.lap,
+        rain,
+        weather.humidity_pct,
+        weather.surface_water,
+        temp,
+        rubber,
+        water_grip_factor(weather.surface_water, parameters)
+        * rubber_grip_factor(rubber, parameters),
+    )
 
 
 def simulate_track_conditions(

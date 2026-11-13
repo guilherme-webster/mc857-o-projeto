@@ -580,6 +580,7 @@ def integrate_field(
     pit_parameters: PitLaneParameters = PitLaneParameters(),
     on_pit_event=None,
     on_motion=None,
+    on_step=None,
     check_cancelled=None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
@@ -822,6 +823,8 @@ def integrate_field(
                 cars, race_distance, aggression_by_id, rng, dt_s, start_zone_m
             )
 
+        if on_step is not None:
+            on_step(time_s, dt_s)
         samples.append(FieldSample(time_s, tuple(_frozen(c) for c in order)))
         steps += 1
     return tuple(samples)

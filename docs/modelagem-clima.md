@@ -20,9 +20,10 @@ agua_nova = limitar(agua_atual + aporte_chuva - drenagem - evaporacao, 0, 1)
 
 A umidade usa porcentagem de 0 a 100. A água usa um **índice adimensional** de
 0 (seca) a 1 (saturada), não milímetros nem um coeficiente de atrito. A
-drenagem e a evaporação agem também durante a chuva. Como a unidade temporal
-é uma volta, e não minutos, pistas e voltas de duração diferente ainda não
-têm secagem comparável. Não há sorteio; os mesmos dados dão a mesma saída.
+drenagem e a evaporação agem também durante a chuva. A parametrização original
+usa uma volta de referência de 1,5 minuto; o integrador da corrida converte os
+fluxos para o tempo simulado transcorrido. Não há sorteio; os mesmos dados dão
+a mesma saída.
 
 Os valores padrão de `ASSUMED_WEATHER_PARAMETERS` são hipóteses ilustrativas,
 versionadas como `assumed-weather-per-lap-v1` e **não calibradas**. O FastF1
@@ -50,20 +51,27 @@ Atualizado em 2026-11-06 (issue #119, ADR 0015).
   água, temperatura do asfalto, borracha e fator de aderência.
 - **Tempo:** os fluxos de água valem por "volta de referência" de 1,5 min
   (`WeatherParameters.reference_lap_minutes`); cada volta real acumula e seca
-  na proporção da sua duração (a volta de referência histórica do circuito).
+  na proporção do tempo realmente simulado em cada passo do motor 2D.
   Sem duração informada, `simulate_weather` mantém o comportamento original por
   volta.
-- **Estado da pista** (`domain/track_condition.py`): a cada volta, a
+- **Estado da pista** (`domain/track_condition.py`): a cada passo, a
   temperatura do asfalto acelera a evaporação; a água evolui; a temperatura se
-  aproxima de 35 °C (seca) ou até 12 °C abaixo (saturada); a borracha cresce
-  com o pelotão e a chuva a lava. Tudo vira um **fator de aderência** =
+  aproxima de um alvo seco assumido por circuito (35 °C para circuitos sem
+  valor específico) ou até 12 °C abaixo (saturada). A borracha cresce com
+  distância efetivamente percorrida na pista e a água a lava ao longo do tempo;
+  boxes e carros parados não depositam borracha. Tudo vira um **fator de
+  aderência** =
   água × borracha. A água descreve a aderência com o pneu adequado: 0,81 com
   água 0,3 (intermediário) e 0,69 saturada (pneu de chuva). Parâmetros
-  `assumed-track-condition-v1`.
+  `assumed-track-condition-v2` e `assumed-circuit-track-temperature-v1`.
+  Os seis valores de temperatura específicos são exemplos assumidos, não
+  medições; circuitos restantes usam a reserva global. Uma volta equivalente
+  de 20 carros deposita 8% da borracha faltante.
 - **Tempo de volta:** o fator multiplica o `mu` do carro no motor físico; cada
   carro paga o tempo que a própria física perde naquela pista (pista de curvas
-  lentas perde mais). Sai como `weather_ms` na decomposição do motor detalhado
-  e entra no `speed_scale` do 2D. O efeito linear antigo (+40% com pista
+  lentas perde mais). Entra no `speed_scale` do 2D e na decomposição de
+  velocidade. O motor detalhado foi arquivado. O efeito linear antigo (+40% com
+  pista
   saturada, `weather_penalty_ms`) foi removido.
 - **Pneus e corrida (#120):** intermediário e chuva com aderência por água,
   troca por clima com viés por piloto, regra de dois compostos suspensa,
@@ -74,3 +82,8 @@ Atualizado em 2026-11-06 (issue #119, ADR 0015).
 - **Fora da integração:** a temperatura não altera a aderência nem o desgaste;
   o controle de prova não reage diretamente à chuva (só aos incidentes); o
   contato espacial do 2D não depende da água.
+
+A previsão baseada na volta de referência é usada somente para escolher o
+composto inicial; durante a corrida a estratégia usa água atual. Os retratos
+correspondem ao fim das voltas alcançadas pelo líder, com resolução do passo
+do motor; se todos abandonarem antes de terminar, não há retratos fictícios.

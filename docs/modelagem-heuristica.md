@@ -435,8 +435,8 @@ próprios parâmetros, não números fixos.
   que tratar todas as equipes iguais (131 contra 118 ms).
 - Contato não tem culpado nem dano parcial; o carro abandona ou segue.
 - **Limitações conhecidas do motor 2D** (registradas em 2026-11-12, sem decisão
-  tomada): não reabastece nem faz lift-and-coast, e todos largam com a mesma
-  carga de combustível; a assumption de gestão de pneus não é declarada em
+  tomada): não faz lift-and-coast, e todos largam com a mesma carga de
+  combustível; a assumption de gestão de pneus não é declarada em
   `assumptions`; abandono sem disputa vira `mechanical`; em `speed_breakdown`
   a troca de pneu aparece defasada uma volta em relação à parada.
 - **Clima só no tempo de volta.** Água e borracha viram um fator de
@@ -476,3 +476,12 @@ próprios parâmetros, não números fixos.
   e o serviço parado. Para corridas por volta ou antigas, mantém a interpolação
   de `history`, com paradas diluídas na volta. Não há carro de segurança
   físico desenhado.
+
+### Atualização parcial da issue #119
+
+No motor 2D, `assumed-track-condition-v2` integra água e temperatura pelo
+tempo transcorrido e borracha pela distância efetiva na pista, excluindo boxes.
+O alvo seco usa `assumed-circuit-track-temperature-v1`, com reserva global
+para circuitos sem valor específico. São hipóteses não calibradas. A
+comparação com o motor detalhado arquivado permanece pendente de decisão;
+nenhum critério de equivalência entre motores foi considerado satisfeito.

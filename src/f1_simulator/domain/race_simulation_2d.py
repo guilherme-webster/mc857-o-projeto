@@ -68,7 +68,12 @@ from f1_simulator.domain.strategy import (
     StrategyState,
     TyreStrategy,
 )
-from f1_simulator.domain.track_condition import TrackState
+from f1_simulator.domain.track_condition import (
+    ASSUMED_TRACK_CONDITION,
+    TrackState,
+    rubber_grip_factor,
+    step_track_condition,
+)
 from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
@@ -82,6 +87,7 @@ from f1_simulator.domain.track_space import (
     integrate_field,
 )
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
+from f1_simulator.domain.weather import RainLevel
 from f1_simulator.domain.wet_tyres import relative_grip, wear_factor, wet_compound_used
 
 RUNNING = "RUNNING"
@@ -297,6 +303,8 @@ def simulate_2d_race(
     model_parameters: ModelParameters | None = None,
     fuel: FuelPlan | None = None,
     track_states: Sequence[TrackState] | None = None,
+    track_rain: Sequence[RainLevel] | None = None,
+    dry_track_temp_c: float = 35.0,
     reliability_by_id: dict[str, float] | None = None,
     mechanical_hazard_per_lap: float = 0.0,
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
@@ -323,9 +331,9 @@ def simulate_2d_race(
       determina a penalidade do pneu, separada da idade em voltas;
     - ``fuel``: queima por movimento e marcha lenta; massa custa tempo. O
       proxy de desaceleração reduz a demanda, sem chamar ``fuel_lap``;
-    - ``track_states``: agua, temperatura e borracha da volta viram um fator de
-      aderencia (``track_condition.py``), e a fisica do proprio carro diz quanto
-      tempo ele perde com esse fator -- o mesmo calculo do motor por volta.
+    - ``track_rain``: estado compartilhado integrado por tempo simulado e
+      trafego efetivo; ``track_states`` aceita estados prontos para consumidores
+      existentes. Agua e borracha modulam a aderencia e pneus de chuva.
 
     Com ``model_parameters`` + ``track_params`` + ``compounds``, cada piloto ganha
     uma ``HeuristicPitStrategy``. Uma estratégia explícita no entrante pode
@@ -349,6 +357,14 @@ def simulate_2d_race(
 
     Cada efeito ausente simplesmente nao atua.
     """
+
+    if track_rain is not None:
+        if len(track_rain) != total_laps or any(
+            type(rain) is not RainLevel for rain in track_rain
+        ):
+            raise ValueError("track_rain deve conter uma intensidade valida por volta")
+        if track_states is not None:
+            raise ValueError("informe track_rain ou track_states, nao ambos")
 
     track = (
         build_track_space(geometry)
@@ -515,10 +531,25 @@ def simulate_2d_race(
     def _lap_effects(lap_number: int) -> LapEffects:
         return lap_effects_by_lap.get(lap_number) or effects(RaceControlState())
 
+    # Estado compartilhado por todo o pelotao, atualizado apos cada passo.
+    current_track = TrackState(
+        1, track_rain[0] if track_rain else RainLevel.DRY,
+        50.0, 0.0, dry_track_temp_c, ASSUMED_TRACK_CONDITION.initial_rubber,
+        rubber_grip_factor(ASSUMED_TRACK_CONDITION.initial_rubber),
+    )
+    actual_track_states: list[TrackState] = []
+    traffic_distance_m = 0.0
+
+    def _track_for(lap_number: int) -> TrackState | None:
+        if track_rain is not None:
+            return current_track
+        if track_states:
+            return track_states[min(lap_number - 1, len(track_states) - 1)]
+        return None
+
     def _water(lap_number: int) -> float:
-        if not track_states:
-            return 0.0
-        return track_states[min(lap_number - 1, len(track_states) - 1)].surface_water
+        state = _track_for(lap_number)
+        return state.surface_water if state else 0.0
 
     def _tyre_penalty_ms(did: str, lap_number: int) -> float:
         if not tyre_active:
@@ -607,10 +638,10 @@ def simulate_2d_race(
                 0.0, car.fuel_kg - fuel.parameters.finish_reserve_kg
             )
         weather_ms = 0.0
-        if track_states:
-            idx = min(lap_number - 1, len(track_states) - 1)
-            water = track_states[idx].surface_water
-            grip_factor = track_states[idx].grip_factor * relative_grip(
+        track_state = _track_for(lap_number)
+        if track_state is not None:
+            water = track_state.surface_water
+            grip_factor = track_state.grip_factor * relative_grip(
                 tyre_by_id[did].compound, water
             )
             if grip_factor != 1.0:
@@ -651,7 +682,15 @@ def simulate_2d_race(
     def _on_motion(car: CarSpaceState, motion: MotionIncrement) -> None:
         """Integre recursos e atualize o ritmo, antes dos eventos de serviço/volta."""
 
+        nonlocal traffic_distance_m
+        # Nao conte a parte do passo posterior a bandeirada. O integrador pode
+        # ultrapassar a linha antes de interpolar o instante da chegada.
+        track_distance = min(
+            motion.distance_m, max(0.0, total_laps * lap_length_m - motion.start_distance_m)
+        )
         if not usage_active:
+            if not motion.in_pit:
+                traffic_distance_m += track_distance
             return
         assert curvature is not None and reference_usage is not None
         did = car.driver_id
@@ -714,6 +753,8 @@ def simulate_2d_race(
                     Incident(fuel_retired[did], "mechanical", (did,))
                 )
             car.fuel_kg = max(0.0, car.fuel_kg - burned)
+        if not motion.in_pit:
+            traffic_distance_m += min(track_distance, motion.distance_m * fraction)
         totals = usage_totals[did]
         totals["fuel_burned_kg"] += burned
         if tyre_active:
@@ -758,8 +799,8 @@ def simulate_2d_race(
                 else None
             ),
             tyre_wear_laps=car.tyre_wear_laps,
-            # Radar: a agua prevista para a volta que comeca (como no detalhado).
-            surface_water=_water(lap_number) if track_states else None,
+            # A estrategia consulta a agua atual do estado compartilhado.
+            surface_water=_water(lap_number) if (track_states or track_rain is not None) else None,
         )
         decision = strategy.decide(state)
         if not decision.pit:
@@ -908,6 +949,31 @@ def simulate_2d_race(
             _advance_control(lap, incidents)
         _request_pit(car, lap + 1)
 
+    def _on_step(time_s: float, elapsed_s: float) -> None:
+        nonlocal current_track, traffic_distance_m
+        assert track_rain is not None
+        # A chuva programada muda quando o lider conclui a volta; o passo
+        # usa a condicao anterior e o retrato registra seu fim.
+        lap = min(len(actual_track_states) + 1, total_laps)
+        current_track = step_track_condition(
+            current_track,
+            track_rain[lap - 1],
+            elapsed_s=elapsed_s,
+            traffic_laps=traffic_distance_m / lap_length_m,
+            dry_temp_c=dry_track_temp_c,
+        )
+        traffic_distance_m = 0.0
+        leader_laps = min(
+            total_laps, max(int(c.distance_m // lap_length_m) for c in cars)
+        )
+        while len(actual_track_states) < leader_laps:
+            actual_track_states.append(
+                replace(current_track, lap=len(actual_track_states) + 1)
+            )
+        for car in cars:
+            if not car.retired and car.distance_m < total_laps * lap_length_m:
+                _apply_scale(car, int(car.distance_m // lap_length_m) + 1)
+
     # Fator inicial da volta 1 (pneu novo, tanque cheio, clima da volta 1).
     for car in cars:
         _apply_scale(car, 1)
@@ -928,6 +994,7 @@ def simulate_2d_race(
         pit_parameters=pit_parameters,
         on_pit_event=_pit_event,
         on_motion=_on_motion,
+        on_step=_on_step if track_rain is not None else None,
         check_cancelled=check_cancelled,
     )
 
@@ -1013,6 +1080,10 @@ def simulate_2d_race(
     classification = history[-1]["cars"] if history else []
     result = {
         "total_laps": total_laps,
+        "track_conditions": [
+            state.as_dict()
+            for state in (actual_track_states if track_rain is not None else (track_states or ()))
+        ],
         "circuit_id": geometry.circuit_id,
         "history": history,
         "classification": classification,
@@ -1064,9 +1135,11 @@ def simulate_2d_race(
                 "fuel_active": fuel is not None,
                 "refuel_active": refuel_mode,
                 "pit_active": pit_active,
-                "weather_active": bool(track_states)
-                and any(state.surface_water > 0 for state in track_states),
-                "track_condition_active": bool(track_states),
+                "weather_active": any(
+                    state.surface_water > 0
+                    for state in (actual_track_states if track_rain is not None else (track_states or ()))
+                ),
+                "track_condition_active": bool(track_states) or track_rain is not None,
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
                 "side_contact": {

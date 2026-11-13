@@ -121,3 +121,16 @@ conhecidos pela calibração, artefato espelhado e erro contra as 24 voltas de
 referência) e `tests/test_track_condition.py` (âncoras de água, borracha,
 secagem por minuto e por temperatura, interpolação contra a física direta e os
 dois motores mais lentos na chuva). A suíte completa roda por `unittest`.
+
+## Atualização de implementação parcial (issue #119)
+
+O estado usado no motor 2D agora evolui pelo tempo simulado de cada passo;
+o tráfego é a distância efetivamente percorrida na pista, excluindo boxes,
+normalizada por uma volta de 20 carros. A lavagem depende do tempo e água.
+O alvo seco tem valores assumidos para seis circuitos e reserva global explícita
+para os demais (`assumed-circuit-track-temperature-v1`); não são medições.
+Os parâmetros de estado passam a `assumed-track-condition-v2`. A previsão
+por volta de referência serve apenas à escolha inicial do pneu.
+
+O motor detalhado foi arquivado. Os critérios de equivalência entre motores
+permanecem pendentes de decisão explícita; este ADR continua em proposta.
