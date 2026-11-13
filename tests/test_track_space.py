@@ -155,6 +155,88 @@ class SingleCarIntegratorTest(unittest.TestCase):
 
 
 class SpatialExclusionTest(unittest.TestCase):
+    def test_lapped_cars_remain_separate_including_under_neutralization(self):
+        sp = build_track_space(_square(200), width_m=12.0)
+        physics = CarPhysics()
+        for dt in (0.1, 0.2, 0.4):
+            for neutralized in (False, True):
+                with self.subTest(dt=dt, neutralized=neutralized):
+                    cars = [
+                        CarSpaceState("leader", distance_m=sp.lap_length_m + 5,
+                                      speed_ms=40),
+                        CarSpaceState("lapped", distance_m=20, speed_ms=30),
+                    ]
+                    samples = integrate_field(
+                        cars, sp, {c.driver_id: physics for c in cars},
+                        total_laps=3, dt_s=dt, max_steps=10000,
+                        neutralized_lap=(lambda lap: True) if neutralized else None,
+                    )
+                    self.assertTrue(all(c.distance_m >= 3 * sp.lap_length_m
+                                        for c in samples[-1].cars))
+                    for sample in samples:
+                        a, b = sample.cars
+                        if a.distance_m >= 3 * sp.lap_length_m or b.distance_m >= 3 * sp.lap_length_m:
+                            continue
+                        gap = abs((a.distance_m - b.distance_m + sp.lap_length_m / 2)
+                                  % sp.lap_length_m - sp.lap_length_m / 2)
+                        lateral = abs(a.lateral_m - b.lateral_m)
+                        self.assertTrue(gap >= 5 - 1e-8 or lateral >= 2 - 1e-8,
+                                        (dt, neutralized, sample.time_s, gap, lateral))
+
+    def test_lateral_move_cannot_cross_an_adjacent_car(self):
+        from f1_simulator.domain.track_space import _limit_lateral_move, _rubbing
+
+        a = CarSpaceState("a", distance_m=805, lateral_m=3.0)
+        b = CarSpaceState("b", distance_m=5, lateral_m=0.0)
+        a.lateral_m = _limit_lateral_move(a, 0.9, [a, b], 2400, 800)
+        self.assertAlmostEqual(a.lateral_m, 2.3)
+        self.assertFalse(_rubbing(a, b, 800))
+        # Quem ja esta dentro da margem nao se move para mais perto nem salta.
+        a.lateral_m = 2.1
+        self.assertAlmostEqual(_limit_lateral_move(a, 0.9, [a, b], 2400, 800), 2.1)
+        self.assertAlmostEqual(_limit_lateral_move(a, 3.0, [a, b], 2400, 800), 3.0)
+        # Erro numerico no limite longitudinal nao gera roçamento numa fila.
+        a.distance_m = 810 - 1e-10
+        a.lateral_m = 0.0
+        self.assertFalse(_rubbing(a, b, 800))
+
+    def test_monaco_seed_three_does_not_create_contact_by_clamping(self):
+        from itertools import combinations
+        from unittest.mock import patch
+
+        from f1_simulator.adapters.driver_presets_json import load_driver_presets
+        from f1_simulator.domain import race_simulation_2d
+        from tests.geometry_support import attribute, fixture_geometry
+
+        presets = list(load_driver_presets("configs/drivers/perfis-ficticios.json").values())[:20]
+        entries = []
+        for i, preset in enumerate(presets, 1):
+            attrs = attribute(preset.driver_id, **preset.values)
+            entries.append({"driver_id": preset.driver_id, "name": preset.driver_name,
+                            "grid_position": i, "attributes": attrs,
+                            "aggression": attrs.aggression})
+        geometry = fixture_geometry()
+        original = race_simulation_2d.integrate_field
+        def check_samples(*args, **kwargs):
+            samples = original(*args, **kwargs)
+            for sample in samples:
+                cars = [c for c in sample.cars if not c.retired and c.pit_state is None
+                        and c.distance_m < geometry.lap_length_m]
+                for a, b in combinations(cars, 2):
+                    gap = abs((a.distance_m - b.distance_m + geometry.lap_length_m / 2)
+                              % geometry.lap_length_m - geometry.lap_length_m / 2)
+                    lateral = abs(a.lateral_m - b.lateral_m)
+                    self.assertTrue(gap >= 5 - 1e-7 or lateral >= 2 - 1e-7,
+                                    (sample.time_s, a.driver_id, b.driver_id, gap, lateral))
+            return samples
+
+        with patch.object(race_simulation_2d, "integrate_field", check_samples):
+            race = race_simulation_2d.simulate_2d_race(
+                entries, geometry, total_laps=1, rng=SeededRandomSource(3), dt_s=0.2
+            )
+        self.assertFalse([r for r in race["classification"]
+                          if r["retirement_cause"] == "CONTACT"])
+
     def test_same_lane_keeps_car_length_gap_on_straight(self):
         # Carros identicos colados na mesma faixa: o de tras nunca e mais rapido
         # (nao desvia nem passa), entao so a exclusao espacial atua. Na reta,
@@ -234,6 +316,22 @@ class SpatialExclusionTest(unittest.TestCase):
 
 
 class EmergentOvertakeTest(unittest.TestCase):
+    def test_slower_speed_scale_triggers_overtake_with_same_physics(self):
+        sp = build_track_space(_rectangle_with_straight(straight_m=1000), width_m=12)
+        physics = CarPhysics(v_max_straight_kmh=260)
+        cars = [
+            CarSpaceState("slow", distance_m=40, speed_ms=45, speed_scale=0.8),
+            CarSpaceState("fast", distance_m=20, speed_ms=50, speed_scale=1.0),
+        ]
+        samples = integrate_field(
+            cars, sp, {c.driver_id: physics for c in cars},
+            total_laps=1, dt_s=0.2, max_steps=5000,
+        )
+        self.assertGreater(max(abs(next(c for c in s.cars if c.driver_id == "fast").lateral_m)
+                               for s in samples), 0.5)
+        self.assertLess(_finish_time(samples, "fast", sp.lap_length_m),
+                        _finish_time(samples, "slow", sp.lap_length_m))
+
     def test_faster_car_changes_lane_and_passes(self):
         sp = build_track_space(
             _rectangle_with_straight(straight_m=5000.0), width_m=12.0
@@ -287,6 +385,15 @@ class EmergentOvertakeTest(unittest.TestCase):
 
 
 class CollisionTest(unittest.TestCase):
+    def test_lapped_cars_can_still_touch_in_the_rubbing_margin(self):
+        from f1_simulator.domain.track_space import _resolve_collisions
+
+        cars = [CarSpaceState("a", distance_m=802, lateral_m=0),
+                CarSpaceState("b", distance_m=1, lateral_m=2.2)]
+        _resolve_collisions(cars, 2400, {}, SeededRandomSource(1), 100,
+                            lap_length_m=800)
+        self.assertEqual(sum(c.retired for c in cars), 1)
+
     def _forced_rubbing_cars(self):
         # Dois carros emparelhados, corpos sobrepostos lateralmente (folga < 0).
         return [
