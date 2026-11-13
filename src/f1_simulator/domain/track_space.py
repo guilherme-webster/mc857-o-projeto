@@ -1121,7 +1121,9 @@ def _lane_decision(
             return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
         side = 1.0 if car.lateral_m >= 0 else -1.0
         reach = car.width_m * (0.8 + 0.4 * aggression)
-        return max(-usable_m, min(usable_m, target.lateral_m + side * reach))
+        candidate = max(-usable_m, min(usable_m, target.lateral_m + side * reach))
+        # O compromisso existente nao revalida o corredor a cada passo.
+        return candidate
 
     ahead = _nearest_ahead_same_lane(car, by_distance, race_distance_m, lap_length_m)
     if ahead is None:
@@ -1141,7 +1143,7 @@ def _lane_decision(
         # estiver na folga minima longitudinal existente. Consultar o teto do
         # atacante na posicao do lider evita confundir aproximacao de curva com
         # diferenca de ritmo entre posicoes distintas. Nao infere outros motivos
-        # para reducao de velocidade nem antecipa trafego traseiro.
+        # para reducao de velocidade.
         obstruction = _nearest_ahead_same_lane(ahead, by_distance, race_distance_m, lap_length_m)
         minimum_gap = (ahead.length_m + obstruction.length_m) / 2 if obstruction else 0.0
         queued = (obstruction is not None
@@ -1192,8 +1194,10 @@ def _safe_center(
             target = min(target, other.lateral_m - min_gap)
     # Nao ultrapassa a borda nem volta para longe do centro alem de onde esta.
     if car.lateral_m >= 0:
-        return max(0.0, min(car.lateral_m, min(usable_m, target)))
-    return min(0.0, max(car.lateral_m, max(-usable_m, target)))
+        target = max(0.0, min(car.lateral_m, min(usable_m, target)))
+    else:
+        target = min(0.0, max(car.lateral_m, max(-usable_m, target)))
+    return target
 
 
 def _side_is_clear(
@@ -1203,7 +1207,16 @@ def _side_is_clear(
     race_distance_m: float,
     lap_length_m: float,
 ) -> bool:
-    """Se a faixa candidata esta livre na janela longitudinal da manobra."""
+    """Verifique a faixa e a chegada de carros traseiros a velocidade constante.
+
+    O horizonte e o tempo necessario para atingir o alvo na velocidade lateral
+    maxima ja assumida pelo motor. Durante esse tempo o carro percorre a lateral
+    linearmente e os demais mantem lateral e velocidades longitudinais atuais.
+    Nao e garantia contra aceleracoes, outras mudancas de faixa ou geometria
+    cartesiana divergente do eixo; tambem conserva a janela estatica existente.
+    Esta consulta ocorre na escolha inicial da passagem, nao durante a manobra
+    comprometida nem no retorno ao centro.
+    """
 
     probe = CarSpaceState(
         driver_id=car.driver_id,
@@ -1212,15 +1225,38 @@ def _side_is_clear(
         length_m=car.length_m,
         width_m=car.width_m,
     )
+    displacement = candidate_lateral_m - car.lateral_m
+    duration_s = abs(displacement) / ASSUMED_LANE_CHANGE_MS
     for other in by_distance:
         if other.driver_id == car.driver_id:
             continue
-        if other.retired or other.distance_m >= race_distance_m:
+        if other.retired or other.pit_state is not None or other.distance_m >= race_distance_m:
             continue
         longitudinal_gap = _signed_gap(car.distance_m, other.distance_m, lap_length_m)
         if -car.length_m <= longitudinal_gap <= ASSUMED_FOLLOW_TRIGGER_M:
             if _same_lane(probe, other):
                 return False
+        # A regra adicional trata carros que se aproximam por tras. Os pares
+        # ja lado a lado ou a frente continuam sob a regra espacial existente.
+        if longitudinal_gap >= -car.length_m or other.speed_ms <= car.speed_ms:
+            continue
+        if duration_s == 0:
+            continue
+        # Intervalo em que as faixas laterais se sobrepoem, incluindo a
+        # travessia ate o alvo; ele pode ser menor que o tempo total da manobra.
+        half_width = (car.width_m + other.width_m) / 2
+        t1 = (other.lateral_m - half_width - car.lateral_m) / displacement * duration_s
+        t2 = (other.lateral_m + half_width - car.lateral_m) / displacement * duration_s
+        start = max(0.0, min(t1, t2))
+        end = min(duration_s, max(t1, t2))
+        if start >= end:
+            continue
+        relative_speed = other.speed_ms - car.speed_ms
+        gap_start = longitudinal_gap + relative_speed * start
+        gap_end = longitudinal_gap + relative_speed * end
+        half_length = (car.length_m + other.length_m) / 2
+        if min(gap_start, gap_end) < half_length and max(gap_start, gap_end) > -half_length:
+            return False
     return True
 
 

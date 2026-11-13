@@ -377,6 +377,38 @@ class SpatialExclusionTest(unittest.TestCase):
 
 
 class EmergentOvertakeTest(unittest.TestCase):
+    def test_predictive_corridor_detects_fast_rear_and_allows_nonclosing_car(self):
+        from f1_simulator.domain.track_space import _side_is_clear
+
+        car = CarSpaceState("car", distance_m=100, speed_ms=40)
+        rear = CarSpaceState("rear", distance_m=94, lateral_m=2.4, speed_ms=80)
+        self.assertFalse(_side_is_clear(car, 2.4, [car, rear], 800, 800))
+        rear.speed_ms = 40
+        self.assertTrue(_side_is_clear(car, 2.4, [car, rear], 800, 800))
+        rear.speed_ms = 80
+        rear.distance_m = 54  # Nao alcança a manobra curta.
+        self.assertTrue(_side_is_clear(car, 2.4, [car, rear], 800, 800))
+
+    def test_predictive_corridor_wraps_finish_and_checks_crossed_lane(self):
+        from f1_simulator.domain.track_space import _side_is_clear
+
+        car = CarSpaceState("car", distance_m=802, lateral_m=-3, speed_ms=40)
+        rear = CarSpaceState("rear", distance_m=796, lateral_m=0, speed_ms=80)
+        self.assertFalse(_side_is_clear(car, 3, [car, rear], 2400, 800))
+
+    def test_fast_rear_rejects_candidate_and_uses_other_side(self):
+        from f1_simulator.domain.track_space import _lane_decision
+
+        car = CarSpaceState("car", distance_m=100, speed_ms=40, speed_scale=1.0)
+        leader = CarSpaceState("leader", distance_m=110, speed_ms=40)
+        rear = CarSpaceState("rear", distance_m=94, lateral_m=2.4, speed_ms=80)
+        cars = [car, leader, rear]
+        ceilings = {c.driver_id: ([0.0, 800.0], [40.0, 40.0]) for c in cars}
+        ceilings["car"] = ([0.0, 800.0], [60.0, 60.0])
+        self.assertLess(_lane_decision(car, {c.driver_id: c for c in cars}, cars,
+                                       ceilings, 800, 5, 1.0, 800), 0.0)
+        self.assertEqual(car.overtaking, "leader")
+
     def test_blocked_follower_plans_pass_from_free_track_ceiling(self):
         from f1_simulator.domain.track_space import _lane_decision
 
