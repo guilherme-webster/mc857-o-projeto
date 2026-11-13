@@ -222,6 +222,7 @@ class ParametersViewTest(unittest.TestCase):
 
         loading.abort()
         release.set()
+        self.pump_until(loading, lambda: self.window.current_view is view)
         self.assertIs(self.window.current_view, view)
         self.assertEqual(view.status_message, "Simulação cancelada.")
         self.assertTrue(flags[0]())

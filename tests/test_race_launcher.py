@@ -58,7 +58,7 @@ class FakeClient:
         self.calls.append(("build_grid", size))
         return {"size": size, "seed": 7, "grid": []}
 
-    def run_grid(self, setup: dict, on_lap=None) -> dict:
+    def run_grid(self, setup: dict, on_lap=None, cancelled=None) -> dict:
         self.calls.append(("run_grid", setup["track_id"]))
         self.setups.append(setup)
         if on_lap is not None:
@@ -232,7 +232,7 @@ class LaunchPlanTest(unittest.TestCase):
 
     def test_backend_errors_propagate(self) -> None:
         class FailingClient(FakeClient):
-            def run_grid(self, setup: dict, on_lap=None) -> dict:
+            def run_grid(self, setup: dict, on_lap=None, cancelled=None) -> dict:
                 raise BackendError(422, "track_id desconhecido")
 
         with self.assertRaisesRegex(BackendError, "track_id desconhecido"):

@@ -67,7 +67,7 @@ class FakeClient:
         self.calls.append(("restore_grid", tournament_id))
         return {"seed": 5}
 
-    def run_grid(self, setup: dict, on_lap=None) -> dict:
+    def run_grid(self, setup: dict, on_lap=None, cancelled=None) -> dict:
         self.calls.append(("run_grid", setup))
         if on_lap is not None:
             for lap in range(1, setup["total_laps"] + 1):
