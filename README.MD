@@ -358,8 +358,12 @@ e **Carros** ainda são áreas futuras. Toda etapa nova começa com 69 voltas,
 qualquer que seja a pista (pendência registrada em `docs/progresso.md`).
 
 **Confirmar torneio** usa o grid atual do backend (ou cria um aleatório de 20
-pilotos, se não houver), roda cada etapa em `POST /catalog/grid/run` numa thread
-e abre a reprodução da primeira. Intervalo de voltas da sessão e largada lançada
+pilotos, se não houver), roda cada etapa por `POST /catalog/grid/run/stream`
+numa thread e abre a reprodução da primeira. **Abortar simulação** solicita o
+cancelamento ao backend e aguarda a confirmação: a etapa interrompida não é
+salva; etapas já concluídas permanecem salvas. Se a etapa terminar antes do
+cancelamento, seu resultado é mantido. Frontend e backend precisam ambos
+suportar este contrato de cancelamento. Intervalo de voltas da sessão e largada lançada
 ainda não são suportados pelo motor: viram avisos na tela da corrida.
 
 Ha um unico motor, o 2D com pit lane (ADR 0011): os carros se movem no plano da

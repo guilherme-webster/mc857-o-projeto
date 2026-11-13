@@ -4,7 +4,7 @@ import json
 import queue
 import threading
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 
 from app.schemas.responses import (
@@ -19,8 +19,12 @@ from app.schemas.responses import (
     RunGridRequest,
 )
 from app.services import catalog
+from app.services.cancellation import Cancellation, SimulationCancelled
 
 router = APIRouter(prefix="/catalog", tags=["Catalog"])
+
+_running: dict[str, Cancellation] = {}
+_running_lock = threading.Lock()
 
 
 @router.get("", response_model=CatalogResponse)
@@ -140,8 +144,22 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
+@router.post("/grid/run/stream/{run_id}/cancel")
+def cancel_grid_run(run_id: str) -> dict:
+    """Cancela uma execução ativa; 409 indica resultado já publicado."""
+    with _running_lock:
+        cancellation = _running.get(run_id)
+    if cancellation is None:
+        raise HTTPException(status_code=404, detail="simulation not running")
+    if not cancellation.cancel():
+        raise HTTPException(status_code=409, detail="simulation already completed")
+    return {"cancelled": True}
+
+
 @router.post("/grid/run/stream")
-def run_grid_stream(request: RunGridRequest) -> StreamingResponse:
+def run_grid_stream(
+    request: RunGridRequest, x_run_id: str | None = Header(default=None)
+) -> StreamingResponse:
     """Rode a corrida transmitindo o progresso por volta via SSE.
 
     A simulacao roda numa thread e empurra ``(lap, total)`` numa fila a cada
@@ -159,6 +177,13 @@ def run_grid_stream(request: RunGridRequest) -> StreamingResponse:
         arguments["tournament_seed"] = request.setup.tournament_seed
         arguments["stage_index"] = request.setup.stage_index
 
+    cancellation = Cancellation()
+    if x_run_id is not None:
+        with _running_lock:
+            if x_run_id in _running:
+                raise HTTPException(status_code=409, detail="simulation id already in use")
+            _running[x_run_id] = cancellation
+
     events: queue.Queue = queue.Queue()
     _DONE = object()
 
@@ -167,21 +192,32 @@ def run_grid_stream(request: RunGridRequest) -> StreamingResponse:
 
     def worker() -> None:
         try:
-            result = catalog.run_grid(on_progress=on_progress, **arguments)
+            result = catalog.run_grid(
+                on_progress=on_progress, cancellation=cancellation, **arguments
+            )
+        except SimulationCancelled:
+            events.put(("cancelled", {}))
         except Exception as error:  # a borda traduz qualquer falha em evento
             events.put(("error", {"detail": str(error)}))
         else:
             events.put(("done", result))
         finally:
+            if x_run_id is not None:
+                with _running_lock:
+                    _running.pop(x_run_id, None)
             events.put((_DONE, None))
 
     def stream():
         thread = threading.Thread(target=worker, name="race-sse", daemon=True)
         thread.start()
-        while True:
-            kind, data = events.get()
-            if kind is _DONE:
-                break
-            yield _sse(kind, data)
+        try:
+            yield _sse("started", {})
+            while True:
+                kind, data = events.get()
+                if kind is _DONE:
+                    break
+                yield _sse(kind, data)
+        finally:
+            cancellation.cancel()
 
     return StreamingResponse(stream(), media_type="text/event-stream")

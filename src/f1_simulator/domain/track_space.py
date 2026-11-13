@@ -575,9 +575,14 @@ def integrate_field(
     pit_parameters: PitLaneParameters = PitLaneParameters(),
     on_pit_event=None,
     on_motion=None,
+    check_cancelled=None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
+
+    ``check_cancelled``, quando fornecido, e chamado a cada passo e pode
+    interromper o calculo por excecao; o integrador nao conhece transporte ou
+    persistencia e nao devolve uma corrida parcial como resultado completo.
 
     A cada passo, um carro preso atras de outro mais lento na sua faixa tenta se
     deslocar para um lado livre e passar; a passagem acontece pela posicao, nao
@@ -652,6 +657,8 @@ def integrate_field(
     while steps < max_steps and any(
         c.distance_m < race_distance and not c.retired for c in cars
     ):
+        if check_cancelled is not None:
+            check_cancelled()
         time_s += dt_s
         by_distance = sorted((c for c in cars if c.pit_state is None), key=lambda c: c.distance_m)
         for car, physics, cum, ceiling in step_plan:

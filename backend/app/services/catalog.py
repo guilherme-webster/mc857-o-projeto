@@ -421,6 +421,7 @@ def run_grid(
     tournament_seed=None,
     stage_index=0,
     on_progress=None,
+    cancellation=None,
 ):
     from f1_simulator.application.run_grid_simulation import (
         RaceSetup,
@@ -477,6 +478,7 @@ def run_grid(
             team_presets=team_presets,
             team_preset_disclaimer=team_preset_disclaimer,
             on_progress=on_progress,
+            **({"check_cancelled": cancellation.check} if cancellation else {}),
         )
     except ValueError as error:
         raise HTTPException(
@@ -499,8 +501,13 @@ def run_grid(
         result["race_stream_id"] = (
             f"{TOURNAMENT_STAGE_STREAM_VERSION}:{stage_index}"
         )
-    _write_json(CURRENT_RACE_JSON, result)
-    _persist_saved_race(result, _default_race_name(result))
+    # A decisao de cancelar e as duas gravacoes compartilham o mesmo lock.
+    # Uma corrida cancelada nunca chega a substituir o resultado anterior.
+    from contextlib import nullcontext
+
+    with cancellation.commit() if cancellation else nullcontext():
+        _write_json(CURRENT_RACE_JSON, result)
+        _persist_saved_race(result, _default_race_name(result))
     return result
 
 
