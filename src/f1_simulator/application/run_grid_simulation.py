@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from math import isfinite
 from typing import Literal
 
@@ -38,9 +38,12 @@ from f1_simulator.domain.strategy import (
     draw_weather_switch_bias,
 )
 from f1_simulator.domain.track_condition import (
+    ASSUMED_CIRCUIT_TEMPERATURES_C,
     ASSUMED_TRACK_CONDITION,
+    CIRCUIT_TEMPERATURE_VERSION,
     GRIP_LAP_TIME_EXPONENT,
     TrackState,
+    circuit_dry_temperature_c,
     simulate_track_conditions,
 )
 from f1_simulator.domain.track_geometry import TrackGeometry
@@ -166,11 +169,10 @@ def _strategy_offset(rng: RandomSource, driver_id: str) -> int:
 
 
 def _track_states(setup: RaceSetup, reference_lap_time_ms: float) -> tuple[TrackState, ...]:
-    """Estado da pista em cada volta: agua, temperatura e borracha (ADR 0015).
+    """Preve apenas a primeira volta para escolher o composto na largada.
 
-    Calculado sempre, inclusive em corrida seca: a borracha evolui com o
-    pelotao. A duracao da volta, que regula a secagem por minuto, e a volta de
-    referencia do circuito; a precisao por carro nao importa para a pista.
+    O estado usado durante a corrida e integrado pelo motor pelo tempo real
+    simulado; esta previsao nao e usada como historico nem como estado efetivo.
     """
 
     conditions = (
@@ -179,7 +181,13 @@ def _track_states(setup: RaceSetup, reference_lap_time_ms: float) -> tuple[Track
         else (RainLevel.DRY,) * setup.total_laps
     )
     return simulate_track_conditions(
-        conditions, lap_minutes=reference_lap_time_ms / 60_000.0
+        conditions[:1],
+        lap_minutes=reference_lap_time_ms / 60_000.0,
+        initial_track_temp_c=circuit_dry_temperature_c(setup.track_id),
+        parameters=replace(
+            ASSUMED_TRACK_CONDITION,
+            dry_track_temp_c=circuit_dry_temperature_c(setup.track_id),
+        ),
     )
 
 
@@ -265,7 +273,11 @@ def _run_2d(
         track_params=track,
         model_parameters=parameters,
         fuel=fuel_plan,
-        track_states=track_states,
+        track_rain=(
+            expand_segments(setup.weather, setup.total_laps)
+            if setup.weather else (RainLevel.DRY,) * setup.total_laps
+        ),
+        dry_track_temp_c=circuit_dry_temperature_c(setup.track_id),
         reliability_by_id=reliability_by_id,
         mechanical_hazard_per_lap=parameters.mechanical_hazard_per_lap(),
         race_control=race_control,
@@ -277,7 +289,6 @@ def _run_2d(
         geometry, grid, attributes, car_physics_by_driver
     )
     result["setup"] = _setup_echo(setup)
-    result["track_conditions"] = [state.as_dict() for state in track_states]
     result.setdefault("assumptions", []).extend(
         [_physical_lap_assumption(), _track_condition_assumption(setup)]
     )
@@ -756,8 +767,14 @@ def _track_condition_assumption(setup: RaceSetup) -> dict:
             "damp_grip": condition.damp_grip,
             "saturated_grip": condition.saturated_grip,
             "initial_rubber": condition.initial_rubber,
+            "rubber_gain_per_lap": condition.rubber_gain_per_lap,
+            "traffic_reference_cars": condition.traffic_reference_cars,
+            "rubber_wash_per_lap_saturated": condition.rubber_wash_per_lap_saturated,
             "green_track_grip_loss": condition.green_track_grip_loss,
-            "dry_track_temp_c": condition.dry_track_temp_c,
+            "dry_track_temp_c": circuit_dry_temperature_c(setup.track_id),
+            "temperature_parameter_version": CIRCUIT_TEMPERATURE_VERSION,
+            "temperature_source_kind": "assumed",
+            "temperature_fallback": setup.track_id not in ASSUMED_CIRCUIT_TEMPERATURES_C,
             "no_geometry_lap_time_exponent": GRIP_LAP_TIME_EXPONENT,
             "source_kind": condition.source_kind,
             "parameter_version": condition.parameter_version,
