@@ -60,7 +60,7 @@ def championship_standings(
     scoring: Scoring = "f1",
     tiebreak: Tiebreak = "best_average",
 ) -> list[ChampionshipRow]:
-    """Tabela do campeonato apos todas as ``stages``, na ordem recebida."""
+    """Tabela das etapas recebidas; cada etapa deve ter ao menos um resultado."""
 
     if not stages:
         raise ValueError("o campeonato precisa de pelo menos uma etapa")
@@ -72,6 +72,8 @@ def championship_standings(
     by_stage: list[Mapping[str, StageResult]] = []
     drivers: list[str] = []
     for index, stage in enumerate(stages, start=1):
+        if not stage:
+            raise ValueError(f"etapa {index}: etapa vazia")
         results = {result.driver_id: result for result in stage}
         if len(results) != len(stage):
             raise ValueError(f"etapa {index}: piloto repetido")

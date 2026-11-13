@@ -82,6 +82,12 @@ class ChampionshipContractTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             championship_standings([])
 
+    def test_rejects_empty_stage_even_among_valid_stages(self) -> None:
+        for stages, index in (([[]], 1), ([stage("A"), []], 2)):
+            with self.subTest(stages=stages):
+                with self.assertRaisesRegex(ValueError, f"etapa {index}: etapa vazia"):
+                    championship_standings(stages)
+
     def test_rejects_inconsistent_positions(self) -> None:
         with self.assertRaisesRegex(ValueError, "posicoes"):
             championship_standings(
