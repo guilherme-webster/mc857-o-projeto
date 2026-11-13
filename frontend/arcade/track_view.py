@@ -160,7 +160,7 @@ _BREAKDOWN_LABELS = {
 }
 # Painel flutuante da decomposicao: um por piloto, arrastavel e fechavel.
 _PANEL_W = 300.0
-_PANEL_H = 128.0
+_PANEL_H = 252.0
 _PANEL_TITLE_H = 20.0  # faixa de titulo (arrastar aqui)
 _PANEL_CLOSE = 16.0  # lado do botao de fechar
 _PANEL_BG = (22, 30, 40)
@@ -572,8 +572,27 @@ class TrackView(arcade.View):
             "×", 0, 0, PRIMARY_TEXT_COLOR, 13, bold=True,
             anchor_x="center", anchor_y="center",
         )
+        # Secao de contexto do painel: velocidade base e atributos do piloto.
+        # Cada linha e um par (rotulo a esquerda, valor a direita) para alinhar.
+        self._breakdown_context = [
+            (
+                arcade.Text("", 0, 0, _HEADER_COLOR, 10, anchor_y="center"),
+                arcade.Text(
+                    "", 0, 0, PRIMARY_TEXT_COLOR, 10,
+                    anchor_x="right", anchor_y="center",
+                ),
+            )
+            for _ in range(7)
+        ]
+        # Legenda das fatias: rotulo a esquerda, valor % alinhado a direita.
         self._breakdown_legend = {
-            key: arcade.Text("", 0, 0, PRIMARY_TEXT_COLOR, 10, font_name="monospace")
+            key: (
+                arcade.Text("", 0, 0, PRIMARY_TEXT_COLOR, 10, anchor_y="center"),
+                arcade.Text(
+                    "", 0, 0, PRIMARY_TEXT_COLOR, 10,
+                    anchor_x="right", anchor_y="center",
+                ),
+            )
             for key in (
                 "effective",
                 "transient",
@@ -746,14 +765,15 @@ class TrackView(arcade.View):
             if panel.driver_id == driver_id:
                 self._breakdown_panels.remove(panel)
                 return
-        # Cascata a partir do canto inferior direito da area util.
-        base_x = self.window.width - _PANEL_W - MARGIN
-        base_y = 60.0
+        # Cascata a partir do canto inferior direito, sempre dentro da janela.
         shift = (self._panel_opened_count % 6) * _PANEL_CASCADE
         self._panel_opened_count += 1
-        self._breakdown_panels.append(
-            _BreakdownPanel(driver_id, base_x - shift, base_y + shift)
-        )
+        max_x = max(0.0, self.window.width - _PANEL_W)
+        max_y = max(0.0, self.window.height - _PANEL_H)
+        base_x = min(self.window.width - _PANEL_W - MARGIN, max_x)
+        x = max(0.0, min(base_x - shift, max_x))
+        y = max(0.0, min(20.0 + shift, max_y))
+        self._breakdown_panels.append(_BreakdownPanel(driver_id, x, y))
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
         panel = self._dragging_panel
@@ -1185,20 +1205,75 @@ class TrackView(arcade.View):
         self._draw_breakdown_bar(breakdown, left, takes_y, bar_w, bar_h, positive=True)
         self._draw_breakdown_bar(breakdown, left, gives_y, bar_w, bar_h, positive=False)
 
+        col_w = bar_w / 2
+        row_h = 15.0
         for i, key in enumerate(self._BREAKDOWN_ORDER):
             fraction = self._breakdown_fraction(breakdown, key)
-            legend = self._breakdown_legend[key]
-            legend.text = f"{_BREAKDOWN_LABELS[key]:>11} {-fraction * 100:+5.1f}%"
-            legend.color = (
+            label, value = self._breakdown_legend[key]
+            color = (
                 _BREAKDOWN_EFFECTIVE_COLOR
                 if fraction < 0
                 else self._breakdown_slice_color(key)
             )
             col = i % 2
             rown = i // 2
-            legend.x = left + col * (bar_w / 2)
-            legend.y = gives_y - 14 - rown * 13
-            legend.draw()
+            x0 = left + col * col_w
+            y = gives_y - 16 - rown * row_h
+            label.text = _BREAKDOWN_LABELS[key]
+            label.color = color
+            label.x = x0
+            label.y = y
+            label.draw()
+            value.text = f"{-fraction * 100:+.1f}%"
+            value.color = color
+            value.x = x0 + col_w - 10
+            value.y = y
+            value.draw()
+
+        self._draw_breakdown_context(panel, did, left, gives_y - 16 - 3 * row_h)
+
+    def _draw_breakdown_context(self, panel, did, bar_w_left, top_y) -> None:
+        """Seção de contexto: velocidade base (v_max) e atributos do piloto.
+
+        Os atributos moldam a velocidade BASE (ritmo, compostura, agressividade
+        entram no envelope fisico; por isso aparecem aqui como contexto, nao
+        como fatia das barras, que ja sao relativas a essa base). Consistencia
+        e gestao de pneu atuam no ruido e na degradacao, nao no pico.
+        """
+
+        left = panel.x + 8
+        right = panel.x + _PANEL_W - 8
+        sep_y = top_y - 8
+        arcade.draw_line(left, sep_y, right, sep_y, _PANEL_BORDER, 1)
+
+        v_max = self._playback.driver_v_max_kmh(did)
+        attrs = self._playback.driver_attributes(did)
+        rows = []  # (rotulo, valor)
+        if v_max is not None:
+            rows.append(("velocidade base", f"{v_max:.0f} km/h"))
+        if attrs is not None:
+            rows.append(("arquétipo", str(attrs.get("archetype", "-"))))
+            rows.append(("ritmo", f"{attrs.get('pace_offset_pct', 0.0):+.2f}%"))
+            rows.append(("compostura", f"{attrs.get('composure', 1.0):.2f}"))
+            rows.append(("agressividade", f"{attrs.get('aggression', 1.0):.2f}"))
+            rows.append(("consistência", f"{attrs.get('consistency_factor', 1.0):.2f}"))
+            rows.append(("gestão de pneu", f"{attrs.get('tyre_management_factor', 1.0):.2f}"))
+        else:
+            rows.append(("sem atributos de piloto", ""))
+
+        for i, (lbl, val) in enumerate(rows):
+            if i >= len(self._breakdown_context):
+                break
+            label, value = self._breakdown_context[i]
+            y = sep_y - 14 - i * 15
+            label.text = lbl
+            label.x = left
+            label.y = y
+            label.draw()
+            value.text = val
+            value.x = right
+            value.y = y
+            value.draw()
 
     @staticmethod
     def _breakdown_slice_color(key: str) -> tuple:

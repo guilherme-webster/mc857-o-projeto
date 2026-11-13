@@ -447,6 +447,16 @@ class RacePlayback:
             lap=lap,
         )
 
+    def driver_v_max_kmh(self, driver_id: str) -> float | None:
+        """Velocidade base (teto de reta) do piloto; ``None`` sem dados."""
+
+        return self._speed_breakdown.v_max_kmh(driver_id)
+
+    def driver_attributes(self, driver_id: str) -> Mapping[str, object] | None:
+        """Atributos do piloto para o painel; ``None`` se a corrida nao os traz."""
+
+        return self._speed_breakdown.attributes(driver_id)
+
     def on_track(self, t_ms: float) -> list[tuple[str, float]]:
         """``(driver_id, voltas)`` dos carros que ainda estao na pista."""
 
