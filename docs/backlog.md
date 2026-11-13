@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-13T22:26:11Z
-- **Abertas:** 36
-- **Fechadas:** 66
+- **Ultima atividade registrada:** 2026-11-13T22:28:39Z
+- **Abertas:** 34
+- **Fechadas:** 68
 
 ## Issues abertas
 
@@ -110,38 +110,6 @@ Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um nov
 <summary>Historico de estado</summary>
 
 - 2026-08-28T23:04:02Z — label adicionada: História por @Jmvjr
-
-</details>
-
-### [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** Épico
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6), [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7), [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8), [#15 — Simulação puxa dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/15)
-- **Criada:** 2026-08-28T23:04:57Z
-- **Atualizada:** 2026-08-28T23:12:35Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Implementar os componentes necessários para computar a simulação em si, assim como mostrá-la ao usuário.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:24:36Z — sub-issue adicionada: #15 por @guilherme-webster
-- 2026-08-28T23:06:40Z — sub-issue adicionada: #8 por @Jmvjr
-- 2026-08-28T23:06:17Z — sub-issue adicionada: #7 por @Jmvjr
-- 2026-08-28T23:06:05Z — sub-issue adicionada: #6 por @Jmvjr
-- 2026-08-28T23:04:58Z — label adicionada: Épico por @Jmvjr
 
 </details>
 
@@ -1224,13 +1192,22 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
 - **Sub-issues:** —
 - **Criada:** 2026-11-08T20:48:33Z
-- **Atualizada:** 2026-11-08T20:51:28Z
+- **Atualizada:** 2026-11-13T22:27:50Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:27:50Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/141#issuecomment-6866484644)
+
+<pre>A parcela percentual de pneus varia com o limite de velocidade do trecho e com outras penalidades, mesmo sem diminuição do desgaste. Testes foram preparados para documentar esse comportamento; como a issue não contém a reprodução original, ainda não é possível afirmar que ela explica o caso observado. Próximo passo: obter um cenário reproduzível antes de fechar.</pre>
 
 </details>
 
@@ -1527,48 +1504,6 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 
 </details>
 
-### [#171 — Botão &quot;abortar simulação&quot; não aborta a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/171)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
-- **Labels:** bug, Task
-- **Milestone:** —
-- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
-- **Sub-issues:** —
-- **Criada:** 2026-11-13T17:37:27Z
-- **Atualizada:** 2026-11-13T22:23:49Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Mesmo &quot;abortando a simulação&quot; ela aparece em corridas salvas após um tempo
-
-&lt;img width=&quot;136&quot; height=&quot;46&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/bff4e4b1-3a8f-4979-9527-6fe398a50e51&quot; /&gt;
-
-</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@Jmvjr em 2026-11-13T22:23:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/171#issuecomment-6866407111)
-
-<pre>O defeito foi reproduzido: a etapa continuava e era salva após o cancelamento. A correção cooperativa e a sincronização com a persistência estão em revisão; 89 testes direcionados, incluindo integração HTTP e frontend, e Ruff passaram. A suíte completa mantém cinco falhas preexistentes na develop.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-11-13T18:00:39Z — label adicionada: bug por @Gustavo-Jun-Tsuji
-- 2026-11-13T17:37:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
-
-</details>
-
 ### [#172 — Tela Inicial: Caminho para telas de Clima e etc sumiu](https://github.com/guilherme-webster/mc857-o-projeto/issues/172)
 
 - **Estado:** aberta
@@ -1779,6 +1714,39 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - 2026-11-08T20:27:38Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:27:18Z — fechada por @Gustavo-Jun-Tsuji
 - 2026-08-28T23:04:40Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#5 — Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/5)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#6 — Tela de simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/6), [#7 — Tela de loading](https://github.com/guilherme-webster/mc857-o-projeto/issues/7), [#8 — Rodar Simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/8), [#15 — Simulação puxa dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/15)
+- **Criada:** 2026-08-28T23:04:57Z
+- **Atualizada:** 2026-11-13T22:28:37Z
+- **Fechada:** 2026-11-13T22:28:37Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Implementar os componentes necessários para computar a simulação em si, assim como mostrá-la ao usuário.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T22:28:37Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:24:36Z — sub-issue adicionada: #15 por @guilherme-webster
+- 2026-08-28T23:06:40Z — sub-issue adicionada: #8 por @Jmvjr
+- 2026-08-28T23:06:17Z — sub-issue adicionada: #7 por @Jmvjr
+- 2026-08-28T23:06:05Z — sub-issue adicionada: #6 por @Jmvjr
+- 2026-08-28T23:04:58Z — label adicionada: Épico por @Jmvjr
 
 </details>
 
@@ -4832,5 +4800,52 @@ Pendencias: `docs/progresso.md` ainda guarda handoffs de setembro/outubro (#40/#
 
 - 2026-11-12T21:58:12Z — fechada por @guilherme-webster
 - 2026-11-12T21:08:34Z — label adicionada: documentation por @guilherme-webster
+
+</details>
+
+### [#171 — Botão &quot;abortar simulação&quot; não aborta a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/171)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** —
+- **Labels:** bug, Task
+- **Milestone:** —
+- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
+- **Sub-issues:** —
+- **Criada:** 2026-11-13T17:37:27Z
+- **Atualizada:** 2026-11-13T22:28:25Z
+- **Fechada:** 2026-11-13T22:28:25Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Mesmo &quot;abortando a simulação&quot; ela aparece em corridas salvas após um tempo
+
+&lt;img width=&quot;136&quot; height=&quot;46&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/bff4e4b1-3a8f-4979-9527-6fe398a50e51&quot; /&gt;
+
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:23:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/171#issuecomment-6866407111)
+
+<pre>O defeito foi reproduzido: a etapa continuava e era salva após o cancelamento. A correção cooperativa e a sincronização com a persistência estão em revisão; 89 testes direcionados, incluindo integração HTTP e frontend, e Ruff passaram. A suíte completa mantém cinco falhas preexistentes na develop.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:28:24Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/171#issuecomment-6866495076)
+
+<pre>Correção integrada à develop pelo PR #180. Verificações: suíte local com 741 testes (42 ignorados, 2 falhas esperadas), testes direcionados incluindo frontend e integração HTTP, e check unittest do GitHub aprovado. Cancelamentos aceitos interrompem a etapa antes de salvar; se a gravação já começou, o resultado é mantido. Sem bloqueios pendentes para o cenário da issue.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T22:28:25Z — fechada por @Jmvjr
+- 2026-11-13T18:00:39Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T17:37:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
 
 </details>
