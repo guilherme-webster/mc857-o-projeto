@@ -876,7 +876,6 @@ def simulate_2d_race(
                 )
                 return
         tyre_by_id[did] = tyre_by_id[did].aged()
-        _apply_scale(car, lap + 1)
 
         # Retrato do estado ao fim desta volta (pneu ja envelhecido ou resetado
         # pela eventual parada), para o history nao repetir o estado final.
@@ -906,6 +905,10 @@ def simulate_2d_race(
                     retired_seen.add(other.driver_id)
                     incidents.append(Incident(lap, "contact", (other.driver_id,)))
             _advance_control(lap, incidents)
+        # O primeiro carro a cruzar a linha tambem deve receber o estado que
+        # acabou de ser definido para a proxima volta. Aplicar antes de avancar
+        # o controle deixaria esse carro em verde durante SC/VSC (e vice-versa).
+        _apply_scale(car, lap + 1)
         _request_pit(car, lap + 1)
 
     # Fator inicial da volta 1 (pneu novo, tanque cheio, clima da volta 1).
