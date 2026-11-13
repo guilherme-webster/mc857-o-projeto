@@ -306,6 +306,7 @@ def simulate_2d_race(
     usage_parameters: DynamicUsageParameters = DynamicUsageParameters(),
     pit_planning: SpatialPitPlanningParameters = SpatialPitPlanningParameters(),
     on_progress: Callable[[int, int], None] | None = None,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> dict:
     """Simule a corrida no motor 2D e devolva ``history`` + ``classification``.
 
@@ -872,6 +873,7 @@ def simulate_2d_race(
         pit_parameters=pit_parameters,
         on_pit_event=_pit_event,
         on_motion=_on_motion,
+        check_cancelled=check_cancelled,
     )
 
     per_car: dict[str, list[float]] = {}
