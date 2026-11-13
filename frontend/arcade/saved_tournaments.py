@@ -44,7 +44,8 @@ class TournamentClient(Protocol):
     def restore_grid(self, tournament_id: str) -> dict: ...
 
     def run_grid(
-        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None,
+        cancelled: Callable[[], bool] = lambda: False,
     ) -> dict: ...
 
     def fetch_track(self, circuit_id: str) -> dict: ...
@@ -136,8 +137,8 @@ def rerun(
     ``progress`` recebe frases de status; ``stage_progress`` recebe o mesmo
     estado estruturado (etapa e volta) que ``launch_plan`` publica, para a tela
     de carregamento. ``cancelled`` e consultado antes de cada etapa: se
-    disparar, levanta ``LaunchCancelled``. A etapa em curso nao e interrompida
-    (o backend ja a recebeu) e o grid ja restaurado continua sendo o atual.
+    disparar, interrompe a etapa em curso e levanta ``LaunchCancelled``.
+    O grid ja restaurado continua sendo o atual.
     """
 
     restoring = "Restaurando o grid salvo…"
@@ -182,7 +183,7 @@ def rerun(
         # O setup salvo e reenviado (sem o campo legado ``engine``, ver
         # ``_rerun_setup``): e ele, com a semente do torneio e o indice da
         # etapa, que faz a reexecucao reproduzir a corrida salva.
-        race = client.run_grid(_rerun_setup(stage), on_lap)
+        race = client.run_grid(_rerun_setup(stage), on_lap, cancelled)
         races.append(LaunchedRace(planned, race, client.fetch_track(stage["circuit_id"])))
     return LaunchOutcome(
         tuple(races),
@@ -225,10 +226,15 @@ class HttpTournamentClient:
         return track_client.restore_tournament_grid(tournament_id)
 
     def run_grid(
-        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None,
+        cancelled: Callable[[], bool] = lambda: False,
     ) -> dict:
-        # SSE por volta; cai no POST sincrono se o backend nao tem a rota (404).
-        return track_client.run_grid_stream(setup, on_progress=on_lap)
+        try:
+            return track_client.run_grid_stream(
+                setup, on_progress=on_lap, cancelled=cancelled
+            )
+        except track_client.SimulationCancelled as error:
+            raise LaunchCancelled() from error
 
     def fetch_track(self, circuit_id: str) -> dict:
         return track_client.fetch_track(circuit_id)

@@ -53,7 +53,8 @@ class RaceClient(Protocol):
     def build_grid(self, size: int) -> dict: ...
 
     def run_grid(
-        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None,
+        cancelled: Callable[[], bool] = lambda: False,
     ) -> dict: ...
 
     def fetch_track(self, circuit_id: str) -> dict: ...
@@ -162,10 +163,8 @@ def launch_plan(
     """Garanta um grid e rode as etapas na ordem do plano.
 
     Erros do backend propagam para quem chamou, com a mensagem original; as
-    etapas ja rodadas continuam salvas no backend. ``cancelled`` e consultado
-    antes de cada etapa: se disparar, levanta ``LaunchCancelled`` e nenhuma
-    etapa nova e pedida. A etapa em curso nao pode ser interrompida, porque o
-    backend ja a recebeu.
+    etapas ja rodadas continuam salvas no backend. O cancelamento interrompe
+    cooperativamente a etapa em curso e impede o inicio das seguintes.
     """
 
     progress(LaunchProgress("Conferindo o grid no backend…"))
@@ -214,6 +213,7 @@ def launch_plan(
                 stage_index=stage_index,
             ),
             on_lap,
+            cancelled,
         )
         track = client.fetch_track(planned.circuit_id)
         launched.append(LaunchedRace(planned, race, track))
@@ -258,9 +258,15 @@ class HttpRaceClient:
         return track_client.build_grid(size)
 
     def run_grid(
-        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None
+        self, setup: dict, on_lap: Callable[[int, int], None] = lambda lap, total: None,
+        cancelled: Callable[[], bool] = lambda: False,
     ) -> dict:
-        return track_client.run_grid_stream(setup, on_progress=on_lap)
+        try:
+            return track_client.run_grid_stream(
+                setup, on_progress=on_lap, cancelled=cancelled
+            )
+        except track_client.SimulationCancelled as error:
+            raise LaunchCancelled() from error
 
     def fetch_track(self, circuit_id: str) -> dict:
         return track_client.fetch_track(circuit_id)
