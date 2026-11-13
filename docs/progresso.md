@@ -559,20 +559,3 @@ interface.
   Commits locais, sem push nem comentário no GitHub; levar este registro à
   #2, #6, #18, #21 e #71.
 
-## Handoff temporário — issue #97 (2026-11-13)
-
-No worktree isolado `codex/issue-97-fuel-SpkiYB`, o 2D usa a estratégia de
-combustível e abastece durante o serviço de pneus, com vazão e capacidade
-limitadas, queima em marcha lenta e eventos/trajectórias auditáveis. Cenários
-sem autorização continuam sem abastecimento. O agente principal deve revisar,
-integrar e registrar este andamento na issue #97; não houve alteração no GitHub.
-
-Verificações: testes novos de conservação, limite, duração, reprodução e regra
-sem reabastecimento passam; Ruff passou. A suíte completa executou 734 testes,
-com 42 ignorados, uma falha esperada e as mesmas cinco falhas da base: serviço e
-interpolação da trajetória, snapshot de combustível, corrida limpa e causa de
-abandono. O snapshot usa instante interpolado e estado ao fim do passo; permanece
-pendente corrigir a divergência, sem afrouxar o teste. Também ficam pendentes
-lift-and-coast, carga inicial estratégica por piloto e rede de segurança para
-estratégias explícitas; a estimativa nominal de queima não garante chegada aos
-boxes. Próximo passo: revisar os limites e integrar os commits locais.
