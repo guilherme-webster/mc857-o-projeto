@@ -559,26 +559,3 @@ interface.
   Commits locais, sem push nem comentário no GitHub; levar este registro à
   #2, #6, #18, #21 e #71.
 
-## Handoff temporário — issue #141
-
-- Issue aberta, sem responsável ou dependências bloqueadoras, filha da #139;
-  não há descrição, reprodução ou critérios além do título. Investigação no
-  worktree isolado sobre `origin/develop` 419656d; nenhuma alteração no motor.
-- A parcela mostrada pelo painel é uma fração da velocidade máxima: ela escala
-  com o limite físico do trecho. Uma curva reduz essa parcela e uma reta a
-  aumenta mesmo com a mesma penalidade em ms e sem parada. Outros fatores também
-  alteram a conversão não linear de tempo em velocidade. Além disso, o modelo
-  de pneus de chuva varia o multiplicador de desgaste com a água na pista.
-  Assim, oscilar em porcentagem não prova redução do desgaste nem um bug.
-  Sem reprodução original, não é possível afirmar que essa foi sua causa.
-- `tests/test_speed_breakdown.py` cobre a variação por posição e por outra
-  penalidade com o custo do pneu constante; teste existente verifica o custo em
-  ms entre paradas no cenário seco. Python 3.12: 8 testes focados passaram;
-  `ruff check .` passou. Suíte completa: 734 testes, 5 falhas preexistentes,
-  42 ignorados e 2 expected failures: `test_pit_service_keeps_wear_constant_and_fuel_burns_only_at_idle`,
-  `test_frontend_reads_exact_stopped_progress_and_pit_interval`,
-  `test_fuel_at_each_lap_end_matches_the_snapshot`,
-  `test_clean_race_has_everybody_finish` e `test_retirement_has_cause_and_lap`.
-- Próximo passo: agente principal integrar ou revisar os testes e atualizar a
-  #141 com estes resultados; obter cenário original caso se queira confirmar
-  a causa observada. Nenhum comentário ou fechamento foi feito no GitHub.
