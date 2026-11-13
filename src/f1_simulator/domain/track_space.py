@@ -160,6 +160,14 @@ class TrackSpace:
         cy = a.cy + (b.cy - a.cy) * f
         nx = a.nx + (b.nx - a.nx) * f
         ny = a.ny + (b.ny - a.ny) * f
+        # Interpolar normais unitarias reduz seu modulo nas curvas. Sem esta
+        # normalizacao, um deslocamento em metros encolhe em relacao ao frontend
+        # e a projecao usada na exclusao, embora o eixo de distancia seja igual.
+        norm = hypot(nx, ny)
+        if norm <= 1e-12:
+            nx, ny = a.nx, a.ny
+        else:
+            nx, ny = nx / norm, ny / norm
         offset = lateral_m * self.xy_per_metre
         return (cx + nx * offset, cy + ny * offset)
 

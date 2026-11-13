@@ -118,6 +118,19 @@ class TrackSpaceGeometryTest(unittest.TestCase):
         moved = (offset[0] - center[0]) ** 2 + (offset[1] - center[1]) ** 2
         self.assertGreater(moved, 0.0)
 
+    def test_interpolated_normal_preserves_offset_in_metres(self):
+        from f1_simulator.domain.track_space import _projected_rectangle
+
+        sp = build_track_space(_square(), width_m=12.0)
+        car = CarSpaceState("d", lateral_m=3.0)
+        for distance in (25.0, 50.0, 75.0):
+            center = sp.position(distance, 0.0)
+            offset = sp.position(distance, 3.0)
+            self.assertAlmostEqual(math.dist(center, offset) / sp.xy_per_metre, 3.0)
+            x, y, _, _ = _projected_rectangle(sp, car, distance)
+            self.assertAlmostEqual(offset[0], x * sp.xy_per_metre)
+            self.assertAlmostEqual(offset[1], y * sp.xy_per_metre)
+
     def test_usable_width_excludes_car_body(self):
         sp = build_track_space(_square(), width_m=12.0)
         bounds = sp.bounds
