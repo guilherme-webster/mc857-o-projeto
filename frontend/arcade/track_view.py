@@ -31,6 +31,19 @@ CAR_RADIUS = 7
 # E so apresentacao: a largura fisica real vem de ``track_space_2d.width_m``.
 _TRACK_LANE_MIN_PX = 14.0
 _TRACK_LANE_MAX_PX = 34.0
+
+
+def _car_half_size_px(length_m: float, width_m: float, pixels_per_m: float) -> tuple[float, float]:
+    """Preserve a proporção física do carro, garantindo apenas um pixel visível.
+
+    Um mínimo fixo independente do zoom fazia os retângulos parecerem em
+    contato mesmo quando o motor mantinha espaço entre eles. A ampliação
+    uniforme só atua quando a largura seria menor que um pixel.
+    """
+    length_px = length_m * pixels_per_m
+    width_px = width_m * pixels_per_m
+    scale = max(1.0, 1.0 / max(width_px, 1e-9))
+    return length_px * scale / 2.0, width_px * scale / 2.0
 # Linha de chegada/largada: onde a contagem de voltas recomeca (distancia zero).
 _START_LINE_COLOR = (240, 240, 240)
 _START_LINE_WIDTH = 3.0
@@ -385,7 +398,7 @@ class TrackView(arcade.View):
         self._trajectories = race.get("trajectories_2d") or {}
         self._space_2d = race.get("track_space_2d") or {}
         self._is_2d = bool(self._trajectories and self._space_2d)
-        self._normals = _unit_normals(self._unit) if self._is_2d else []
+        self._normals = []
         # Cache da faixa 2D: a geometria (bordas + asfalto) vai para a GPU uma
         # vez por tamanho de janela, num ShapeElementList desenhado em batch.
         # Recalcular e re-triangular a faixa (centenas de vertices) a cada frame
@@ -680,7 +693,12 @@ class TrackView(arcade.View):
         self._pit_screen = [
             (off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._pit_unit
         ]
-        return [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._unit]
+        screen = [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._unit]
+        if self._is_2d:
+            # A geometria normalizada tem eixos escalados de modo independente.
+            # A normal só é perpendicular no espaço projetado da janela.
+            self._normals = _unit_normals(screen)
+        return screen
 
     def _current_lap(self) -> int:
         return self._playback.current_lap(self._elapsed)
@@ -1060,8 +1078,7 @@ class TrackView(arcade.View):
         lane_px = self._lane_px
         length_m = self._space_2d.get("car_length_m", 5.0)
         width_m = self._space_2d.get("car_width_m", 2.0)
-        half_len = max(4.0, length_m * lane_px / 2.0)
-        half_wid = max(2.5, width_m * lane_px / 2.0)
+        half_len, half_wid = _car_half_size_px(length_m, width_m, lane_px)
         self._speed_kmh = {}
         for driver_id, laps in self._playback.on_track(self._elapsed):
             spatial = self._spatial_at(driver_id, self._elapsed)
@@ -1097,7 +1114,8 @@ class TrackView(arcade.View):
             ]
             color = self._color_by_driver[driver_id]
             arcade.draw_polygon_filled(corners, color)
-            arcade.draw_polygon_outline(corners, (12, 14, 18), 1.0)
+            if half_wid >= 1.5:
+                arcade.draw_polygon_outline(corners, (12, 14, 18), 1.0)
 
     def on_draw(self) -> None:
         self.clear()
