@@ -558,3 +558,18 @@ interface.
 - Pendente: limitações de pneus/severidade (#40) e ponto de volta rápida.
   Commits locais, sem push nem comentário no GitHub; levar este registro à
   #2, #6, #18, #21 e #71.
+
+### Issue #175 — correcao em worktree isolado (2026-11-13)
+
+A issue permanece aberta e precisa receber esta atualizacao pelo agente
+principal. O commit do colega `9df786e` foi cherry-picked com autoria
+preservada; a reproducao recebeu tangentes limitadas para trajetorias
+monotonas, com regressao motor → exportacao → frontend. A cadencia de
+amostragem foi corrigida para tolerar erro de ponto flutuante. A taxa de
+contato foi identificada na saida e na documentacao como hipotese versionada,
+nao calibracao. A avaliacao em 20 carros, tres pistas e tres sementes e suas
+limitacoes estao em `docs/contato-e-reproducao-espacial.md`.
+
+Proximo passo: revisao central e integracao unica dos commits; validar visualmente
+a reproducao e avaliar comportamento em corridas completas. Nenhuma issue foi
+fechada. Os testes e o lint executados constam do relato de entrega.
