@@ -558,3 +558,4 @@ interface.
 - Pendente: limitações de pneus/severidade (#40) e ponto de volta rápida.
   Commits locais, sem push nem comentário no GitHub; levar este registro à
   #2, #6, #18, #21 e #71.
+
