@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-13T22:22:31Z
+- **Ultima atividade registrada:** 2026-11-13T22:26:11Z
 - **Abertas:** 36
 - **Fechadas:** 66
 
@@ -955,7 +955,7 @@ Investigar: `resistance_scale`, limiares de disputa e bloqueio por volta em `dom
 - **Issue-pai:** [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
 - **Sub-issues:** —
 - **Criada:** 2026-11-06T20:20:28Z
-- **Atualizada:** 2026-11-06T20:30:28Z
+- **Atualizada:** 2026-11-13T22:25:38Z
 - **Fechada:** —
 
 <details>
@@ -989,6 +989,15 @@ Velocidade de curva limitada pela aderência, `v = min(v_max, √(μ_ef · g · 
 ## Fora do escopo
 
 Compostos de chuva, efeito da temperatura no pneu, estratégia de troca e efeitos em disputas (#120); desgaste dinâmico (#104).</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:25:38Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/119#issuecomment-6866441657)
+
+<pre>Foi preparada em branch isolada uma evolução do estado da pista: água e temperatura pelo tempo simulado e borracha pela distância efetivamente percorrida fora dos boxes. Os 39 testes focados e Ruff passaram; a suíte da base tem cinco falhas conhecidas. As temperaturas são hipóteses e o ADR 0015 continua proposto. O critério relativo ao motor detalhado arquivado permanece pendente de decisão; a issue não será encerrada por esta fatia.</pre>
 
 </details>
 
@@ -1529,7 +1538,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T17:37:27Z
-- **Atualizada:** 2026-11-13T18:00:39Z
+- **Atualizada:** 2026-11-13T22:23:49Z
 - **Fechada:** —
 
 <details>
@@ -1540,6 +1549,15 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 &lt;img width=&quot;136&quot; height=&quot;46&quot; alt=&quot;image&quot; src=&quot;https://github.com/user-attachments/assets/bff4e4b1-3a8f-4979-9527-6fe398a50e51&quot; /&gt;
 
 </pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:23:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/171#issuecomment-6866407111)
+
+<pre>O defeito foi reproduzido: a etapa continuava e era salva após o cancelamento. A correção cooperativa e a sincronização com a persistência estão em revisão; 89 testes direcionados, incluindo integração HTTP e frontend, e Ruff passaram. A suíte completa mantém cinco falhas preexistentes na develop.</pre>
 
 </details>
 
@@ -1620,13 +1638,22 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T18:01:19Z
-- **Atualizada:** 2026-11-13T18:54:43Z
+- **Atualizada:** 2026-11-13T22:24:15Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6866415608)
+
+<pre>A correção existente na branch de Gustavo foi preservada com autoria e testada em conjunto com ajustes de reprodução. Em três pistas, três sementes e corridas de dez voltas com 20 carros, observaram-se 2 a 5 abandonos por contato; são cenários exploratórios, não calibração real. A suíte completa passou com a correção. Próximo passo: PR e avaliação visual antes de encerrar.</pre>
 
 </details>
 
@@ -1649,13 +1676,22 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T18:01:48Z
-- **Atualizada:** 2026-11-13T18:01:48Z
+- **Atualizada:** 2026-11-13T22:24:15Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/175#issuecomment-6866415659)
+
+<pre>Foi integrada em uma branch isolada a correção existente do colega para a dinâmica espacial, com ajuste adicional na interpolação para impedir recuo entre amostras. A suíte completa passou (738 testes, 42 ignorados e 2 falhas esperadas); Ruff passou. Próximo passo: PR e verificação visual da simulação antes de considerar a issue concluída.</pre>
 
 </details>
 
