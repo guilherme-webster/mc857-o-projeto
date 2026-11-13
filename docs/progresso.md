@@ -558,3 +558,25 @@ interface.
 - Pendente: limitações de pneus/severidade (#40) e ponto de volta rápida.
   Commits locais, sem push nem comentário no GitHub; levar este registro à
   #2, #6, #18, #21 e #71.
+
+### Handoff temporário — issue #119 (2026-11-13)
+
+Trabalho isolado em `/tmp/mc857-issue119-codex`, branch
+`codex/issue-119-estado-pista`, base `origin/develop` 419656d, com
+funcionalidade no commit `ca05fd1`. O 2D integra
+condições pelo tempo simulado e deposita borracha pela distância efetiva na
+pista; a previsão por volta de referência só escolhe o composto inicial. Alvos
+de temperatura de seis circuitos são assumidos; os demais usam 35 °C. Modelos
+de desgaste e pneus de chuva existentes foram preservados. ADR 0015 segue em
+proposta; equivalência com motor detalhado arquivado depende de decisão e não
+foi dada como atendida. Após o PR #179, o responsável deve revisar hipóteses, cobertura de circuitos
+e precisão temporal antes de integrar. A revisão ajustou o alvo térmico da
+previsão inicial e limitou a distância contada após a chegada. Sem alterações ou comentários no
+GitHub; esta informação deve ser registrada na issue #119 pelo agente principal.
+
+Verificação: `uv run ruff check .` passou; testes de clima/pneus passaram
+(44). Suite `env -u ARCADE_GUI_TEST uv run python -m unittest`: 740 testes,
+5 falhas, 42 pulados, 2 falhas esperadas. As cinco falhas foram reproduzidas
+separadamente em cópia limpa da base: serviço de pneu, interpolação de parada,
+interpolação de combustível, corrida sem abandono e causa de abandono. A issue
+não foi fechada, nem houve push ou PR.

@@ -457,3 +457,12 @@ próprios parâmetros, não números fixos.
   e o serviço parado. Para corridas por volta ou antigas, mantém a interpolação
   de `history`, com paradas diluídas na volta. Não há carro de segurança
   físico desenhado.
+
+### Atualização parcial da issue #119
+
+No motor 2D, `assumed-track-condition-v2` integra água e temperatura pelo
+tempo transcorrido e borracha pela distância efetiva na pista, excluindo boxes.
+O alvo seco usa `assumed-circuit-track-temperature-v1`, com reserva global
+para circuitos sem valor específico. São hipóteses não calibradas. A
+comparação com o motor detalhado arquivado permanece pendente de decisão;
+nenhum critério de equivalência entre motores foi considerado satisfeito.
