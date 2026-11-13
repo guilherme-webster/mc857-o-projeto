@@ -227,6 +227,7 @@ def _run_2d(
     team_presets,
     team_preset_disclaimer,
     on_progress=None,
+    check_cancelled=None,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) e monte o resultado da corrida."""
 
@@ -272,6 +273,7 @@ def _run_2d(
         base_physics_by_id=car_physics_by_driver,
         pit_execution_by_id=pit_execution_by_driver,
         on_progress=on_progress,
+        check_cancelled=check_cancelled,
     )
     result["speed_profiles"] = _speed_profiles_by_driver(
         geometry, grid, attributes, car_physics_by_driver
@@ -352,8 +354,12 @@ def run_grid_simulation(
     team_presets: Mapping[str, TeamPreset] | None = None,
     team_preset_disclaimer: str | None = None,
     on_progress: Callable[[int, int], None] | None = None,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> dict:
     """Execute o grid no motor 2D (ADR 0011) sem conhecer arquivo, HTTP ou banco.
+
+    ``check_cancelled`` e um callback opcional que pode interromper a execucao
+    por excecao, propagada ao chamador sem produzir um resultado parcial.
 
     O motor 2D e o unico da corrida: a posicao x,y evolui por passos de tempo e
     ultrapassagem e colisao emergem da fisica espacial. Este caso de uso prepara
@@ -488,6 +494,7 @@ def run_grid_simulation(
         team_presets=team_presets,
         team_preset_disclaimer=team_preset_disclaimer,
         on_progress=on_progress,
+        check_cancelled=check_cancelled,
     )
     result["assumptions"] = [
         *result.get("assumptions", []),

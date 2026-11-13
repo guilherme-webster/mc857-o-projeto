@@ -142,6 +142,7 @@ class SimulationLoadingView(arcade.View):
             try:
                 outcome = self._runner(self._plan, progress, self._cancel.is_set)
             except LaunchCancelled:
+                self._results.put(("cancelled", None))
                 return
             except (RuntimeError, OSError, ValueError, KeyError) as error:
                 # BackendError e RuntimeError; URLError e OSError.
@@ -186,6 +187,9 @@ class SimulationLoadingView(arcade.View):
                 self._progress = LaunchProgress(
                     f"Não foi possível simular: {payload}"
                 )
+            elif kind == "cancelled":
+                self._return_to_form("Simulação cancelada.", SECONDARY_TEXT_COLOR)
+                return
             elif kind == "done":
                 self._on_done(payload)  # type: ignore[arg-type]
                 return
@@ -193,14 +197,15 @@ class SimulationLoadingView(arcade.View):
     # -- acoes -------------------------------------------------------------------
 
     def abort(self) -> None:
-        """Pare de simular e volte a configuracao; o que ja foi pedido ao
-        backend termina, mas nenhuma etapa nova e iniciada."""
+        """Solicite o cancelamento e volte a configuracao."""
 
         if self._error is not None:
-            message, color = f"Não foi possível simular: {self._error}", ERROR_COLOR
+            self._return_to_form(f"Não foi possível simular: {self._error}", ERROR_COLOR)
         else:
             self._cancel.set()
-            message, color = "Simulação cancelada.", SECONDARY_TEXT_COLOR
+            self._progress = LaunchProgress("Cancelando simulação…")
+
+    def _return_to_form(self, message: str, color) -> None:
         if self._return_view is not None:
             self._return_view.show_message(message, color)
             self.window.show_view(self._return_view)
