@@ -197,6 +197,31 @@ def _normalize(points):
     )
 
 
+def _smooth_closed(unit):
+    """Media movel leve da centerline fechada, para a reta nao serrilhar.
+
+    Os pontos ``x,y`` da geometria tem ruido de arredondamento: numa reta, isso
+    faz o carro desenhado seguir uma polilinha levemente ziguezagueante
+    (stutter visual). Uma media de cinco pontos no anel remove esse ruido de
+    alta frequencia sem deslocar curvas reais, que variam devagar entre pontos.
+    """
+
+    n = len(unit)
+    unique = n - 1  # o ultimo ponto repete o primeiro
+    if unique < 5:
+        return unit
+    out = []
+    for i in range(unique):
+        sx = sy = 0.0
+        for j in range(-2, 3):  # janela de 5 pontos no anel
+            x, y = unit[(i + j) % unique]
+            sx += x
+            sy += y
+        out.append((sx / 5.0, sy / 5.0))
+    out.append(out[0])
+    return out
+
+
 def _unit_normals(unit):
     """Normal unitaria (para a esquerda do sentido) em cada ponto da centerline.
 
@@ -328,7 +353,7 @@ class TrackView(arcade.View):
         unit, self._aspect = _normalize(
             [(p["x"], p["y"]) for p in pts] + [(p[1], p[2]) for p in self._pit_path]
         )
-        self._unit = unit[: len(pts)]
+        self._unit = _smooth_closed(unit[: len(pts)])
         self._pit_unit = unit[len(pts) :]
         self._pit_screen = []
         self._lap_length = track["lap_length_m"]

@@ -84,6 +84,12 @@ class RaceSimulation2DTest(unittest.TestCase):
             **kwargs,
         )
 
+    def test_contact_rate_is_disclosed_as_assumed_and_versioned(self):
+        contact = self.plain["assumptions"][0]["side_contact"]
+        self.assertEqual(contact["origin"], "assumed")
+        self.assertEqual(contact["parameter_version"], "spatial-contact-assumed-v1")
+        self.assertEqual(contact["base_rate_per_second"], 0.15)
+
     # --- reprodutibilidade -------------------------------------------------
 
     def test_same_seed_and_inputs_give_identical_outputs(self):
