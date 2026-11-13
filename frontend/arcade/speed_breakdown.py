@@ -80,6 +80,23 @@ class SpeedBreakdownReader:
 
         return bool(self._cars)
 
+    def v_max_kmh(self, driver_id: str) -> float | None:
+        """Velocidade base (teto de reta) do carro; ``None`` sem dados."""
+
+        car = self._cars.get(driver_id)
+        if not car:
+            return None
+        value = car.get("v_max_kmh")
+        return float(value) if value is not None else None
+
+    def attributes(self, driver_id: str) -> Mapping[str, object] | None:
+        """Atributos do piloto (arquetipo, ritmo, etc.); ``None`` se ausentes."""
+
+        car = self._cars.get(driver_id)
+        if not car:
+            return None
+        return car.get("attributes")
+
     def _lap_data(self, did: str, lap: int) -> Mapping[str, object] | None:
         car = self._cars.get(did)
         if not car:

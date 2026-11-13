@@ -331,7 +331,7 @@ def simulate_2d_race(
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
     standing_start: bool = True,
     width_m: float | None = None,
-    dt_s: float = 0.05,
+    dt_s: float = 0.5,
     pit_parameters: PitLaneParameters = PitLaneParameters(),
     usage_parameters: DynamicUsageParameters = DynamicUsageParameters(),
     pit_planning: SpatialPitPlanningParameters = SpatialPitPlanningParameters(),
@@ -432,6 +432,9 @@ def simulate_2d_race(
     # clima e controle de prova tiram do ritmo fisico de referencia. Registrado
     # em ``_apply_scale`` sem alterar a fisica; alimenta a ferramenta de analise.
     speed_breakdown: dict[str, dict[int, dict]] = {}
+    # Atributos (DriverAttributes) por carro, para o painel mostra-los como
+    # contexto ao lado da decomposicao; ``None`` quando o carro nao os traz.
+    attributes_by_id: dict[str, object] = {}
     for entry in sorted(entrants, key=lambda e: e["grid_position"]):
         did = entry["driver_id"]
         names[did] = entry["name"]
@@ -444,8 +447,10 @@ def simulate_2d_race(
             if base_physics_by_id
             else base_physics
         )
-        physics = physics_for(entry.get("attributes"), base)
-        management[did] = detailed_degradation_factor(entry.get("attributes"))
+        attrs = entry.get("attributes")
+        physics = physics_for(attrs, base)
+        attributes_by_id[did] = attrs
+        management[did] = detailed_degradation_factor(attrs)
         usage_totals[did] = dict(
             fuel_burned_kg=0.0,
             distance_wear_laps=0.0,
@@ -1044,11 +1049,25 @@ def simulate_2d_race(
     # reta e, por volta, quanto pneu/combustivel/clima/controle tiram do ritmo.
     # A curva e lida ponto a ponto no frontend (teto do ponto vs v_max); aqui
     # fica so o invariante por carro e as penalidades por volta.
+    def _attributes_echo(did: str) -> dict | None:
+        attrs = attributes_by_id.get(did)
+        if attrs is None:
+            return None
+        return {
+            "archetype": attrs.archetype,
+            "pace_offset_pct": attrs.pace_offset_pct,
+            "consistency_factor": attrs.consistency_factor,
+            "tyre_management_factor": attrs.tyre_management_factor,
+            "aggression": attrs.aggression,
+            "composure": attrs.composure,
+        }
+
     result["speed_breakdown"] = {
         "cars": {
             did: {
                 "v_max_kmh": round(physics_by_id[did].v_max_straight_kmh, 2),
                 "reference_lap_ms": round(ref_ms[did], 3),
+                "attributes": _attributes_echo(did),
                 "laps": {
                     str(lap): data
                     for lap, data in sorted(speed_breakdown[did].items())
