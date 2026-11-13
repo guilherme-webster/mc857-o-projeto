@@ -6,9 +6,9 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-13T22:28:39Z
-- **Abertas:** 34
-- **Fechadas:** 68
+- **Ultima atividade registrada:** 2026-11-13T22:33:20Z
+- **Abertas:** 32
+- **Fechadas:** 70
 
 ## Issues abertas
 
@@ -255,13 +255,22 @@ Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao 
 - **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
 - **Sub-issues:** —
 - **Criada:** 2026-09-01T22:36:34Z
-- **Atualizada:** 2026-09-02T19:19:35Z
+- **Atualizada:** 2026-11-13T22:33:20Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:33:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/32#issuecomment-6866589299)
+
+<pre>Investigação: GetSimulationScenario não existe atualmente, mas a issue não define consumidor, entradas, resposta, regras nem erros. As portas e o adaptador SQLite existem, e há fluxos separados para execução de grid e leitura de resultados. Próximo passo: definir o contrato e o caso de uso concreto antes de implementar; issue permanece aberta.</pre>
 
 </details>
 
@@ -330,105 +339,6 @@ Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, r
 - 2026-09-11T22:18:58Z — sub-issue adicionada: #60 por @guilherme-webster
 - 2026-09-08T22:18:09Z — sub-issue adicionada: #51 por @Jmvjr
 - 2026-09-04T23:02:44Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
-
-- **Estado:** aberta
-- **Motivo do estado:** reopened
-- **Autor:** @Jmvjr
-- **Responsaveis:** @guilherme-webster
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** [#119 — Aderência física e estado dinâmico da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/119)
-- **Criada:** 2026-09-08T22:18:07Z
-- **Atualizada:** 2026-09-24T23:41:38Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Mockagem de dados para representação de pistas</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (12)</summary>
-
-#### [@Jmvjr em 2026-09-08T22:25:28Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592701537)
-
-<pre>Início da implementação da geração de geometria mockada de pistas. Escopo confirmado: usar FastF1 apenas como fonte temporária, derivar uma polilinha normalizada para a amostra de dados, registrar proveniência e remover automaticamente cache/telemetria temporários; nenhuma alteração de visualização nesta issue e nenhum dado preexistente será apagado.</pre>
-
-#### [@Jmvjr em 2026-09-08T22:38:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592838768)
-
-<pre>Geração de pistas concluída para o circuito do MVP (Interlagos, circuitId 18), sem integração visual. Entregue: gerador FastF1 parametrizável; transformação pura para polilinha fechada/normalizada; fixture track_points.csv com 240 pontos e distância acumulada; manifesto de proveniência/checksum; ADR 0003; documentação e testes. A aquisição usou FastF1 3.8.3, GP de São Paulo 2024, corrida, volta 67 de VER. Cache e telemetria ficaram em diretório temporário e foram removidos automaticamente; dados preexistentes não foram apagados e a saída recusa sobrescrita por padrão. Verificações: 56 testes OK, 13 testes Arcade ignorados por exigirem ARCADE_GUI_TEST=True; teste específico do artefato/checksum OK; git diff --check passa nas mudanças da implementação, com whitespace preexistente apenas no backlog gerado a partir de uma issue. Próximo passo, fora desta issue: consumir a polilinha na visualização da issue 13. Limitação registrada: a licença MIT cobre o software FastF1, não concede direitos adicionais sobre os dados upstream.</pre>
-
-#### [@Jmvjr em 2026-09-08T22:38:27Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592838925)
-
-<pre>Critérios atendidos para a geração mockada do circuito do MVP; visualização permanece na issue 13.</pre>
-
-#### [@Jmvjr em 2026-09-08T22:49:32Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592950139)
-
-<pre>Validação complementar concluída após o fechamento: foi adicionado `scripts/preview_track_geometry.py`, um visualizador Arcade de desenvolvimento que lê o `track_points.csv` versionado, preserva a proporção da geometria e marca o início/fim da volta. O comando `--check` valida o arquivo sem abrir janela.
-
-Verificações: `python3 -m unittest -v` (59 testes, 13 pulados por dependerem da configuração gráfica), `uv run python scripts/preview_track_geometry.py --check` (240 pontos válidos) e inicialização real da janela/render loop Arcade sem erros. Este utilitário é apenas diagnóstico da geometria gerada e não implementa o fluxo de produto da issue #13.</pre>
-
-#### [@Jmvjr em 2026-09-08T22:57:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593019022)
-
-<pre>Escopo reaberto por solicitação do usuário: ampliar a geração mockada de Interlagos para as 24 etapas do calendário de 2025. A implementação continuará restrita à geometria reduzida, sem reter cache ou telemetria bruta, com IDs associados ao Trotman v128 e validação individual dos artefatos. A issue #13 permanece fora do escopo; o visualizador será usado apenas como diagnóstico.</pre>
-
-#### [@Jmvjr em 2026-09-08T23:12:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593145842)
-
-<pre>Ampliação para o calendário completo de 2025 concluída. Foram geradas 24 geometrias vinculadas aos `circuitId` do Trotman v128 em `tests/fixtures/trotman_v128_tracks_2025/track_points.csv`: 5.760 linhas de dados, 240 pontos por pista, polilinhas fechadas e escala uniforme. O manifesto agregado `data/sources/fastf1-tracks-2025.json` registra FastF1 3.8.3, sessão/piloto/volta/comprimento de cada etapa, transformação, retenção e checksum. O cache e a telemetria permaneceram em diretório temporário e foram removidos; a fixture anterior de Interlagos e os demais dados existentes foram preservados.
-
-Também foram entregues gerador atômico em lote, escritor multi-circuito, seleção por `--circuit-id`/listagem no visualizador, testes e documentação/ADR atualizados. Verificações: 62 testes OK (13 GUI pulados pela configuração existente), 24 IDs e 5.760 pontos conferidos, checksum válido, proteção contra sobrescrita OK, `git diff --check` OK fora do backlog gerado e renderização real de uma pista agregada iniciada sem erro. A issue #13 continua fora deste escopo.</pre>
-
-#### [@Jmvjr em 2026-09-08T23:18:56Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593200341)
-
-<pre>Escopo reaberto para completar a geometria necessária à simulação: derivar também o caminho do pit lane e um ponto de serviço representativo para cada uma das 24 pistas, mantendo as mesmas coordenadas normalizadas do traçado principal. A classificação posterior de curvas e retas é viável a partir da curvatura da polilinha, mas não faz parte desta etapa.</pre>
-
-#### [@Jmvjr em 2026-09-08T23:32:19Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593353177)
-
-<pre>Complemento de pit lane concluído. A fixture `tests/fixtures/trotman_v128_tracks_2025/pit_lane_points.csv` contém 24 caminhos entrada→saída, 80 pontos por circuito (1.920 no total) e exatamente um `isServicePoint=true` por pista. As coordenadas usam a mesma transformação do traçado principal. O ponto de serviço é representativo, inferido de uma parada observada, e não identifica a garagem exata de cada equipe. Proveniência e checksum estão em `data/sources/fastf1-pit-lanes-2025.json`.
-
-O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Conforme solicitado, os três scripts FastF1 e o módulo auxiliar de geração foram removidos após a geração; ficaram apenas mocks, manifestos, visualizador e testes de integridade. Cache e telemetria temporários foram removidos. Verificações: 60 testes OK (13 GUI condicionais pulados), 24/1.920/24 contagens conferidas, checksum válido, `git diff --check` OK fora do backlog gerado e renderização Arcade real sem erro. Curvas e retas poderão ser classificadas posteriormente pela curvatura da polilinha, fora desta etapa.</pre>
-
-#### [@Jmvjr em 2026-09-09T23:19:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5610073659)
-
-<pre>Limpeza final solicitada: o visualizador temporário `scripts/preview_track_geometry.py` e seus testes específicos foram removidos. Os mocks de pista/pit lane, manifestos e testes de integridade permaneceram. `scripts/__init__.py` foi mantido porque também evita colisão com um pacote externo homônimo e é necessário ao teste de sincronização do backlog. Verificação: 55 testes OK, 13 GUI condicionais pulados; nenhuma referência ao visualizador permanece fora do histórico gerado.</pre>
-
-#### [@guilherme-webster em 2026-09-11T22:17:09Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5641258700)
-
-<pre>Refatorar para não consumir mais dados brutos, mas sim a interface do backend</pre>
-
-#### [@guilherme-webster em 2026-09-11T22:35:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5641405159)
-
-<pre>Tornar possível uma construção de partes da pista como objetos os quais são compostos de maneira a gerar uma pista final. Ademais, fazer com que seja viável saber o atrito na parte da pista, se é curva ou retam, etc para outras partes do simulador</pre>
-
-#### [@Jmvjr em 2026-09-24T23:36:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5824054131)
-
-<pre>Atendendo ao pedido posterior do usuário, foi reconstruído um gerador offline versionável para as geometrias das 24 pistas de 2025: scripts/rebuild_fastf1_geometry.py. O código original não consta no histórico Git, então a reconstrução segue os eventos/proveniência dos manifestos e não promete checksums idênticos; por padrão usa cache temporário e exige diretório novo, sem alterar fixtures versionadas. ADR 0003, README e README da fixture foram atualizados; testes determinísticos cobrem resampling, escala compartilhada, serviço e proteção contra sobrescrita. Verificações: 201 testes OK (31 GUI pulados), Ruff/Black/diff check OK. Execução real da etapa 21 com FastF1 3.8.3 produziu 240 pontos de pista e 80 de pit lane; os 240 pontos de pista coincidiram linha a linha com a fixture, enquanto o pit lane diferiu levemente e o ponto de serviço ficou um índice adiante. Saída de verificação preservada em data/curated/geometry-rebuild-check-20260924 (ignorada pelo Git); CSVs versionados mantêm seus checksums. Próximo passo: revisar a diferença no pit lane antes de usar o gerador para substituir qualquer fixture. Issue mantida aberta; nenhum commit criado pelo agente.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-11-06T20:20:47Z — sub-issue adicionada: #119 por @DaviGabrielBC
-- 2026-09-24T23:41:38Z — reaberta por @Jmvjr
-- 2026-09-24T23:41:19Z — fechada por @Jmvjr
-- 2026-09-11T22:17:46Z — atribuida: @guilherme-webster por @guilherme-webster
-- 2026-09-11T22:17:46Z — responsavel removido: @Jmvjr por @Jmvjr
-- 2026-09-11T22:16:30Z — reaberta por @guilherme-webster
-- 2026-09-08T23:32:20Z — fechada por @Jmvjr
-- 2026-09-08T23:18:55Z — reaberta por @Jmvjr
-- 2026-09-08T23:12:47Z — fechada por @Jmvjr
-- 2026-09-08T22:57:29Z — reaberta por @Jmvjr
-- 2026-09-08T22:38:28Z — fechada por @Jmvjr
-- 2026-09-08T22:18:09Z — label adicionada: História por @Jmvjr
-- 2026-09-08T22:18:08Z — atribuida: @Jmvjr por @Jmvjr
 
 </details>
 
@@ -680,36 +590,6 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 </details>
 
-### [#97 — Modelagem do combustível](https://github.com/guilherme-webster/mc857-o-projeto/issues/97)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @DaviGabrielBC
-- **Responsaveis:** —
-- **Labels:** —
-- **Milestone:** —
-- **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
-- **Sub-issues:** —
-- **Criada:** 2026-10-22T23:41:50Z
-- **Atualizada:** 2026-11-13T22:22:30Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Fazer modelagem do consumo de combustível e implementar o reabastecimento (junto com troca de pneus)</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@Jmvjr em 2026-11-13T22:22:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/97#issuecomment-6866381998)
-
-<pre>Implementação de reabastecimento durante o serviço de pneus no motor 2D concluída em branch isolada e em revisão. Os 15 testes direcionados e o Ruff passaram; a suíte completa apresenta as mesmas cinco falhas existentes na develop. Permanecem limitações de planejamento inicial de carga e garantia de chegada aos boxes, que estão sendo avaliadas antes do fechamento.</pre>
-
-</details>
-
 ### [#105 — Seed digitável e reprodução determinística do torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/105)
 
 - **Estado:** aberta
@@ -891,7 +771,7 @@ Depende das issues de seed, ordem do grid, voltas e largada. Contrato: `docs/prd
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-10-30T21:18:57Z
-- **Atualizada:** 2026-10-30T21:18:57Z
+- **Atualizada:** 2026-11-13T22:33:20Z
 - **Fechada:** —
 
 <details>
@@ -902,6 +782,15 @@ Depende das issues de seed, ordem do grid, voltas e largada. Contrato: `docs/prd
 Decisao do usuario (2026-10-30): usar fator 0,10 na #108 e atacar a causa restante aqui.
 
 Investigar: `resistance_scale`, limiares de disputa e bloqueio por volta em `domain/race_simulation.py` (ADR 0008, `docs/modelagem-heuristica.md`). Parametros sao heuristicos: rotular, versionar e medir com o mesmo script/sementes.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:33:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/110#issuecomment-6866589310)
+
+<pre>O diagnóstico e o script originais se referem ao motor por volta, hoje arquivado. No 2D, a ultrapassagem é espacial; dois testes existentes passam, mas não medem a frequência de vitória da pole. Próximo passo: decidir se o escopo será redefinido para o 2D e estabelecer cenários, métricas e limites de aceitação. Issue mantida aberta.</pre>
 
 </details>
 
@@ -988,7 +877,7 @@ Compostos de chuva, efeito da temperatura no pneu, estratégia de troca e efeito
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-11-06T20:31:18Z
-- **Atualizada:** 2026-11-06T20:31:18Z
+- **Atualizada:** 2026-11-13T22:33:08Z
 - **Fechada:** —
 
 <details>
@@ -1024,6 +913,15 @@ Depende de #119 (aderência física e estado da pista). Coordenar com #104 (desg
 ## Pendência
 
 Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como âncora (AGENTS.md, ADR 0005) antes de rotular qualquer parâmetro como `estimated`.</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:33:08Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/120#issuecomment-6866585455)
+
+<pre>Uma primeira fatia foi preparada: o uso efetivo de pneus de chuva por qualquer carro suspende a exigência de dois compostos para o pelotão. A suíte local passou com 753 testes (42 ignorados, 1 falha esperada) e Ruff passou. A issue continua aberta para temperatura dos pneus, incidentes, interface, dependência da #119 e proveniência do export FastF1.</pre>
 
 </details>
 
@@ -1153,7 +1051,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
 - **Sub-issues:** —
 - **Criada:** 2026-11-08T20:48:12Z
-- **Atualizada:** 2026-11-13T22:22:30Z
+- **Atualizada:** 2026-11-13T22:29:49Z
 - **Fechada:** —
 
 <details>
@@ -1164,11 +1062,15 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 </details>
 
 <details>
-<summary>Comentarios (1)</summary>
+<summary>Comentarios (2)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:22:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/140#issuecomment-6866381990)
 
 <pre>Investigação: a porcentagem exibida representa a contribuição na velocidade local e varia com o limite do trecho e outras penalidades, mesmo quando a massa de combustível só diminui. Foram adicionados testes e documentação; vou submetê-los para revisão. A suíte completa apresenta cinco falhas preexistentes na develop.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:29:49Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/140#issuecomment-6866522044)
+
+<pre>Os testes e a explicação foram integrados à develop pelo PR #181; o check unittest do GitHub passou. A issue permanece aberta porque o relato não detalha o cenário original e a investigação ainda não confirma se há outro defeito além da variação esperada da parcela local.</pre>
 
 </details>
 
@@ -1192,7 +1094,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
 - **Sub-issues:** —
 - **Criada:** 2026-11-08T20:48:33Z
-- **Atualizada:** 2026-11-13T22:27:50Z
+- **Atualizada:** 2026-11-13T22:30:58Z
 - **Fechada:** —
 
 <details>
@@ -1203,11 +1105,15 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 </details>
 
 <details>
-<summary>Comentarios (1)</summary>
+<summary>Comentarios (2)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:27:50Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/141#issuecomment-6866484644)
 
 <pre>A parcela percentual de pneus varia com o limite de velocidade do trecho e com outras penalidades, mesmo sem diminuição do desgaste. Testes foram preparados para documentar esse comportamento; como a issue não contém a reprodução original, ainda não é possível afirmar que ela explica o caso observado. Próximo passo: obter um cenário reproduzível antes de fechar.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:30:58Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/141#issuecomment-6866542997)
+
+<pre>Os testes de caracterização foram integrados à develop pelo PR #183, com check unittest do GitHub aprovado. A issue segue aberta: ainda falta reproduzir o caso original para verificar se existe outro defeito.</pre>
 
 </details>
 
@@ -1263,7 +1169,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-11-12T21:08:34Z
-- **Atualizada:** 2026-11-12T21:58:13Z
+- **Atualizada:** 2026-11-13T22:31:54Z
 - **Fechada:** —
 
 <details>
@@ -1322,7 +1228,7 @@ Commits so com autorizacao do usuario.
 </details>
 
 <details>
-<summary>Comentarios (1)</summary>
+<summary>Comentarios (2)</summary>
 
 #### [@guilherme-webster em 2026-11-12T21:35:40Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/155#issuecomment-6836581010)
 
@@ -1359,6 +1265,10 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - #140 e #141 nao se reproduziram no cenario do teste de ponta a ponta (#150) sem clima nem controle de prova; os helpers de `tests/race_invariants.py` estao prontos para os regressivos.
 - Conferencia visual: painel de regras sem o seletor de motor (#146), aba Clima e tela de carregamento (#151), reexecucao com progresso (#153).
 </pre>
+
+#### [@Jmvjr em 2026-11-13T22:31:54Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/155#issuecomment-6866560926)
+
+<pre>Na develop atual, após os PRs #179, #180, #181, #182, #178 e #183, a suíte executou 751 testes com sucesso (42 ignorados e 1 falha esperada), e Ruff passou. As issues #140 e #141 seguem abertas por falta de reprodução suficiente; #138 e #142 também seguem pendentes, portanto este épico continua aberto.</pre>
 
 </details>
 
@@ -1473,7 +1383,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** —
 - **Sub-issues:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139), [#171 — Botão &quot;abortar simulação&quot; não aborta a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/171), [#174 — Corrida atual com muitas colisões](https://github.com/guilherme-webster/mc857-o-projeto/issues/174), [#175 — Efeito &quot;sanfona&quot; nos carros durante a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/175)
 - **Criada:** 2026-11-13T17:34:34Z
-- **Atualizada:** 2026-11-13T22:22:31Z
+- **Atualizada:** 2026-11-13T22:30:38Z
 - **Fechada:** —
 
 <details>
@@ -1484,11 +1394,15 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 </details>
 
 <details>
-<summary>Comentarios (1)</summary>
+<summary>Comentarios (2)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:22:31Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/170#issuecomment-6866382308)
 
 <pre>Investigação: foram reproduzidos e corrigidos três casos de validação (overrides duplicados, corrida salva inválida e etapa vazia). Os testes direcionados passaram; a suíte completa apresenta cinco falhas já existentes na develop. Vou abrir um PR para revisão. A issue principal permanece aberta enquanto suas subissues não estiverem concluídas.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:30:38Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/170#issuecomment-6866536986)
+
+<pre>As validações de grid, corrida salva e campeonato foram integradas à develop pelo PR #178, com unittest do GitHub aprovado e 742 testes locais (42 ignorados, 2 falhas esperadas). A issue agregadora segue aberta para as demais subissues, incluindo a verificação visual das correções de colisão e sanfona.</pre>
 
 </details>
 
@@ -2994,6 +2908,106 @@ Esse ticket será um constante lembrete de implementar boas práticas de CI</pre
 
 </details>
 
+### [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+- **Sub-issues:** [#119 — Aderência física e estado dinâmico da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/119)
+- **Criada:** 2026-09-08T22:18:07Z
+- **Atualizada:** 2026-11-13T22:31:36Z
+- **Fechada:** 2026-11-13T22:31:36Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Mockagem de dados para representação de pistas</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (12)</summary>
+
+#### [@Jmvjr em 2026-09-08T22:25:28Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592701537)
+
+<pre>Início da implementação da geração de geometria mockada de pistas. Escopo confirmado: usar FastF1 apenas como fonte temporária, derivar uma polilinha normalizada para a amostra de dados, registrar proveniência e remover automaticamente cache/telemetria temporários; nenhuma alteração de visualização nesta issue e nenhum dado preexistente será apagado.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:38:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592838768)
+
+<pre>Geração de pistas concluída para o circuito do MVP (Interlagos, circuitId 18), sem integração visual. Entregue: gerador FastF1 parametrizável; transformação pura para polilinha fechada/normalizada; fixture track_points.csv com 240 pontos e distância acumulada; manifesto de proveniência/checksum; ADR 0003; documentação e testes. A aquisição usou FastF1 3.8.3, GP de São Paulo 2024, corrida, volta 67 de VER. Cache e telemetria ficaram em diretório temporário e foram removidos automaticamente; dados preexistentes não foram apagados e a saída recusa sobrescrita por padrão. Verificações: 56 testes OK, 13 testes Arcade ignorados por exigirem ARCADE_GUI_TEST=True; teste específico do artefato/checksum OK; git diff --check passa nas mudanças da implementação, com whitespace preexistente apenas no backlog gerado a partir de uma issue. Próximo passo, fora desta issue: consumir a polilinha na visualização da issue 13. Limitação registrada: a licença MIT cobre o software FastF1, não concede direitos adicionais sobre os dados upstream.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:38:27Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592838925)
+
+<pre>Critérios atendidos para a geração mockada do circuito do MVP; visualização permanece na issue 13.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:49:32Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5592950139)
+
+<pre>Validação complementar concluída após o fechamento: foi adicionado `scripts/preview_track_geometry.py`, um visualizador Arcade de desenvolvimento que lê o `track_points.csv` versionado, preserva a proporção da geometria e marca o início/fim da volta. O comando `--check` valida o arquivo sem abrir janela.
+
+Verificações: `python3 -m unittest -v` (59 testes, 13 pulados por dependerem da configuração gráfica), `uv run python scripts/preview_track_geometry.py --check` (240 pontos válidos) e inicialização real da janela/render loop Arcade sem erros. Este utilitário é apenas diagnóstico da geometria gerada e não implementa o fluxo de produto da issue #13.</pre>
+
+#### [@Jmvjr em 2026-09-08T22:57:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593019022)
+
+<pre>Escopo reaberto por solicitação do usuário: ampliar a geração mockada de Interlagos para as 24 etapas do calendário de 2025. A implementação continuará restrita à geometria reduzida, sem reter cache ou telemetria bruta, com IDs associados ao Trotman v128 e validação individual dos artefatos. A issue #13 permanece fora do escopo; o visualizador será usado apenas como diagnóstico.</pre>
+
+#### [@Jmvjr em 2026-09-08T23:12:46Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593145842)
+
+<pre>Ampliação para o calendário completo de 2025 concluída. Foram geradas 24 geometrias vinculadas aos `circuitId` do Trotman v128 em `tests/fixtures/trotman_v128_tracks_2025/track_points.csv`: 5.760 linhas de dados, 240 pontos por pista, polilinhas fechadas e escala uniforme. O manifesto agregado `data/sources/fastf1-tracks-2025.json` registra FastF1 3.8.3, sessão/piloto/volta/comprimento de cada etapa, transformação, retenção e checksum. O cache e a telemetria permaneceram em diretório temporário e foram removidos; a fixture anterior de Interlagos e os demais dados existentes foram preservados.
+
+Também foram entregues gerador atômico em lote, escritor multi-circuito, seleção por `--circuit-id`/listagem no visualizador, testes e documentação/ADR atualizados. Verificações: 62 testes OK (13 GUI pulados pela configuração existente), 24 IDs e 5.760 pontos conferidos, checksum válido, proteção contra sobrescrita OK, `git diff --check` OK fora do backlog gerado e renderização real de uma pista agregada iniciada sem erro. A issue #13 continua fora deste escopo.</pre>
+
+#### [@Jmvjr em 2026-09-08T23:18:56Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593200341)
+
+<pre>Escopo reaberto para completar a geometria necessária à simulação: derivar também o caminho do pit lane e um ponto de serviço representativo para cada uma das 24 pistas, mantendo as mesmas coordenadas normalizadas do traçado principal. A classificação posterior de curvas e retas é viável a partir da curvatura da polilinha, mas não faz parte desta etapa.</pre>
+
+#### [@Jmvjr em 2026-09-08T23:32:19Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5593353177)
+
+<pre>Complemento de pit lane concluído. A fixture `tests/fixtures/trotman_v128_tracks_2025/pit_lane_points.csv` contém 24 caminhos entrada→saída, 80 pontos por circuito (1.920 no total) e exatamente um `isServicePoint=true` por pista. As coordenadas usam a mesma transformação do traçado principal. O ponto de serviço é representativo, inferido de uma parada observada, e não identifica a garagem exata de cada equipe. Proveniência e checksum estão em `data/sources/fastf1-pit-lanes-2025.json`.
+
+O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Conforme solicitado, os três scripts FastF1 e o módulo auxiliar de geração foram removidos após a geração; ficaram apenas mocks, manifestos, visualizador e testes de integridade. Cache e telemetria temporários foram removidos. Verificações: 60 testes OK (13 GUI condicionais pulados), 24/1.920/24 contagens conferidas, checksum válido, `git diff --check` OK fora do backlog gerado e renderização Arcade real sem erro. Curvas e retas poderão ser classificadas posteriormente pela curvatura da polilinha, fora desta etapa.</pre>
+
+#### [@Jmvjr em 2026-09-09T23:19:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5610073659)
+
+<pre>Limpeza final solicitada: o visualizador temporário `scripts/preview_track_geometry.py` e seus testes específicos foram removidos. Os mocks de pista/pit lane, manifestos e testes de integridade permaneceram. `scripts/__init__.py` foi mantido porque também evita colisão com um pacote externo homônimo e é necessário ao teste de sincronização do backlog. Verificação: 55 testes OK, 13 GUI condicionais pulados; nenhuma referência ao visualizador permanece fora do histórico gerado.</pre>
+
+#### [@guilherme-webster em 2026-09-11T22:17:09Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5641258700)
+
+<pre>Refatorar para não consumir mais dados brutos, mas sim a interface do backend</pre>
+
+#### [@guilherme-webster em 2026-09-11T22:35:07Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5641405159)
+
+<pre>Tornar possível uma construção de partes da pista como objetos os quais são compostos de maneira a gerar uma pista final. Ademais, fazer com que seja viável saber o atrito na parte da pista, se é curva ou retam, etc para outras partes do simulador</pre>
+
+#### [@Jmvjr em 2026-09-24T23:36:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/51#issuecomment-5824054131)
+
+<pre>Atendendo ao pedido posterior do usuário, foi reconstruído um gerador offline versionável para as geometrias das 24 pistas de 2025: scripts/rebuild_fastf1_geometry.py. O código original não consta no histórico Git, então a reconstrução segue os eventos/proveniência dos manifestos e não promete checksums idênticos; por padrão usa cache temporário e exige diretório novo, sem alterar fixtures versionadas. ADR 0003, README e README da fixture foram atualizados; testes determinísticos cobrem resampling, escala compartilhada, serviço e proteção contra sobrescrita. Verificações: 201 testes OK (31 GUI pulados), Ruff/Black/diff check OK. Execução real da etapa 21 com FastF1 3.8.3 produziu 240 pontos de pista e 80 de pit lane; os 240 pontos de pista coincidiram linha a linha com a fixture, enquanto o pit lane diferiu levemente e o ponto de serviço ficou um índice adiante. Saída de verificação preservada em data/curated/geometry-rebuild-check-20260924 (ignorada pelo Git); CSVs versionados mantêm seus checksums. Próximo passo: revisar a diferença no pit lane antes de usar o gerador para substituir qualquer fixture. Issue mantida aberta; nenhum commit criado pelo agente.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T22:31:36Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-11-06T20:20:47Z — sub-issue adicionada: #119 por @DaviGabrielBC
+- 2026-09-24T23:41:38Z — reaberta por @Jmvjr
+- 2026-09-24T23:41:19Z — fechada por @Jmvjr
+- 2026-09-11T22:17:46Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-09-11T22:17:46Z — responsavel removido: @Jmvjr por @Jmvjr
+- 2026-09-11T22:16:30Z — reaberta por @guilherme-webster
+- 2026-09-08T23:32:20Z — fechada por @Jmvjr
+- 2026-09-08T23:18:55Z — reaberta por @Jmvjr
+- 2026-09-08T23:12:47Z — fechada por @Jmvjr
+- 2026-09-08T22:57:29Z — reaberta por @Jmvjr
+- 2026-09-08T22:38:28Z — fechada por @Jmvjr
+- 2026-09-08T22:18:09Z — label adicionada: História por @Jmvjr
+- 2026-09-08T22:18:08Z — atribuida: @Jmvjr por @Jmvjr
+
+</details>
+
 ### [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53)
 
 - **Estado:** fechada
@@ -3333,6 +3347,47 @@ Esse ticket será um constante lembrete de implementar boas práticas de CI</pre
 
 - 2026-11-08T20:28:37Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
 - 2026-11-07T19:01:07Z — fechada por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#97 — Modelagem do combustível](https://github.com/guilherme-webster/mc857-o-projeto/issues/97)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @DaviGabrielBC
+- **Responsaveis:** —
+- **Labels:** —
+- **Milestone:** —
+- **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
+- **Sub-issues:** —
+- **Criada:** 2026-10-22T23:41:50Z
+- **Atualizada:** 2026-11-13T22:30:10Z
+- **Fechada:** 2026-11-13T22:30:10Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Fazer modelagem do consumo de combustível e implementar o reabastecimento (junto com troca de pneus)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (2)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:22:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/97#issuecomment-6866381998)
+
+<pre>Implementação de reabastecimento durante o serviço de pneus no motor 2D concluída em branch isolada e em revisão. Os 15 testes direcionados e o Ruff passaram; a suíte completa apresenta as mesmas cinco falhas existentes na develop. Permanecem limitações de planejamento inicial de carga e garantia de chegada aos boxes, que estão sendo avaliadas antes do fechamento.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:30:09Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/97#issuecomment-6866528416)
+
+<pre>Consumo e reabastecimento simultâneo à troca de pneus no motor 2D foram integrados à develop pelo PR #182. O unittest do GitHub passou; localmente foram 740 testes, 42 ignorados e uma falha esperada, além de Ruff. O abastecimento respeita capacidade, vazão e regra de proibição. Como evolução futura, a estimativa nominal não garante chegada aos boxes em toda estratégia; carga inicial por piloto e lift-and-coast ainda não estão modelados.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T22:30:11Z — fechada por @Jmvjr
 
 </details>
 
