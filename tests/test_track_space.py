@@ -384,6 +384,19 @@ class SpatialExclusionTest(unittest.TestCase):
 
 
 class EmergentOvertakeTest(unittest.TestCase):
+    def test_ends_unproductive_pursuit_instead_of_chasing_for_a_whole_lap(self):
+        from f1_simulator.domain.track_space import _lane_decision
+
+        passing = CarSpaceState("passing", distance_m=100, lateral_m=2.4,
+                                target_lateral_m=2.4, overtaking="other", speed_ms=40)
+        other = CarSpaceState("other", distance_m=200, speed_ms=40)
+        cars = [passing, other]
+        ceilings = {c.driver_id: ([0., 800.], [40., 40.]) for c in cars}
+        target = _lane_decision(passing, {c.driver_id:c for c in cars}, cars,
+                               ceilings, 800, 5, 1, 800)
+        self.assertEqual(target, 0)
+        self.assertIsNone(passing.overtaking)
+
     def test_predictive_corridor_detects_fast_rear_and_allows_nonclosing_car(self):
         from f1_simulator.domain.track_space import _side_is_clear
 

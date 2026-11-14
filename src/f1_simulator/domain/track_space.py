@@ -54,6 +54,10 @@ ASSUMED_LANE_CHANGE_MS = 6.0
 #: frente e considera tentar passar. Ordem de grandeza de alguns comprimentos
 #: de carro; nao calibrada.
 ASSUMED_FOLLOW_TRIGGER_M = 20.0
+#: Histerese: encerra uma tentativa cujo alvo escapou para alem da janela
+#: inicial, sem alternar entre atacar e desistir a cada cruzamento de 20 m.
+ASSUMED_PASS_ABORT_GAP_M = 2 * ASSUMED_FOLLOW_TRIGGER_M
+PASS_OPPORTUNITY_VERSION = "passing-opportunity-revalidation-assumed-v1"
 
 #: Margem lateral (m) abaixo da qual os corpos lado a lado "roçam": soma das
 #: meias-larguras mais esta folga. Nao calibrada.
@@ -885,15 +889,10 @@ def _limit_projected_motion(track, car, start_distance, start_lateral,
     travel = abs(proposed_distance-start_distance) + abs(proposed_lateral-start_lateral)
     reach = travel * 2 + hypot(car.length_m, car.width_m)
     neighbors = []
+    rear_neighbors = []
     for other in cars:
         if (other is car or other.retired or other.pit_state is not None
                 or other.distance_m >= race_distance_m):
-            continue
-        # A protecao longitudinal e responsabilidade de quem vem atras.
-        # Fazer o lider esperar pelo estado antigo do seguidor cria um ciclo
-        # de espera nas curvas. Mudancas laterais ainda verificam ambos lados.
-        if (abs(proposed_lateral-start_lateral) < 1e-9
-                and _signed_gap(start_distance, other.distance_m, track.lap_length_m) < 0):
             continue
         pose = (pose_cache.get(other.driver_id) if pose_cache is not None else None)
         if pose is None:
@@ -902,9 +901,39 @@ def _limit_projected_motion(track, car, start_distance, start_lateral,
             continue
         if _rectangles_overlap(probe, start_pose, other, pose):
             continue
+        if _signed_gap(start_distance, other.distance_m, track.lap_length_m) < 0:
+            rear_neighbors.append((other, pose))
+            continue
         neighbors.append((other, pose))
+    # Um carro traseiro restringe a troca lateral, nao o avanco do lider. O
+    # seguidor reagira ao lider atualizado ao ser processado neste passo.
+    # Misturar as duas restricoes cria espera circular em curvas apertadas.
+    rear_touched = set()
+    if rear_neighbors and proposed_lateral != start_lateral:
+        def rear_hits(fraction):
+            probe.lateral_m = start_lateral + (proposed_lateral-start_lateral)*fraction
+            pose = _projected_rectangle(track, probe, start_distance)
+            return {other.driver_id for other, other_pose in rear_neighbors
+                    if _rectangles_overlap(probe, pose, other, other_pose)}
+
+        lateral_steps = max(1, ceil(abs(proposed_lateral-start_lateral)/max(.25, car.width_m/2)))
+        last_clear = 0.0
+        for index in range(1, lateral_steps+1):
+            fraction = index/lateral_steps
+            rear_touched = rear_hits(fraction)
+            if rear_touched:
+                lo, hi = last_clear, fraction
+                for _ in range(16):
+                    mid = (lo+hi)/2
+                    if rear_hits(mid):
+                        hi = mid
+                    else:
+                        lo = mid
+                proposed_lateral = start_lateral + (proposed_lateral-start_lateral)*lo
+                break
+            last_clear = fraction
     if not neighbors:
-        return proposed_distance, proposed_lateral, set()
+        return proposed_distance, proposed_lateral, rear_touched
 
     def hits(fraction, lateral_target):
         probe.lateral_m = start_lateral + (lateral_target-start_lateral)*fraction
@@ -1271,6 +1300,16 @@ def _lane_decision(
             or _signed_gap(car.distance_m, target.distance_m, lap_length_m) <= -clearance
         )
         if done:
+            car.overtaking = None
+            return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
+        gap = _signed_gap(car.distance_m, target.distance_m, lap_length_m)
+        my_free = _ceiling_at(*ceilings[car.driver_id], target.distance_m)*car.speed_scale
+        target_free = _ceiling_at(*ceilings[target.driver_id], target.distance_m)*target.speed_scale
+        # Uma oportunidade perdida nao e compromisso de perseguir o mesmo
+        # carro pela volta inteira. Emparelhado, mantenha o espaco ate poder
+        # retornar sem atravessar o outro corpo.
+        if (gap > ASSUMED_PASS_ABORT_GAP_M
+                or (gap > clearance and my_free <= target_free)):
             car.overtaking = None
             return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
         side = 1.0 if car.lateral_m >= 0 else -1.0

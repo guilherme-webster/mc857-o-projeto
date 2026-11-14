@@ -74,6 +74,28 @@ class ContactConsequencesTest(unittest.TestCase):
 
 
 class SweptBodyTest(unittest.TestCase):
+    def test_front_car_is_not_deadlocked_by_rear_during_centering(self):
+        from tests.geometry_support import fixture_geometry
+
+        track = build_track_space(fixture_geometry())
+        front = CarSpaceState("front", distance_m=1224.862623352812,
+                              lateral_m=-2.418777735494077)
+        rear = CarSpaceState("rear", distance_m=1221.2265894609861)
+        distance, lateral, _ = _limit_projected_motion(
+            track, front, front.distance_m, front.lateral_m,
+            front.distance_m+.5, -2.3, [front, rear], track.lap_length_m*8)
+        self.assertGreater(distance, front.distance_m)
+        self.assertLessEqual(lateral, -2.3)
+
+    def test_progress_does_not_allow_lateral_crossing_through_rear_body(self):
+        track = build_track_space(_rectangle_with_straight())
+        front = CarSpaceState("front", distance_m=100, lateral_m=-3)
+        rear = CarSpaceState("rear", distance_m=98)
+        distance, lateral, _ = _limit_projected_motion(
+            track, front, 100, -3, 110, 3, [front, rear], 10000)
+        self.assertEqual(distance, 110)
+        self.assertLessEqual(lateral, -2+1e-5)
+
     def setUp(self):
         self.track = build_track_space(_rectangle_with_straight())
 

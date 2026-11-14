@@ -77,6 +77,8 @@ from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
+    ASSUMED_PASS_ABORT_GAP_M,
+    PASS_OPPORTUNITY_VERSION,
     CarSpaceState,
     FieldSample,
     MotionIncrement,
@@ -1150,6 +1152,13 @@ def simulate_2d_race(
                         "abandono dependem da aproximacao relativa. Limiares "
                         "assumidos, nao calibrados com acidentes reais."
                     ),
+                },
+                "passing_opportunity": {
+                    "origin": "assumed",
+                    "parameter_version": PASS_OPPORTUNITY_VERSION,
+                    "abort_gap_m": ASSUMED_PASS_ABORT_GAP_M,
+                    "rationale": "Encerra ataques cujo alvo escapou ou cuja "
+                                 "vantagem de ritmo desapareceu antes de emparelhar.",
                 },
             }
         ],
