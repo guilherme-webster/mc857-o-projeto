@@ -37,7 +37,7 @@ from f1_simulator.domain.dynamic_usage import (
     usage_delta,
     usage_reference,
 )
-from f1_simulator.domain.fuel import FuelPlan
+from f1_simulator.domain.fuel import FuelPlan, RefuelStopParameters
 from f1_simulator.domain.model_parameters import (
     CompoundParameters,
     ModelParameters,
@@ -296,6 +296,7 @@ def simulate_2d_race(
     base_physics: CarPhysics = CarPhysics(),
     base_physics_by_id: Mapping[str, CarPhysics] | None = None,
     pit_execution_by_id: Mapping[str, float] | None = None,
+    pit_stop_variation: RefuelStopParameters | None = None,
     compounds: dict[str, CompoundParameters] | None = None,
     track_params: TrackParameters | None = None,
     model_parameters: ModelParameters | None = None,
@@ -337,7 +338,10 @@ def simulate_2d_race(
     e a saída devolve o carro à pista. A perda histórica de boxes só informa
     a decisão: não é somada ao tempo efetivamente gasto. O reabastecimento,
     quando habilitado, ocorre simultaneamente à troca. Sem aqueles parâmetros
-    não há paradas.
+    não há paradas. Com ``pit_stop_variation``, cada parada sorteia um desvio
+    do tempo de serviço (``stop_sigma_ms`` e ``stop_skew`` calibrados nas
+    paradas reais), escalado pela execução de box da equipe; ausente, o
+    serviço é sempre o nominal.
 
     Com ``race_control``, o automato de ``race_control`` roda uma vez por volta
     da corrida (lider) e neutraliza o pelotao sob SC/VSC/vermelha, modulando o
@@ -415,6 +419,11 @@ def simulate_2d_race(
     # principal. Fontes de teste sem ``spawn`` compartilham o fluxo recebido.
     noise_streams: dict[str, RandomSource] = {}
     lap_noise_by_id: dict[str, dict[int, float]] = {}
+    # Variacao do servico de box por parada (issue #139), em fluxo proprio por
+    # piloto pelo mesmo motivo do ruido de volta. ``pit_draws`` conta as
+    # paradas ja sorteadas e compoe o rotulo do sorteio.
+    pit_streams: dict[str, RandomSource] = {}
+    pit_draws: dict[str, int] = {}
     for entry in sorted(entrants, key=lambda e: e["grid_position"]):
         did = entry["driver_id"]
         names[did] = entry["name"]
@@ -435,6 +444,8 @@ def simulate_2d_race(
         lap_noise_by_id[did] = {}
         spawn = getattr(rng, "spawn", None)
         noise_streams[did] = spawn(f"lap-noise:{did}") if spawn else rng
+        pit_streams[did] = spawn(f"pit-stop:{did}") if spawn else rng
+        pit_draws[did] = 0
         usage_totals[did] = dict(
             fuel_burned_kg=0.0,
             distance_wear_laps=0.0,
@@ -794,6 +805,27 @@ def simulate_2d_race(
         )
         _apply_scale(car, int(car.distance_m // lap_length_m) + 1)
 
+    def _service_time_s(did: str, execution: float) -> float:
+        """Tempo parado desta parada (s): nominal x equipe, mais o desvio sorteado.
+
+        ``execution`` e o fator heuristico da equipe (1.0 neutro) e escala a
+        media e o desvio: uma equipe melhor para mais rapido e erra menos. A
+        normal assimetrica e a mesma de ``sample_refuel_stops``: paradas lentas
+        sao mais comuns que as excepcionalmente rapidas. O piso de metade do
+        nominal so barra uma cauda fisicamente impossivel.
+        """
+
+        nominal = pit_parameters.service_time_s * execution
+        if pit_stop_variation is None or pit_stop_variation.stop_sigma_ms == 0.0:
+            return nominal
+        index = pit_draws[did]
+        pit_draws[did] += 1
+        z = pit_streams[did].standard_normal(f"pit-stop:{did}:stop:{index}")
+        skew = pit_stop_variation.stop_skew
+        side = 1.0 + skew if z > 0 else 1.0 - skew
+        deviation_s = z * pit_stop_variation.stop_sigma_ms / 1000.0 * side * execution
+        return max(0.5 * nominal, nominal + deviation_s)
+
     def _request_pit(car: CarSpaceState, lap_number: int) -> None:
         """Decida no início da volta; o pedido só troca pneus no serviço."""
 
@@ -850,7 +882,7 @@ def simulate_2d_race(
                 pit_execution_by_id.get(did, 1.0) if pit_execution_by_id else 1.0
             )
             car.pit_request = PitStopRequest(
-                entry, pit_parameters.service_time_s * execution
+                entry, _service_time_s(did, execution)
             )
 
     def _pit_event(car: CarSpaceState, kind: str, time_s: float) -> None:
@@ -1179,6 +1211,27 @@ def simulate_2d_race(
             "aggression": attrs.aggression,
             "composure": attrs.composure,
         }
+
+    if pit_active and pit_stop_variation is not None:
+        result["assumptions"].append(
+            {
+                "kind": "pit_stop_variation_2d",
+                "origin": "heuristic",
+                "parameter_version": "pit-stop-variation-2d-v1",
+                "stop_sigma_ms": pit_stop_variation.stop_sigma_ms,
+                "stop_skew": pit_stop_variation.stop_skew,
+                "stop_spread_origin": pit_stop_variation.origin,
+                "nominal_service_time_s": pit_parameters.service_time_s,
+                "rationale": (
+                    "Issue #139: cada parada sorteia um desvio do tempo de "
+                    "servico, sigma = stop_sigma_ms * execucao da equipe, com "
+                    "a assimetria calibrada e piso de metade do nominal. O "
+                    "desvio foi medido na duracao total do pit lane das "
+                    "paradas reais; aplica-lo so ao servico e multiplica-lo "
+                    "pelo fator ficticio da equipe e hipotese."
+                ),
+            }
+        )
 
     if noise_sigma_ms > 0.0:
         # A escala vem da calibracao; multiplica-la pelo atributo ficticio do

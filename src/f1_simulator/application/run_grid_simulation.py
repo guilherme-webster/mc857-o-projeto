@@ -273,6 +273,12 @@ def _run_2d(
         race_control=race_control,
         base_physics_by_id=car_physics_by_driver,
         pit_execution_by_id=pit_execution_by_driver,
+        # A dispersao das paradas mora no artefato de combustivel porque foi
+        # calibrada junto com as paradas de reabastecimento; sem ele, o
+        # servico de box fica no tempo nominal.
+        pit_stop_variation=(
+            fuel_plan.parameters.refuel_stops if fuel_plan is not None else None
+        ),
         on_progress=on_progress,
         check_cancelled=check_cancelled,
     )
