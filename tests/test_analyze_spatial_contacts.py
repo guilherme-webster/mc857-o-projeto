@@ -12,6 +12,17 @@ from tests.geometry_support import small_geometry
 
 
 class SpatialContactAnalysisTest(unittest.TestCase):
+    def test_parallel_duration_does_not_join_separate_episodes(self):
+        track = build_track_space(small_geometry())
+        def pair(t):
+            return FieldSample(t, (CarSpaceState("a", 10+t, lateral_m=-2),
+                                   CarSpaceState("b", 11+t, lateral_m=2)))
+        samples = [pair(0), pair(3), FieldSample(4, (CarSpaceState("a", 14),)),
+                   pair(5), pair(9)]
+        report = analyze_samples(samples, track, 2, 2, 50)
+        self.assertEqual(report["longest_parallel_s"], 4)
+        self.assertEqual(report["longest_parallel_pair"], ["a", "b"])
+
     def test_samples_measure_persistence_overlap_braking_and_monotonicity(self):
         track = build_track_space(small_geometry())
 

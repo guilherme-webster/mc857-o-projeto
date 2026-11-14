@@ -36,6 +36,17 @@ amostra de 207 para 597 e inversões persistentes de posição de 1.446 para
 acidentes e sem certificação de validade geométrica das ultrapassagens.
 Ainda há sobreposições e os resultados dependem da geometria e do passo.
 
+Na matriz ampliada de 36 cenários, incluindo o circuito 14, grids de 10 e 20
+e sementes 1–3, todos os carros ativos concluíram sem recuo. Contra a versão
+v2 do PR #187, abandonos por contato passaram de 2 para 5, sobreposições por
+amostra de 633 para 1.354, inversões persistentes de 4.345 para 3.989 e amostras
+de frenagem acima de 50 m/s² de 5.725 para 6.222. O tempo agregado com
+diagnóstico foi 72,790 → 75,051 s, em máquina compartilhada. Essa regressão
+de contatos impede considerar a variante aprovada apenas pela melhora de
+emparelhamento na prévia. A avaliação visual e a decisão de incorporação
+permanecem pendentes. O diagnóstico passou a publicar `longest_parallel_s`
+e `longest_parallel_pair` para medir o comportamento continuamente.
+
 Antecipar o ataque ou fixar o lado durante toda a disputa foi experimentado e
 não incorporado: essas variantes pioraram contatos ou prenderam o pelotão.
 O experimento de recalcular o eixo por arco XY também permanece separado,

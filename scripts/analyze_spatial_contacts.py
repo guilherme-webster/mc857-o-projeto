@@ -61,6 +61,9 @@ def analyze_samples(samples, track, total_laps, persistence_s, braking_ms2):
     stable = {}
     candidate = {}
     passes = []
+    parallel = {}
+    longest_parallel_s = 0.0
+    longest_parallel_pair = None
     overlaps = 0
     overlap_pairs = set()
     braking = 0
@@ -93,6 +96,14 @@ def analyze_samples(samples, track, total_laps, persistence_s, braking_ms2):
             pair = (a, b)
             active_pairs.add(pair)
             ca, cb = active[a], active[b]
+            if (abs(ca.distance_m-cb.distance_m) <= (ca.length_m+cb.length_m)/2
+                    and abs(ca.lateral_m-cb.lateral_m) >= (ca.width_m+cb.width_m)/2):
+                parallel.setdefault(pair, sample.time_s)
+                duration = sample.time_s-parallel[pair]
+                if duration > longest_parallel_s:
+                    longest_parallel_s, longest_parallel_pair = duration, pair
+            else:
+                parallel.pop(pair, None)
             if _rectangles_overlap(ca, poses[a], cb, poses[b]):
                 overlaps += 1
                 overlap_pairs.add(pair)
@@ -114,6 +125,7 @@ def analyze_samples(samples, track, total_laps, persistence_s, braking_ms2):
                     del candidate[pair]
         stable = {p: leader for p, leader in stable.items() if p in active_pairs}
         candidate = {p: value for p, value in candidate.items() if p in active_pairs}
+        parallel = {p: value for p, value in parallel.items() if p in active_pairs}
     unfinished = sorted(c.driver_id for c in samples[-1].cars
                         if not c.retired and c.distance_m < race_distance)
     return {
@@ -125,6 +137,8 @@ def analyze_samples(samples, track, total_laps, persistence_s, braking_ms2):
         "sat_pairs": [list(p) for p in sorted(overlap_pairs)],
         "persistent_overtakes": passes,
         "persistent_overtake_count": len(passes),
+        "longest_parallel_s": round(longest_parallel_s, 6),
+        "longest_parallel_pair": list(longest_parallel_pair) if longest_parallel_pair else None,
         "abnormal_braking_samples": braking,
         "max_deceleration_ms2": round(worst_braking, 6),
         "backward_distance_samples": backwards,
