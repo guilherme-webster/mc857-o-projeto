@@ -30,6 +30,7 @@ from f1_simulator.domain.random_source import (
 )
 from f1_simulator.domain.speed_dynamics import (
     DEFAULT_CAR_PHYSICS,
+    DRIVER_PHYSICS_GAINS_VERSION,
     CarPhysics,
     car_pace_to_physics,
 )
@@ -735,6 +736,13 @@ def _physical_lap_assumption() -> dict:
             "mass_kg": car.mass_kg,
             "power_kw": car.power_kw,
             "traction_share": car.traction_share,
+        },
+        # Os ganhos que traduzem atributos de piloto em envelope fisico sao
+        # heuristicos (ADR 0008) e mudam o resultado sem mudar o carro: a
+        # versao vai junto para a corrida salva ser auditavel (issue #139).
+        "driver_attribute_gains": {
+            "origin": "heuristic",
+            "parameter_version": DRIVER_PHYSICS_GAINS_VERSION,
         },
         "rationale": (
             "ADR 0015: velocidade de curva limitada por aderencia e downforce, "

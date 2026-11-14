@@ -27,12 +27,13 @@ from f1_simulator.application.calibrate_car_physics import (
     evaluate_car_physics,
     fit_car_physics,
 )
-from f1_simulator.domain.driver_attributes import DriverAttributes
+from f1_simulator.domain.driver_attributes import ASSUMED_ARCHETYPES, DriverAttributes
 from f1_simulator.domain.speed_dynamics import (
     DEFAULT_CAR_PHYSICS,
     GRAVITY_MS2,
     MIN_CORNER_RADIUS_M,
     CarPhysics,
+    GripLapTimes,
     lap_time_ms,
     physics_for,
     speed_ceiling,
@@ -227,6 +228,32 @@ class PhysicsForTest(unittest.TestCase):
         self.assertGreater(calm.corner_grip_use, 1.0)
         self.assertGreater(bold.brake_grip_use, 1.0)
         self.assertEqual(bold.corner_grip_use, 1.0)
+
+    def test_no_attribute_dominates_the_lap_time(self):
+        # Regressao da issue #139: a compostura 1,30 valia -10,9% de volta,
+        # dez vezes a faixa inteira do ritmo, e o arquetipo conservador vencia
+        # sempre. A faixa de cada atributo nos arquetipos deve mover a volta
+        # na mesma ordem de grandeza: nenhuma passa do dobro da do ritmo.
+        track = _fixture_tracks()[MONACO][0]
+
+        def span_ms(name: str) -> float:
+            values = [
+                bound
+                for profile in ASSUMED_ARCHETYPES
+                for bound in getattr(profile, name)
+            ]
+            laps = [
+                GripLapTimes(track, physics_for(_attributes(**{name: v}))).lap_ms(1.0)
+                for v in (min(values), max(values))
+            ]
+            return abs(laps[0] - laps[1])
+
+        pace = span_ms("pace_offset_pct")
+        self.assertGreater(pace, 0.0)
+        for name in ("composure", "aggression"):
+            with self.subTest(attribute=name):
+                self.assertGreater(span_ms(name), 0.25 * pace)
+                self.assertLess(span_ms(name), 2.0 * pace)
 
 
 class CalibrationTest(unittest.TestCase):
