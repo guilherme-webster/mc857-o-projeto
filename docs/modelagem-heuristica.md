@@ -60,7 +60,7 @@ mesma versão de código, Python, parâmetros e dados, não entre versões.
 |---|---|---|
 | Atributos e arquétipos | `domain/driver_attributes.py`, `application/generate_attributes.py` | `ASSUMED_ARCHETYPES` (`assumed-driver-attributes-v2`) |
 | Perfis fictícios nomeados | `configs/drivers/perfis-ficticios.json`, `adapters/driver_presets_json.py` | `fictional-driver-presets-v1` |
-| Efeito dos atributos no tempo | `domain/attribute_effects.py` | `DETAILED_TYRE_MANAGEMENT` (`detailed-tyre-management-v1`) |
+| Efeito dos atributos no tempo | `domain/attribute_effects.py` | `DETAILED_TYRE_MANAGEMENT` (`detailed-tyre-management-v2`) |
 | Disputa de posição | `domain/disputes.py` (arquivado em `TOBEDEFINED/disputes.py`; no 2D a disputa emerge da proximidade espacial) | `DEFAULT_DISPUTE_HEURISTICS` (`dispute-pressure-v1`) |
 | SC, VSC e bandeiras | `domain/race_control.py` | `HEURISTIC_RACE_CONTROL` (`heuristic-race-control-v2`) |
 | Paradas | `domain/strategy.py` (`HeuristicPitStrategy`) | `DEFAULT_HEURISTIC_PIT_PARAMETERS` (`heuristic-pit-v1`) |
@@ -85,7 +85,7 @@ multiplicativos têm 1,0 como neutro.
 
 | Atributo | Efeito | aggressive | balanced | conservative |
 |---|---|---|---|---|
-| `pace_offset_pct` | Referência da volta × (1 + pct/100) | −0,60 a −0,20 | −0,15 a +0,15 | +0,10 a +0,40 |
+| `pace_offset_pct` | Referência da volta × (1 + pct/100) | −0,60 a +0,40 | −0,60 a +0,40 | −0,60 a +0,40 |
 | `consistency_factor` | Desvio do ruído por volta | 1,10 a 1,40 | 0,90 a 1,10 | 0,70 a 0,95 |
 | `tyre_management_factor` | Degradação do pneu (amortecida, ver abaixo) | 1,15 a 1,45 | 0,90 a 1,10 | 0,65 a 0,90 |
 | `aggression` | Pressão do atacante e risco de contato | 1,20 a 1,50 | 0,90 a 1,10 | 0,60 a 0,85 |
@@ -94,21 +94,38 @@ multiplicativos têm 1,0 como neutro.
 **Efeito no tempo de volta do motor 2D (issue #139).** A tabela acima descreve
 o papel de cada atributo; no motor 2D, três deles também mudam o envelope físico
 do carro (`physics_for`, em `domain/speed_dynamics.py`), por ganhos heurísticos
-versionados em `DRIVER_PHYSICS_GAINS_VERSION` (`driver-physics-gains-v2`):
+versionados em `DRIVER_PHYSICS_GAINS_VERSION` (`driver-physics-gains-v3`):
 
 | Atributo | Atua em | Ganho | Faixa dos arquétipos → tempo de volta (Mônaco) |
 |---|---|---|---|
 | `pace_offset_pct` | velocidade de reta e de curva | 2,0 | −0,60 a +0,40 → −1,0% a +0,7% |
-| `composure` | velocidade de curva | 0,08 | 0,85 a 1,30 → +1,0% a −2,0% |
+| `composure` | velocidade de curva | 0,04 | 0,85 a 1,30 → +0,5% a −1,0% |
 | `aggression` | uso de aderência na freada | 0,25 | 0,60 a 1,50 → +0,6% a −0,6% |
 
 Os ganhos foram escolhidos, não medidos, para que nenhum atributo domine. Na
-versão anterior (compostura 0,5 e freada 0,5) a compostura 1,30 valia −10,9% de
+primeira versão (compostura 0,5 e freada 0,5) a compostura 1,30 valia −10,9% de
 volta, dez vezes o ritmo, e o arquétipo conservador vencia todas as corridas
-curtas. Em 18 corridas de distância completa (Bahrein, Mônaco e Zandvoort, 4
-pilotos por arquétipo, atributos sorteados nas faixas) a posição média ficou em
-6,6 (agressivo), 6,3 (equilibrado) e 6,6 (conservador). Esses números carregam
-muito ruído de abandonos por contato (issue #174), então valem como indicação.
+curtas.
+
+**Ritmo independente do arquétipo (v3).** Até `assumed-driver-attributes-v2`
+cada arquétipo sorteava o ritmo numa faixa própria (agressivo −0,60 a −0,20,
+equilibrado −0,15 a +0,15, conservador +0,10 a +0,40): o estilo já trazia o
+nível embutido. Enquanto o contato punia a agressividade isso se compensava;
+com os abandonos por contato corrigidos (issue #174), o agressivo vencia 11 de
+18 corridas de distância completa e o equilibrado ficava sempre por último
+(posição média 7,7 de 12). Na v3 os três arquétipos sorteiam o ritmo na mesma
+faixa, −0,60 a +0,40, e o arquétipo define só o estilo. A faixa é a união das
+três anteriores, então os perfis nomeados continuam válidos; neles o ritmo
+segue sendo o valor fixado para cada piloto. Com o ritmo fora da conta, a
+compostura caiu de 0,08 para 0,04 (`driver-physics-gains-v3`): com 0,08 o
+conservador vencia 14 das 18. Resultado em 18 corridas de distância completa
+(Bahrein, Mônaco e Zandvoort, 4 pilotos por arquétipo, atributos sorteados):
+
+| | agressivo | equilibrado | conservador |
+|---|---|---|---|
+| Posição média (de 12) | 6,9 | 6,5 | 6,1 |
+| Vitórias (de 18) | 5 | 5 | 8 |
+| Paradas por carro | 1,59 | 1,42 | 1,29 |
 
 **Ruído de ritmo por volta.** `consistency_factor` atua no motor 2D desde a
 issue #139: cada carro sorteia, uma vez por volta, um desvio de ritmo com
@@ -124,17 +141,39 @@ desvio aparece como a fatia "variação".
 Em distância completa o pneu já pesa 2,4% a 2,6% do tempo de volta no fim do
 stint em Mônaco e no Bahrein (0,85% em Zandvoort, de severidade 0,3), com uma a
 duas paradas. Multiplicar a degradação por 2,5 levou a três paradas em Mônaco e
-a quase seis no Bahrein. A elasticidade de `tyre_management_factor` (0,4)
-também ficou como está: 0,7 e 1,0 não melhoraram o equilíbrio entre arquétipos.
+a quase seis no Bahrein.
+
+**Features fracas reforçadas (issue #139).** Dois efeitos existiam no motor 2D
+mas quase não se faziam sentir. Ambos continuam heurísticos:
+
+- *Gestão de pneu do piloto:* a elasticidade de `tyre_management_factor` subiu
+  de 0,4 para 0,7 (ver "Gestão de pneus amortecida" abaixo). No Bahrein, com
+  três carros iguais, o piloto de fator 0,65 terminou 18 a 28 s à frente do
+  neutro e 26 a 50 s à frente do de fator 1,45, quase sempre por fazer uma
+  parada a menos.
+- *Parada nos boxes:* cada parada sorteia um desvio do tempo de serviço
+  (2,5 s nominais) com `stop_sigma_ms` (1726 ms) e `stop_skew` (0,70) de
+  `fuel-v1.json`, multiplicado pela execução de box da equipe, num fluxo
+  próprio por piloto (`pit-stop:<piloto>`) e com piso de metade do nominal.
+  Com esses valores a mediana fica em 2,5 s, a média em ~3,5 s, 10% das
+  paradas passam de 6,3 s e 1% de 9,3 s. A dispersão foi medida na duração
+  total do pit lane das paradas reais; aplicá-la só ao serviço e escalá-la
+  pelo fator fictício da equipe é hipótese, declarada em `assumptions` como
+  `pit_stop_variation_2d` (`pit-stop-variation-2d-v1`). Sem o artefato de
+  combustível o serviço fica no nominal. A diferença média entre equipes
+  continua pequena (fatores de 0,90 a 1,12), como na F1 real.
 
 **Precedência de origem por campo:** `manual` (PATCH) > `preset` (perfil
 nomeado) > `generated` (sorteio).
 
-**Gestão de pneus amortecida.** No motor detalhado, a degradação usa
-`1 + 0,4 × (tyre_management_factor − 1)`, ou seja, 0,86× a 1,18× em vez de
-0,65× a 1,45×. Com o fator integral, os agressivos faziam 2,4 paradas contra
-1,1 dos conservadores em pistas de desgaste alto e terminavam atrás deles. O
-mesmo multiplicador vai para a estratégia de parada.
+**Gestão de pneus amortecida.** A degradação usa
+`1 + 0,7 × (tyre_management_factor − 1)`, ou seja, 0,755× a 1,315× em vez de
+0,65× a 1,45× (`detailed-tyre-management-v2`). A v1 usava 0,4 (0,86× a 1,18×),
+dimensionada para o motor por volta, em que o fator integral levava os
+agressivos a 2,4 paradas contra 1,1 dos conservadores. No motor 2D, 0,4 deixava
+o atributo quase sem efeito; com 1,0 o conservador passava a fazer menos de
+uma parada por corrida. No 2D o fator entra pelo desgaste acumulado do carro
+(`management_factor` em `usage_2d`), que é o que a estratégia de parada lê.
 
 **Perfis nomeados.** 24 pilotos do grid de 2024 em
 `configs/drivers/perfis-ficticios.json`, com arquétipo, alguns valores fixados
