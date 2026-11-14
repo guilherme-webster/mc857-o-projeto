@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-14T03:52:52Z
+- **Ultima atividade registrada:** 2026-11-14T04:24:47Z
 - **Abertas:** 21
 - **Fechadas:** 82
 
@@ -1000,7 +1000,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T18:01:19Z
-- **Atualizada:** 2026-11-14T03:52:52Z
+- **Atualizada:** 2026-11-14T04:24:47Z
 - **Fechada:** —
 
 <details>
@@ -1011,7 +1011,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 </details>
 
 <details>
-<summary>Comentarios (7)</summary>
+<summary>Comentarios (11)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6866415608)
 
@@ -1040,6 +1040,25 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 #### [@Jmvjr em 2026-11-14T03:52:52Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871277013)
 
 <pre>Nova versao implementada e previa Contatos v2 aberta para avaliacao do usuario. Proximidade, toque, dano e abandono estao separados; contato usa corpos projetados e episodios unicos. Em 36 cenarios por versao: abandonos 13→2, pares sobrepostos/amostra 15.738→633, inversoes persistentes 4.084→4.345, nenhuma nao-conclusao ativa nem recuo. O custo aumentou cerca de 74% incluindo diagnostico e as frenagens bruscas aumentaram; estas limitacoes estao documentadas. 798 testes passaram (42 ignorados, 1 falha esperada) e Ruff passou. A tentativa de frenagem antecipada foi retirada por causar bloqueio em um cenario. PR continua rascunho; sem merge nem fechamento.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:05:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871426489)
+
+<pre>O usuario avaliou a previa v2: contatos melhoraram, mas as ultrapassagens parecem hesitantes. Testei preparacao antecipada, reserva de lado e escolha do corredor mais proximo. As variantes nao foram incorporadas: em oito cenarios, a preparacao antecipada elevou abandonos de 1 para 5 e sobreposicoes de 207 para 799; fixar lado prendeu grupos; reserva apenas de entrada manteve conclusao mas elevou sobreposicoes de 207 para 576. O experimento de corredor mais proximo tambem piorou (10 abandonos e 1052 sobreposicoes). Resta planejamento integrado do corredor durante a manobra. A branch foi restaurada ao ultimo estado publicado, sem adicionar essas regressoes ao PR. Experimentos preservados localmente; PR continua rascunho e issue aberta.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:08:00Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871456405)
+
+<pre>Investigação em worktree isolada baseada em 6d389d9: reparametrização experimental em memória pelo arco XY, mantendo o comprimento da volta e os dados originais. Matriz pareada de 3 pistas, 3 sementes, 20 carros, 3 voltas e passo 0,2 s: em Silverstone as intervenções SAT laterais caíram 553→44 e em Monza 1956→87 (seed 1), mas as frenagens acima de 50 m/s² aumentaram 124→187 e 76→108. Em Mônaco sobreposições por amostra subiram 17→32 e abandonos por contato 0→1. Todas as corridas concluíram; sementes sem abandonos reproduziram trajetórias idênticas. A troca também muda o perfil físico e a posição das referências no eixo; não houve recalibração. O experimento sugere contribuição da geometria, não solução suficiente nem causa exclusiva.
+
+Adicionados diagnóstico reproduzível, testes de invariantes (2 passaram), e registro detalhado na worktree codex/issue-174-arco-xy; Ruff dos arquivos novos passou. Próximo passo: investigar planejamento de corredor e contatos conjuntamente; decidir efeitos em contratos/ADRs, boxes e calibração antes de eventual adoção do eixo. Prévia estável intacta; nenhuma implementação de produto, merge ou fechamento. Aguardam-se revisão e posterior prévia visual coerente.
+</pre>
+
+#### [@Jmvjr em 2026-11-14T04:16:25Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871557143)
+
+<pre>Feedback visual refinado pelo usuario: os carros emparelham, mas parecem nao completar a passagem. Diagnostico da previa encontrou pares lado a lado por ate 55,8 s, frequentemente perseguindo um mesmo terceiro alvo. Um experimento de encerrar oportunidades perdidas (alvo distante ou vantagem desaparecida) reduziu o maior intervalo para 16,4 s na previa, mas aumentou contatos em outros cenarios e bloqueou o teste de SC forcado. Nao incorporado: patches preservados fora do Git e worktree restaurado. A versao publicada permanece limpa, com 798 testes aprovados; ainda e necessario resolver conclusao e reorganizacao da manobra em conjunto com neutralizacao e protecao geometrica. PR rascunho e issue aberta.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:24:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871657774)
+
+<pre>Continuacao em branch separada codex/issue-174-pass-clearance (c05a54e/05477e6): reproduzido bloqueio circular em Monaco durante SC; um carro traseiro impedia o avanco longitudinal do lider enquanto ele centrava. A protecao agora limita a mudanca lateral contra corpos traseiros separadamente do avanco; regressao cobre o par real e impede atravesamento lateral. Com isso, reavaliar ataques perdidos passou na suite (801 testes, 42 ignorados, 1 falha esperada), incluindo SC/VSC; Ruff passou, e teste adicional do diagnostico tambem passou. Na previa completa, maior emparelhamento caiu 55,8→29,4 s e houve 1 abandono nas duas versoes. Na matriz 36 cenarios todos concluiram sem recuo, mas abandonos 2→5 e sobreposicoes 633→1354: variante nao aprovada para incorporacao. Previa experimental aberta para avaliacao do usuario. A versao do PR #187 nao foi alterada; issue permanece aberta.</pre>
 
 </details>
 
