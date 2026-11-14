@@ -78,7 +78,6 @@ SAVED_TOURNAMENTS_BOUNDS = (28, 82, 288, 42)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
 CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 40)
 SAVE_RULES_BOUNDS = (916, 13, 138, 40)
-BACK_BOUNDS = (28, 13, 134, 40)
 SCORING_BOUNDS = (232, 420, 320, 34)
 STAGES_DECREASE_BOUNDS = (232, 383, 28, 34)
 STAGES_INCREASE_BOUNDS = (326, 383, 28, 34)
@@ -1038,11 +1037,6 @@ class ParametersView(UIView):
         if self._contains(SAVE_RULES_BOUNDS, x, y):
             self._update_rules()
             return
-        if self._contains(BACK_BOUNDS, x, y):
-            self._set_status(
-                "Esta é a primeira tela; não há etapa anterior.", SECONDARY_TEXT_COLOR
-            )
-            return
         if self._catalog_error and self._contains(CONFIGURE_TRACK_BOUNDS, x, y):
             self._load_track_catalog()
             return
@@ -1225,7 +1219,6 @@ class ParametersView(UIView):
         """Offer a visible action to finalize the chosen order."""
 
         for bounds, label, fill, border in (
-            (BACK_BOUNDS, "‹   Voltar", (26, 36, 48), PANEL_BORDER_COLOR),
             (SAVE_RULES_BOUNDS, "Salvar regras", (26, 36, 48), PANEL_BORDER_COLOR),
             (CONFIRM_SERIES_BOUNDS, "Confirmar torneio", (203, 27, 43), (236, 50, 65)),
         ):
