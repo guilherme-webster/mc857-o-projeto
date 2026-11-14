@@ -59,6 +59,7 @@ from f1_simulator.domain.race_control import (
     step,
 )
 from f1_simulator.domain.random_source import RandomSource
+from f1_simulator.domain.spatial_contact import ASSUMED_CONTACT
 from f1_simulator.domain.speed_dynamics import (
     CarPhysics,
     GripLapTimes,
@@ -76,8 +77,8 @@ from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
     ASSUMED_CAR_WIDTH_M,
-    ASSUMED_SIDE_CONTACT_PER_SECOND,
-    SIDE_CONTACT_PARAMETER_VERSION,
+    ASSUMED_PASS_ABORT_GAP_M,
+    PASS_OPPORTUNITY_VERSION,
     CarSpaceState,
     FieldSample,
     MotionIncrement,
@@ -939,7 +940,6 @@ def simulate_2d_race(
                 )
                 return
         tyre_by_id[did] = tyre_by_id[did].aged()
-        _apply_scale(car, lap + 1)
 
         # Retrato do estado ao fim desta volta (pneu ja envelhecido ou resetado
         # pela eventual parada), para o history nao repetir o estado final.
@@ -969,6 +969,10 @@ def simulate_2d_race(
                     retired_seen.add(other.driver_id)
                     incidents.append(Incident(lap, "contact", (other.driver_id,)))
             _advance_control(lap, incidents)
+        # O primeiro carro a cruzar a linha tambem deve receber o estado que
+        # acabou de ser definido para a proxima volta. Aplicar antes de avancar
+        # o controle deixaria esse carro em verde durante SC/VSC (e vice-versa).
+        _apply_scale(car, lap + 1)
         _request_pit(car, lap + 1)
 
     # Fator inicial da volta 1 (pneu novo, tanque cheio, clima da volta 1).
@@ -976,6 +980,7 @@ def simulate_2d_race(
         _apply_scale(car, 1)
         _request_pit(car, 1)
 
+    contact_events: list[dict] = []
     samples = integrate_field(
         cars,
         track,
@@ -992,6 +997,7 @@ def simulate_2d_race(
         on_pit_event=_pit_event,
         on_motion=_on_motion,
         check_cancelled=check_cancelled,
+        contact_events=contact_events,
     )
 
     per_car: dict[str, list[float]] = {}
@@ -1096,6 +1102,9 @@ def simulate_2d_race(
         "race_control_events": control_events,
         "race_control_by_lap": control_by_lap,
         "pit_stop_events": pit_events,
+        "contact_events_2d": contact_events,
+        "contact_model": ASSUMED_CONTACT.as_dict(),
+        "contact_damage_by_driver": {c.driver_id: c.contact_damage for c in cars},
         # Trajetoria espacial para o frontend desenhar carros lado a lado com
         # hitbox. ``track_space_2d`` traz a largura e a escala para converter os
         # metros laterais em unidades do desenho normalizado.
@@ -1133,14 +1142,23 @@ def simulate_2d_race(
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
                 "side_contact": {
-                    "origin": "assumed",
-                    "parameter_version": SIDE_CONTACT_PARAMETER_VERSION,
-                    "base_rate_per_second": ASSUMED_SIDE_CONTACT_PER_SECOND,
+                    **ASSUMED_CONTACT.as_dict(),
+                    "parameter_version": ASSUMED_CONTACT.version,
+                    "detection": "projected_bodies",
+                    "risk_basis": "one_consequence_per_physical_episode",
                     "rationale": (
-                        "Taxa heuristica escolhida, nao estimada de dados; "
-                        "aplicada somente durante exposicao lateral e escalada "
-                        "pela agressividade dos dois carros."
+                        "Proximidade nao causa abandono. Contato geometrico e "
+                        "avaliado uma vez por episodio; toque leve, dano e "
+                        "abandono dependem da aproximacao relativa. Limiares "
+                        "assumidos, nao calibrados com acidentes reais."
                     ),
+                },
+                "passing_opportunity": {
+                    "origin": "assumed",
+                    "parameter_version": PASS_OPPORTUNITY_VERSION,
+                    "abort_gap_m": ASSUMED_PASS_ABORT_GAP_M,
+                    "rationale": "Encerra ataques cujo alvo escapou ou cuja "
+                                 "vantagem de ritmo desapareceu antes de emparelhar.",
                 },
             }
         ],

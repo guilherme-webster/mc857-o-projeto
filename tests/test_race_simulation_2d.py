@@ -88,8 +88,10 @@ class RaceSimulation2DTest(unittest.TestCase):
     def test_contact_rate_is_disclosed_as_assumed_and_versioned(self):
         contact = self.plain["assumptions"][0]["side_contact"]
         self.assertEqual(contact["origin"], "assumed")
-        self.assertEqual(contact["parameter_version"], "spatial-contact-assumed-v1")
-        self.assertEqual(contact["base_rate_per_second"], 0.15)
+        self.assertEqual(contact["parameter_version"], "spatial-contact-severity-assumed-v2")
+        self.assertEqual(contact["risk_basis"], "one_consequence_per_physical_episode")
+        self.assertEqual(contact["harmless_closing_ms"], 2.0)
+        self.assertNotIn("base_rate_per_second", contact)
 
     # --- reprodutibilidade -------------------------------------------------
 

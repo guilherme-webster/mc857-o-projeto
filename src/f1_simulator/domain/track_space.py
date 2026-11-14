@@ -18,7 +18,7 @@ from __future__ import annotations
 from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from math import exp
+from math import ceil, hypot
 
 from f1_simulator.domain.pit_lane import (
     PitLaneParameters,
@@ -27,6 +27,11 @@ from f1_simulator.domain.pit_lane import (
     PitStopRequest,
 )
 from f1_simulator.domain.random_source import RandomSource
+from f1_simulator.domain.spatial_contact import (
+    ASSUMED_CONTACT,
+    ContactTracker,
+    contact_consequence,
+)
 from f1_simulator.domain.speed_dynamics import (
     DEFAULT_CAR_PHYSICS,
     CarPhysics,
@@ -49,13 +54,10 @@ ASSUMED_LANE_CHANGE_MS = 6.0
 #: frente e considera tentar passar. Ordem de grandeza de alguns comprimentos
 #: de carro; nao calibrada.
 ASSUMED_FOLLOW_TRIGGER_M = 20.0
-
-#: Taxa de contato por SEGUNDO de corpos rocando lado a lado, com perfis
-#: neutros. Expressa por segundo (nao por passo) para a frequencia de colisao
-#: nao depender de ``dt``: a chance de um passo e ``1 - exp(-taxa * dt)``.
-#: Hipotese nao calibrada; escalada pela agressividade dos envolvidos.
-ASSUMED_SIDE_CONTACT_PER_SECOND = 0.15
-SIDE_CONTACT_PARAMETER_VERSION = "spatial-contact-assumed-v1"
+#: Histerese: encerra uma tentativa cujo alvo escapou para alem da janela
+#: inicial, sem alternar entre atacar e desistir a cada cruzamento de 20 m.
+ASSUMED_PASS_ABORT_GAP_M = 2 * ASSUMED_FOLLOW_TRIGGER_M
+PASS_OPPORTUNITY_VERSION = "passing-opportunity-revalidation-assumed-v1"
 
 #: Margem lateral (m) abaixo da qual os corpos lado a lado "roçam": soma das
 #: meias-larguras mais esta folga. Nao calibrada.
@@ -160,6 +162,14 @@ class TrackSpace:
         cy = a.cy + (b.cy - a.cy) * f
         nx = a.nx + (b.nx - a.nx) * f
         ny = a.ny + (b.ny - a.ny) * f
+        # Interpolar normais unitarias reduz seu modulo nas curvas. Sem esta
+        # normalizacao, um deslocamento em metros encolhe em relacao ao frontend
+        # e a projecao usada na exclusao, embora o eixo de distancia seja igual.
+        norm = hypot(nx, ny)
+        if norm <= 1e-12:
+            nx, ny = a.nx, a.ny
+        else:
+            nx, ny = nx / norm, ny / norm
         offset = lateral_m * self.xy_per_metre
         return (cx + nx * offset, cy + ny * offset)
 
@@ -255,6 +265,8 @@ class CarSpaceState:
     #: cada movimento, inclusive serviço/fila dos boxes.
     fuel_kg: float | None = None
     tyre_wear_laps: float | None = None
+    #: Dano fisico acumulado [0,1], separado de pneu, combustivel e margem de seguranca.
+    contact_damage: float = 0.0
 
     def clamp_lateral(self, bounds: LateralBounds) -> None:
         """Mantenha o carro dentro da pista, sem estourar a borda."""
@@ -581,6 +593,7 @@ def integrate_field(
     on_pit_event=None,
     on_motion=None,
     check_cancelled=None,
+    contact_events: list[dict] | None = None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
@@ -595,12 +608,10 @@ def integrate_field(
     um carro mais agressivo busca o espaco mais cedo. Carro livre retorna suave
     ao centro.
 
-    Dois carros lado a lado com os corpos quase encostados podem se tocar: com
-    ``rng``, cada passo sorteia um contato cuja chance cresce com a agressividade
-    dos envolvidos; havendo contato, um dos dois abandona, com o mais agressivo
-    mais provavel de ser o culpado que sai. Sem ``rng``, nao ha colisao (fatias
-    anteriores). A ordem de sorteio e fixa (pares por ``driver_id``), para o
-    resultado reproduzir por semente.
+    Contatos exigem encontro dos corpos projetados. Cada episodio e avaliado
+    uma vez pela velocidade relativa: toque leve nao causa abandono. A margem
+    lateral pertence ao planejamento, nao ao sorteio de acidentes. ``rng``
+    controla a consequencia de impactos, nunca a existencia geometrica deles.
 
     ``neutralized_lap(lap)`` (ADR 0011, controle de prova) informa se a volta em
     curso esta sob neutralizacao (SC/VSC/vermelha). Em volta neutralizada nao ha
@@ -660,19 +671,22 @@ def integrate_field(
     samples = [FieldSample(0.0, tuple(_frozen(c) for c in order))]
     time_s = 0.0
     steps = 0
+    contact_tracker = ContactTracker()
     while steps < max_steps and any(
         c.distance_m < race_distance and not c.retired for c in cars
     ):
         if check_cancelled is not None:
             check_cancelled()
         time_s += dt_s
+        previous = {c.driver_id: _frozen(c) for c in cars}
+        # Projecoes dos vizinhos sao compartilhadas pelo passo e atualizadas
+        # depois de cada movimento, evitando uma nova busca por par de carros.
+        projected_poses = {c.driver_id: _projected_rectangle(track, c, c.distance_m)
+                           for c in cars if c.pit_state is None and not c.retired}
         by_distance = sorted((c for c in cars if c.pit_state is None), key=lambda c: c.distance_m)
-        # Processa da FRENTE para TRAS (maior distancia primeiro): assim o carro
-        # de tras reage a posicao JA atualizada do da frente neste passo, e a
-        # exclusao longitudinal separa os carros em vez de deixa-los sobrepostos
-        # (processar em ordem arbitraria permitia dois carros no mesmo ponto,
-        # que visualmente oscilavam trocando de frente sem colidir).
-        for car in sorted(cars, key=lambda c: -c.distance_m):
+        # Ordem fisica no anel, da frente para tras, inclusive em dobragens:
+        # cada seguidor reage a posicao ja atualizada do carro a sua frente.
+        for car in _front_to_back(cars, lap_length, race_distance):
             if car.retired or car.distance_m >= race_distance:
                 continue
             physics, cum, ceiling = plan_by_id[car.driver_id]
@@ -693,8 +707,11 @@ def integrate_field(
                     laps_done[car.driver_id] = completed
                     if completed <= total_laps:
                         on_lap_complete(car, completed)
+                if car.pit_state is None:
+                    projected_poses[car.driver_id] = _projected_rectangle(track, car, car.distance_m)
                 continue
             start_distance, start_speed = car.distance_m, car.speed_ms
+            start_lateral = car.lateral_m
             car_lap = int(car.distance_m // lap_length) + 1
             neutralized = neutralized_lap is not None and neutralized_lap(car_lap)
 
@@ -713,17 +730,23 @@ def integrate_field(
                     race_distance,
                     usable,
                     aggression_by_id.get(car.driver_id, 1.0),
+                    lap_length,
                 )
             # (2) move a lateral em direcao ao alvo, limitada pela velocidade
             # lateral (``max_step_lat`` e invariante, calculado antes do laco).
             delta = car.target_lateral_m - car.lateral_m
-            car.lateral_m += max(-max_step_lat, min(max_step_lat, delta))
+            lateral = car.lateral_m + max(-max_step_lat, min(max_step_lat, delta))
+            if lateral != car.lateral_m:
+                car.lateral_m = _limit_lateral_move(
+                    car, lateral, by_distance, race_distance, lap_length
+                )
             car.clamp_lateral(track.bounds)
 
             # (3) velocidade longitudinal: acelera/freia em direcao ao teto.
             # O teto e reduzido por ``speed_scale`` (pneu, combustivel, clima).
             # Os limites dependem da velocidade (downforce), como no ADR 0015.
-            target = _ceiling_at(cum, ceiling, car.distance_m) * car.speed_scale
+            target = (_ceiling_at(cum, ceiling, car.distance_m) * car.speed_scale
+                      * (1.0 - ASSUMED_CONTACT.maximum_speed_loss * car.contact_damage))
             speed = car.speed_ms
             if speed < target:
                 car.speed_ms = min(target, speed + physics.accel_limit_ms2(speed) * dt_s)
@@ -733,12 +756,23 @@ def integrate_field(
             # (4) avanco com exclusao: usa a faixa lateral JA atualizada, entao
             # um carro que saiu da esteira do da frente deixa de ser bloqueado.
             proposed = car.distance_m + car.speed_ms * dt_s
-            ahead = _nearest_ahead_same_lane(car, by_distance, race_distance)
+            ahead = _nearest_ahead_same_lane(car, by_distance, race_distance, lap_length)
             if ahead is not None:
-                limit = ahead.distance_m - (ahead.length_m + car.length_m) / 2.0
+                gap = _forward_gap(car.distance_m, ahead.distance_m, lap_length)
+                limit = car.distance_m + gap - (ahead.length_m + car.length_m) / 2.0
                 if proposed > limit:
                     proposed = max(car.distance_m, limit)
                     car.speed_ms = min(car.speed_ms, ahead.speed_ms)
+            # O planejamento considera faixas; a ultima barreira usa os mesmos
+            # corpos projetados em qualquer direcao, inclusive durante a troca.
+            proposed, lateral, _ = _limit_projected_motion(
+                track, car, start_distance, start_lateral, proposed,
+                car.lateral_m, cars, race_distance,
+                pose_cache=projected_poses,
+            )
+            car.lateral_m = lateral
+            if proposed < start_distance + car.speed_ms * dt_s - 1e-7:
+                car.speed_ms = min(car.speed_ms, max(0.0, (proposed-start_distance)/dt_s))
             request = car.pit_request
             if request is not None and proposed >= request.entry_distance_m:
                 if pit_lane is None:
@@ -796,6 +830,9 @@ def integrate_field(
                 car.distance_m = proposed
                 _notify_motion(car, on_motion, start_distance, start_speed, dt_s, time_s)
 
+            if car.pit_state is None:
+                projected_poses[car.driver_id] = _projected_rectangle(track, car, car.distance_m)
+
             # Volta concluida: avisa o orquestrador (pneu, combustivel, clima
             # atualizam ``speed_scale`` do carro para a proxima volta).
             completed = int(car.distance_m // lap_length)
@@ -817,54 +854,335 @@ def integrate_field(
             if not c.retired and c.distance_m < race_distance
         )
         start_zone_m = ASSUMED_START_ZONE_M if standing_start else 0.0
-        if rng is not None and not field_neutralized:
+        if not field_neutralized:
             _resolve_collisions(
-                cars, race_distance, aggression_by_id, rng, dt_s, start_zone_m
+                cars, race_distance, aggression_by_id, rng, dt_s, start_zone_m,
+                lap_length, track=track, previous=previous, tracker=contact_tracker,
+                events=contact_events, time_s=time_s,
             )
+        else:
+            contact_tracker.active.clear()
 
         samples.append(FieldSample(time_s, tuple(_frozen(c) for c in order)))
         steps += 1
     return tuple(samples)
 
 
-def _side_by_side(a: CarSpaceState, b: CarSpaceState) -> bool:
+def _forward_gap(origin: float, destination: float, lap_length_m: float) -> float:
+    """Distancia para a frente no anel, sem alterar o progresso da corrida."""
+
+    return (destination - origin) % lap_length_m
+
+
+def _limit_projected_motion(track, car, start_distance, start_lateral,
+                            proposed_distance, proposed_lateral, cars, race_distance_m,
+                            *, pose_cache=None):
+    """Percorra o movimento e limite a primeira entrada em outro corpo.
+
+    A exclusao consulta XY e retangulos orientados, preservando o eixo
+    classificatorio original. Subpassos de no maximo meia largura reduzem
+    atravessamentos entre extremos livres. Estados inicialmente invalidos nao
+    sao reparados por salto; sao tratados pelo detector de contato.
+    """
+    probe = replace(car, distance_m=start_distance, lateral_m=start_lateral)
+    start_pose = _projected_rectangle(track, probe, start_distance)
+    travel = abs(proposed_distance-start_distance) + abs(proposed_lateral-start_lateral)
+    reach = travel * 2 + hypot(car.length_m, car.width_m)
+    neighbors = []
+    rear_neighbors = []
+    for other in cars:
+        if (other is car or other.retired or other.pit_state is not None
+                or other.distance_m >= race_distance_m):
+            continue
+        pose = (pose_cache.get(other.driver_id) if pose_cache is not None else None)
+        if pose is None:
+            pose = _projected_rectangle(track, other, other.distance_m)
+        if hypot(pose[0]-start_pose[0], pose[1]-start_pose[1]) > reach + other.length_m:
+            continue
+        if _rectangles_overlap(probe, start_pose, other, pose):
+            continue
+        if _signed_gap(start_distance, other.distance_m, track.lap_length_m) < 0:
+            rear_neighbors.append((other, pose))
+            continue
+        neighbors.append((other, pose))
+    # Um carro traseiro restringe a troca lateral, nao o avanco do lider. O
+    # seguidor reagira ao lider atualizado ao ser processado neste passo.
+    # Misturar as duas restricoes cria espera circular em curvas apertadas.
+    rear_touched = set()
+    if rear_neighbors and proposed_lateral != start_lateral:
+        def rear_hits(fraction):
+            probe.lateral_m = start_lateral + (proposed_lateral-start_lateral)*fraction
+            pose = _projected_rectangle(track, probe, start_distance)
+            return {other.driver_id for other, other_pose in rear_neighbors
+                    if _rectangles_overlap(probe, pose, other, other_pose)}
+
+        lateral_steps = max(1, ceil(abs(proposed_lateral-start_lateral)/max(.25, car.width_m/2)))
+        last_clear = 0.0
+        for index in range(1, lateral_steps+1):
+            fraction = index/lateral_steps
+            rear_touched = rear_hits(fraction)
+            if rear_touched:
+                lo, hi = last_clear, fraction
+                for _ in range(16):
+                    mid = (lo+hi)/2
+                    if rear_hits(mid):
+                        hi = mid
+                    else:
+                        lo = mid
+                proposed_lateral = start_lateral + (proposed_lateral-start_lateral)*lo
+                break
+            last_clear = fraction
+    if not neighbors:
+        return proposed_distance, proposed_lateral, rear_touched
+
+    def hits(fraction, lateral_target):
+        probe.lateral_m = start_lateral + (lateral_target-start_lateral)*fraction
+        distance = start_distance + (proposed_distance-start_distance)*fraction
+        pose = _projected_rectangle(track, probe, distance)
+        return {other.driver_id for other, other_pose in neighbors
+                if _rectangles_overlap(probe, pose, other, other_pose)}
+
+    steps = max(1, ceil(travel / max(0.25, car.width_m / 2)))
+    last = 0.0
+    for index in range(1, steps+1):
+        fraction = index/steps
+        touched = hits(fraction, proposed_lateral)
+        if touched:
+            # Bloqueio lateral permite continuar na faixa atual quando o
+            # percurso longitudinal esta livre; evita parar toda a fila.
+            if proposed_lateral != start_lateral and all(
+                not hits(k/steps, start_lateral) for k in range(1, steps+1)
+            ):
+                return proposed_distance, start_lateral, touched
+            lo, hi = last, fraction
+            for _ in range(16):
+                mid = (lo+hi)/2
+                if hits(mid, proposed_lateral):
+                    hi = mid
+                else:
+                    lo = mid
+            return (start_distance+(proposed_distance-start_distance)*lo,
+                    start_lateral+(proposed_lateral-start_lateral)*lo, touched)
+        last = fraction
+    return proposed_distance, proposed_lateral, set()
+
+
+def _projected_rectangle(
+    track: TrackSpace, car: CarSpaceState, distance_m: float
+) -> tuple[float, float, float, float]:
+    """Centro em metros e normal unitaria, como na projecao do frontend.
+
+    A distancia de corrida permanece no eixo original: so a consulta espacial
+    usa a escala media XY. Normalizar a normal interpolada corresponde ao
+    desenho dos corpos; a geometria e a calibracao nao sao reparametrizadas.
+    """
+    d = distance_m % track.lap_length_m
+    points = track.points
+    lo, hi = 0, len(points) - 1
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if points[mid].distance_m < d:
+            lo = mid + 1
+        else:
+            hi = mid
+    a, b = points[max(1, lo) - 1], points[max(1, lo)]
+    span = b.distance_m - a.distance_m
+    f = (d - a.distance_m) / span if span > 0 else 0.0
+    nx = a.nx + (b.nx - a.nx) * f
+    ny = a.ny + (b.ny - a.ny) * f
+    length = hypot(nx, ny)
+    if length <= 1e-12:
+        nx, ny = a.nx, a.ny
+    else:
+        nx, ny = nx / length, ny / length
+    return (
+        (a.cx + (b.cx - a.cx) * f) / track.xy_per_metre + nx * car.lateral_m,
+        (a.cy + (b.cy - a.cy) * f) / track.xy_per_metre + ny * car.lateral_m,
+        nx,
+        ny,
+    )
+
+
+def _rectangles_overlap(
+    a: CarSpaceState, pose_a: tuple[float, float, float, float],
+    b: CarSpaceState, pose_b: tuple[float, float, float, float],
+) -> bool:
+    """Intersecao estrita de retangulos orientados; tangencia e permitida."""
+    x, y, nx, ny = pose_a
+    bx, by, mx, my = pose_b
+    dx, dy = bx - x, by - y
+    for ax, ay in ((nx, ny), (-ny, nx), (mx, my), (-my, mx)):
+        radius_a = (abs(ax * nx + ay * ny) * a.width_m / 2
+                    + abs(-ax * ny + ay * nx) * a.length_m / 2)
+        radius_b = (abs(ax * mx + ay * my) * b.width_m / 2
+                    + abs(-ax * my + ay * mx) * b.length_m / 2)
+        if abs(dx * ax + dy * ay) >= radius_a + radius_b - 1e-9:
+            return False
+    return True
+
+
+def _limit_projected_advance(
+    track: TrackSpace, car: CarSpaceState, ahead: CarSpaceState, proposed: float
+) -> float:
+    """Limite sobreposicao final com o proximo carro da mesma faixa.
+
+    Busca um limite entre o estado atual livre e a posicao proposta
+    sobreposta, supondo uma unica transicao nesse intervalo. Estados ja sobrepostos nao sao corrigidos por teletransporte.
+    Este recorte nao detecta atravessamentos entre extremos livres, nem
+    substitui a regra de contato ou a exclusao lateral.
+    """
+    if track.xy_per_metre <= 0:
+        return proposed
+    ahead_pose = _projected_rectangle(track, ahead, ahead.distance_m)
+    end_pose = _projected_rectangle(track, car, proposed)
+    # Círculos envolventes evitam SAT e busca binaria para carros distantes.
+    reach = (hypot(car.length_m, car.width_m)
+             + hypot(ahead.length_m, ahead.width_m)) / 2
+    if hypot(end_pose[0] - ahead_pose[0], end_pose[1] - ahead_pose[1]) >= reach:
+        return proposed
+    if not _rectangles_overlap(car, end_pose, ahead, ahead_pose):
+        return proposed
+    if _rectangles_overlap(car, _projected_rectangle(track, car, car.distance_m),
+                           ahead, ahead_pose):
+        return proposed
+    lo, hi = car.distance_m, proposed
+    # A extremidade livre e conservada; a precisao e de cerca de 5 mm para
+    # um avanco de 20 m, sem custo de dezenas de projecoes por contato.
+    for _ in range(12):
+        mid = (lo + hi) / 2
+        if _rectangles_overlap(car, _projected_rectangle(track, car, mid),
+                               ahead, ahead_pose):
+            hi = mid
+        else:
+            lo = mid
+    return lo
+
+
+def _signed_gap(origin: float, destination: float, lap_length_m: float) -> float:
+    """Separacao local assinada; uma volta inteira nao separa corpos na pista."""
+
+    return (destination - origin + lap_length_m / 2) % lap_length_m - lap_length_m / 2
+
+
+def _front_to_back(
+    cars: list[CarSpaceState], lap_length_m: float, race_distance_m: float
+) -> list[CarSpaceState]:
+    """Corte o anel na maior folga e processe cada pelotao da frente para tras.
+
+    Isso faz um retardatario ser atualizado antes do carro que o alcanca, sem
+    confundir posicao fisica com voltas completas. O corte deixa de assegurar
+    essa ordem se o pelotao ocupar todo o anel; esse caso nao cabe neste modelo.
+    Desempates por ID tornam a ordem independente da lista de entrada.
+    """
+
+    active = sorted(
+        (c for c in cars if not c.retired and c.pit_state is None
+         and c.distance_m < race_distance_m),
+        key=lambda c: (c.distance_m % lap_length_m, c.driver_id),
+    )
+    if not active:
+        return sorted(cars, key=lambda c: c.driver_id)
+    gaps = [
+        _forward_gap(active[i].distance_m, active[(i + 1) % len(active)].distance_m,
+                     lap_length_m)
+        for i in range(len(active))
+    ]
+    cut = max(range(len(active)), key=gaps.__getitem__)
+    ordered = list(reversed(active[cut + 1:] + active[:cut + 1]))
+    active_ids = {id(c) for c in active}
+    ordered.extend(sorted((c for c in cars if id(c) not in active_ids),
+                          key=lambda c: c.driver_id))
+    return ordered
+
+
+def _limit_lateral_move(
+    car: CarSpaceState,
+    lateral: float,
+    cars: list[CarSpaceState],
+    race_distance_m: float,
+    lap_length_m: float,
+) -> float:
+    """Nao atravesse lateralmente um corpo ja emparelhado no anel.
+
+    Estados iniciais ja sobrepostos nao sao reparados por teletransporte: o
+    bloqueio se aplica aos pares que iniciam o movimento com folga valida.
+    """
+
+    for other in cars:
+        if (other is car or other.retired or other.pit_state is not None
+                or other.distance_m >= race_distance_m):
+            continue
+        if abs(_signed_gap(car.distance_m, other.distance_m, lap_length_m)) >= (
+            car.length_m + other.length_m
+        ) / 2:
+            continue
+        width = (car.width_m + other.width_m) / 2
+        # Arredondamento em ponto flutuante nao deve trazer a folga de volta
+        # para dentro do limiar estrito de rocamento.
+        clearance = width + ASSUMED_RUBBING_MARGIN_M + 1e-9
+        # Parar exatamente na largura dos corpos os prenderia dentro da zona
+        # de rocamento e fabricaria sorteios de contato a cada passo. Preserve a
+        # margem existente; se ja estiver nela, nao teletransporte o carro.
+        if car.lateral_m <= other.lateral_m - width:
+            lateral = min(lateral, max(car.lateral_m, other.lateral_m - clearance))
+        elif car.lateral_m >= other.lateral_m + width:
+            lateral = max(lateral, min(car.lateral_m, other.lateral_m + clearance))
+    return lateral
+
+
+def _side_by_side(a: CarSpaceState, b: CarSpaceState, lap_length_m: float | None = None) -> bool:
     """Se os dois carros se sobrepoem longitudinalmente (andam emparelhados)."""
 
-    return abs(a.distance_m - b.distance_m) < (a.length_m + b.length_m) / 2.0
+    gap = (b.distance_m - a.distance_m if lap_length_m is None else
+           _signed_gap(a.distance_m, b.distance_m, lap_length_m))
+    # Subtrair distancias acumuladas grandes introduz erro de arredondamento:
+    # dois carros em fila com exatos 5 m de intervalo nao estao lado a lado.
+    return abs(gap) < (a.length_m + b.length_m) / 2.0 - 1e-7
 
 
-def _rubbing(a: CarSpaceState, b: CarSpaceState) -> bool:
+def _rubbing(a: CarSpaceState, b: CarSpaceState, lap_length_m: float | None = None) -> bool:
     """Se os corpos quase se encostam lateralmente estando emparelhados."""
 
     lateral_clearance = abs(a.lateral_m - b.lateral_m) - (a.width_m + b.width_m) / 2.0
-    return _side_by_side(a, b) and lateral_clearance < ASSUMED_RUBBING_MARGIN_M
+    return _side_by_side(a, b, lap_length_m) and lateral_clearance < ASSUMED_RUBBING_MARGIN_M
 
 
 def _resolve_collisions(
     cars: list[CarSpaceState],
     race_distance_m: float,
     aggression_by_id: dict[str, float],
-    rng: RandomSource,
+    rng: RandomSource | None,
     dt_s: float,
     start_zone_m: float = 0.0,
+    lap_length_m: float | None = None,
+    *,
+    track: TrackSpace | None = None,
+    previous: dict[str, CarSpaceState] | None = None,
+    tracker: ContactTracker | None = None,
+    events: list[dict] | None = None,
+    time_s: float = 0.0,
 ) -> None:
-    """Sorteie contato entre pares que rocam; um dos dois abandona.
+    """Detecte corpos, registre o episodio e avalie sua consequencia uma vez.
 
-    Percorre pares em ordem de ``driver_id`` para a sequencia aleatoria ser
-    estavel. A chance por passo e ``taxa_por_segundo * dt`` escalada pela media
-    das agressividades, de modo que a frequencia de colisao nao dependa de
-    ``dt``. No contato, o culpado que abandona e sorteado com peso na
-    agressividade: atacar demais custa. Um carro ja retirado nao participa.
-
-    ``start_zone_m`` suprime o contato de um par enquanto qualquer dos dois ainda
-    esta nos primeiros metros da largada parada: o grid se desenrola emparelhado
-    e lento, e o contato ali seria artefato da partida, nao disputa.
+    O motor sempre fornece ``track``. A projeção retilinea sem pista permite
+    testes unitarios da regra, inclusive de pares separados por uma volta.
+    A zona de largada preserva a supressao de acidentes preexistente.
+    Tocar lentamente nao e o mesmo que sofrer um impacto de alta energia.
     """
-
+    tracker = tracker if tracker is not None else ContactTracker()
     active = sorted(
         (c for c in cars if not c.retired and c.pit_state is None and c.distance_m < race_distance_m),
         key=lambda c: c.driver_id,
     )
+
+    def pose(car, distance=None):
+        distance = car.distance_m if distance is None else distance
+        if track is not None:
+            return _projected_rectangle(track, car, distance)
+        return distance, car.lateral_m, 0.0, 1.0
+
+    poses = {c.driver_id: pose(c) for c in active}
+    nearby = set()
     for i in range(len(active)):
         for j in range(i + 1, len(active)):
             a, b = active[i], active[j]
@@ -872,22 +1190,82 @@ def _resolve_collisions(
                 continue
             if a.distance_m < start_zone_m or b.distance_m < start_zone_m:
                 continue
-            if not _rubbing(a, b):
+            pa, pb = poses[a.driver_id], poses[b.driver_id]
+            if track is None and lap_length_m is not None:
+                pb = (pa[0] + _signed_gap(a.distance_m, b.distance_m, lap_length_m), *pb[1:])
+            clearance = ASSUMED_CONTACT.episode_clearance_m
+            if hypot(pa[0] - pb[0], pa[1] - pb[1]) > (
+                hypot(a.length_m, a.width_m) + hypot(b.length_m, b.width_m)
+            ) / 2 + clearance:
                 continue
+            pair = (a.driver_id, b.driver_id)
+            if _rectangles_overlap(replace(a, length_m=a.length_m + clearance,
+                                          width_m=a.width_m + clearance), pa,
+                                   replace(b, length_m=b.length_m + clearance,
+                                           width_m=b.width_m + clearance), pb):
+                nearby.add(pair)
+            if not _rectangles_overlap(a, pa, b, pb):
+                continue
+            episode = tracker.enter(pair)
+            if episode is None:
+                continue
+            # Velocidade normal relativa no eixo de menor penetracao. A
+            # velocidade absoluta ao redor da pista nao determina a gravidade.
+            axes = ((pa[2], pa[3]), (-pa[3], pa[2]),
+                    (pb[2], pb[3]), (-pb[3], pb[2]))
+            dx, dy = pb[0] - pa[0], pb[1] - pa[1]
+            def penetration(axis):
+                ax, ay = axis
+                def radius(car, p):
+                    return (abs(ax*p[2] + ay*p[3])*car.width_m
+                            + abs(-ax*p[3] + ay*p[2])*car.length_m) / 2
+                return radius(a, pa) + radius(b, pb) - abs(dx*ax + dy*ay)
+            normal = min(axes, key=penetration)
+            def velocity(car, p):
+                old = previous.get(car.driver_id) if previous else None
+                lateral_speed = ((car.lateral_m-old.lateral_m)/dt_s
+                                 if old is not None and dt_s > 0 else 0.0)
+                # A velocidade fisica ja vem do integrador. Diferenciar XY
+                # novamente converteria as irregularidades da polilinha em
+                # energia de impacto, duplicando distorcoes da geometria mockada.
+                return (car.speed_ms*p[3] + lateral_speed*p[2],
+                        -car.speed_ms*p[2] + lateral_speed*p[3])
+            va, vb = velocity(a, pa), velocity(b, pb)
+            orientation = 1.0 if dx*normal[0] + dy*normal[1] >= 0 else -1.0
+            closing = max(0.0, ((va[0]-vb[0])*normal[0]
+                                + (va[1]-vb[1])*normal[1])*orientation)
+            if previous and a.driver_id in previous and b.driver_id in previous:
+                old_a, old_b = previous[a.driver_id], previous[b.driver_id]
+                if _rectangles_overlap(old_a, pose(old_a), old_b, pose(old_b)):
+                    # Nao invente um novo impacto a partir de um estado que
+                    # ja nasceu sobreposto; registre o toque para diagnostico.
+                    closing = 0.0
             agg_a = aggression_by_id.get(a.driver_id, 1.0)
             agg_b = aggression_by_id.get(b.driver_id, 1.0)
-            # Forma exponencial: a probabilidade por segundo e constante,
-            # independente de ``dt``. A antiga ``taxa * dt`` so aproxima para
-            # ``dt`` pequeno e estoura com passo grande (ex.: 0,5 s).
-            rate = ASSUMED_SIDE_CONTACT_PER_SECOND * (agg_a + agg_b) / 2.0
-            chance = 1.0 - exp(-rate * dt_s)
-            label = f"collision:{a.driver_id}:{b.driver_id}"
-            if rng.uniform01(f"{label}:contact") >= chance:
-                continue
-            # Houve contato: o mais agressivo e o mais provavel culpado a sair.
-            total = agg_a + agg_b
-            a_retires = rng.uniform01(f"{label}:culprit") < (agg_a / total)
-            (a if a_retires else b).retired = True
+            label = f"collision:{a.driver_id}:{b.driver_id}:episode:{episode}"
+            consequence = contact_consequence(closing, (agg_a + agg_b)/2, rng, label)
+            a.contact_damage = min(1.0, a.contact_damage + consequence.damage_fraction / 2)
+            b.contact_damage = min(1.0, b.contact_damage + consequence.damage_fraction / 2)
+            retired_ids = []
+            if consequence.retires:
+                total = agg_a + agg_b
+                assert rng is not None
+                victim = a if rng.uniform01(f"{label}:culprit") < (agg_a/total if total else 0.5) else b
+                victim.retired = True
+                victim.retired_time_s = time_s
+                retired_ids.append(victim.driver_id)
+            if events is not None:
+                events.append({"time_ms": round(time_s*1000, 3), "driver_ids": list(pair),
+                               "lap": max(1, int(min(a.distance_m,b.distance_m) / lap_length_m)+1)
+                               if lap_length_m else 1,
+                               "episode": episode, "kind": consequence.kind,
+                               "detection": "overlap",
+                               "closing_speed_ms": round(closing, 6),
+                               "damage_fraction": consequence.damage_fraction,
+                               "damage_by_driver": {a.driver_id: a.contact_damage,
+                                                    b.driver_id: b.contact_damage},
+                               "retired_driver_ids": retired_ids})
+    tracker.retain(nearby)
 
 
 def _lane_decision(
@@ -898,6 +1276,7 @@ def _lane_decision(
     race_distance_m: float,
     usable_m: float,
     aggression: float,
+    lap_length_m: float,
 ) -> float:
     """Faixa lateral que o carro deve buscar neste passo.
 
@@ -917,32 +1296,59 @@ def _lane_decision(
             target is None
             or target.pit_state is not None
             or target.distance_m >= race_distance_m
-            or car.distance_m >= target.distance_m + clearance
+            or target.retired
+            or _signed_gap(car.distance_m, target.distance_m, lap_length_m) <= -clearance
         )
         if done:
             car.overtaking = None
-            return _safe_center(car, by_distance, race_distance_m, usable_m)
+            return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
+        gap = _signed_gap(car.distance_m, target.distance_m, lap_length_m)
+        my_free = _ceiling_at(*ceilings[car.driver_id], target.distance_m)*car.speed_scale
+        target_free = _ceiling_at(*ceilings[target.driver_id], target.distance_m)*target.speed_scale
+        # Uma oportunidade perdida nao e compromisso de perseguir o mesmo
+        # carro pela volta inteira. Emparelhado, mantenha o espaco ate poder
+        # retornar sem atravessar o outro corpo.
+        if (gap > ASSUMED_PASS_ABORT_GAP_M
+                or (gap > clearance and my_free <= target_free)):
+            car.overtaking = None
+            return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
         side = 1.0 if car.lateral_m >= 0 else -1.0
         reach = car.width_m * (0.8 + 0.4 * aggression)
-        return max(-usable_m, min(usable_m, target.lateral_m + side * reach))
+        candidate = max(-usable_m, min(usable_m, target.lateral_m + side * reach))
+        # O compromisso existente nao revalida o corredor a cada passo.
+        return candidate
 
-    ahead = _nearest_ahead_same_lane(car, by_distance, race_distance_m)
+    ahead = _nearest_ahead_same_lane(car, by_distance, race_distance_m, lap_length_m)
     if ahead is None:
-        return _safe_center(car, by_distance, race_distance_m, usable_m)
-    gap = ahead.distance_m - car.distance_m
+        return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
+    gap = _forward_gap(car.distance_m, ahead.distance_m, lap_length_m)
     if gap > ASSUMED_FOLLOW_TRIGGER_M:
-        return _safe_center(car, by_distance, race_distance_m, usable_m)
-    if car.speed_ms <= ahead.speed_ms:
-        return car.lateral_m
-    my_ceiling = _ceiling_at(*ceilings[car.driver_id], car.distance_m)
-    ahead_ceiling = _ceiling_at(*ceilings[ahead.driver_id], ahead.distance_m)
+        return _safe_center(car, by_distance, race_distance_m, usable_m, lap_length_m)
+    # O seguidor pode ter sido freado ate a velocidade do lider pela exclusao.
+    # Seu teto efetivo em pista livre ainda revela se existe vantagem para passar.
+    # Compare ambos na mesma posicao para nao criar vantagem apenas porque o
+    # carro da frente ja chegou ao trecho mais lento de uma curva.
+    my_ceiling = _ceiling_at(*ceilings[car.driver_id], ahead.distance_m) * car.speed_scale
+    ahead_ceiling = _ceiling_at(*ceilings[ahead.driver_id], ahead.distance_m) * ahead.speed_scale
     if my_ceiling <= ahead_ceiling:
-        return car.lateral_m
+        # Tetos iguais nao revelam uma fila: o lider pode estar limitado por
+        # outro carro. So trate isso como oportunidade quando o par da frente
+        # estiver na folga minima longitudinal existente. Consultar o teto do
+        # atacante na posicao do lider evita confundir aproximacao de curva com
+        # diferenca de ritmo entre posicoes distintas. Nao infere outros motivos
+        # para reducao de velocidade.
+        obstruction = _nearest_ahead_same_lane(ahead, by_distance, race_distance_m, lap_length_m)
+        minimum_gap = (ahead.length_m + obstruction.length_m) / 2 if obstruction else 0.0
+        queued = (obstruction is not None
+                  and _forward_gap(ahead.distance_m, obstruction.distance_m, lap_length_m)
+                  <= minimum_gap + 1e-7)
+        if not queued or my_ceiling <= ahead.speed_ms:
+            return car.lateral_m
 
     reach = car.width_m * (0.8 + 0.4 * aggression)
     for side in (1.0, -1.0):
         candidate = max(-usable_m, min(usable_m, ahead.lateral_m + side * reach))
-        if _side_is_clear(car, candidate, by_distance, race_distance_m):
+        if _side_is_clear(car, candidate, by_distance, race_distance_m, lap_length_m):
             # Compromete-se com a ultrapassagem deste carro.
             car.overtaking = ahead.driver_id
             return candidate
@@ -954,6 +1360,7 @@ def _safe_center(
     by_distance: list[CarSpaceState],
     race_distance_m: float,
     usable_m: float,
+    lap_length_m: float,
 ) -> float:
     """Alvo lateral mais proximo do centro sem invadir um carro emparelhado.
 
@@ -971,7 +1378,7 @@ def _safe_center(
             continue
         if other.distance_m >= race_distance_m:
             continue
-        if not _side_by_side(car, other):
+        if not _side_by_side(car, other, lap_length_m):
             continue
         # Outro carro entre a posicao atual e o centro, do lado do movimento.
         if car.lateral_m > 0 and other.lateral_m < car.lateral_m:
@@ -980,8 +1387,10 @@ def _safe_center(
             target = min(target, other.lateral_m - min_gap)
     # Nao ultrapassa a borda nem volta para longe do centro alem de onde esta.
     if car.lateral_m >= 0:
-        return max(0.0, min(car.lateral_m, min(usable_m, target)))
-    return min(0.0, max(car.lateral_m, max(-usable_m, target)))
+        target = max(0.0, min(car.lateral_m, min(usable_m, target)))
+    else:
+        target = min(0.0, max(car.lateral_m, max(-usable_m, target)))
+    return target
 
 
 def _side_is_clear(
@@ -989,8 +1398,18 @@ def _side_is_clear(
     candidate_lateral_m: float,
     by_distance: list[CarSpaceState],
     race_distance_m: float,
+    lap_length_m: float,
 ) -> bool:
-    """Se a faixa candidata esta livre na janela longitudinal da manobra."""
+    """Verifique a faixa e a chegada de carros traseiros a velocidade constante.
+
+    O horizonte e o tempo necessario para atingir o alvo na velocidade lateral
+    maxima ja assumida pelo motor. Durante esse tempo o carro percorre a lateral
+    linearmente e os demais mantem lateral e velocidades longitudinais atuais.
+    Nao e garantia contra aceleracoes, outras mudancas de faixa ou geometria
+    cartesiana divergente do eixo; tambem conserva a janela estatica existente.
+    Esta consulta ocorre na escolha inicial da passagem, nao durante a manobra
+    comprometida nem no retorno ao centro.
+    """
 
     probe = CarSpaceState(
         driver_id=car.driver_id,
@@ -999,15 +1418,38 @@ def _side_is_clear(
         length_m=car.length_m,
         width_m=car.width_m,
     )
+    displacement = candidate_lateral_m - car.lateral_m
+    duration_s = abs(displacement) / ASSUMED_LANE_CHANGE_MS
     for other in by_distance:
         if other.driver_id == car.driver_id:
             continue
-        if other.retired or other.distance_m >= race_distance_m:
+        if other.retired or other.pit_state is not None or other.distance_m >= race_distance_m:
             continue
-        longitudinal_gap = other.distance_m - car.distance_m
+        longitudinal_gap = _signed_gap(car.distance_m, other.distance_m, lap_length_m)
         if -car.length_m <= longitudinal_gap <= ASSUMED_FOLLOW_TRIGGER_M:
             if _same_lane(probe, other):
                 return False
+        # A regra adicional trata carros que se aproximam por tras. Os pares
+        # ja lado a lado ou a frente continuam sob a regra espacial existente.
+        if longitudinal_gap >= -car.length_m or other.speed_ms <= car.speed_ms:
+            continue
+        if duration_s == 0:
+            continue
+        # Intervalo em que as faixas laterais se sobrepoem, incluindo a
+        # travessia ate o alvo; ele pode ser menor que o tempo total da manobra.
+        half_width = (car.width_m + other.width_m) / 2
+        t1 = (other.lateral_m - half_width - car.lateral_m) / displacement * duration_s
+        t2 = (other.lateral_m + half_width - car.lateral_m) / displacement * duration_s
+        start = max(0.0, min(t1, t2))
+        end = min(duration_s, max(t1, t2))
+        if start >= end:
+            continue
+        relative_speed = other.speed_ms - car.speed_ms
+        gap_start = longitudinal_gap + relative_speed * start
+        gap_end = longitudinal_gap + relative_speed * end
+        half_length = (car.length_m + other.length_m) / 2
+        if min(gap_start, gap_end) < half_length and max(gap_start, gap_end) > -half_length:
+            return False
     return True
 
 
@@ -1015,6 +1457,7 @@ def _nearest_ahead_same_lane(
     car: CarSpaceState,
     by_distance: list[CarSpaceState],
     race_distance_m: float,
+    lap_length_m: float,
 ) -> CarSpaceState | None:
     """Carro imediatamente a frente, na mesma faixa lateral; ``None`` se livre.
 
@@ -1023,19 +1466,24 @@ def _nearest_ahead_same_lane(
     """
 
     best: CarSpaceState | None = None
+    best_gap = float("inf")
     for other in by_distance:
         if other.driver_id == car.driver_id:
             continue
         if other.retired:
             continue
-        if other.distance_m <= car.distance_m:
-            continue
         if other.distance_m >= race_distance_m:
             continue
         if not _same_lane(car, other):
             continue
-        if best is None or other.distance_m < best.distance_m:
+        gap = _forward_gap(car.distance_m, other.distance_m, lap_length_m)
+        # Quando uma entrada ja veio sobreposta, escolha um lider estavel em
+        # vez de imobilizar os dois por se enxergarem a distancia zero.
+        if gap == 0.0 and other.driver_id < car.driver_id:
+            continue
+        if gap < best_gap:
             best = other
+            best_gap = gap
     return best
 
 
@@ -1058,4 +1506,5 @@ def _frozen(car: CarSpaceState) -> CarSpaceState:
         pit_state=car.pit_state,
         fuel_kg=car.fuel_kg,
         tyre_wear_laps=car.tyre_wear_laps,
+        contact_damage=car.contact_damage,
     )

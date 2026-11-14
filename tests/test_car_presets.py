@@ -250,7 +250,9 @@ class TwoDEngineWiringTest(unittest.TestCase):
         }
 
     def test_faster_car_wins_from_behind(self):
-        geometry = _square()
+        # A manobra exige geometria com tangentes resolvidas. Quatro vertices
+        # em angulo reto nao representam um corredor para corpos orientados.
+        geometry = _circle(120.0)
         entrants = [
             self._entrant("slow", "Slow", 1),
             self._entrant("fast", "Fast", 2),

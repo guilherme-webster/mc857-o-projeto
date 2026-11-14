@@ -71,6 +71,13 @@ class SpeedBreakdownReader:
     def __init__(self, race: Mapping[str, object]) -> None:
         breakdown = race.get("speed_breakdown") or {}
         self._cars = breakdown.get("cars", {}) if isinstance(breakdown, Mapping) else {}
+        self._damage_speed_loss = float((race.get("contact_model") or {}).get("maximum_speed_loss", 0.0))
+        self._damage_events: dict[str, list[tuple[float, float]]] = {}
+        for event in race.get("contact_events_2d") or ():
+            for driver_id, damage in (event.get("damage_by_driver") or {}).items():
+                self._damage_events.setdefault(driver_id, []).append((float(event["time_ms"]), float(damage)))
+        for events in self._damage_events.values():
+            events.sort()
         profiles = race.get("speed_profiles") or {}
         # Teto fisico por ponto, pre-ordenado por distancia para a busca.
         self._ceiling: dict[str, tuple[list[float], list[float]]] = {}
@@ -138,6 +145,7 @@ class SpeedBreakdownReader:
         distance_m: float,
         speed_kmh: float,
         lap: int,
+        t_ms: float = 0.0,
     ) -> SpeedBreakdown | None:
         """Fatias da velocidade do carro no ponto e na volta dados.
 
@@ -183,6 +191,12 @@ class SpeedBreakdownReader:
         # velocidade real agora: o vao e o transitorio de aceleracao/frenagem,
         # o que falta (ou sobra) para o carro atingir o regime naquele ponto.
         target = ceiling_frac * speed_scale
+        events = self._damage_events.get(driver_id, ())
+        damage_index = bisect_right(events, t_ms, key=lambda e: e[0]) - 1
+        damage = events[damage_index][1] if damage_index >= 0 else 0.0
+        damage_loss = target * self._damage_speed_loss * damage
+        penalties["damage"] = damage_loss
+        target -= damage_loss
         effective = max(0.0, speed_kmh / v_max)
         transient = target - effective
         return SpeedBreakdown(

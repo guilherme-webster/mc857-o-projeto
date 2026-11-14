@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-14T00:42:51Z
+- **Ultima atividade registrada:** 2026-11-14T04:27:42Z
 - **Abertas:** 21
 - **Fechadas:** 82
 
@@ -457,7 +457,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140), [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141), [#186 — Pilotos: Atributos do piloto](https://github.com/guilherme-webster/mc857-o-projeto/issues/186)
 - **Criada:** 2026-11-08T20:41:54Z
-- **Atualizada:** 2026-11-14T00:42:51Z
+- **Atualizada:** 2026-11-14T01:14:13Z
 - **Fechada:** —
 
 <details>
@@ -468,7 +468,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 </details>
 
 <details>
-<summary>Comentarios (3)</summary>
+<summary>Comentarios (4)</summary>
 
 #### [@guilherme-webster em 2026-11-14T00:14:22Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868268192)
 
@@ -523,6 +523,20 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 Teste de regressão em `tests/test_run_grid_simulation.py` (a primeira volta tem de ser idêntica com e sem chuva futura; confirmado que falha sem a correção). `uv run ruff check .` sem erros; `uv run python -m unittest`: 762 testes, OK (42 pulados, 1 falha esperada).
 
 Abandonos por contato (#174) continuam fora desta frente. Segue PR com tudo o que foi descrito nos comentários acima.</pre>
+
+#### [@guilherme-webster em 2026-11-14T01:14:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6869167771)
+
+<pre>Andamento (sessão assistida por IA, branch local `139-features-fracas`, ainda sem commit nem PR): reforço de três efeitos que existiam no motor 2D mas quase não se faziam sentir.
+
+- **Gestão de pneu do piloto:** elasticidade de `tyre_management_factor` 0,4 → 0,7 (`detailed-tyre-management-v2`), faixa efetiva 0,755× a 1,315×. No Bahrein (57 voltas, três carros iguais, 4 sementes), o piloto de fator 0,65 terminou 18 a 28 s à frente do neutro e 26 a 50 s à frente do de fator 1,45, quase sempre por uma parada a menos.
+- **Pista verde:** borracha inicial 0,8 → 0,6 e perda de aderência 3 % → 5 % (`assumed-track-condition-v2`). Custa ~1,1 % do tempo de volta na volta 1, 0,5 % na 10 e some por volta da 40 (antes 0,4 % na volta 1). Igual para todos os carros.
+- **Parada nos boxes:** cada parada sorteia um desvio do serviço de 2,5 s com `stop_sigma_ms` (1726 ms) e `stop_skew` (0,70) do `fuel-v1.json`, escalado pela execução da equipe, em fluxo próprio por piloto. Distribuição resultante: mediana 2,5 s, média ~3,5 s, 10 % das paradas acima de 6,3 s, 1 % acima de 9,3 s. Premissa `pit_stop_variation_2d` (`heuristic`): a dispersão foi medida na duração total do pit lane, e aplicá-la só ao serviço é hipótese.
+
+**Equilíbrio entre arquétipos** (18 corridas de distância completa, 4 pilotos por arquétipo): posição média 7,1 / 6,2 / 6,2 (agressivo / equilibrado / conservador), vitórias 4 / 1 / 13. A posição média segue próxima, mas as vitórias pendem para o conservador; com a elasticidade antiga, nas mesmas condições, era 6,9 / 5,9 / 6,7 e 5 / 1 / 12. Abandonos por contato (34 a 45 de 72 por arquétipo) continuam dominando a comparação (#174).
+
+**Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 766 testes, OK (42 pulados, 1 falha esperada).
+
+**Próximo passo:** revisão, commits e PR.</pre>
 
 </details>
 
@@ -986,7 +1000,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T18:01:19Z
-- **Atualizada:** 2026-11-13T23:20:16Z
+- **Atualizada:** 2026-11-14T04:27:42Z
 - **Fechada:** —
 
 <details>
@@ -997,7 +1011,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 </details>
 
 <details>
-<summary>Comentarios (4)</summary>
+<summary>Comentarios (12)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6866415608)
 
@@ -1014,6 +1028,41 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 #### [@Jmvjr em 2026-11-13T23:20:16Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6867398113)
 
 <pre>Primeira estratégia experimental inspirada no tutorial oficial do TORCS: o seguidor considera o ritmo disponível após frear atrás de outro carro e verifica aproximação traseira ao iniciar a passagem. A versão combinada, incluindo correções anteriores, passou em 777 testes (42 ignorados e 1 falha esperada) e Ruff; nova prévia aberta para avaliação do usuário. A análise geométrica ainda encontra sobreposições residuais, e a previsão durante toda a manobra/retorno permanece pendente. Nada foi mergeado ou fechado.</pre>
+
+#### [@Jmvjr em 2026-11-14T03:14:35Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6870800044)
+
+<pre>Integrei origin/develop (PR #188 de balanceamento) na branch do PR #187 pelo merge 7afd7ac, conforme pedido do usuário. O conflito no backlog foi resolvido regenerando o espelho; o teste de contato foi alinhado à margem lateral de roçamento já existente. Suíte combinada: 786 testes, 42 ignorados e 1 falha esperada; Ruff passou. A prévia está sendo reaberta. O PR segue em rascunho e a issue permanece aberta para a avaliação visual e as limitações de sobreposição já documentadas.</pre>
+
+#### [@Jmvjr em 2026-11-14T03:46:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871201162)
+
+<pre>Implementação em andamento na branch do PR #187: proximidade deixa de sortear abandono; contato exige corpos projetados; cada episódio tem avaliação única por aproximação relativa, com toque leve, dano e abandono separados. Adicionada proteção de movimento com subpassos e frenagem antecipada. Matriz intermediária de 36 cenários por versão reduziu abandonos de 13 para 2 e sobreposições em cerca de 96%; o custo aumentou, e a matriz final está sendo repetida após ajuste de frenagem. A issue permanece aberta e haverá nova prévia antes de qualquer merge.</pre>
+
+#### [@Jmvjr em 2026-11-14T03:52:52Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871277013)
+
+<pre>Nova versao implementada e previa Contatos v2 aberta para avaliacao do usuario. Proximidade, toque, dano e abandono estao separados; contato usa corpos projetados e episodios unicos. Em 36 cenarios por versao: abandonos 13→2, pares sobrepostos/amostra 15.738→633, inversoes persistentes 4.084→4.345, nenhuma nao-conclusao ativa nem recuo. O custo aumentou cerca de 74% incluindo diagnostico e as frenagens bruscas aumentaram; estas limitacoes estao documentadas. 798 testes passaram (42 ignorados, 1 falha esperada) e Ruff passou. A tentativa de frenagem antecipada foi retirada por causar bloqueio em um cenario. PR continua rascunho; sem merge nem fechamento.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:05:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871426489)
+
+<pre>O usuario avaliou a previa v2: contatos melhoraram, mas as ultrapassagens parecem hesitantes. Testei preparacao antecipada, reserva de lado e escolha do corredor mais proximo. As variantes nao foram incorporadas: em oito cenarios, a preparacao antecipada elevou abandonos de 1 para 5 e sobreposicoes de 207 para 799; fixar lado prendeu grupos; reserva apenas de entrada manteve conclusao mas elevou sobreposicoes de 207 para 576. O experimento de corredor mais proximo tambem piorou (10 abandonos e 1052 sobreposicoes). Resta planejamento integrado do corredor durante a manobra. A branch foi restaurada ao ultimo estado publicado, sem adicionar essas regressoes ao PR. Experimentos preservados localmente; PR continua rascunho e issue aberta.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:08:00Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871456405)
+
+<pre>Investigação em worktree isolada baseada em 6d389d9: reparametrização experimental em memória pelo arco XY, mantendo o comprimento da volta e os dados originais. Matriz pareada de 3 pistas, 3 sementes, 20 carros, 3 voltas e passo 0,2 s: em Silverstone as intervenções SAT laterais caíram 553→44 e em Monza 1956→87 (seed 1), mas as frenagens acima de 50 m/s² aumentaram 124→187 e 76→108. Em Mônaco sobreposições por amostra subiram 17→32 e abandonos por contato 0→1. Todas as corridas concluíram; sementes sem abandonos reproduziram trajetórias idênticas. A troca também muda o perfil físico e a posição das referências no eixo; não houve recalibração. O experimento sugere contribuição da geometria, não solução suficiente nem causa exclusiva.
+
+Adicionados diagnóstico reproduzível, testes de invariantes (2 passaram), e registro detalhado na worktree codex/issue-174-arco-xy; Ruff dos arquivos novos passou. Próximo passo: investigar planejamento de corredor e contatos conjuntamente; decidir efeitos em contratos/ADRs, boxes e calibração antes de eventual adoção do eixo. Prévia estável intacta; nenhuma implementação de produto, merge ou fechamento. Aguardam-se revisão e posterior prévia visual coerente.
+</pre>
+
+#### [@Jmvjr em 2026-11-14T04:16:25Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871557143)
+
+<pre>Feedback visual refinado pelo usuario: os carros emparelham, mas parecem nao completar a passagem. Diagnostico da previa encontrou pares lado a lado por ate 55,8 s, frequentemente perseguindo um mesmo terceiro alvo. Um experimento de encerrar oportunidades perdidas (alvo distante ou vantagem desaparecida) reduziu o maior intervalo para 16,4 s na previa, mas aumentou contatos em outros cenarios e bloqueou o teste de SC forcado. Nao incorporado: patches preservados fora do Git e worktree restaurado. A versao publicada permanece limpa, com 798 testes aprovados; ainda e necessario resolver conclusao e reorganizacao da manobra em conjunto com neutralizacao e protecao geometrica. PR rascunho e issue aberta.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:24:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871657774)
+
+<pre>Continuacao em branch separada codex/issue-174-pass-clearance (c05a54e/05477e6): reproduzido bloqueio circular em Monaco durante SC; um carro traseiro impedia o avanco longitudinal do lider enquanto ele centrava. A protecao agora limita a mudanca lateral contra corpos traseiros separadamente do avanco; regressao cobre o par real e impede atravesamento lateral. Com isso, reavaliar ataques perdidos passou na suite (801 testes, 42 ignorados, 1 falha esperada), incluindo SC/VSC; Ruff passou, e teste adicional do diagnostico tambem passou. Na previa completa, maior emparelhamento caiu 55,8→29,4 s e houve 1 abandono nas duas versoes. Na matriz 36 cenarios todos concluiram sem recuo, mas abandonos 2→5 e sobreposicoes 633→1354: variante nao aprovada para incorporacao. Previa experimental aberta para avaliacao do usuario. A versao do PR #187 nao foi alterada; issue permanece aberta.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:27:42Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871693965)
+
+<pre>O usuario aprovou a previa experimental e solicitou colocar a variante no fluxo normal do frontend. Variante incorporada a branch do PR #187; teste HTTP pelo proprio cliente Arcade confirmou as regras de passagem e contato na resposta SSE e na persistencia. Suite integrada: 802 testes aprovados (42 ignorados, 1 falha esperada); Ruff passou. Proximo passo: verificacao do GitHub, merge do PR na develop e atualizacao do backend local. A issue so sera encerrada apos o merge, mantendo documentadas as limitacoes aceitas da geometria e dos contatos.</pre>
 
 </details>
 

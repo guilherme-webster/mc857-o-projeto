@@ -487,14 +487,14 @@ próprios parâmetros, não números fixos.
   (`car-physics-v1.json`) reproduz a mediana das voltas de referência, mas
   Zandvoort (curvas inclinadas) e Losail saem ~11-12% lentas e Monza (chicanes
   que 240 pontos não resolvem) ~7% rápida.
-- **Frequência de contato no 2D é heurística.** `spatial-contact-assumed-v1`
-  usa taxa base assumida de 0,15 por segundo de exposição lateral, multiplicada
-  pela média das agressividades; a chance no passo é `1 - exp(-taxa * dt)`.
-  Esse ajuste é escolhido, não estimado nem calibrado com dados de colisões.
-  A exposição depende também da geometria, manobras e passo da simulação; a
-  fórmula não garante que corridas completas sejam invariantes ao passo. A
-  avaliação exploratória e suas limitações estão em [contato e reprodução
-  espacial](contato-e-reproducao-espacial.md).
+- **Consequência de contato no 2D é assumida.** A versão
+  `spatial-contact-severity-assumed-v2` exige encontro dos corpos projetados e
+  avalia cada episódio uma vez. Até 2 m/s de aproximação normal relativa há
+  apenas toque; dano e risco de abandono crescem com a gravidade. A margem de
+  planejamento não causa abandono. Parâmetros, eventos e limitações estão em
+  [contato e reprodução espacial](contato-e-reproducao-espacial.md); os limiares
+  não foram calibrados contra acidentes reais. Resultados não são invariantes
+  ao passo de integração.
 - **Composto de largada fixo e médio quase sem volta.** Todos largam de MEDIUM
   no seco (hipótese; com chuva na volta 1, o pneu de chuva indicado). Enquanto a regra de dois compostos não foi cumprida, o médio fica
   fora da escolha; depois vence o mais macio cuja vida típica (macio 14, médio

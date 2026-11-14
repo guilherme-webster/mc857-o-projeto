@@ -474,6 +474,7 @@ class RacePlayback:
             distance_m=spatial.distance_m,
             speed_kmh=spatial.speed_kmh,
             lap=lap,
+            t_ms=t_ms,
         )
 
     def driver_v_max_kmh(self, driver_id: str) -> float | None:

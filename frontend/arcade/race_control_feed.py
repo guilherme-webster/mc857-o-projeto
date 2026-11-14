@@ -66,6 +66,7 @@ class FeedEntry:
     lap: int
     text: str
     status: str | None
+    time_ms: float | None = None
 
 
 class RaceControlFeed:
@@ -94,14 +95,24 @@ class RaceControlFeed:
             entry = self._describe(event)
             if entry is not None:
                 self._entries.append(entry)
+        descriptions = {"touch": "Toque leve", "damage": "Contato com dano",
+                        "retirement": "Abandono por impacto"}
+        for event in _sequence(race.get("contact_events_2d")):
+            label = descriptions.get(event.get("kind"), "Contato")
+            drivers = " x ".join(self._names.get(did, did) for did in event["driver_ids"])
+            self._entries.append(FeedEntry(int(event["lap"]), f"{label}: {drivers}", None,
+                                           float(event["time_ms"])))
+        self._entries.sort(key=lambda e: (e.lap, e.time_ms if e.time_ms is not None else float("inf")))
 
     def status_on_lap(self, lap: int) -> TrackStatus | None:
         return self._by_lap.get(lap)
 
-    def entries_through(self, laps_completed: float) -> list[FeedEntry]:
+    def entries_through(self, laps_completed: float, t_ms: float | None = None) -> list[FeedEntry]:
         """Mensagens das voltas ja completadas, em ordem cronologica."""
 
-        return [entry for entry in self._entries if entry.lap <= laps_completed]
+        return [entry for entry in self._entries
+                if ((entry.time_ms <= t_ms if t_ms is not None else False)
+                    if entry.time_ms is not None else entry.lap <= laps_completed)]
 
     def _describe(self, event: object) -> FeedEntry | None:
         if not isinstance(event, Mapping):
