@@ -164,6 +164,7 @@ _BREAKDOWN_FACTOR_COLORS = {
     "weather": (90, 200, 250),
     "race_control": (240, 150, 40),
     "noise": (200, 130, 220),
+    "damage": (225, 105, 85),
 }
 _BREAKDOWN_LABELS = {
     "effective": "velocidade",
@@ -174,6 +175,7 @@ _BREAKDOWN_LABELS = {
     "weather": "clima",
     "race_control": "controle",
     "noise": "variação",
+    "damage": "dano",
 }
 # Painel flutuante da decomposicao: um por piloto, arrastavel e fechavel.
 _PANEL_W = 300.0
@@ -583,6 +585,7 @@ class TrackView(arcade.View):
                 "weather",
                 "race_control",
                 "noise",
+                "damage",
             )
         }
         self._status_text = arcade.Text(
@@ -1220,6 +1223,7 @@ class TrackView(arcade.View):
         "weather",
         "race_control",
         "noise",
+        "damage",
     )
 
     def _breakdown_fraction(self, breakdown, key: str) -> float:
@@ -1570,7 +1574,7 @@ class TrackView(arcade.View):
             self._status_text.y = bottom + band_h / 2
             self._status_text.draw()
 
-        entries = self._feed.entries_through(self._playback.leader_laps(self._elapsed))
+        entries = self._feed.entries_through(self._playback.leader_laps(self._elapsed), self._elapsed)
         recent = entries[-_FEED_LINES:]
         # A mais recente fica embaixo, logo acima do HUD; as antigas sobem.
         for i, entry in enumerate(reversed(recent)):
