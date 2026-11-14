@@ -152,6 +152,9 @@ def run_case(circuit, seed, grid, laps, dt, persistence_s, braking_ms2):
     captured = {}
 
     def capture(cars, track, physics_by_id, **kwargs):
+        # Limite de diagnostico, nao regra de corrida: um bloqueio nao deve
+        # consumir dez milhoes de passos sem aparecer no relatorio.
+        kwargs["max_steps"] = math.ceil(laps * 600 / dt)
         samples = integrate_field(cars, track, physics_by_id, **kwargs)
         captured["metrics"] = analyze_samples(samples, track, laps, persistence_s, braking_ms2)
         return samples
@@ -165,7 +168,12 @@ def run_case(circuit, seed, grid, laps, dt, persistence_s, braking_ms2):
     elapsed = time.perf_counter() - started
     retired = sorted(row["driver_id"] for row in result["classification"]
                      if row["retirement_cause"] == "CONTACT")
+    events = result.get("contact_events_2d", ())
     return dict(circuit=circuit, seed=seed, grid=grid, laps=laps, dt_s=dt,
+                contact_events=len(events) if "contact_events_2d" in result else None,
+                touches=sum(e["kind"] == "touch" for e in events),
+                damaging_contacts=sum(e["kind"] == "damage" for e in events),
+                max_closing_speed_ms=max((e["closing_speed_ms"] for e in events), default=0.0),
                 contact_retirements=len(retired), contact_retired_drivers=retired,
                 runtime_s=round(elapsed, 3), **captured["metrics"])
 

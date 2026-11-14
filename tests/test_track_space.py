@@ -275,9 +275,8 @@ class SpatialExclusionTest(unittest.TestCase):
             race = race_simulation_2d.simulate_2d_race(
                 entries, geometry, total_laps=1, rng=SeededRandomSource(3), dt_s=0.2
             )
-        self.assertEqual(sum(r["retirement_cause"] == "CONTACT"
-                             for r in race["classification"]), 2)
-        self.assertEqual(contacts_are_geometric, [True, True])
+        self.assertTrue(race["contact_events_2d"])
+        self.assertTrue(all(contacts_are_geometric))
 
     def test_projected_advance_respects_compressed_monaco_segment(self):
         from f1_simulator.domain.track_space import (
@@ -592,7 +591,8 @@ class CollisionTest(unittest.TestCase):
                 CarSpaceState("b", distance_m=1, lateral_m=2.2)]
         _resolve_collisions(cars, 2400, {}, SeededRandomSource(1), 100,
                             lap_length_m=800)
-        self.assertEqual(sum(c.retired for c in cars), 1)
+        # A margem lateral e espaco de planejamento, nao encontro dos corpos.
+        self.assertEqual(sum(c.retired for c in cars), 0)
 
     def _forced_rubbing_cars(self):
         # Dois carros emparelhados, corpos sobrepostos lateralmente (folga < 0).
@@ -611,6 +611,7 @@ class CollisionTest(unittest.TestCase):
         self.assertFalse(any(c.retired for c in res[-1].cars))
 
     def test_sustained_rubbing_can_cause_contact(self):
+        from f1_simulator.domain.spatial_contact import ContactTracker
         from f1_simulator.domain.track_space import _resolve_collisions
 
         hits = 0
@@ -618,14 +619,18 @@ class CollisionTest(unittest.TestCase):
             a = CarSpaceState("a", distance_m=100.0, lateral_m=0.0)
             b = CarSpaceState("b", distance_m=100.0, lateral_m=1.0)
             rng = SeededRandomSource(seed).spawn("x")
+            events = []
+            tracker = ContactTracker()
             for _ in range(20):  # 1 s de rocamento a dt=0.05
                 if a.retired or b.retired:
                     break
-                _resolve_collisions([a, b], 1e9, {"a": 1.0, "b": 1.0}, rng, 0.05)
+                _resolve_collisions([a, b], 1e9, {"a": 1.0, "b": 1.0}, rng, 0.05,
+                                    events=events, tracker=tracker)
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0]["kind"], "touch")
             if a.retired or b.retired:
                 hits += 1
-        self.assertGreater(hits, 0)
-        self.assertLess(hits, 100)
+        self.assertEqual(hits, 0)
 
     def test_aggression_raises_contact_rate(self):
         from f1_simulator.domain.track_space import _resolve_collisions
@@ -633,15 +638,12 @@ class CollisionTest(unittest.TestCase):
         def crashes(aggression):
             hits = 0
             for seed in range(100):
-                a = CarSpaceState("a", distance_m=100.0, lateral_m=0.0)
-                b = CarSpaceState("b", distance_m=100.0, lateral_m=1.0)
+                a = CarSpaceState("a", distance_m=100.0, speed_ms=28)
+                b = CarSpaceState("b", distance_m=104.0, speed_ms=20)
                 rng = SeededRandomSource(seed).spawn("x")
-                for _ in range(20):
-                    if a.retired or b.retired:
-                        break
-                    _resolve_collisions(
-                        [a, b], 1e9, {"a": aggression, "b": aggression}, rng, 0.05
-                    )
+                _resolve_collisions(
+                    [a, b], 1e9, {"a": aggression, "b": aggression}, rng, 0.05
+                )
                 if a.retired or b.retired:
                     hits += 1
             return hits
