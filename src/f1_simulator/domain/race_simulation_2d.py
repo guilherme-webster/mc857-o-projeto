@@ -537,7 +537,8 @@ def simulate_2d_race(
     def _water(lap_number: int) -> float:
         if not track_states:
             return 0.0
-        return track_states[min(lap_number - 1, len(track_states) - 1)].surface_water
+        index = min(max(1, lap_number) - 1, len(track_states) - 1)
+        return track_states[index].surface_water
 
     def _tyre_penalty_ms(did: str, lap_number: int) -> float:
         if not tyre_active:
@@ -561,6 +562,7 @@ def simulate_2d_race(
         roda a cada passo de integracao e precisa enxergar sempre o mesmo valor.
         ``sigma = lap_noise_ms * consistency_factor``; a assimetria calibrada
         alarga o lado lento e estreita o rapido, como no ruido das paradas.
+        ``_apply_scale`` ja entrega a volta com piso em 1.
         """
 
         if noise_sigma_ms == 0.0:
@@ -641,6 +643,11 @@ def simulate_2d_race(
         decomposição, sem alterar o ``speed_scale`` resultante.
         """
 
+        # Do grid ate a linha a distancia e negativa e a conta de volta da 0.
+        # Esse trecho pertence a volta 1: sem o piso, o indice -1 buscava o
+        # estado de pista da ULTIMA volta e o pelotao largava sob o clima do
+        # fim da corrida (chuva so no final deixava a largada 30% mais lenta).
+        lap_number = max(1, lap_number)
         did = car.driver_id
         base = ref_ms[did]
         eff = _lap_effects(lap_number)
