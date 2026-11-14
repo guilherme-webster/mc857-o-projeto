@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-14T04:30:32Z
+- **Ultima atividade registrada:** 2026-11-14T10:42:04Z
 - **Abertas:** 20
 - **Fechadas:** 83
 
@@ -457,7 +457,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140), [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141), [#186 — Pilotos: Atributos do piloto](https://github.com/guilherme-webster/mc857-o-projeto/issues/186)
 - **Criada:** 2026-11-08T20:41:54Z
-- **Atualizada:** 2026-11-14T01:14:13Z
+- **Atualizada:** 2026-11-14T10:42:04Z
 - **Fechada:** —
 
 <details>
@@ -468,7 +468,7 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 </details>
 
 <details>
-<summary>Comentarios (4)</summary>
+<summary>Comentarios (5)</summary>
 
 #### [@guilherme-webster em 2026-11-14T00:14:22Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868268192)
 
@@ -537,6 +537,26 @@ Abandonos por contato (#174) continuam fora desta frente. Segue PR com tudo o qu
 **Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 766 testes, OK (42 pulados, 1 falha esperada).
 
 **Próximo passo:** revisão, commits e PR.</pre>
+
+#### [@guilherme-webster em 2026-11-14T10:42:04Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6876072266)
+
+<pre>Andamento (sessão assistida por IA, branch local `139-features-fracas`, atualizado sobre a `develop` com o PR #187; ainda sem commit nem PR). Substitui o que o comentário anterior dizia sobre pista verde e equilíbrio entre arquétipos.
+
+**Reavaliação após a correção de contatos (#174).** Nas mesmas 18 corridas de distância completa, abandonos por contato caíram de 96 para 5 em 216 largadas (nenhum até a volta 1). Sem esse ruído apareceu um desequilíbrio estrutural: com o balanceamento do PR #188, posição média 5,7 / 7,7 / 6,1 (agressivo / equilibrado / conservador) e vitórias 11 / 2 / 5. O agressivo era mais rápido por definição da faixa de ritmo e o custo que o compensava era o contato.
+
+**Alterado nesta frente:**
+- **Ritmo independente do arquétipo** (`assumed-driver-attributes-v3`): os três arquétipos sorteiam `pace_offset_pct` na mesma faixa, −0,60 a +0,40 (união das três anteriores, para os 24 perfis nomeados continuarem válidos). O arquétipo passa a definir só o estilo.
+- **Compostura em curva 0,08 → 0,04** (`driver-physics-gains-v3`): com o ritmo fora da conta, 0,08 dava 14 vitórias ao conservador. Faixa no tempo de volta em Mônaco: +0,5 % a −1,0 %.
+- **Gestão de pneu** 0,4 → 0,7 (`detailed-tyre-management-v2`) e **variação do tempo de serviço por parada** (`pit_stop_variation_2d`), como descrito no comentário anterior.
+- **Retirado:** a mudança de borracha/pista verde, porque o PR #185 (rascunho) reescreve o mesmo `track_condition.py` e usa o mesmo rótulo de versão.
+
+**Resultado com o código final** (18 corridas, 4 pilotos por arquétipo, atributos sorteados): posição média 6,9 / 6,5 / 6,1; vitórias 5 / 5 / 8; paradas 1,59 / 1,42 / 1,29.
+
+**Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 806 testes, OK (42 pulados, 1 falha esperada).
+
+**Limitações:** grids aleatórios com a mesma semente passam a sortear ritmos diferentes; a dispersão das paradas (10 % acima de 6,3 s) foi mantida como está.
+
+**Próximo passo:** commits e PR.</pre>
 
 </details>
 
