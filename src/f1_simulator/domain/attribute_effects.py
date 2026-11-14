@@ -29,16 +29,24 @@ class DetailedTyreManagementHeuristic:
 
     O efeito e ``1 + elasticity * (fator - 1)``: 1,0 continua neutro, a ordem
     entre pilotos e preservada e, com ``elasticity`` em (0, 1], o resultado e
-    sempre positivo. Com 0,4 a faixa efetiva vai de 0,86x a 1,18x.
+    sempre positivo. Com 0,7 a faixa efetiva vai de 0,755x a 1,315x.
+
+    A v1 usava 0,4 (0,86x a 1,18x), dimensionada para o motor por volta. No
+    motor 2D o pneu pesa ate ~2,5% do tempo de volta no fim do stint, e com
+    0,4 a diferenca entre o melhor e o pior gestor ficava abaixo de 1 ponto:
+    o atributo quase nao se fazia sentir (issue #139). Em 18 corridas de
+    distancia completa, 0,7 manteve a posicao media dos arquetipos
+    (6,5 / 6,3 / 6,8) e separou as paradas (1,49 / 1,25 / 1,17); com 1,0 o
+    conservador passava a fazer menos de uma parada por corrida.
     """
 
-    elasticity: float = 0.4
+    elasticity: float = 0.7
     origin: Literal["heuristic"] = "heuristic"
-    parameter_version: str = "detailed-tyre-management-v1"
+    parameter_version: str = "detailed-tyre-management-v2"
     rationale: str = (
-        "Heuristica: aplica 40% do fator de gestao de pneus do arquetipo no "
-        "motor detalhado, para que a diferenca de desgaste entre pilotos fique "
-        "em torno de +/-15% e nao anule a vantagem de ritmo."
+        "Heuristica: aplica 70% do fator de gestao de pneus do arquetipo, "
+        "para que a diferenca de desgaste entre pilotos (0,755x a 1,315x) "
+        "seja perceptivel no motor 2D sem anular a vantagem de ritmo."
     )
 
     def __post_init__(self) -> None:

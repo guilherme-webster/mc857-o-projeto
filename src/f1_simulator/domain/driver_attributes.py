@@ -10,12 +10,13 @@ from typing import Literal
 Archetype = Literal["aggressive", "balanced", "conservative"]
 FieldSource = Literal["generated", "preset", "manual"]
 
-PARAMETER_VERSION = "assumed-driver-attributes-v2"
+PARAMETER_VERSION = "assumed-driver-attributes-v3"
 
 _RATIONALE = (
-    "Atributos assumidos e nao calibrados. A versao v2 acrescenta agressividade "
-    "e firmeza sob pressao para modular disputas; as faixas e os valores sao "
-    "heuristicos e ficticios, nunca medicoes de pessoas reais."
+    "Atributos assumidos e nao calibrados. A versao v2 acrescentou agressividade "
+    "e firmeza sob pressao para modular disputas; a v3 da aos tres arquetipos a "
+    "mesma faixa de ritmo. As faixas e os valores sao heuristicos e ficticios, "
+    "nunca medicoes de pessoas reais."
 )
 
 _ARCHETYPE_RATIONALE = (
@@ -142,10 +143,22 @@ class DriverAttributes:
             raise ValueError("rationale deve ser texto nao vazio")
 
 
+#: Faixa de ritmo unica para os tres arquetipos (v3, issue #139). Ate a v2 o
+#: agressivo sorteava de -0,60 a -0,20, o equilibrado de -0,15 a +0,15 e o
+#: conservador de +0,10 a +0,40: o estilo ja trazia o nivel embutido. Enquanto
+#: o contato punia a agressividade isso se compensava; com os abandonos por
+#: contato corrigidos (issue #174), o agressivo vencia 11 de 18 corridas de
+#: distancia completa e o equilibrado ficava sempre por ultimo (posicao media
+#: 7,7 de 12). Agora o arquetipo define estilo (consistencia, pneu,
+#: agressividade, compostura) e o ritmo e sorteado independentemente dele. A
+#: faixa e a uniao das tres anteriores, de modo que os perfis nomeados de
+#: ``configs/drivers/perfis-ficticios.json`` continuam validos.
+ARCHETYPE_PACE_OFFSET_PCT = (-0.60, 0.40)
+
 ASSUMED_ARCHETYPES: tuple[ArchetypeProfile, ...] = (
     ArchetypeProfile(
         name="aggressive",
-        pace_offset_pct=(-0.60, -0.20),
+        pace_offset_pct=ARCHETYPE_PACE_OFFSET_PCT,
         consistency_factor=(1.10, 1.40),
         tyre_management_factor=(1.15, 1.45),
         aggression=(1.20, 1.50),
@@ -153,7 +166,7 @@ ASSUMED_ARCHETYPES: tuple[ArchetypeProfile, ...] = (
     ),
     ArchetypeProfile(
         name="balanced",
-        pace_offset_pct=(-0.15, 0.15),
+        pace_offset_pct=ARCHETYPE_PACE_OFFSET_PCT,
         consistency_factor=(0.90, 1.10),
         tyre_management_factor=(0.90, 1.10),
         aggression=(0.90, 1.10),
@@ -161,7 +174,7 @@ ASSUMED_ARCHETYPES: tuple[ArchetypeProfile, ...] = (
     ),
     ArchetypeProfile(
         name="conservative",
-        pace_offset_pct=(0.10, 0.40),
+        pace_offset_pct=ARCHETYPE_PACE_OFFSET_PCT,
         consistency_factor=(0.70, 0.95),
         tyre_management_factor=(0.65, 0.90),
         aggression=(0.60, 0.85),

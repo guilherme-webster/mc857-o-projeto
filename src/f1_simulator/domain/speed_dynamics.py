@@ -182,7 +182,7 @@ DEFAULT_CAR_PHYSICS = CarPhysics()
 #: grandeza, cerca de 1% para cada lado em Monaco:
 #:
 #: - ritmo, -0,60% a +0,40%: -1,0% a +0,7% de volta;
-#: - compostura, 0,85 a 1,30: +1,0% a -2,0%;
+#: - compostura, 0,85 a 1,30: +0,5% a -1,0%;
 #: - agressividade, 0,60 a 1,50: +0,6% a -0,6%.
 #:
 #: Com os ganhos anteriores (0,5 e 0,5) a compostura 1,30 valia +15% de
@@ -190,18 +190,22 @@ DEFAULT_CAR_PHYSICS = CarPhysics()
 #: arquetipo conservador vencia todas as corridas por mais de um minuto e o
 #: atributo chamado "ritmo" quase nao decidia nada. Reduzir so a compostura
 #: invertia o problema (o agressivo vencia sempre), por isso a frenagem da
-#: agressividade caiu junto. A compostura fica um pouco acima do ritmo de
-#: proposito: em 18 corridas de distancia completa (Bahrein, Monaco e
-#: Zandvoort, 4 pilotos por arquetipo) 0,08 deixou a posicao media dos tres
-#: arquetipos em 6,6 / 6,3 / 6,6, contra 5,7 / 6,1 / 7,6 com 0,05. Um teste
-#: impede que um atributo volte a dominar.
+#: agressividade caiu junto.
+#:
+#: A v2 usava compostura 0,08, escolhida quando quase metade do pelotao
+#: abandonava por contato. Com isso corrigido (issue #174) e o ritmo sorteado
+#: na mesma faixa para os tres arquetipos (``ARCHETYPE_PACE_OFFSET_PCT``), 0,08
+#: dava ao conservador 14 vitorias em 18 corridas de distancia completa
+#: (Bahrein, Monaco e Zandvoort, 4 pilotos por arquetipo). Com 0,04 a posicao
+#: media ficou em 6,9 / 6,5 / 6,1 (agressivo / equilibrado / conservador) e as
+#: vitorias em 5 / 5 / 8. Um teste impede que um atributo volte a dominar.
 _PACE_GAIN = 2.0
-_COMPOSURE_CORNER_GAIN = 0.08
+_COMPOSURE_CORNER_GAIN = 0.04
 _AGGRESSION_BRAKE_GAIN = 0.25
 
 #: Versao dos tres ganhos acima, exposta em ``assumptions`` para que uma
 #: corrida salva diga com qual balanceamento de atributos foi simulada.
-DRIVER_PHYSICS_GAINS_VERSION = "driver-physics-gains-v2"
+DRIVER_PHYSICS_GAINS_VERSION = "driver-physics-gains-v3"
 
 
 def physics_for(

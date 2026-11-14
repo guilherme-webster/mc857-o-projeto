@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from f1_simulator.adapters.datasets.mock_track_geometry import MockTrackDatasetAdapter
+from f1_simulator.domain.fuel import RefuelStopParameters
 from f1_simulator.domain.pit_lane import (
     PitLaneParameters,
     PitLaneState,
@@ -24,7 +25,7 @@ from f1_simulator.domain.track_space import (
 )
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
 from frontend.arcade.race_playback import RacePlayback
-from tests.model_support import parameters, track
+from tests.model_support import parameters, provenance, track
 from tests.test_track_space import _square
 
 
@@ -315,6 +316,105 @@ class SpatialPitRaceTest(unittest.TestCase):
         self.assertIsNone(playback.car("a").spatial_at(1000).pit_distance_m)
         self.assertFalse(playback.car("a").in_pit_lap_at(1000))
         self.assertEqual(playback.car("a").laps_at(playback.duration_ms), 4)
+
+
+class PitStopVariationTest(unittest.TestCase):
+    """Desvio do tempo de servico por parada (issue #139)."""
+
+    SIGMA_MS = 1_000.0
+    SKEW = 0.5
+    NOMINAL_S = 2.5
+    # Os eventos sao registrados no passo de integracao em que ocorrem.
+    STEP_S = 0.21
+
+    def run_race(self, *, sigma_ms: float | None, execution: float = 1.0):
+        model = parameters()
+        variation = (
+            None
+            if sigma_ms is None
+            else RefuelStopParameters(
+                provenance=provenance(),
+                team_offsets=(),
+                persistence=0.5,
+                stop_sigma_ms=sigma_ms,
+                stop_skew=self.SKEW,
+            )
+        )
+        return simulate_2d_race(
+            [
+                {
+                    "driver_id": "a",
+                    "name": "A",
+                    "grid_position": 1,
+                    "strategy": PlannedStopStrategy(1, ("HARD",)),
+                }
+            ],
+            pit_geometry(),
+            total_laps=4,
+            rng=SeededRandomSource(1),
+            compounds={c.name: c for c in model.compounds},
+            track_params=track(),
+            model_parameters=model,
+            race_control=None,
+            pit_execution_by_id={"a": execution},
+            pit_stop_variation=variation,
+        )
+
+    @staticmethod
+    def service_s(race) -> float:
+        events = {event["type"]: event for event in race["pit_stop_events"]}
+        return (
+            events["service_completed"]["time_ms"]
+            - events["service_started"]["time_ms"]
+        ) / 1000.0
+
+    def expected_deviation_s(self) -> float:
+        z = SeededRandomSource(1).spawn("pit-stop:a").standard_normal()
+        side = 1.0 + self.SKEW if z > 0 else 1.0 - self.SKEW
+        return z * self.SIGMA_MS / 1000.0 * side
+
+    def test_without_variation_the_service_is_nominal(self):
+        for sigma in (None, 0.0):
+            with self.subTest(sigma=sigma):
+                race = self.run_race(sigma_ms=sigma)
+                self.assertAlmostEqual(
+                    self.service_s(race), self.NOMINAL_S, delta=self.STEP_S
+                )
+        kinds = {item["kind"] for item in self.run_race(sigma_ms=None)["assumptions"]}
+        self.assertNotIn("pit_stop_variation_2d", kinds)
+
+    def test_each_stop_draws_a_deviation_from_the_driver_stream(self):
+        deviation = self.expected_deviation_s()
+        self.assertGreater(abs(deviation), self.STEP_S)
+        race = self.run_race(sigma_ms=self.SIGMA_MS)
+        self.assertAlmostEqual(
+            self.service_s(race),
+            max(0.5 * self.NOMINAL_S, self.NOMINAL_S + deviation),
+            delta=self.STEP_S,
+        )
+        self.assertEqual(race, self.run_race(sigma_ms=self.SIGMA_MS))
+
+    def test_team_execution_scales_mean_and_deviation(self):
+        deviation = self.expected_deviation_s()
+        race = self.run_race(sigma_ms=self.SIGMA_MS, execution=1.4)
+        nominal = self.NOMINAL_S * 1.4
+        self.assertAlmostEqual(
+            self.service_s(race),
+            max(0.5 * nominal, nominal + deviation * 1.4),
+            delta=self.STEP_S,
+        )
+
+    def test_variation_is_disclosed_as_heuristic(self):
+        race = self.run_race(sigma_ms=self.SIGMA_MS)
+        entry = next(
+            item
+            for item in race["assumptions"]
+            if item["kind"] == "pit_stop_variation_2d"
+        )
+        self.assertEqual(entry["origin"], "heuristic")
+        self.assertEqual(entry["stop_sigma_ms"], self.SIGMA_MS)
+        self.assertEqual(entry["stop_skew"], self.SKEW)
+        self.assertEqual(entry["nominal_service_time_s"], self.NOMINAL_S)
 
 
 if __name__ == "__main__":

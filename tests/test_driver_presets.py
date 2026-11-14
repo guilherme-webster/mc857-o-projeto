@@ -60,8 +60,8 @@ class DriverAttributesV2Test(unittest.TestCase):
 
         self.assertGreater(item.aggression, 0)
         self.assertGreater(item.composure, 0)
-        self.assertEqual(item.parameter_version, "assumed-driver-attributes-v2")
-        self.assertEqual(PARAMETER_VERSION, "assumed-driver-attributes-v2")
+        self.assertEqual(item.parameter_version, "assumed-driver-attributes-v3")
+        self.assertEqual(PARAMETER_VERSION, "assumed-driver-attributes-v3")
         assumption = attributes_assumption(item)
         self.assertEqual(assumption["aggression"], item.aggression)
         self.assertEqual(assumption["composure"], item.composure)
@@ -101,7 +101,12 @@ class DriverAttributesV2Test(unittest.TestCase):
                     self.assertLessEqual(getattr(item, field), high)
 
     def test_v1_fields_keep_exact_values_for_the_same_seed(self) -> None:
-        """Literais capturados antes de aggression/composure serem adicionados."""
+        """Literais capturados antes de aggression/composure serem adicionados.
+
+        Consistencia e gestao de pneu seguem os valores originais. O ritmo foi
+        recapturado na v3 (issue #139): o sorteio e o mesmo, mas a faixa agora
+        e unica para os tres arquetipos (-0,60 a +0,40).
+        """
 
         items = generated(["driver:830", "driver:839"], seed=42)
         observed = tuple(
@@ -120,14 +125,14 @@ class DriverAttributesV2Test(unittest.TestCase):
                 (
                     "driver:830",
                     "balanced",
-                    0.05195337231072339,
+                    0.07317790770241128,
                     0.9817340034573214,
                     1.0789226634671676,
                 ),
                 (
                     "driver:839",
                     "aggressive",
-                    -0.5971470341520967,
+                    -0.5928675853802419,
                     1.1256511263939875,
                     1.253731611415043,
                 ),
