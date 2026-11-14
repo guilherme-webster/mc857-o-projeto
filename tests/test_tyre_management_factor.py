@@ -39,8 +39,10 @@ class TyreManagementFactorTest(unittest.TestCase):
         self.assertAlmostEqual(values[0], 1 + elasticity * -0.35)
         self.assertAlmostEqual(values[2], 1 + elasticity * 0.45)
         self.assertEqual(values, sorted(values))
-        # A faixa efetiva dos arquetipos fica perto de +/-15%.
-        self.assertTrue(0.8 < values[0] and values[2] < 1.25)
+        # Issue #139: a faixa efetiva precisa ser perceptivel (mais de 20%
+        # para cada lado) sem chegar ao fator integral do arquetipo.
+        self.assertTrue(0.65 < values[0] < 0.8)
+        self.assertTrue(1.25 < values[2] < 1.45)
 
     def test_parameters_are_validated_and_labelled(self) -> None:
         self.assertEqual(DETAILED_TYRE_MANAGEMENT.origin, "heuristic")
