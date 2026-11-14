@@ -58,6 +58,7 @@ from frontend.arcade.theme import (
     SUCCESS_COLOR,
 )
 from frontend.arcade.track_client import fetch_track, fetch_tracks
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
 RULES_PANEL_BOUNDS = (28, 214, 544, 362)
@@ -68,16 +69,16 @@ NAME_INPUT_BOUNDS = (230, 459, 322, 32)
 SEED_INPUT_BOUNDS = (232, 230, 320, 30)
 PREVIOUS_TRACK_BOUNDS = (622, 382, 34, 31)
 NEXT_TRACK_BOUNDS = (816, 382, 34, 31)
-TOGGLE_TRACK_BOUNDS = (956, 286, 268, 38)
-REMOVE_TRACK_BOUNDS = (956, 236, 268, 38)
-AUTOMATIC_BOUNDS = (956, 186, 268, 38)
+TOGGLE_TRACK_BOUNDS = (956, 286, 268, 42)
+REMOVE_TRACK_BOUNDS = (956, 236, 268, 42)
+AUTOMATIC_BOUNDS = (956, 186, 268, 42)
 # Abaixo do painel de regras, que termina em y=184.
-DRIVERS_BOUNDS = (28, 130, 268, 38)
-SAVED_TOURNAMENTS_BOUNDS = (28, 82, 268, 38)
+DRIVERS_BOUNDS = (28, 130, 288, 42)
+SAVED_TOURNAMENTS_BOUNDS = (28, 82, 288, 42)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
-CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 36)
-SAVE_RULES_BOUNDS = (916, 13, 138, 36)
-BACK_BOUNDS = (28, 13, 134, 36)
+CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 40)
+SAVE_RULES_BOUNDS = (916, 13, 138, 40)
+BACK_BOUNDS = (28, 13, 134, 40)
 SCORING_BOUNDS = (232, 420, 320, 34)
 STAGES_DECREASE_BOUNDS = (232, 383, 28, 34)
 STAGES_INCREASE_BOUNDS = (326, 383, 28, 34)
@@ -871,9 +872,14 @@ class ParametersView(UIView):
         y: float,
         color: tuple[int, ...] = PRIMARY_TEXT_COLOR,
         font_size: float = 12,
+        fit_width: float | None = None,
         **kwargs: object,
     ) -> _NativeText:
-        """Place a label in logical layout units but render its glyphs natively."""
+        """Place a label in logical layout units but render its glyphs natively.
+
+        ``fit_width`` (unidades logicas) e a largura do botao: o rotulo reduz a
+        fonte ate caber nela, para janelas menores ou fontes mais largas.
+        """
 
         fit = self._canvas_fit()
         width = kwargs.get("width")
@@ -886,6 +892,8 @@ class ParametersView(UIView):
             font_size * fit.scale,
             **kwargs,
         )
+        if fit_width is not None:
+            fit_button_text(label, (fit_width - 12) * fit.scale, font_size * fit.scale)
         return _NativeText(label, self._native_labels)
 
     def _logical_pointer(self, x: int, y: int) -> tuple[int, int]:
@@ -1114,6 +1122,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1129,6 +1138,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1144,6 +1154,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1159,11 +1170,12 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
         self._native_text(
-            "Grid usado pelo Iniciar e atributos dos pilotos.",
+            "Configurações do grid e dos pilotos",
             left + width + 14,
             bottom + height / 2,
             SECONDARY_TEXT_COLOR,
@@ -1182,6 +1194,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1224,6 +1237,7 @@ class ParametersView(UIView):
                 bottom + height / 2,
                 PRIMARY_TEXT_COLOR,
                 11,
+                fit_width=width,
                 anchor_x="center",
                 anchor_y="center",
             ).draw()
