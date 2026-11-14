@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-13T23:20:16Z
+- **Ultima atividade registrada:** 2026-11-14T01:14:13Z
 - **Abertas:** 21
 - **Fechadas:** 82
 
@@ -457,13 +457,86 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140), [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141), [#186 — Pilotos: Atributos do piloto](https://github.com/guilherme-webster/mc857-o-projeto/issues/186)
 - **Criada:** 2026-11-08T20:41:54Z
-- **Atualizada:** 2026-11-13T23:10:59Z
+- **Atualizada:** 2026-11-14T01:14:13Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
 <pre>&lt;img width=&quot;164&quot; height=&quot;209&quot; alt=&quot;Image&quot; src=&quot;https://github.com/user-attachments/assets/88799557-4ac8-44a9-b4f4-868b8204adf3&quot; /&gt;</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-11-14T00:14:22Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868268192)
+
+<pre>Andamento (sessão assistida por IA, branch local `139-balanceamento-atributos`, ainda sem commit nem PR).
+
+**Medições** (Mônaco do fixture de testes, 30 voltas, 8 carros neutros, `model-v1.json` + `fuel-v1.json`; ordens de grandeza, não valores de produção):
+
+| Fator | Peso no tempo de volta |
+|---|---|
+| Pneu | até ~0,7 % antes da parada |
+| Combustível | ~0,9 % na largada dessa prova curta |
+| Pista verde (seco) | 0,4 % caindo para ~0 |
+| Chuva leve / forte | ~15–19 % / ~35 % |
+
+**Atributos do piloto, antes da mudança** (faixa dos arquétipos → tempo de volta): `composure` +6,8 % a −10,9 %; `pace_offset_pct` −1,0 % a +0,7 %; `aggression` +1,3 % a −1,1 %. Em 10 corridas de 25 voltas com 4 pilotos por arquétipo, o conservador venceu as 10.
+
+**Alterado:** ganhos heurísticos de `physics_for` (`domain/speed_dynamics.py`): compostura em curva 0,5 → 0,05 e agressividade na freada 0,5 → 0,25, versão `driver-physics-gains-v2` exposta em `assumptions`. Faixas agora: compostura +0,7 % a −1,3 %, agressividade +0,6 % a −0,6 %, ritmo inalterado. Nas mesmas 10 corridas: 8 vitórias do agressivo, 1 do equilibrado, 1 do conservador; posição média 5,6 / 6,5 / 7,3. Teste de regressão em `tests/test_speed_dynamics.py` e seção nova em `docs/modelagem-heuristica.md`.
+
+**Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 754 testes, OK (42 pulados, 1 falha esperada).
+
+**Não alterado, depende de decisão do grupo:**
+- Pneu: a degradação calibrada (~31 ms/volta no MEDIUM) pesa pouco frente ao custo de uma parada; aumentar exige multiplicador `assumed` sobre valor calibrado. `tyre_management_factor` herda essa irrelevância.
+- `consistency_factor` não tem efeito no motor 2D (não há ruído por volta); só é exibido.
+- Painel de decomposição: continua escalando pneu/combustível pelo teto da curva (#140/#141).
+- Nessas corridas de teste, 40–60 de 120 largadas terminaram em abandono, o que distorce qualquer comparação de arquétipos (ver #174).
+
+**Próximo passo:** revisar e commitar a mudança dos ganhos; decidir os itens acima.</pre>
+
+#### [@guilherme-webster em 2026-11-14T00:26:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868455621)
+
+<pre>Atualização e correção do comentário anterior (sessão assistida por IA, branch local `139-balanceamento-atributos`, ainda sem commit nem PR).
+
+**Correção sobre o pneu.** O &quot;até ~0,7 %&quot; do comentário anterior veio de uma corrida de 30 voltas. Em distância completa, com a degradação atual de `model-v1.json`, o pneu pesa 2,4–2,6 % do tempo de volta no fim do stint em Mônaco (78 voltas) e no Bahrein (57), com 1 a 2,4 paradas, e 0,85 % em Zandvoort (severidade 0,3). Multiplicar a degradação por 2,5 levou a ~3 paradas em Mônaco e ~5,7 no Bahrein. Por isso **a degradação não foi alterada**. A elasticidade de `tyre_management_factor` (0,4) também não: 0,7 e 1,0 não melhoraram o equilíbrio.
+
+**Atributos (valores finais).** Ganhos de `physics_for`: compostura em curva 0,5 → **0,08** (o comentário anterior dizia 0,05) e agressividade na freada 0,5 → 0,25, versão `driver-physics-gains-v2`. Faixas no tempo de volta em Mônaco: ritmo −1,0 % a +0,7 %; compostura +1,0 % a −2,0 %; agressividade +0,6 % a −0,6 %. Em 18 corridas de distância completa (Bahrein, Mônaco, Zandvoort; 4 pilotos por arquétipo): posição média 6,6 / 6,3 / 6,6 (agressivo / equilibrado / conservador), vitórias 7 / 1 / 10. Com 0,05 era 5,7 / 6,1 / 7,6 e 16 / 0 / 2.
+
+**`consistency_factor` passa a atuar no motor 2D.** Cada carro sorteia um desvio de ritmo por volta, `sigma = lap_noise_ms × consistency_factor` (253,7 ms calibrados em `model-v1.json`), em fluxo próprio por piloto, sem ruído em voltas neutralizadas e sem efeito quando não há `model_parameters`. Premissa `lap_pace_noise_2d` (`heuristic` sobre escala `calibrated`) em `assumptions`; versão do motor `motor-2d-v6`. O ruído é simétrico (`lap_noise_skew` = 0), então muda a variância do piloto, não o ritmo médio. O painel de decomposição ganhou a fatia &quot;variação&quot; (não verifiquei a janela visualmente, só pelos testes do leitor).
+
+**Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 761 testes, OK (42 pulados, 1 falha esperada). Um teste de `tests/test_dynamic_usage.py` dependia da fase do evento de serviço na grade de amostragem de 200 ms; a margem passou de 100 para 250 ms.
+
+**Pendências:**
+- Abandonos por contato: nessas 18 corridas, 26 a 42 de 72 largadas por arquétipo não terminaram (#174). Isso domina a comparação entre arquétipos; os números acima são indicativos.
+- Painel ainda escala as fatias pelo teto da curva (#140/#141).
+- O ADR 0015 (item 5) ainda descreve os ganhos antigos.
+
+**Próximo passo:** revisão humana, commits e PR.</pre>
+
+#### [@guilherme-webster em 2026-11-14T00:42:51Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868705157)
+
+<pre>Mais uma correção nesta mesma frente (sessão assistida por IA): do grid até a linha de chegada o motor 2D calculava &quot;volta 0&quot; e o índice negativo buscava o estado de pista da **última** volta. Com chuva só no fim da corrida, a largada era simulada molhada (numa corrida de 6 voltas com chuva forte nas voltas 4 a 6, os carros largavam a ~68 % do ritmo). Agora esse trecho usa o clima da volta 1, e `speed_breakdown` deixa de trazer a entrada de volta &quot;0&quot;.
+
+Teste de regressão em `tests/test_run_grid_simulation.py` (a primeira volta tem de ser idêntica com e sem chuva futura; confirmado que falha sem a correção). `uv run ruff check .` sem erros; `uv run python -m unittest`: 762 testes, OK (42 pulados, 1 falha esperada).
+
+Abandonos por contato (#174) continuam fora desta frente. Segue PR com tudo o que foi descrito nos comentários acima.</pre>
+
+#### [@guilherme-webster em 2026-11-14T01:14:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6869167771)
+
+<pre>Andamento (sessão assistida por IA, branch local `139-features-fracas`, ainda sem commit nem PR): reforço de três efeitos que existiam no motor 2D mas quase não se faziam sentir.
+
+- **Gestão de pneu do piloto:** elasticidade de `tyre_management_factor` 0,4 → 0,7 (`detailed-tyre-management-v2`), faixa efetiva 0,755× a 1,315×. No Bahrein (57 voltas, três carros iguais, 4 sementes), o piloto de fator 0,65 terminou 18 a 28 s à frente do neutro e 26 a 50 s à frente do de fator 1,45, quase sempre por uma parada a menos.
+- **Pista verde:** borracha inicial 0,8 → 0,6 e perda de aderência 3 % → 5 % (`assumed-track-condition-v2`). Custa ~1,1 % do tempo de volta na volta 1, 0,5 % na 10 e some por volta da 40 (antes 0,4 % na volta 1). Igual para todos os carros.
+- **Parada nos boxes:** cada parada sorteia um desvio do serviço de 2,5 s com `stop_sigma_ms` (1726 ms) e `stop_skew` (0,70) do `fuel-v1.json`, escalado pela execução da equipe, em fluxo próprio por piloto. Distribuição resultante: mediana 2,5 s, média ~3,5 s, 10 % das paradas acima de 6,3 s, 1 % acima de 9,3 s. Premissa `pit_stop_variation_2d` (`heuristic`): a dispersão foi medida na duração total do pit lane, e aplicá-la só ao serviço é hipótese.
+
+**Equilíbrio entre arquétipos** (18 corridas de distância completa, 4 pilotos por arquétipo): posição média 7,1 / 6,2 / 6,2 (agressivo / equilibrado / conservador), vitórias 4 / 1 / 13. A posição média segue próxima, mas as vitórias pendem para o conservador; com a elasticidade antiga, nas mesmas condições, era 6,9 / 5,9 / 6,7 e 5 / 1 / 12. Abandonos por contato (34 a 45 de 72 por arquétipo) continuam dominando a comparação (#174).
+
+**Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 766 testes, OK (42 pulados, 1 falha esperada).
+
+**Próximo passo:** revisão, commits e PR.</pre>
 
 </details>
 

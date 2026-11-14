@@ -16,6 +16,7 @@ from f1_simulator.application.run_grid_simulation import (
     run_grid_simulation,
 )
 from f1_simulator.domain.random_source import SeededRandomSource
+from f1_simulator.domain.weather import RainLevel, WeatherSegment
 from tests.geometry_support import attribute, fixture_geometry
 from tests.model_support import parameters
 
@@ -164,6 +165,33 @@ class GridSimulationTest(unittest.TestCase):
         self.assertEqual(
             result["race_control_events"][0]["cause"]["kind"], "mechanical"
         )
+
+    def test_start_stretch_uses_first_lap_weather_not_the_last(self) -> None:
+        # Regressao: do grid ate a linha a volta calculada era 0 e o indice -1
+        # buscava o estado de pista da ultima volta. Com chuva so no fim, a
+        # largada era simulada molhada. A primeira volta tem de ser a mesma
+        # com e sem chuva futura.
+        grid = self.grid[:1]
+        attributes = {grid[0].driver_id: self.attributes[grid[0].driver_id]}
+        late_rain = (
+            WeatherSegment(from_lap=5, to_lap=6, rain=RainLevel.HEAVY),
+        )
+
+        def first_lap(weather):
+            result = self.run_grid(
+                RaceSetup(6, track_id="circuit:1", weather=weather),
+                grid=grid,
+                attributes=attributes,
+                race_control=None,
+            )
+            laps = result["speed_breakdown"]["cars"][grid[0].driver_id]["laps"]
+            self.assertNotIn("0", laps)
+            return result["history"][0]["cars"][0]["lap_time_ms"], laps["1"]
+
+        dry_time, dry_lap = first_lap(())
+        wet_time, wet_lap = first_lap(late_rain)
+        self.assertEqual(wet_lap["weather_ms"], dry_lap["weather_ms"])
+        self.assertEqual(wet_time, dry_time)
 
     def test_pace_attribute_changes_the_result(self) -> None:
         grid = (GridEntry("driver:1", "Piloto", "team:solid", "Solida"),)

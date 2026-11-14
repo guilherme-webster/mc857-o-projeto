@@ -214,6 +214,7 @@ class SpatialExclusionTest(unittest.TestCase):
         self.assertFalse(_rubbing(a, b, 800))
 
     def test_monaco_seed_three_keeps_exclusion_when_contacts_occur(self):
+        from dataclasses import replace
         from itertools import combinations
         from unittest.mock import patch
 
@@ -233,6 +234,7 @@ class SpatialExclusionTest(unittest.TestCase):
         contacts_are_geometric = []
         def check_samples(*args, **kwargs):
             from f1_simulator.domain.track_space import (
+                ASSUMED_RUBBING_MARGIN_M,
                 _projected_rectangle,
                 _rectangles_overlap,
             )
@@ -245,10 +247,16 @@ class SpatialExclusionTest(unittest.TestCase):
                     if not car.retired or previous[car.driver_id].retired:
                         continue
                     pose = _projected_rectangle(track, car, car.distance_m)
+                    # O motor sorteia contato dentro da margem lateral de
+                    # rocamento, antes de os retangulos necessariamente se
+                    # atravessarem. Cada meia-largura recebe metade da margem;
+                    # o comprimento permanece fisico para nao aceitar fila.
+                    contact_car = replace(car, width_m=car.width_m + ASSUMED_RUBBING_MARGIN_M)
                     contacts_are_geometric.append(any(
                         other.driver_id != car.driver_id and not other.retired
                         and _rectangles_overlap(
-                            car, pose, other,
+                            contact_car, pose,
+                            replace(other, width_m=other.width_m + ASSUMED_RUBBING_MARGIN_M),
                             _projected_rectangle(track, other, other.distance_m),
                         ) for other in after.cars
                     ))

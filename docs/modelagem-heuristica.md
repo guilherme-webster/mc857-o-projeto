@@ -91,6 +91,42 @@ multiplicativos têm 1,0 como neutro.
 | `aggression` | Pressão do atacante e risco de contato | 1,20 a 1,50 | 0,90 a 1,10 | 0,60 a 0,85 |
 | `composure` | Firmeza do defensor sob pressão | 0,85 a 1,05 | 0,90 a 1,10 | 1,05 a 1,30 |
 
+**Efeito no tempo de volta do motor 2D (issue #139).** A tabela acima descreve
+o papel de cada atributo; no motor 2D, três deles também mudam o envelope físico
+do carro (`physics_for`, em `domain/speed_dynamics.py`), por ganhos heurísticos
+versionados em `DRIVER_PHYSICS_GAINS_VERSION` (`driver-physics-gains-v2`):
+
+| Atributo | Atua em | Ganho | Faixa dos arquétipos → tempo de volta (Mônaco) |
+|---|---|---|---|
+| `pace_offset_pct` | velocidade de reta e de curva | 2,0 | −0,60 a +0,40 → −1,0% a +0,7% |
+| `composure` | velocidade de curva | 0,08 | 0,85 a 1,30 → +1,0% a −2,0% |
+| `aggression` | uso de aderência na freada | 0,25 | 0,60 a 1,50 → +0,6% a −0,6% |
+
+Os ganhos foram escolhidos, não medidos, para que nenhum atributo domine. Na
+versão anterior (compostura 0,5 e freada 0,5) a compostura 1,30 valia −10,9% de
+volta, dez vezes o ritmo, e o arquétipo conservador vencia todas as corridas
+curtas. Em 18 corridas de distância completa (Bahrein, Mônaco e Zandvoort, 4
+pilotos por arquétipo, atributos sorteados nas faixas) a posição média ficou em
+6,6 (agressivo), 6,3 (equilibrado) e 6,6 (conservador). Esses números carregam
+muito ruído de abandonos por contato (issue #174), então valem como indicação.
+
+**Ruído de ritmo por volta.** `consistency_factor` atua no motor 2D desde a
+issue #139: cada carro sorteia, uma vez por volta, um desvio de ritmo com
+`sigma = lap_noise_ms × consistency_factor`, em que `lap_noise_ms` (253,7 ms) e
+`lap_noise_skew` vêm de `model-v1.json`. O sorteio usa um fluxo próprio por
+piloto (`lap-noise:<piloto>`), não ocorre em voltas neutralizadas e não existe
+sem `model_parameters`. A escala é calibrada; multiplicá-la pelo atributo
+fictício é hipótese, declarada em `assumptions` como `lap_pace_noise_2d`
+(`lap-pace-noise-2d-v1`, origem `heuristic`). No painel de decomposição o
+desvio aparece como a fatia "variação".
+
+**Pneu: sem multiplicador.** A degradação de `model-v1.json` não foi escalada.
+Em distância completa o pneu já pesa 2,4% a 2,6% do tempo de volta no fim do
+stint em Mônaco e no Bahrein (0,85% em Zandvoort, de severidade 0,3), com uma a
+duas paradas. Multiplicar a degradação por 2,5 levou a três paradas em Mônaco e
+a quase seis no Bahrein. A elasticidade de `tyre_management_factor` (0,4)
+também ficou como está: 0,7 e 1,0 não melhoraram o equilíbrio entre arquétipos.
+
 **Precedência de origem por campo:** `manual` (PATCH) > `preset` (perfil
 nomeado) > `generated` (sorteio).
 

@@ -175,9 +175,33 @@ DEFAULT_CAR_PHYSICS = CarPhysics()
 #: realista. Com 2x o piloto continua visivelmente distinto, mas menor que o
 #: carro, como na F1. Agressividade atua na frenagem, compostura na velocidade
 #: de curva, ritmo num fator geral sobre as duas velocidades.
+#:
+#: Balanceamento (issue #139). Os tres ganhos sao heuristicos, escolhidos e nao
+#: medidos, e foram dimensionados para que a faixa inteira de cada atributo nos
+#: arquetipos (``ASSUMED_ARCHETYPES``) mova o tempo de volta na mesma ordem de
+#: grandeza, cerca de 1% para cada lado em Monaco:
+#:
+#: - ritmo, -0,60% a +0,40%: -1,0% a +0,7% de volta;
+#: - compostura, 0,85 a 1,30: +1,0% a -2,0%;
+#: - agressividade, 0,60 a 1,50: +0,6% a -0,6%.
+#:
+#: Com os ganhos anteriores (0,5 e 0,5) a compostura 1,30 valia +15% de
+#: velocidade de curva e -10,9% de volta, dez vezes o efeito do ritmo: o
+#: arquetipo conservador vencia todas as corridas por mais de um minuto e o
+#: atributo chamado "ritmo" quase nao decidia nada. Reduzir so a compostura
+#: invertia o problema (o agressivo vencia sempre), por isso a frenagem da
+#: agressividade caiu junto. A compostura fica um pouco acima do ritmo de
+#: proposito: em 18 corridas de distancia completa (Bahrein, Monaco e
+#: Zandvoort, 4 pilotos por arquetipo) 0,08 deixou a posicao media dos tres
+#: arquetipos em 6,6 / 6,3 / 6,6, contra 5,7 / 6,1 / 7,6 com 0,05. Um teste
+#: impede que um atributo volte a dominar.
 _PACE_GAIN = 2.0
-_COMPOSURE_CORNER_GAIN = 0.5
-_AGGRESSION_BRAKE_GAIN = 0.5
+_COMPOSURE_CORNER_GAIN = 0.08
+_AGGRESSION_BRAKE_GAIN = 0.25
+
+#: Versao dos tres ganhos acima, exposta em ``assumptions`` para que uma
+#: corrida salva diga com qual balanceamento de atributos foi simulada.
+DRIVER_PHYSICS_GAINS_VERSION = "driver-physics-gains-v2"
 
 
 def physics_for(
