@@ -53,6 +53,39 @@ class SpeedBreakdownTyreTest(unittest.TestCase):
         self.assertAlmostEqual(dry.penalties["tyre"], 1000 / 101000)
         self.assertAlmostEqual(wet.penalties["tyre"], 1000 / 111000)
 
+    def test_lap_pace_noise_is_its_own_slice(self):
+        # Issue #139: o desvio de ritmo da volta (consistency_factor) entra na
+        # soma; se o leitor o ignorasse, a parcela seria atribuida ao pneu.
+        scale = 0.9
+        race = {"speed_breakdown": {"cars": {"a": {
+            "v_max_kmh": 360,
+            "laps": {"1": {"speed_scale": scale, "delta_shares": {
+                "tyre": 0.06, "fuel": 0, "weather": 0, "noise": 0.04,
+                "race_control": 0,
+            }}},
+        }}}}
+        result = SpeedBreakdownReader(race).at(
+            "a", distance_m=0, speed_kmh=324, lap=1
+        )
+        self.assertAlmostEqual(result.penalties["noise"], 0.04)
+        self.assertAlmostEqual(result.penalties["tyre"], 0.06)
+        self.assertAlmostEqual(
+            result.effective + result.transient + result.corner
+            + sum(result.penalties.values()), 1.0,
+        )
+
+    def test_race_without_noise_share_reads_it_as_zero(self):
+        # Corridas salvas antes do ruido por volta nao trazem a chave.
+        race = {"speed_breakdown": {"cars": {"a": {
+            "v_max_kmh": 360,
+            "laps": {"1": {"speed_scale": 0.9, "delta_shares": {"tyre": 0.1}}},
+        }}}}
+        result = SpeedBreakdownReader(race).at(
+            "a", distance_m=0, speed_kmh=324, lap=1
+        )
+        self.assertEqual(result.penalties["noise"], 0.0)
+        self.assertAlmostEqual(result.penalties["tyre"], 0.1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -150,6 +150,7 @@ _BREAKDOWN_FACTOR_COLORS = {
     "fuel": (170, 180, 195),
     "weather": (90, 200, 250),
     "race_control": (240, 150, 40),
+    "noise": (200, 130, 220),
 }
 _BREAKDOWN_LABELS = {
     "effective": "velocidade",
@@ -159,10 +160,11 @@ _BREAKDOWN_LABELS = {
     "fuel": "combustível",
     "weather": "clima",
     "race_control": "controle",
+    "noise": "variação",
 }
 # Painel flutuante da decomposicao: um por piloto, arrastavel e fechavel.
 _PANEL_W = 300.0
-_PANEL_H = 252.0
+_PANEL_H = 267.0
 _PANEL_TITLE_H = 20.0  # faixa de titulo (arrastar aqui)
 _PANEL_CLOSE = 16.0  # lado do botao de fechar
 _PANEL_BG = (22, 30, 40)
@@ -567,6 +569,7 @@ class TrackView(arcade.View):
                 "fuel",
                 "weather",
                 "race_control",
+                "noise",
             )
         }
         self._status_text = arcade.Text(
@@ -1191,7 +1194,15 @@ class TrackView(arcade.View):
 
     #: Ordem fixa dos fatores no painel: cada um ocupa sempre o mesmo slot, para
     #: a leitura em tempo real nao "dancar" quando um valor muda.
-    _BREAKDOWN_ORDER = ("corner", "transient", "tyre", "fuel", "weather", "race_control")
+    _BREAKDOWN_ORDER = (
+        "corner",
+        "transient",
+        "tyre",
+        "fuel",
+        "weather",
+        "race_control",
+        "noise",
+    )
 
     def _breakdown_fraction(self, breakdown, key: str) -> float:
         if key == "corner":
@@ -1291,7 +1302,11 @@ class TrackView(arcade.View):
             value.y = y
             value.draw()
 
-        self._draw_breakdown_context(panel, did, left, gives_y - 16 - 3 * row_h)
+        # Linhas ocupadas pela legenda em duas colunas (a ultima pode ter um so).
+        legend_rows = (len(self._BREAKDOWN_ORDER) + 1) // 2
+        self._draw_breakdown_context(
+            panel, did, left, gives_y - 16 - legend_rows * row_h
+        )
 
     def _draw_breakdown_context(self, panel, did, bar_w_left, top_y) -> None:
         """Seção de contexto: velocidade base (v_max) e atributos do piloto.

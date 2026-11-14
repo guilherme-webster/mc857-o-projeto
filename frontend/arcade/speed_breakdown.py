@@ -5,8 +5,10 @@ Le ``result["speed_breakdown"]`` (penalidades por volta, do motor 2D) e
 instante, as fatias que somam a velocidade maxima de reta do carro:
 
 - ``corner``: quanto a curvatura do ponto atual tira do teto de reta;
-- ``tyre``/``fuel``/``weather``/``race_control``: quanto cada condicao tira do
-  que a curva deixou, repartido pelas parcelas que o motor cobrou na volta;
+- ``tyre``/``fuel``/``weather``/``noise``/``race_control``: quanto cada condicao
+  tira do que a curva deixou, repartido pelas parcelas que o motor cobrou na
+  volta. ``noise`` e o desvio de ritmo do piloto naquela volta, escalado pelo
+  ``consistency_factor``; corridas antigas nao o trazem e ele vale zero;
 - ``effective``: a velocidade que sobra, o que o carro faz agora.
 
 As fatias sao fracoes de ``v_max`` e somam ~1.0. Fronteira: o modulo so le o
@@ -26,7 +28,7 @@ from dataclasses import dataclass
 
 #: Ordem de empilhamento e rotulos das penalidades, do mais proximo da
 #: velocidade efetiva para o topo da barra.
-PENALTY_FACTORS = ("tyre", "fuel", "weather", "race_control")
+PENALTY_FACTORS = ("tyre", "fuel", "weather", "noise", "race_control")
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,8 +43,9 @@ class SpeedBreakdown:
       quando o carro ainda acelera para o alvo (saindo de curva); negativo
       quando esta acima do alvo (freando ou por inercia);
     - ``corner``: o quanto a curvatura do ponto baixa o teto de reta;
-    - ``penalties``: pneu, combustivel, clima e controle de prova. Negativo e
-      um ganho (pneu macio novo mais rapido que a referencia).
+    - ``penalties``: pneu, combustivel, clima, variacao de ritmo da volta e
+      controle de prova. Negativo e um ganho (pneu macio novo mais rapido que
+      a referencia, ou uma volta acima da media do piloto).
     """
 
     driver_id: str
