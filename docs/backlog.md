@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-14T01:14:13Z
+- **Ultima atividade registrada:** 2026-11-14T03:52:52Z
 - **Abertas:** 21
 - **Fechadas:** 82
 
@@ -1000,7 +1000,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T18:01:19Z
-- **Atualizada:** 2026-11-13T23:20:16Z
+- **Atualizada:** 2026-11-14T03:52:52Z
 - **Fechada:** —
 
 <details>
@@ -1011,7 +1011,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 </details>
 
 <details>
-<summary>Comentarios (4)</summary>
+<summary>Comentarios (7)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6866415608)
 
@@ -1028,6 +1028,18 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 #### [@Jmvjr em 2026-11-13T23:20:16Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6867398113)
 
 <pre>Primeira estratégia experimental inspirada no tutorial oficial do TORCS: o seguidor considera o ritmo disponível após frear atrás de outro carro e verifica aproximação traseira ao iniciar a passagem. A versão combinada, incluindo correções anteriores, passou em 777 testes (42 ignorados e 1 falha esperada) e Ruff; nova prévia aberta para avaliação do usuário. A análise geométrica ainda encontra sobreposições residuais, e a previsão durante toda a manobra/retorno permanece pendente. Nada foi mergeado ou fechado.</pre>
+
+#### [@Jmvjr em 2026-11-14T03:14:35Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6870800044)
+
+<pre>Integrei origin/develop (PR #188 de balanceamento) na branch do PR #187 pelo merge 7afd7ac, conforme pedido do usuário. O conflito no backlog foi resolvido regenerando o espelho; o teste de contato foi alinhado à margem lateral de roçamento já existente. Suíte combinada: 786 testes, 42 ignorados e 1 falha esperada; Ruff passou. A prévia está sendo reaberta. O PR segue em rascunho e a issue permanece aberta para a avaliação visual e as limitações de sobreposição já documentadas.</pre>
+
+#### [@Jmvjr em 2026-11-14T03:46:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871201162)
+
+<pre>Implementação em andamento na branch do PR #187: proximidade deixa de sortear abandono; contato exige corpos projetados; cada episódio tem avaliação única por aproximação relativa, com toque leve, dano e abandono separados. Adicionada proteção de movimento com subpassos e frenagem antecipada. Matriz intermediária de 36 cenários por versão reduziu abandonos de 13 para 2 e sobreposições em cerca de 96%; o custo aumentou, e a matriz final está sendo repetida após ajuste de frenagem. A issue permanece aberta e haverá nova prévia antes de qualquer merge.</pre>
+
+#### [@Jmvjr em 2026-11-14T03:52:52Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871277013)
+
+<pre>Nova versao implementada e previa Contatos v2 aberta para avaliacao do usuario. Proximidade, toque, dano e abandono estao separados; contato usa corpos projetados e episodios unicos. Em 36 cenarios por versao: abandonos 13→2, pares sobrepostos/amostra 15.738→633, inversoes persistentes 4.084→4.345, nenhuma nao-conclusao ativa nem recuo. O custo aumentou cerca de 74% incluindo diagnostico e as frenagens bruscas aumentaram; estas limitacoes estao documentadas. 798 testes passaram (42 ignorados, 1 falha esperada) e Ruff passou. A tentativa de frenagem antecipada foi retirada por causar bloqueio em um cenario. PR continua rascunho; sem merge nem fechamento.</pre>
 
 </details>
 
