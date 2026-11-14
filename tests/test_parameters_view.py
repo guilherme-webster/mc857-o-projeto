@@ -25,12 +25,11 @@ try:
         ParametersView,
     )
     from frontend.arcade.race_configuration_view import (
+        CANVAS_ORIGIN_X,
         SESSION_FIELD_BOUNDS,
         SESSION_STEPPER_BOUNDS,
-        SIDEBAR_ITEMS,
         WEATHER_APPLY_BOUNDS,
         WEATHER_END_BOUNDS,
-        WEATHER_NEXT_BOUNDS,
         WEATHER_START_BOUNDS,
         WEATHER_TIMELINE_BOUNDS,
         RaceConfigurationView,
@@ -71,6 +70,9 @@ class ParametersViewTest(unittest.TestCase):
         state targets in design units and send them as the real pointer would.
         """
 
+        if isinstance(view, RaceConfigurationView):
+            # A tela de corrida desenha a partir de x=CANVAS_ORIGIN_X.
+            x -= CANVAS_ORIGIN_X
         return view._canvas_fit().to_window(x, y)
 
     def ready_view(self) -> ParametersView:
@@ -396,7 +398,6 @@ class ParametersViewTest(unittest.TestCase):
             0,
         )
         self.assertIs(self.window.current_view, race_view)
-        self.assertEqual(race_view.active_topic, "Clima")
         self.assertEqual(race_view.schedule.total_laps, 71)
 
     def test_initial_screen_opens_the_selected_track_configuration(self) -> None:
@@ -723,34 +724,6 @@ class ParametersViewTest(unittest.TestCase):
         self.assertIs(self.window.current_view, parent)
         self.assertEqual(parent.configuration.weather_schedule, WeatherSchedule.dry(69))
 
-    def test_inline_weather_summary_pages_when_more_than_eight_intervals(self) -> None:
-        schedule = WeatherSchedule(tuple(("Seco", "Chuva leve") * 10))
-        parent = self.ready_view()
-        race_view = RaceConfigurationView(
-            parent,
-            schedule,
-            circuit_id="circuit:18",
-            track_name="Interlagos",
-            track_loader=lambda _id: {},
-        )
-        self.window.show_view(race_view)
-        race_view.on_mouse_release(
-            *self.to_window(race_view, 100, 500),
-            arcade.MOUSE_BUTTON_LEFT,
-            0,
-        )
-        bounds = WEATHER_NEXT_BOUNDS
-        race_view.on_mouse_release(
-            *self.to_window(race_view, bounds[0] + 10, bounds[1] + 10),
-            arcade.MOUSE_BUTTON_LEFT,
-            0,
-        )
-        self.assertEqual(race_view._weather_summary_page, 1)
-        self.assertIs(self.window.current_view, race_view)
-
-    def test_assistance_tab_is_absent_from_both_race_and_climate(self) -> None:
-        self.assertNotIn("Assistências", SIDEBAR_ITEMS)
-
     def test_large_window_draws_full_panels_and_maps_clicks(self) -> None:
         original_size = self.window.get_size()
         try:
@@ -798,7 +771,6 @@ class ParametersViewTest(unittest.TestCase):
             race_view.on_mouse_release(
                 *self.to_window(race_view, 100, 500), arcade.MOUSE_BUTTON_LEFT, 0
             )
-            self.assertEqual(race_view.active_topic, "Clima")
             # The letterbox strip below the canvas must not reach any control.
             race_view.on_mouse_release(100, 1, arcade.MOUSE_BUTTON_LEFT, 0)
             self.assertIs(self.window.current_view, race_view)

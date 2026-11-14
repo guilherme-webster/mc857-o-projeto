@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import arcade
 
-from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
+from frontend.arcade.canvas_fit import CanvasFit
 from frontend.arcade.configuration_state import (
     MAX_LAPS,
     ConfigurationFormError,
@@ -35,19 +35,14 @@ if TYPE_CHECKING:
 
 
 # Design canvas of this screen. Every *_BOUNDS constant and draw call uses
-# these units; ``canvas_fit`` scales them uniformly to the current window.
-DESIGN_SIZE = (1672, 900)
-SIDEBAR_ITEMS = {
-    "Sessão": (45, 600, 378, 55),
-    "Pista": (45, 540, 378, 55),
-    "Clima": (45, 480, 378, 55),
-    "Regras": (45, 420, 378, 55),
-    "Carros": (45, 360, 378, 55),
-}
-TRACK_MAP_BOUNDS = (784, 264, 673, 173)
+# these units. Sem a barra lateral, a tela comeca em x=CANVAS_ORIGIN_X: o canvas
+# visivel vai dali ate o fim do desenho (1672), e o conteudo ocupa a janela.
+CANVAS_ORIGIN_X = 416
+DESIGN_SIZE = (1672 - CANVAS_ORIGIN_X, 900)
+TRACK_MAP_BOUNDS = (474, 130, 492, 400)
 SESSION_FIELD_BOUNDS = {
-    "first_lap": (805, 498, 385, 38),
-    "last_lap": (1220, 498, 398, 38),
+    "first_lap": (1030, 498, 290, 38),
+    "last_lap": (1340, 498, 290, 38),
 }
 SESSION_STEPPER_BOUNDS = {
     field: (
@@ -56,22 +51,18 @@ SESSION_STEPPER_BOUNDS = {
     )
     for field, (left, bottom, width, height) in SESSION_FIELD_BOUNDS.items()
 }
-BACK_BOUNDS = (50, 56, 367, 53)
 CANCEL_BOUNDS = (1100, 8, 152, 42)
 SAVE_BOUNDS = (1270, 8, 169, 42)
 ADVANCE_BOUNDS = (1454, 8, 186, 42)
 WEATHER_PALETTE_BOUNDS = {
-    "Seco": (475, 527, 180, 45),
-    "Chuva leve": (669, 527, 180, 45),
-    "Chuva intensa": (863, 527, 190, 45),
+    "Seco": (1030, 280, 150, 40),
+    "Chuva leve": (1190, 280, 150, 40),
+    "Chuva intensa": (1350, 280, 160, 40),
 }
-WEATHER_START_BOUNDS = (476, 467, 122, 38)
-WEATHER_END_BOUNDS = (616, 467, 122, 38)
-WEATHER_APPLY_BOUNDS = (1392, 467, 226, 44)
-WEATHER_TIMELINE_BOUNDS = (475, 342, 1142, 24)
-WEATHER_PREVIOUS_BOUNDS = (1508, 255, 46, 34)
-WEATHER_NEXT_BOUNDS = (1568, 255, 46, 34)
-WEATHER_SUMMARY_PAGE_SIZE = 8
+WEATHER_START_BOUNDS = (1030, 210, 120, 40)
+WEATHER_END_BOUNDS = (1160, 210, 120, 40)
+WEATHER_APPLY_BOUNDS = (1290, 210, 160, 40)
+WEATHER_TIMELINE_BOUNDS = (1030, 152, 580, 24)
 
 
 class RaceConfigurationView(arcade.View):
@@ -95,7 +86,6 @@ class RaceConfigurationView(arcade.View):
         self.track_name = track_name
         self.stage_index = stage_index
         self.session = session or SessionConfiguration(1, schedule.total_laps)
-        self.active_topic = "Sessão"
         self._track_loader = track_loader
         self._results: SimpleQueue[tuple[str, object]] = SimpleQueue()
         self._loading = False
@@ -110,11 +100,12 @@ class RaceConfigurationView(arcade.View):
         # Campos "Volta inicial"/"Volta final" digitaveis: o texto so existe
         # enquanto o campo tem foco; fora dele o campo mostra a sessao.
         self._session_focused_field: str | None = None
+        # Setas de etapa anterior/proxima, recalculadas a cada quadro.
+        self._stage_arrows: dict[str, tuple[float, float, float, float]] = {}
         self._session_replace_on_type = False
         self._session_text: dict[str, str] = {"first_lap": "", "last_lap": ""}
         self._weather_drag_start: int | None = None
         self._weather_drag_end: int | None = None
-        self._weather_summary_page = 0
         self._logo = arcade.load_texture(
             Path(__file__).with_name("assets") / "f1-logo.png"
         )
@@ -138,10 +129,23 @@ class RaceConfigurationView(arcade.View):
 
         return CanvasFit.fit(DESIGN_SIZE, self.window.get_size())
 
+    def _canvas_camera(self) -> arcade.Camera2D:
+        """Camera que mostra o canvas a partir de x=CANVAS_ORIGIN_X."""
+
+        fit = self._canvas_fit()
+        width, height = fit.logical_width, fit.logical_height
+        return arcade.Camera2D(
+            projection=arcade.LBWH(-width / 2, -height / 2, width, height),
+            viewport=arcade.LBWH(*fit.viewport),
+            position=(width / 2 + CANVAS_ORIGIN_X, height / 2),
+            window=self.window,
+        )
+
     def _logical_pointer(self, x: float, y: float) -> tuple[float, float]:
         """Convert window pointer coordinates to design-canvas units."""
 
-        return self._canvas_fit().to_logical(x, y)
+        design_x, design_y = self._canvas_fit().to_logical(x, y)
+        return design_x + CANVAS_ORIGIN_X, design_y
 
     def _load_track(self) -> None:
         if self._loading or self._preview is not None:
@@ -186,128 +190,75 @@ class RaceConfigurationView(arcade.View):
         self.clear()
         # Built per frame: it is cheap and always matches the current size,
         # including resizes that happened while another view was shown.
-        with make_canvas_camera(self._canvas_fit(), self.window).activate():
+        with self._canvas_camera().activate():
             self._draw_canvas()
 
     def _draw_canvas(self) -> None:
         self._draw_header()
-        self._draw_sidebar()
         self._draw_stage_header()
-        if self.active_topic == "Sessão":
-            self._draw_session()
-            self._draw_track_summary()
-            self._draw_weather_summary()
-        elif self.active_topic == "Clima":
-            self._draw_weather_editor()
-        else:
-            self._panel((450, 80, 1190, 555))
-            self._text(self.active_topic, 476, 590, 25)
-            self._text(
-                "Esta seção será configurada em uma próxima etapa.",
-                476,
-                550,
-                14,
-                SECONDARY_TEXT_COLOR,
-            )
+        self._draw_session()
+        self._draw_track_summary()
+        self._draw_weather_editor()
         self._draw_footer()
 
     def _draw_header(self) -> None:
         arcade.draw_lbwh_rectangle_filled(0, 844, 1672, 56, (12, 17, 24))
         arcade.draw_line(0, 844, 1672, 844, (49, 62, 78), 1)
-        arcade.draw_texture_rect(self._logo, arcade.LBWH(20, 860, 50, 25))
-        self._text("SIMULADOR DE CORRIDA", 94, 866, 15, SECONDARY_TEXT_COLOR)
-        self._panel((1535, 850, 97, 34))
-        self._text(
-            "Ajuda",
-            1583,
-            867,
-            12,
-            SECONDARY_TEXT_COLOR,
-            anchor_x="center",
-            anchor_y="center",
-        )
-        self._text("Configuração da corrida", 50, 795, 38)
+        arcade.draw_texture_rect(self._logo, arcade.LBWH(450, 860, 50, 25))
+        self._text("SIMULADOR DE CORRIDA", 524, 866, 15, SECONDARY_TEXT_COLOR)
+        self._text("Configuração da corrida", 450, 795, 38)
         self._text(
             "Ajuste os parâmetros específicos de cada etapa do torneio.",
-            50,
+            450,
             768,
             17,
             SECONDARY_TEXT_COLOR,
         )
 
-    def _draw_sidebar(self) -> None:
-        self._panel((34, 40, 400, 710))
-        self._text("ETAPA DO TORNEIO", 57, 711, 14, SECONDARY_TEXT_COLOR)
-        short_name = (
-            self.track_name
-            if len(self.track_name) <= 20
-            else self.track_name[:18] + "…"
-        )
-        self._text(f"Etapa {self.stage_index} · {short_name}", 57, 682, 16)
-        for topic, bounds in SIDEBAR_ITEMS.items():
-            if topic == self.active_topic:
-                self._panel(bounds, (56, 25, 36), (166, 35, 51))
-            self._text(
-                topic,
-                119,
-                bounds[1] + 27,
-                19,
-                (
-                    PRIMARY_TEXT_COLOR
-                    if topic == self.active_topic
-                    else SECONDARY_TEXT_COLOR
-                ),
-                anchor_y="center",
-            )
-        self._panel((50, 121, 367, 65))
-        self._text(
-            "Configurações gerais podem herdar", 68, 158, 13, SECONDARY_TEXT_COLOR
-        )
-        self._text("valores do torneio.", 68, 138, 13, SECONDARY_TEXT_COLOR)
-        self._button(BACK_BOUNDS, "‹   Voltar ao torneio")
-
     def _draw_stage_header(self) -> None:
+        """Faixa da etapa: so as setas de navegacao e o nome do circuito, centralizados."""
+
         self._panel((450, 645, 1190, 103))
-        self._text(
-            f"Etapa {self.stage_index} · {self.track_name}", 468, 712, 24, width=750
+        center_x = 450 + 1190 / 2
+        center_y = 645 + 103 / 2
+        title = self._text(
+            self.track_name,
+            center_x,
+            center_y,
+            24,
+            anchor_x="center",
+            anchor_y="center",
         )
-        self._text(
-            f"{self.schedule.total_laps} voltas     ·     Clima configurável     ·     Pista única",
-            469,
-            675,
-            14,
-            SECONDARY_TEXT_COLOR,
-        )
-        if self._preview:
-            length = f"{self._preview.lap_length_m / 1000:.3f}".replace(".", ",")
-            self._text(
-                f"Distância da amostra: {length} km",
-                1620,
-                680,
-                12,
-                SECONDARY_TEXT_COLOR,
-                anchor_x="right",
-            )
+        # Largura do nome em unidades de design: as setas ficam logo ao lado dele.
+        half_width = title.content_width / self._canvas_fit().scale / 2
+        arrow_size = 34
+        arrow_bottom = center_y - arrow_size / 2
+        self._stage_arrows = {}
+        total = len(self.parent.selected_track_ids)
+        if self.stage_index > 1:
+            left = center_x - half_width - 12 - arrow_size
+            self._stage_arrows["previous"] = (left, arrow_bottom, arrow_size, arrow_size)
+        if self.stage_index < total:
+            left = center_x + half_width + 12
+            self._stage_arrows["next"] = (left, arrow_bottom, arrow_size, arrow_size)
+        for key, bounds in self._stage_arrows.items():
+            self._button(bounds, "‹" if key == "previous" else "›")
 
     def _draw_session(self) -> None:
-        self._panel((450, 455, 1190, 180))
-        self._text("Sessão", 475, 604, 25)
+        self._panel((1010, 405, 630, 230))
         self._text(
-            "Defina os parâmetros principais desta etapa.",
-            475,
-            578,
+            "Altere o número de voltas do circuito.",
+            1030,
+            598,
             14,
             SECONDARY_TEXT_COLOR,
         )
         labels = (
-            ("Tipo de sessão", 475),
-            ("Volta inicial", 805),
-            ("Volta final", 1220),
+            ("Volta inicial", 1030),
+            ("Volta final", 1340),
         )
         for label, x in labels:
             self._text(label, x, 544, 14, SECONDARY_TEXT_COLOR)
-        self._panel((475, 498, 300, 38))
-        self._text("Corrida", 490, 518, 15, anchor_y="center")
         for key, value in (
             ("first_lap", str(self.session.first_lap)),
             ("last_lap", str(self.session.last_lap)),
@@ -341,31 +292,33 @@ class RaceConfigurationView(arcade.View):
                 )
         self._text(
             "Estas opções afetam apenas a corrida selecionada.",
-            475,
+            1030,
             472,
             13,
             SECONDARY_TEXT_COLOR,
         )
 
     def _draw_track_summary(self) -> None:
-        self._panel((450, 250, 1190, 195))
-        self._text("Resumo da pista", 475, 412, 24)
+        self._panel((450, 40, 540, 595))
+        self._text("Resumo da pista", 474, 608, 24)
         summary_name = (
             self.track_name
             if len(self.track_name) <= 28
             else self.track_name[:25] + "…"
         )
-        self._text(summary_name, 475, 372, 16)
-        self._text(
-            f"{self.schedule.total_laps} voltas", 475, 338, 15, SECONDARY_TEXT_COLOR
-        )
+        self._text(summary_name, 474, 580, 16)
+        laps_text = f"{self.schedule.total_laps} voltas"
+        if self._preview is not None:
+            length = f"{self._preview.lap_length_m / 1000:.3f}".replace(".", ",")
+            laps_text += f"   ·   {length} km"
+        self._text(laps_text, 474, 556, 15, SECONDARY_TEXT_COLOR)
         self._panel(TRACK_MAP_BOUNDS, (8, 19, 16))
         if self._preview is None:
             message = self._track_error or "Carregando geometria..."
             self._text(
                 message,
-                1120,
-                350,
+                720,
+                330,
                 13,
                 ERROR_COLOR if self._track_error else SECONDARY_TEXT_COLOR,
                 anchor_x="center",
@@ -389,81 +342,25 @@ class RaceConfigurationView(arcade.View):
                 ("Saída", (75, 142, 214)),
             )
         ):
-            y = 399 - 26 * index
-            arcade.draw_circle_filled(1490, y + 3, 5, color)
-            self._text(label, 1507, y, 13, SECONDARY_TEXT_COLOR)
-
-    def _draw_weather_summary(self) -> None:
-        self._panel((450, 40, 1190, 200))
-        self._text("Resumo do clima", 475, 207, 24)
-        self._text(
-            "Condição climática para esta etapa.", 475, 182, 14, SECONDARY_TEXT_COLOR
-        )
-        ranges = self.schedule.ranges()
-        first_weather = ranges[0].weather
-        for index, weather in enumerate(WEATHER_TIMELINE_COLORS):
-            left = 475 + index * 190
-            selected = weather == first_weather
-            self._panel(
-                (left, 130, 176, 42),
-                (53, 27, 36) if selected else (23, 33, 45),
-                ACCENT_COLOR if selected else (49, 65, 83),
-            )
-            arcade.draw_texture_rect(
-                self._weather_icons[weather], arcade.LBWH(left + 11, 139, 24, 24)
-            )
-            self._text(
-                weather,
-                left + 45,
-                150,
-                14,
-                PRIMARY_TEXT_COLOR if selected else SECONDARY_TEXT_COLOR,
-                anchor_y="center",
-            )
-        self._panel((1307, 129, 311, 84))
-        self._text(f"Voltas {ranges[0].start_lap} – {ranges[0].end_lap}", 1320, 188, 14)
-        self._text(first_weather, 1320, 161, 14, WEATHER_TIMELINE_COLORS[first_weather])
-        self._text(
-            f"{len(ranges)} intervalo(s) climático(s)",
-            1320,
-            141,
-            12,
-            SECONDARY_TEXT_COLOR,
-        )
-        arcade.draw_lbwh_rectangle_filled(476, 75, 1140, 15, (33, 42, 53))
-        for weather_range in ranges:
-            left = 476 + (weather_range.start_lap - 1) / self.schedule.total_laps * 1140
-            width = (
-                (weather_range.end_lap - weather_range.start_lap + 1)
-                / self.schedule.total_laps
-                * 1140
-            )
-            arcade.draw_lbwh_rectangle_filled(
-                left, 75, width, 15, WEATHER_TIMELINE_COLORS[weather_range.weather]
-            )
-        self._text("Timeline da corrida", 475, 100, 13)
-        self._text(
-            str(self.schedule.total_laps),
-            1616,
-            100,
-            13,
-            SECONDARY_TEXT_COLOR,
-            anchor_x="right",
-        )
-        self._text(
-            "Edite o clima na aba correspondente.", 475, 53, 12, SECONDARY_TEXT_COLOR
-        )
+            # Legenda numa linha so, abaixo do mapa.
+            x = 474 + 110 * index
+            arcade.draw_circle_filled(x + 5, 101, 5, color)
+            self._text(label, x + 17, 98, 13, SECONDARY_TEXT_COLOR)
 
     def _draw_weather_editor(self) -> None:
-        """Draw the existing per-lap workflow inside the race configuration."""
+        """Clima por volta no painel de baixo, na mesma tela da sessao.
 
-        self._panel((450, 455, 1190, 180))
-        self._text("Clima por volta", 475, 608, 25)
+        Paleta, intervalo, aplicar e a linha do tempo ocupam o lugar do resumo
+        antigo; a linha do tempo mostra os intervalos ja definidos.
+        """
+
+        self._panel((1010, 40, 630, 355))
+        self._text("Clima por volta", 1030, 360, 22)
         self._text(
-            f"Escolha uma condição e pinte um intervalo das {self.schedule.total_laps} voltas.",
-            475,
-            584,
-            14,
+            "Escolha uma condição e arraste sobre a barra para pintar as voltas.",
+            1030,
+            338,
+            13,
             SECONDARY_TEXT_COLOR,
         )
         for weather, bounds in WEATHER_PALETTE_BOUNDS.items():
@@ -476,14 +373,15 @@ class RaceConfigurationView(arcade.View):
             )
             arcade.draw_texture_rect(
                 self._weather_icons[weather],
-                arcade.LBWH(left + 13, bottom + 10, 25, 25),
+                arcade.LBWH(left + 13, bottom + 7, 25, 25),
             )
             self._text(weather, left + 47, bottom + height / 2, 14, anchor_y="center")
         for label, bounds, value, field in (
             ("Volta inicial", WEATHER_START_BOUNDS, self._weather_start_text, "start"),
             ("Volta final", WEATHER_END_BOUNDS, self._weather_end_text, "end"),
         ):
-            self._text(label, bounds[0], 510, 13, SECONDARY_TEXT_COLOR)
+            left, bottom, width, height = bounds
+            self._text(label, left, bottom + height + 6, 12, SECONDARY_TEXT_COLOR)
             self._panel(
                 bounds,
                 (23, 33, 45),
@@ -491,30 +389,20 @@ class RaceConfigurationView(arcade.View):
             )
             self._text(
                 value,
-                bounds[0] + bounds[2] / 2,
-                bounds[1] + bounds[3] / 2,
+                left + width / 2,
+                bottom + height / 2,
                 15,
                 anchor_x="center",
                 anchor_y="center",
             )
         self._button(WEATHER_APPLY_BOUNDS, "Aplicar às voltas", primary=True)
-        self._text(self._status, 760, 478, 12, SECONDARY_TEXT_COLOR, width=610)
-
-        self._panel((450, 298, 1190, 147))
-        self._text("Timeline da pista", 475, 411, 22)
-        self._text(
-            "Clique e arraste para pintar um período da corrida.",
-            475,
-            388,
-            13,
-            SECONDARY_TEXT_COLOR,
-        )
+        self._text(self._status, 1030, 190, 12, SECONDARY_TEXT_COLOR, width=580)
         left, bottom, width, height = WEATHER_TIMELINE_BOUNDS
-        self._text("1", left, 372, 12, SECONDARY_TEXT_COLOR)
+        self._text("1", left, bottom - 20, 12, SECONDARY_TEXT_COLOR)
         self._text(
             str(self.schedule.total_laps),
             left + width,
-            372,
+            bottom - 20,
             12,
             SECONDARY_TEXT_COLOR,
             anchor_x="right",
@@ -551,72 +439,23 @@ class RaceConfigurationView(arcade.View):
                 height - 6,
                 (*WEATHER_TIMELINE_COLORS[self.selected_weather], 190),
             )
-        self._text(
-            "Arraste sobre a barra para ajustar os intervalos",
-            1046,
-            321,
-            12,
-            SECONDARY_TEXT_COLOR,
-            anchor_x="center",
-        )
-
-        self._panel((450, 62, 1190, 226))
-        self._text("Resumo por intervalo", 475, 258, 22)
-        ranges = self.schedule.ranges()
-        pages = (
-            len(ranges) + WEATHER_SUMMARY_PAGE_SIZE - 1
-        ) // WEATHER_SUMMARY_PAGE_SIZE
-        self._weather_summary_page = min(self._weather_summary_page, pages - 1)
-        if pages > 1:
-            self._text(
-                f"{self._weather_summary_page + 1}/{pages}",
-                1478,
-                267,
-                13,
-                SECONDARY_TEXT_COLOR,
-            )
-            self._button(WEATHER_PREVIOUS_BOUNDS, "‹")
-            self._button(WEATHER_NEXT_BOUNDS, "›")
-        start = self._weather_summary_page * WEATHER_SUMMARY_PAGE_SIZE
-        for slot, weather_range in enumerate(
-            ranges[start : start + WEATHER_SUMMARY_PAGE_SIZE]
-        ):
-            column = slot % 4
-            row = slot // 4
-            card_x = 475 + column * 286
-            card_y = 169 - row * 92
-            color = WEATHER_TIMELINE_COLORS[weather_range.weather]
-            self._panel((card_x, card_y, 270, 82), (23, 33, 45), color)
-            self._text(
-                f"Voltas {weather_range.start_lap} – {weather_range.end_lap}",
-                card_x + 12,
-                card_y + 57,
-                13,
-                color,
-            )
-            self._text(weather_range.weather, card_x + 12, card_y + 33, 13)
-            count = weather_range.end_lap - weather_range.start_lap + 1
-            percentage = count / self.schedule.total_laps * 100
-            self._text(
-                f"{count} voltas ({percentage:.1f}%)".replace(".", ","),
-                card_x + 12,
-                card_y + 11,
-                11,
-                SECONDARY_TEXT_COLOR,
-            )
 
     def _draw_footer(self) -> None:
         self._button(CANCEL_BOUNDS, "Cancelar")
         self._button(SAVE_BOUNDS, "Salvar corrida")
         self._button(ADVANCE_BOUNDS, "Salvar e avançar", primary=True)
-        if self._status and self.active_topic not in ("Sessão", "Clima"):
-            self._text(self._status, 476, 56, 13, SECONDARY_TEXT_COLOR)
 
     def on_mouse_release(self, x: int, y: int, button: int, modifiers: int) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
         x, y = self._logical_pointer(x, y)
-        if self.active_topic == "Clima" and self._weather_drag_start is not None:
+        if self._contains(self._stage_arrows.get("previous", (0, 0, 0, 0)), x, y):
+            self._go_to_stage(self.stage_index - 1)
+            return
+        if self._contains(self._stage_arrows.get("next", (0, 0, 0, 0)), x, y):
+            self._go_to_stage(self.stage_index + 1)
+            return
+        if self._weather_drag_start is not None:
             self._weather_drag_end = self._weather_lap_at(x)
             first, last = sorted((self._weather_drag_start, self._weather_drag_end))
             self.schedule = self.schedule.apply(first, last, self.selected_weather)
@@ -625,14 +464,7 @@ class RaceConfigurationView(arcade.View):
             self._weather_drag_start = self._weather_drag_end = None
             self._status = f"{self.selected_weather} aplicado às voltas {first}–{last}."
             return
-        for topic, bounds in SIDEBAR_ITEMS.items():
-            if self._contains(bounds, x, y):
-                self.active_topic = topic
-                self._weather_focused_field = None
-                if topic == "Clima":
-                    self._status = "Escolha uma condição e arraste sobre a timeline."
-                return
-        if self._contains(BACK_BOUNDS, x, y) or self._contains(SAVE_BOUNDS, x, y):
+        if self._contains(SAVE_BOUNDS, x, y):
             self.save_and_return()
             return
         if self._contains(CANCEL_BOUNDS, x, y):
@@ -641,11 +473,7 @@ class RaceConfigurationView(arcade.View):
         if self._contains(ADVANCE_BOUNDS, x, y):
             self.save_and_advance()
             return
-        if self.active_topic == "Clima":
-            self._handle_weather_click(x, y)
-            return
-        if self.active_topic != "Sessão":
-            return
+        self._handle_weather_click(x, y)
         for field, buttons in SESSION_STEPPER_BOUNDS.items():
             for delta, bounds in zip((-1, 1), buttons, strict=True):
                 if not self._contains(bounds, x, y):
@@ -674,12 +502,10 @@ class RaceConfigurationView(arcade.View):
         """Start an inclusive weather interval without leaving this view."""
 
         x, y = self._logical_pointer(x, y)
-        if button == arcade.MOUSE_BUTTON_LEFT and self.active_topic == "Sessão":
+        if button == arcade.MOUSE_BUTTON_LEFT:
             self._handle_session_press(x, y)
-        if (
-            button == arcade.MOUSE_BUTTON_LEFT
-            and self.active_topic == "Clima"
-            and self._contains(WEATHER_TIMELINE_BOUNDS, x, y)
+        if button == arcade.MOUSE_BUTTON_LEFT and self._contains(
+            WEATHER_TIMELINE_BOUNDS, x, y
         ):
             self._weather_drag_start = self._weather_lap_at(x)
             self._weather_drag_end = self._weather_drag_start
@@ -720,13 +546,6 @@ class RaceConfigurationView(arcade.View):
         self._weather_focused_field = None
         if self._contains(WEATHER_APPLY_BOUNDS, x, y):
             self.apply_weather_range()
-        elif self._contains(WEATHER_PREVIOUS_BOUNDS, x, y):
-            self._weather_summary_page = max(0, self._weather_summary_page - 1)
-        elif self._contains(WEATHER_NEXT_BOUNDS, x, y):
-            pages = (
-                len(self.schedule.ranges()) + WEATHER_SUMMARY_PAGE_SIZE - 1
-            ) // WEATHER_SUMMARY_PAGE_SIZE
-            self._weather_summary_page = min(pages - 1, self._weather_summary_page + 1)
 
     def apply_weather_range(self) -> None:
         """Apply the selected condition to the inclusive numeric interval."""
@@ -795,7 +614,7 @@ class RaceConfigurationView(arcade.View):
     def on_text(self, text: str) -> None:
         """Edit the focused lap field, keeping invalid text visible for validation."""
 
-        if self.active_topic == "Sessão" and self._session_focused_field is not None:
+        if self._session_focused_field is not None:
             if text.isdigit():
                 field = self._session_focused_field
                 current = (
@@ -804,7 +623,7 @@ class RaceConfigurationView(arcade.View):
                 self._session_text[field] = (current + text)[:3]
                 self._session_replace_on_type = False
             return
-        if self.active_topic != "Clima" or self._weather_focused_field is None:
+        if self._weather_focused_field is None:
             return
         if text.isdigit():
             attribute = f"_weather_{self._weather_focused_field}_text"
@@ -813,7 +632,7 @@ class RaceConfigurationView(arcade.View):
             self._weather_replace_on_type = False
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
-        if self.active_topic == "Sessão" and self._session_focused_field is not None:
+        if self._session_focused_field is not None:
             field = self._session_focused_field
             if symbol == arcade.key.BACKSPACE:
                 current = (
@@ -827,7 +646,7 @@ class RaceConfigurationView(arcade.View):
                 self._session_focused_field = None
                 self._session_replace_on_type = False
             return
-        if self.active_topic != "Clima" or self._weather_focused_field is None:
+        if self._weather_focused_field is None:
             return
         attribute = f"_weather_{self._weather_focused_field}_text"
         if symbol == arcade.key.BACKSPACE:
@@ -868,6 +687,19 @@ class RaceConfigurationView(arcade.View):
 
         self.window.show_view(self.parent)
 
+    def _save_stage(self) -> None:
+        """Copia as configuracoes desta etapa para o torneio."""
+
+        self._commit_session_text()
+        self.parent.accept_weather_schedule(self.schedule)
+        self.parent.accept_session_configuration(self.circuit_id, self.session)
+
+    def _go_to_stage(self, stage_index: int) -> None:
+        """Salva esta etapa e abre outra do torneio (setas de navegacao)."""
+
+        self._save_stage()
+        self.parent.open_tournament_stage(stage_index)
+
     def save_and_advance(self) -> None:
         self._commit_session_text()
         self.parent.accept_weather_schedule(self.schedule)
@@ -890,7 +722,7 @@ class RaceConfigurationView(arcade.View):
         size: float,
         color: tuple[int, ...] = PRIMARY_TEXT_COLOR,
         **kwargs: object,
-    ) -> None:
+    ) -> arcade.Text:
         """Draw a label placed in design units but rasterized natively.
 
         Scaling glyph textures through the canvas camera blurs them, so the
@@ -903,10 +735,15 @@ class RaceConfigurationView(arcade.View):
         if width is not None:
             kwargs["width"] = int(width * fit.scale)
         label = arcade.Text(
-            value, *fit.to_window(x, y), color, size * fit.scale, **kwargs
+            value,
+            *fit.to_window(x - CANVAS_ORIGIN_X, y),
+            color,
+            size * fit.scale,
+            **kwargs,
         )
         with self.window.default_camera.activate():
             label.draw()
+        return label
 
     @staticmethod
     def _panel(
