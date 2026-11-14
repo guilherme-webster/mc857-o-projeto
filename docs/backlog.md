@@ -6,7 +6,7 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-14T04:24:47Z
+- **Ultima atividade registrada:** 2026-11-14T04:27:42Z
 - **Abertas:** 21
 - **Fechadas:** 82
 
@@ -1000,7 +1000,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T18:01:19Z
-- **Atualizada:** 2026-11-14T04:24:47Z
+- **Atualizada:** 2026-11-14T04:27:42Z
 - **Fechada:** —
 
 <details>
@@ -1011,7 +1011,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 </details>
 
 <details>
-<summary>Comentarios (11)</summary>
+<summary>Comentarios (12)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6866415608)
 
@@ -1059,6 +1059,10 @@ Adicionados diagnóstico reproduzível, testes de invariantes (2 passaram), e re
 #### [@Jmvjr em 2026-11-14T04:24:47Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871657774)
 
 <pre>Continuacao em branch separada codex/issue-174-pass-clearance (c05a54e/05477e6): reproduzido bloqueio circular em Monaco durante SC; um carro traseiro impedia o avanco longitudinal do lider enquanto ele centrava. A protecao agora limita a mudanca lateral contra corpos traseiros separadamente do avanco; regressao cobre o par real e impede atravesamento lateral. Com isso, reavaliar ataques perdidos passou na suite (801 testes, 42 ignorados, 1 falha esperada), incluindo SC/VSC; Ruff passou, e teste adicional do diagnostico tambem passou. Na previa completa, maior emparelhamento caiu 55,8→29,4 s e houve 1 abandono nas duas versoes. Na matriz 36 cenarios todos concluiram sem recuo, mas abandonos 2→5 e sobreposicoes 633→1354: variante nao aprovada para incorporacao. Previa experimental aberta para avaliacao do usuario. A versao do PR #187 nao foi alterada; issue permanece aberta.</pre>
+
+#### [@Jmvjr em 2026-11-14T04:27:42Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6871693965)
+
+<pre>O usuario aprovou a previa experimental e solicitou colocar a variante no fluxo normal do frontend. Variante incorporada a branch do PR #187; teste HTTP pelo proprio cliente Arcade confirmou as regras de passagem e contato na resposta SSE e na persistencia. Suite integrada: 802 testes aprovados (42 ignorados, 1 falha esperada); Ruff passou. Proximo passo: verificacao do GitHub, merge do PR na develop e atualizacao do backend local. A issue so sera encerrada apos o merge, mantendo documentadas as limitacoes aceitas da geometria e dos contatos.</pre>
 
 </details>
 
