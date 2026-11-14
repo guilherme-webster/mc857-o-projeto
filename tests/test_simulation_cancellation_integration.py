@@ -135,6 +135,16 @@ class CancelIntegrationTest(unittest.TestCase):
                     result = track_client.run_grid_stream(
                         {"total_laps": 1, "track_id": "circuit:1"}, url
                     )
+                    # O mesmo contrato consumido pela janela precisa trazer
+                    # as regras do motor atual, sem usar o caminho simplificado
+                    # da previa nem perder os eventos na serializacao SSE.
+                    model = result["assumptions"][0]
+                    self.assertEqual(model["passing_opportunity"]["parameter_version"],
+                                     "passing-opportunity-revalidation-assumed-v1")
+                    self.assertEqual(model["side_contact"]["parameter_version"],
+                                     "spatial-contact-severity-assumed-v2")
+                    self.assertIn("contact_events_2d", result)
+                    self.assertIn("contact_damage_by_driver", result)
                     self.assertEqual(json.loads(current.read_text()), result)
                     self.assertEqual(len(list(saved.glob("*.json"))), 1)
                 finally:

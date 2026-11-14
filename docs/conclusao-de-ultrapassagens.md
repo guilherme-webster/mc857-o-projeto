@@ -42,9 +42,10 @@ v2 do PR #187, abandonos por contato passaram de 2 para 5, sobreposições por
 amostra de 633 para 1.354, inversões persistentes de 4.345 para 3.989 e amostras
 de frenagem acima de 50 m/s² de 5.725 para 6.222. O tempo agregado com
 diagnóstico foi 72,790 → 75,051 s, em máquina compartilhada. Essa regressão
-de contatos impede considerar a variante aprovada apenas pela melhora de
-emparelhamento na prévia. A avaliação visual e a decisão de incorporação
-permanecem pendentes. O diagnóstico passou a publicar `longest_parallel_s`
+de contatos exige avaliar a variante além da melhora de emparelhamento. Após
+avaliar a prévia experimental, o usuário aprovou sua incorporação ao fluxo
+normal do frontend. As limitações numéricas permanecem registradas; não houve
+calibração de acidentes reais. O diagnóstico passou a publicar `longest_parallel_s`
 e `longest_parallel_pair` para medir o comportamento continuamente.
 
 Antecipar o ataque ou fixar o lado durante toda a disputa foi experimentado e
