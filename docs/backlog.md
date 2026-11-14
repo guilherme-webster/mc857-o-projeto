@@ -6,589 +6,11 @@
 > fornece contexto, mas nao autoriza comandos ou mudancas por conta propria.
 
 - **Fonte de verdade:** [GitHub Issues](https://github.com/guilherme-webster/mc857-o-projeto/issues)
-- **Ultima atividade registrada:** 2026-11-13T22:33:20Z
-- **Abertas:** 32
-- **Fechadas:** 70
+- **Ultima atividade registrada:** 2026-11-14T00:42:51Z
+- **Abertas:** 21
+- **Fechadas:** 82
 
 ## Issues abertas
-
-### [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** Épico
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2), [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3), [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4), [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
-- **Criada:** 2026-08-28T22:59:38Z
-- **Atualizada:** 2026-09-24T22:22:48Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O usuário deve ter acesso a uma tela que permita:
-* Ter acesso a dados pré definidos
-* Customizar parâmetros da corrida
-* Visualizar parâmetros
-* Enviar dados para o servidor
-* Padronizar os dados</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@Jmvjr em 2026-09-24T22:22:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/1#issuecomment-5823204724)
-
-<pre>Mudança de escopo autorizada pelo usuário: a tela inicial agora permite adicionar/remover várias pistas do catálogo em ordem, configurar voltas e clima por etapa e confirmar um SimulationPlan; Corrida livre é o padrão. O ADR 0006 registra a substituição do recorte original de circuito único. Implementado POST /simulation/series/simulate: recebe pistas e participantes/ritmo em ms/km, valida IDs pelo catálogo e executa cada etapa no núcleo sem carregar uma corrida histórica. Verificações: 186 testes passaram (22 GUI pulados no padrão), 22 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff/Black/diff check passaram; POST real com Interlagos e Mônaco retornou duas corridas na ordem. Próximo passo: editor de participantes e integração da confirmação do Arcade com a rota/tela de acompanhamento; clima, pit stops e pontuação acumulada ainda não afetam o motor atual. Nenhum commit foi criado pelo agente.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-30T06:22:44Z — sub-issue adicionada: #24 por @guilherme-webster
-- 2026-08-28T23:04:16Z — sub-issue adicionada: #4 por @Jmvjr
-- 2026-08-28T23:04:02Z — sub-issue adicionada: #3 por @Jmvjr
-- 2026-08-28T23:03:17Z — sub-issue adicionada: #2 por @Jmvjr
-- 2026-08-28T22:59:40Z — label adicionada: Épico por @Jmvjr
-
-</details>
-
-### [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Jmvjr
-- **Responsaveis:** —
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** —
-- **Criada:** 2026-08-28T23:04:00Z
-- **Atualizada:** 2026-09-02T19:24:33Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@guilherme-webster em 2026-09-02T19:24:33Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/3#issuecomment-5515100675)
-
-<pre>Primeira fatia de consumo do ETL implementada localmente na branch `gwc-etl`, sem commit.
-
-Etapa alcancada:
-- adicionada a porta de leitura `RaceDataRepository`, com erros independentes de SQLite;
-- implementado `SQLiteRaceDataRepository`, que abre o arquivo canonico em modo somente leitura e reconstroi o agregado `RaceData` completo;
-- preservados metadados, circuito, corrida, pilotos, equipes, inscricoes, voltas, pit stops e identificadores de origem;
-- falhas de schema e dados persistidos sao traduzidas para `RaceDataRepositoryError`; corrida ausente usa `RaceDataNotFoundError`;
-- leitura rejeita chaves estrangeiras quebradas, metadados invalidos e identificadores de origem ausentes;
-- corrigido fechamento explicito das conexoes do writer SQLite, pois o context manager de `sqlite3.Connection` controla a transacao, mas nao fecha o recurso;
-- documentado o caminho de consumo em `docs/fluxo-etl.md`.
-
-Verificacoes:
-- `python3 -W always::ResourceWarning -m unittest -v`: 25 testes aprovados e sem ResourceWarning;
-- Ruff format/check aprovado nos arquivos alterados;
-- `git diff --check` aprovado;
-- arquivo real `data/curated/race-1141.sqlite` lido com sucesso: 20 pilotos, 10 equipes, 20 inscricoes, 1.133 voltas, 35 pit stops e 32 IDs de origem.
-
-Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um novo DTO de tela, porque neste momento seriam apenas repasse sem regra propria. O proximo passo da issue e conectar a porta a um consumidor concreto da configuracao/simulacao; nesse ponto deve ser criada apenas a projecao exigida pelo contrato real. A issue permanece aberta.
-</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-08-28T23:04:02Z — label adicionada: História por @Jmvjr
-
-</details>
-
-### [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
-- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32), [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34), [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53), [#74 — Enriquecer ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/74)
-- **Criada:** 2026-08-30T06:22:43Z
-- **Atualizada:** 2026-09-02T19:25:05Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.
-
-as subissues envolvem implementar componentes que servirão para comunicação com o consumo dos dados do ETL.
-
-RaceDataRepository é apenas um contrato, não executa nada;
-SQLiteRaceDataRepository é quem realmente consulta o banco;
-GetSimulationScenario só se justifica se houver alguma regra ou composição além de repassar a consulta;
-
-Ideia de fluxo:
-
-Persistência SQLite
-        ↓
-SQLiteRaceDataRepository:  é quem realmente consulta o banco;
-        ↓ implementa a porta
-RaceDataRepository:  é apenas um contrato, não executa nada;
-        ↓
-Caso de uso GetSimulationScenario: só se justifica se houver alguma regra ou composição além de repassar a consulta; averiguar se faz sentido dentro do contexto do projeto
-        ↓
-DTO com as opções da corrida
-        ↓ futuramente
-Django → HTTP/JSON → Arcade
-</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (4)</summary>
-
-#### [@guilherme-webster em 2026-08-30T07:10:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467318681)
-
-<pre>Primeira fatia vertical do ETL implementada localmente.
-
-Etapa alcançada:
-- aquisição reproduzível da Base Trotman v128 com verificação SHA-256;
-- Adapter para CSV/ZIP e normalização de tipos, unidades e identificadores;
-- Factory para construir dados canônicos validados;
-- persistência SQLite e relatório JSON de qualidade;
-- amostra CC0 versionada para testes;
-- corrida 1141 usada apenas como exemplo, sem decidir o circuito oficial do MVP.
-
-Verificações:
-- 7 testes aprovados;
-- Ruff aprovado;
-- `git diff --check` aprovado;
-- arquivo real processado: 20 participantes, 1.133 voltas e 35 pit stops, sem chaves órfãs;
-- nulos foram preservados, sem preenchimento silencioso com zero.
-
-Próximos passos:
-1. escolher a corrida e o circuito oficiais;
-2. definir como tratar pit stops associados a interrupções/bandeira vermelha;
-3. conectar o SQLite canônico ao consumidor previsto na issue #3.
-
-Bloqueio atual: escolha do cenário oficial do MVP. A issue permanece aberta.</pre>
-
-#### [@guilherme-webster em 2026-08-30T07:20:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467355299)
-
-<pre>A entrega foi reorganizada para permitir commits pequenos e funcionais. Os testes foram separados por aquisição, Factory, Adapter, SQLite e ETL integrado. A descoberta padrão do unittest também foi corrigida (`tests` agora é pacote e expõe o layout `src`).
-
-Verificações atualizadas:
-- `python3 -m unittest -v`: 13 testes aprovados;
-- descoberta explícita com `unittest discover`: 13 testes aprovados;
-- Ruff aprovado;
-- `git diff --check` aprovado.
-
-A implementação permanece sem commits para revisão e divisão pelo responsável.</pre>
-
-#### [@guilherme-webster em 2026-08-30T08:06:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467542384)
-
-<pre>A fronteira do ETL foi revisada após feedback de legibilidade, importação e extensibilidade.
-
-Etapa alcançada:
-- documentado o layout `src` e o uso de `PYTHONPATH=src` para imports Python avulsos;
-- criados os contratos `RaceDatasetPort` e `RaceDataWriterPort`;
-- criado `RaceDataIngestionService` como articulador genérico entre adapters de datasets, Factory e domínio;
-- removidas as dependências diretas da aplicação em Trotman e SQLite; o script Trotman agora é o ponto de composição dos adapters concretos;
-- adicionadas docstrings sobre contratos, unidades, nulos, invariantes e atomicidade, além da regra correspondente em `CONTRIBUTING.md` e `AGENTS.md`;
-- ampliada a Factory para validar metadados da fonte, SHA-256, corrida sem participantes, equipes não representadas e posições finais duplicadas;
-- ampliado o teste de construção para comparar o agregado canônico completo (metadados, circuito, corrida, pilotos, equipes, inscrições, voltas, pit stops e IDs de origem), com casos inválidos de faixas e durações;
-- adicionado teste com adapter fictício para provar a substituição da fonte sem alterar o serviço.
-
-Verificações:
-- `python3 -m unittest -v`: 18 testes aprovados;
-- Ruff format/check: aprovado nos arquivos alterados;
-- `git diff --check`: aprovado;
-- import avulso com `PYTHONPATH=src`: aprovado;
-- ZIP real Trotman v128 processado: 20 participantes, 10 equipes, 1.133 voltas e 35 pit stops;
-- segunda execução sem `--overwrite`: recusada corretamente, preservando a saída existente.
-
-Próximos passos funcionais permanecem: escolher a corrida/circuito oficiais, decidir a política para pit stops associados a interrupções e conectar o dado canônico ao consumidor da issue #3. A issue #24 permanece aberta.
-</pre>
-
-#### [@guilherme-webster em 2026-08-30T08:25:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467625125)
-
-<pre>Documentacao complementar criada em `docs/fluxo-etl.md` para explicar o fluxo completo entre ponto de composicao, portas, adapter Trotman, DTO normalizado, servico de ingestao, Factory, dominio canonico e writer SQLite. O documento tambem inclui um exemplo de integracao de uma nova fonte e uma tabela resumindo as fronteiras. O README agora aponta para esse guia.
-
-Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao foram reexecutados.
-</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-12T21:41:03Z — sub-issue adicionada: #74 por @guilherme-webster
-- 2026-09-11T20:22:54Z — sub-issue adicionada: #53 por @guilherme-webster
-- 2026-09-02T19:19:09Z — sub-issue adicionada: #34 por @guilherme-webster
-- 2026-09-01T22:36:36Z — sub-issue adicionada: #32 por @guilherme-webster
-- 2026-09-01T22:35:54Z — sub-issue adicionada: #31 por @guilherme-webster
-- 2026-09-01T22:35:19Z — sub-issue adicionada: #30 por @guilherme-webster
-- 2026-08-30T06:22:44Z — label adicionada: História por @guilherme-webster
-- 2026-08-30T06:22:43Z — atribuida: @guilherme-webster por @guilherme-webster
-
-</details>
-
-### [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
-- **Sub-issues:** —
-- **Criada:** 2026-09-01T22:36:34Z
-- **Atualizada:** 2026-11-13T22:33:20Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@Jmvjr em 2026-11-13T22:33:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/32#issuecomment-6866589299)
-
-<pre>Investigação: GetSimulationScenario não existe atualmente, mas a issue não define consumidor, entradas, resposta, regras nem erros. As portas e o adaptador SQLite existem, e há fluxos separados para execução de grid e leitura de resultados. Próximo passo: definir o contrato e o caso de uso concreto antes de implementar; issue permanece aberta.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-02T19:19:35Z — label adicionada: Task por @guilherme-webster
-
-</details>
-
-### [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** @DaviGabrielBC
-- **Labels:** Épico
-- **Milestone:** —
-- **Issue-pai:** —
-- **Sub-issues:** [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51), [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60), [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61), [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62), [#63 — Pneu](https://github.com/guilherme-webster/mc857-o-projeto/issues/63)
-- **Criada:** 2026-09-04T23:01:05Z
-- **Atualizada:** 2026-09-12T00:06:02Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Correlação entre atributos do carro, piloto, etc com tempo de uma volta
-</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@guilherme-webster em 2026-09-12T00:06:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/40#issuecomment-5642033711)
-
-<pre>Levantamento de modelagem concluído nesta sessão, sem implementação de código, conforme o pedido do usuário.
-
-Foram lidas as frentes #51 e #60–#63, as subtarefas #64–#69, os consumidores #70/#71 e as dependências relacionadas #43/#47/#54, confrontando descrições, comentários, responsáveis e estado com os MDs, ADRs e código atual. A develop 3ea8a0b e a main 570b631 têm árvores idênticas no ponto auditado.
-
-Proposta local documentada em docs/planejamento-modelagem.md, com link no README, ainda sem commit:
-- começar pelo participante da corrida (piloto, equipe/carro e ritmo de referência conjunto), para viabilizar um recorte determinístico antes de física e comportamento sofisticados;
-- aguardar o contrato do colega no backend para o consumo da pista; o usuário esclareceu que o modelo de trechos ainda é trabalho futuro;
-- diferenciar dados existentes na fonte, no contrato canônico, no SQLite local e na API;
-- refinar pneus e clima antes de atribuir efeitos ou coeficientes; faltam dados de compostos, meteorologia, peso/altura de piloto e potência/aerodinâmica do carro;
-- não inferir atrito da geometria nem tratar perfis de pilotos como fatos observados;
-- manter pendentes: cenário/temporada, passo de simulação, filtros de calibração, escopo físico, origem de parâmetros e contrato/local de execução da modelagem.
-
-Observações para integração: RaceDataRepository ainda não preenche a geometria opcional; o backend deverá definir sua composição com TrackGeometryRepository. O backend atual usa SQL direto em endpoints de inspeção. Há divergência entre FastAPI no código/README e Django no plano/CONTRIBUTING/ADR 0001; nenhuma escolha foi feita por esta proposta.
-
-Verificações: leitura dos cabeçalhos do ZIP Trotman e do esquema do SQLite local em modo somente leitura; 17 referências locais do documento e link no README validados; git diff --check passou. Nenhum dado ou código foi alterado, nenhum teste de execução/GUI foi realizado, pois a entrega é documental. Nenhum commit criado.
-
-Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, refinar critérios das issues (especialmente #63, hoje sem descrição) e acordar o contrato antes de implementar os componentes dependentes. Recomendações não foram promovidas a decisões aceitas; issues e responsáveis permanecem como estavam.
-</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T23:45:23Z — atribuida: @DaviGabrielBC por @DaviGabrielBC
-- 2026-09-11T22:22:11Z — sub-issue adicionada: #63 por @guilherme-webster
-- 2026-09-11T22:21:35Z — sub-issue adicionada: #62 por @guilherme-webster
-- 2026-09-11T22:20:20Z — sub-issue adicionada: #61 por @guilherme-webster
-- 2026-09-11T22:18:58Z — sub-issue adicionada: #60 por @guilherme-webster
-- 2026-09-08T22:18:09Z — sub-issue adicionada: #51 por @Jmvjr
-- 2026-09-04T23:02:44Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
-
-</details>
-
-### [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** [#64 — Consumo do backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/64), [#65 — Modelagem posterior](https://github.com/guilherme-webster/mc857-o-projeto/issues/65), [#97 — Modelagem do combustível](https://github.com/guilherme-webster/mc857-o-projeto/issues/97)
-- **Criada:** 2026-09-11T22:18:57Z
-- **Atualizada:** 2026-09-11T22:36:33Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>Fazer modelagem do carro</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@guilherme-webster em 2026-09-11T22:36:33Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/60#issuecomment-5641418011)
-
-<pre>Levar em conta um modelo que leve em conta parâmetros como peso, cavalos, aerodinâmica do carro. Pode ser consumido via dados reais ou gerado via modelagem. Pensar em como levar isto em conta de maneira a gerar uma modelagem geral da corrida mais sofisticada. Documentar.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-22T23:41:51Z — sub-issue adicionada: #97 por @DaviGabrielBC
-- 2026-09-11T22:27:12Z — sub-issue adicionada: #65 por @guilherme-webster
-- 2026-09-11T22:26:46Z — sub-issue adicionada: #64 por @guilherme-webster
-- 2026-09-11T22:25:05Z — label adicionada: História por @guilherme-webster
-- 2026-09-11T22:25:01Z — atribuida: @guilherme-webster por @guilherme-webster
-
-</details>
-
-### [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** [#66 — Consumir backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/66), [#67 — Modelagem pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/67)
-- **Criada:** 2026-09-11T22:20:19Z
-- **Atualizada:** 2026-09-11T22:37:34Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@guilherme-webster em 2026-09-11T22:37:34Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/61#issuecomment-5641425322)
-
-<pre>Levar em conta um modelo que leve em conta parâmetros como peso, altura, e ter perfilamento de pilotos, sejam pilotos reais ou personas. Pode ser consumido via dados reais (altura, peso, etc) ou gerado via modelagem (perfilamento). Pensar em como levar isto em conta de maneira a gerar uma modelagem geral da corrida mais sofisticada. Documentar.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T22:33:04Z — label adicionada: Task por @guilherme-webster
-- 2026-09-11T22:32:51Z — atribuida: @guilherme-webster por @guilherme-webster
-- 2026-09-11T22:30:20Z — sub-issue adicionada: #67 por @guilherme-webster
-- 2026-09-11T22:28:40Z — sub-issue adicionada: #66 por @guilherme-webster
-
-</details>
-
-### [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** História
-- **Milestone:** —
-- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** [#68 — Consumir backend e frontend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68), [#69 — Modelagem clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/69)
-- **Criada:** 2026-09-11T22:21:34Z
-- **Atualizada:** 2026-09-11T22:39:11Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@guilherme-webster em 2026-09-11T22:39:11Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/62#issuecomment-5641437211)
-
-<pre>Levar em conta um modelo que leve em conta parâmetros como chuva, neblina, etc. Pode ser consumido via dados reais ou gerado via modelagem. Pensar em como levar isto em conta de maneira a gerar uma modelagem geral da corrida mais sofisticada; por exemplo, como isto impactaria o atrito da pista, a visibilidade dos pilotos, isto afeta o perfil do piloto? Por exemplo, um piloto agressivo tende a ser mais conservador em chuvas ou vice versa? Um piloto que tende a  realizar ultrapassagens em curvas tende a ser menos insistente nisto quando temos chuva ou baixa visibilidade? Documentar.</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T22:31:51Z — label adicionada: História por @guilherme-webster
-- 2026-09-11T22:31:37Z — atribuida: @guilherme-webster por @guilherme-webster
-- 2026-09-11T22:31:27Z — sub-issue adicionada: #69 por @guilherme-webster
-- 2026-09-11T22:31:05Z — sub-issue adicionada: #68 por @guilherme-webster
-
-</details>
-
-### [#63 — Pneu](https://github.com/guilherme-webster/mc857-o-projeto/issues/63)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
-- **Sub-issues:** [#104 — Desgate e combústivel dinâmicos](https://github.com/guilherme-webster/mc857-o-projeto/issues/104)
-- **Criada:** 2026-09-11T22:22:10Z
-- **Atualizada:** 2026-09-11T22:33:26Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>(sem descricao)</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-10-26T23:08:01Z — sub-issue adicionada: #104 por @Jmvjr
-- 2026-09-11T22:33:26Z — atribuida: @guilherme-webster por @guilherme-webster
-- 2026-09-11T22:33:26Z — label adicionada: Task por @guilherme-webster
-
-</details>
-
-### [#65 — Modelagem posterior](https://github.com/guilherme-webster/mc857-o-projeto/issues/65)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** @guilherme-webster
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T22:27:10Z
-- **Atualizada:** 2026-09-11T22:32:25Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>modelagem posterior dos dados com os dados pré tratados do backend</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T22:32:25Z — label adicionada: Task por @guilherme-webster
-- 2026-09-11T22:32:18Z — atribuida: @guilherme-webster por @guilherme-webster
-
-</details>
-
-### [#67 — Modelagem pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/67)
-
-- **Estado:** aberta
-- **Motivo do estado:** —
-- **Autor:** @guilherme-webster
-- **Responsaveis:** —
-- **Labels:** Task
-- **Milestone:** —
-- **Issue-pai:** [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61)
-- **Sub-issues:** —
-- **Criada:** 2026-09-11T22:30:19Z
-- **Atualizada:** 2026-10-03T20:35:50Z
-- **Fechada:** —
-
-<details>
-<summary>Descricao original</summary>
-
-<pre>modelagem posterior para os pilotos</pre>
-
-</details>
-
-<details>
-<summary>Comentarios (1)</summary>
-
-#### [@guilherme-webster em 2026-10-03T20:35:31Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/67#issuecomment-5973245886)
-
-<pre>## Andamento — modelagem heurística de pilotos e corrida (2026-10-03)
-
-**Etapa:** implementação concluída na branch `67-modelagem-pilotos` (12 commits sobre a `develop`, ainda **não publicados** — o merge será feito pelo responsável). Plano em `docs/prds/modelagem-pilotos-heuristica.md`, decisão no ADR 0008 e valores atuais de todas as heurísticas em **`docs/modelagem-heuristica.md`**.
-
-**Contexto:** por orientação do professor e decisão do grupo, perfis de pilotos, disputas, safety car/VSC/bandeiras e paradas passam a ser **heurísticos** (escolhidos e rotulados, não medidos). Os perfis nomeados são caracterizações fictícias, não afirmações sobre pessoas reais.
-
-### O que foi feito
-- **Integração** do motor calibrado da #40 (`40-modelagem-corrida-calibrada`, que não havia chegado à `develop`), com 7 conflitos resolvidos. Sem os recursos novos, o motor reproduz exatamente os resultados da branch original (verificado por hashes).
-- **Atributos de piloto:** `aggression` e `composure` acrescentados aos arquétipos; 24 perfis fictícios nomeados do grid de 2024 em `configs/drivers/perfis-ficticios.json`.
-- **Disputa** conforme os slides da #40: `p(passar) = P/(P+R)`, contato que retira um dos dois e bandeira azul.
-- **Controle de prova:** SC, VSC, amarela, vermelha, relargada e acidente individual.
-- **Paradas heurísticas:** decisão econômica, parada oportunista sob SC/VSC, regra de dois compostos.
-- **`POST /catalog/grid/run`** passa a usar o motor detalhado (o motor simples continua com `engine=&quot;simple&quot;`).
-- **Ajustes de realismo:** gestão de pneus amortecida no motor detalhado e volta de referência por circuito a partir do histórico (ex.: Mônaco 77,2 s em vez de 56 s).
-
-### Verificações
-- Suíte completa passando (eram 255 testes na `develop`; agora 490, 35 ignorados de GUI).
-- Neutralidade do motor calibrado fixada por teste.
-- Fluxo `POST /catalog/grid` → `POST /catalog/grid/run` testado pela API real: perfis aplicados, eventos de controle de prova e reprodutibilidade por semente.
-- Frequência medida em 3 sementes × 200 corridas: 0,60–0,70 SC+VSC e 0,09–0,10 vermelha por corrida (referência de 2024: ~0,6 e ~1 a cada 6).
-- Implementação das fatias 1 a 5 por agentes Codex, com revisão. Na revisão foram corrigidos um defeito da bandeira azul e um ajuste de frequência que valia para uma única semente.
-
-### Próximos passos
-- Merge da branch na `develop`. O colega da #40 deve revisar o merge da integração (commit `53c071e`), porque resolvi conflitos no código dele.
-- Revisar ou substituir o ADR 0007, cujo contexto ficou desatualizado com a calibração da #40.
-- Ajuste opcional: a pole ainda vence com frequência alta.
-
-### Bloqueios e dependências
-- A interface Arcade ainda não dispara nem reproduz a corrida volta a volta. O `track_view.py` anima em velocidade constante e não mostra ultrapassagens. O `scripts/race_report.py --html` da #40 pode servir de base para a tela.
-- O clima (#68/#69) ainda não afeta o tempo de volta nem os incidentes.
-- O modo `random` do grid sorteia pilotos de toda a história, então os perfis de 2024 só aparecem num grid `manual`.
-</pre>
-
-</details>
-
-<details>
-<summary>Historico de estado</summary>
-
-- 2026-09-11T22:33:16Z — label adicionada: Task por @guilherme-webster
-
-</details>
 
 ### [#105 — Seed digitável e reprodução determinística do torneio](https://github.com/guilherme-webster/mc857-o-projeto/issues/105)
 
@@ -812,7 +234,7 @@ Investigar: `resistance_scale`, limiares de disputa e bloqueio por volta em `dom
 - **Issue-pai:** [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51)
 - **Sub-issues:** —
 - **Criada:** 2026-11-06T20:20:28Z
-- **Atualizada:** 2026-11-13T22:25:38Z
+- **Atualizada:** 2026-11-13T22:37:14Z
 - **Fechada:** —
 
 <details>
@@ -850,11 +272,19 @@ Compostos de chuva, efeito da temperatura no pneu, estratégia de troca e efeito
 </details>
 
 <details>
-<summary>Comentarios (1)</summary>
+<summary>Comentarios (3)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:25:38Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/119#issuecomment-6866441657)
 
 <pre>Foi preparada em branch isolada uma evolução do estado da pista: água e temperatura pelo tempo simulado e borracha pela distância efetivamente percorrida fora dos boxes. Os 39 testes focados e Ruff passaram; a suíte da base tem cinco falhas conhecidas. As temperaturas são hipóteses e o ADR 0015 continua proposto. O critério relativo ao motor detalhado arquivado permanece pendente de decisão; a issue não será encerrada por esta fatia.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:34:18Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/119#issuecomment-6866606768)
+
+<pre>A branch foi atualizada sobre a develop com reabastecimento e cancelamento. Testes combinados cobrem chuva, conservação de combustível, borracha durante o serviço e cancelamento; a suíte passou com 761 testes (42 ignorados, 1 falha esperada) e Ruff passou. A equivalência com o motor arquivado e o status do ADR 0015 seguem pendentes; esta fatia não encerra a issue.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:37:14Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/119#issuecomment-6866657810)
+
+<pre>Correção de andamento: a issue está atribuída a @DaviGabrielBC. Conforme orientação do usuário, a integração foi interrompida e o PR #185 ficará em rascunho para avaliação do responsável; não será feito merge por mim.</pre>
 
 </details>
 
@@ -877,7 +307,7 @@ Compostos de chuva, efeito da temperatura no pneu, estratégia de troca e efeito
 - **Issue-pai:** —
 - **Sub-issues:** —
 - **Criada:** 2026-11-06T20:31:18Z
-- **Atualizada:** 2026-11-13T22:33:08Z
+- **Atualizada:** 2026-11-13T22:37:13Z
 - **Fechada:** —
 
 <details>
@@ -917,11 +347,19 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 </details>
 
 <details>
-<summary>Comentarios (1)</summary>
+<summary>Comentarios (3)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:33:08Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/120#issuecomment-6866585455)
 
 <pre>Uma primeira fatia foi preparada: o uso efetivo de pneus de chuva por qualquer carro suspende a exigência de dois compostos para o pelotão. A suíte local passou com 753 testes (42 ignorados, 1 falha esperada) e Ruff passou. A issue continua aberta para temperatura dos pneus, incidentes, interface, dependência da #119 e proveniência do export FastF1.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:35:30Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/120#issuecomment-6866627413)
+
+<pre>A suspensão da regra de dois compostos secos pelo uso efetivo de pneus de chuva foi integrada à develop pelo PR #184; o check unittest passou. A issue permanece aberta para temperatura, incidentes, interface, integração completa com #119 e proveniência da referência FastF1.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:37:13Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/120#issuecomment-6866657776)
+
+<pre>Correção de andamento: esta issue está atribuída a @DaviGabrielBC. O PR parcial #184 já foi integrado antes de eu observar a orientação de não trabalhar em issues atribuídas; a issue permanece aberta e não farei novas alterações nela.</pre>
 
 </details>
 
@@ -1013,13 +451,13 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @Gustavo-Jun-Tsuji
-- **Responsaveis:** —
+- **Responsaveis:** @guilherme-webster
 - **Labels:** História
 - **Milestone:** —
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
-- **Sub-issues:** [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140), [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141)
+- **Sub-issues:** [#140 — Combustível: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/140), [#141 — Pneu: Influência na % da velocidade aumenta e diminui sem o piloto passar por pitstop](https://github.com/guilherme-webster/mc857-o-projeto/issues/141), [#186 — Pilotos: Atributos do piloto](https://github.com/guilherme-webster/mc857-o-projeto/issues/186)
 - **Criada:** 2026-11-08T20:41:54Z
-- **Atualizada:** 2026-11-13T17:35:21Z
+- **Atualizada:** 2026-11-14T00:42:51Z
 - **Fechada:** —
 
 <details>
@@ -1030,8 +468,69 @@ Registrar origem, versão e licença do export FastF1 de 2023–2024 usado como 
 </details>
 
 <details>
+<summary>Comentarios (3)</summary>
+
+#### [@guilherme-webster em 2026-11-14T00:14:22Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868268192)
+
+<pre>Andamento (sessão assistida por IA, branch local `139-balanceamento-atributos`, ainda sem commit nem PR).
+
+**Medições** (Mônaco do fixture de testes, 30 voltas, 8 carros neutros, `model-v1.json` + `fuel-v1.json`; ordens de grandeza, não valores de produção):
+
+| Fator | Peso no tempo de volta |
+|---|---|
+| Pneu | até ~0,7 % antes da parada |
+| Combustível | ~0,9 % na largada dessa prova curta |
+| Pista verde (seco) | 0,4 % caindo para ~0 |
+| Chuva leve / forte | ~15–19 % / ~35 % |
+
+**Atributos do piloto, antes da mudança** (faixa dos arquétipos → tempo de volta): `composure` +6,8 % a −10,9 %; `pace_offset_pct` −1,0 % a +0,7 %; `aggression` +1,3 % a −1,1 %. Em 10 corridas de 25 voltas com 4 pilotos por arquétipo, o conservador venceu as 10.
+
+**Alterado:** ganhos heurísticos de `physics_for` (`domain/speed_dynamics.py`): compostura em curva 0,5 → 0,05 e agressividade na freada 0,5 → 0,25, versão `driver-physics-gains-v2` exposta em `assumptions`. Faixas agora: compostura +0,7 % a −1,3 %, agressividade +0,6 % a −0,6 %, ritmo inalterado. Nas mesmas 10 corridas: 8 vitórias do agressivo, 1 do equilibrado, 1 do conservador; posição média 5,6 / 6,5 / 7,3. Teste de regressão em `tests/test_speed_dynamics.py` e seção nova em `docs/modelagem-heuristica.md`.
+
+**Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 754 testes, OK (42 pulados, 1 falha esperada).
+
+**Não alterado, depende de decisão do grupo:**
+- Pneu: a degradação calibrada (~31 ms/volta no MEDIUM) pesa pouco frente ao custo de uma parada; aumentar exige multiplicador `assumed` sobre valor calibrado. `tyre_management_factor` herda essa irrelevância.
+- `consistency_factor` não tem efeito no motor 2D (não há ruído por volta); só é exibido.
+- Painel de decomposição: continua escalando pneu/combustível pelo teto da curva (#140/#141).
+- Nessas corridas de teste, 40–60 de 120 largadas terminaram em abandono, o que distorce qualquer comparação de arquétipos (ver #174).
+
+**Próximo passo:** revisar e commitar a mudança dos ganhos; decidir os itens acima.</pre>
+
+#### [@guilherme-webster em 2026-11-14T00:26:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868455621)
+
+<pre>Atualização e correção do comentário anterior (sessão assistida por IA, branch local `139-balanceamento-atributos`, ainda sem commit nem PR).
+
+**Correção sobre o pneu.** O &quot;até ~0,7 %&quot; do comentário anterior veio de uma corrida de 30 voltas. Em distância completa, com a degradação atual de `model-v1.json`, o pneu pesa 2,4–2,6 % do tempo de volta no fim do stint em Mônaco (78 voltas) e no Bahrein (57), com 1 a 2,4 paradas, e 0,85 % em Zandvoort (severidade 0,3). Multiplicar a degradação por 2,5 levou a ~3 paradas em Mônaco e ~5,7 no Bahrein. Por isso **a degradação não foi alterada**. A elasticidade de `tyre_management_factor` (0,4) também não: 0,7 e 1,0 não melhoraram o equilíbrio.
+
+**Atributos (valores finais).** Ganhos de `physics_for`: compostura em curva 0,5 → **0,08** (o comentário anterior dizia 0,05) e agressividade na freada 0,5 → 0,25, versão `driver-physics-gains-v2`. Faixas no tempo de volta em Mônaco: ritmo −1,0 % a +0,7 %; compostura +1,0 % a −2,0 %; agressividade +0,6 % a −0,6 %. Em 18 corridas de distância completa (Bahrein, Mônaco, Zandvoort; 4 pilotos por arquétipo): posição média 6,6 / 6,3 / 6,6 (agressivo / equilibrado / conservador), vitórias 7 / 1 / 10. Com 0,05 era 5,7 / 6,1 / 7,6 e 16 / 0 / 2.
+
+**`consistency_factor` passa a atuar no motor 2D.** Cada carro sorteia um desvio de ritmo por volta, `sigma = lap_noise_ms × consistency_factor` (253,7 ms calibrados em `model-v1.json`), em fluxo próprio por piloto, sem ruído em voltas neutralizadas e sem efeito quando não há `model_parameters`. Premissa `lap_pace_noise_2d` (`heuristic` sobre escala `calibrated`) em `assumptions`; versão do motor `motor-2d-v6`. O ruído é simétrico (`lap_noise_skew` = 0), então muda a variância do piloto, não o ritmo médio. O painel de decomposição ganhou a fatia &quot;variação&quot; (não verifiquei a janela visualmente, só pelos testes do leitor).
+
+**Verificações:** `uv run ruff check .` sem erros; `uv run python -m unittest`: 761 testes, OK (42 pulados, 1 falha esperada). Um teste de `tests/test_dynamic_usage.py` dependia da fase do evento de serviço na grade de amostragem de 200 ms; a margem passou de 100 para 250 ms.
+
+**Pendências:**
+- Abandonos por contato: nessas 18 corridas, 26 a 42 de 72 largadas por arquétipo não terminaram (#174). Isso domina a comparação entre arquétipos; os números acima são indicativos.
+- Painel ainda escala as fatias pelo teto da curva (#140/#141).
+- O ADR 0015 (item 5) ainda descreve os ganhos antigos.
+
+**Próximo passo:** revisão humana, commits e PR.</pre>
+
+#### [@guilherme-webster em 2026-11-14T00:42:51Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/139#issuecomment-6868705157)
+
+<pre>Mais uma correção nesta mesma frente (sessão assistida por IA): do grid até a linha de chegada o motor 2D calculava &quot;volta 0&quot; e o índice negativo buscava o estado de pista da **última** volta. Com chuva só no fim da corrida, a largada era simulada molhada (numa corrida de 6 voltas com chuva forte nas voltas 4 a 6, os carros largavam a ~68 % do ritmo). Agora esse trecho usa o clima da volta 1, e `speed_breakdown` deixa de trazer a entrada de volta &quot;0&quot;.
+
+Teste de regressão em `tests/test_run_grid_simulation.py` (a primeira volta tem de ser idêntica com e sem chuva futura; confirmado que falha sem a correção). `uv run ruff check .` sem erros; `uv run python -m unittest`: 762 testes, OK (42 pulados, 1 falha esperada).
+
+Abandonos por contato (#174) continuam fora desta frente. Segue PR com tudo o que foi descrito nos comentários acima.</pre>
+
+</details>
+
+<details>
 <summary>Historico de estado</summary>
 
+- 2026-11-13T23:10:59Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-11-13T23:06:09Z — sub-issue adicionada: #186 por @Gustavo-Jun-Tsuji
 - 2026-11-13T17:35:21Z — label adicionada: História por @Gustavo-Jun-Tsuji
 - 2026-11-13T17:35:21Z — label removida: Épico por @Gustavo-Jun-Tsuji
 - 2026-11-08T20:48:34Z — sub-issue adicionada: #141 por @Gustavo-Jun-Tsuji
@@ -1487,7 +986,7 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
 - **Sub-issues:** —
 - **Criada:** 2026-11-13T18:01:19Z
-- **Atualizada:** 2026-11-13T22:24:15Z
+- **Atualizada:** 2026-11-13T23:20:16Z
 - **Fechada:** —
 
 <details>
@@ -1498,11 +997,23 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 </details>
 
 <details>
-<summary>Comentarios (1)</summary>
+<summary>Comentarios (4)</summary>
 
 #### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6866415608)
 
 <pre>A correção existente na branch de Gustavo foi preservada com autoria e testada em conjunto com ajustes de reprodução. Em três pistas, três sementes e corridas de dez voltas com 20 carros, observaram-se 2 a 5 abandonos por contato; são cenários exploratórios, não calibração real. A suíte completa passou com a correção. Próximo passo: PR e avaliação visual antes de encerrar.</pre>
+
+#### [@Jmvjr em 2026-11-13T22:51:26Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6866908017)
+
+<pre>Após autorização do usuário, a issue está em nova investigação. A prévia com 20 carros em Mônaco apresentou contatos já na primeira volta e carros visualmente muito próximos. Identificamos ampliação dos marcadores e sobreposições físicas; também estamos avaliando a evolução da vantagem do líder e a sensibilidade ao passo. Correções permanecem em branches isoladas e serão apresentadas ao usuário antes de qualquer merge ou fechamento.</pre>
+
+#### [@Jmvjr em 2026-11-13T23:07:51Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6867192476)
+
+<pre>Atualização: a prévia foi aberta para avaliação do usuário, que identificou proximidade e contatos excessivos. Correções experimentais em branch isolada incluem escala visual, ordem de neutralização do líder e separação espacial. Em Mônaco/seed 2, o diagnóstico de sobreposição projetada caiu de 868 para 107 pares por amostra, ainda incompleto. Suíte combinada: 766 testes, 42 ignorados e 1 falha esperada; Ruff passou. Próximo passo: investigar sobreposições laterais remanescentes e solicitar nova avaliação visual antes de qualquer merge ou fechamento.</pre>
+
+#### [@Jmvjr em 2026-11-13T23:20:16Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/174#issuecomment-6867398113)
+
+<pre>Primeira estratégia experimental inspirada no tutorial oficial do TORCS: o seguidor considera o ritmo disponível após frear atrás de outro carro e verifica aproximação traseira ao iniciar a passagem. A versão combinada, incluindo correções anteriores, passou em 777 testes (42 ignorados e 1 falha esperada) e Ruff; nova prévia aberta para avaliação do usuário. A análise geométrica ainda encontra sobreposições residuais, e a previsão durante toda a manobra/retorno permanece pendente. Nada foi mergeado ou fechado.</pre>
 
 </details>
 
@@ -1514,44 +1025,75 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 
 </details>
 
-### [#175 — Efeito &quot;sanfona&quot; nos carros durante a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/175)
+### [#186 — Pilotos: Atributos do piloto](https://github.com/guilherme-webster/mc857-o-projeto/issues/186)
 
 - **Estado:** aberta
 - **Motivo do estado:** —
 - **Autor:** @Gustavo-Jun-Tsuji
 - **Responsaveis:** —
-- **Labels:** bug
+- **Labels:** —
 - **Milestone:** —
-- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
+- **Issue-pai:** [#139 — Balanceamento das features](https://github.com/guilherme-webster/mc857-o-projeto/issues/139)
 - **Sub-issues:** —
-- **Criada:** 2026-11-13T18:01:48Z
-- **Atualizada:** 2026-11-13T22:24:15Z
+- **Criada:** 2026-11-13T23:06:08Z
+- **Atualizada:** 2026-11-13T23:08:46Z
 - **Fechada:** —
 
 <details>
 <summary>Descricao original</summary>
 
-<pre>(sem descricao)</pre>
+<pre>Reavaliar se os atributos ainda fazem sentido</pre>
+
+</details>
+
+## Issues fechadas
+
+### [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** —
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2), [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3), [#4 — Inserção de dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/4), [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Criada:** 2026-08-28T22:59:38Z
+- **Atualizada:** 2026-11-13T23:11:46Z
+- **Fechada:** 2026-11-13T23:11:46Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O usuário deve ter acesso a uma tela que permita:
+* Ter acesso a dados pré definidos
+* Customizar parâmetros da corrida
+* Visualizar parâmetros
+* Enviar dados para o servidor
+* Padronizar os dados</pre>
 
 </details>
 
 <details>
 <summary>Comentarios (1)</summary>
 
-#### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/175#issuecomment-6866415659)
+#### [@Jmvjr em 2026-09-24T22:22:48Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/1#issuecomment-5823204724)
 
-<pre>Foi integrada em uma branch isolada a correção existente do colega para a dinâmica espacial, com ajuste adicional na interpolação para impedir recuo entre amostras. A suíte completa passou (738 testes, 42 ignorados e 2 falhas esperadas); Ruff passou. Próximo passo: PR e verificação visual da simulação antes de considerar a issue concluída.</pre>
+<pre>Mudança de escopo autorizada pelo usuário: a tela inicial agora permite adicionar/remover várias pistas do catálogo em ordem, configurar voltas e clima por etapa e confirmar um SimulationPlan; Corrida livre é o padrão. O ADR 0006 registra a substituição do recorte original de circuito único. Implementado POST /simulation/series/simulate: recebe pistas e participantes/ritmo em ms/km, valida IDs pelo catálogo e executa cada etapa no núcleo sem carregar uma corrida histórica. Verificações: 186 testes passaram (22 GUI pulados no padrão), 22 testes GUI passaram com ARCADE_GUI_TEST=True, Ruff/Black/diff check passaram; POST real com Interlagos e Mônaco retornou duas corridas na ordem. Próximo passo: editor de participantes e integração da confirmação do Arcade com a rota/tela de acompanhamento; clima, pit stops e pontuação acumulada ainda não afetam o motor atual. Nenhum commit foi criado pelo agente.</pre>
 
 </details>
 
 <details>
 <summary>Historico de estado</summary>
 
-- 2026-11-13T18:01:50Z — label adicionada: bug por @Gustavo-Jun-Tsuji
+- 2026-11-13T23:11:46Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-08-30T06:22:44Z — sub-issue adicionada: #24 por @guilherme-webster
+- 2026-08-28T23:04:16Z — sub-issue adicionada: #4 por @Jmvjr
+- 2026-08-28T23:04:02Z — sub-issue adicionada: #3 por @Jmvjr
+- 2026-08-28T23:03:17Z — sub-issue adicionada: #2 por @Jmvjr
+- 2026-08-28T22:59:40Z — label adicionada: Épico por @Jmvjr
 
 </details>
-
-## Issues fechadas
 
 ### [#2 — Tela de configuração](https://github.com/guilherme-webster/mc857-o-projeto/issues/2)
 
@@ -1598,6 +1140,63 @@ Todas as issues do epico criadas nesta rodada (#144-#154) tem branch local com c
 - 2026-08-28T23:16:53Z — sub-issue adicionada: #13 por @Jmvjr
 - 2026-08-28T23:15:25Z — sub-issue adicionada: #12 por @Jmvjr
 - 2026-08-28T23:03:17Z — label adicionada: História por @Jmvjr
+
+</details>
+
+### [#3 — Consumir os dados do ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/3)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Jmvjr
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
+- **Sub-issues:** —
+- **Criada:** 2026-08-28T23:04:00Z
+- **Atualizada:** 2026-11-13T23:11:18Z
+- **Fechada:** 2026-11-13T23:11:18Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-02T19:24:33Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/3#issuecomment-5515100675)
+
+<pre>Primeira fatia de consumo do ETL implementada localmente na branch `gwc-etl`, sem commit.
+
+Etapa alcancada:
+- adicionada a porta de leitura `RaceDataRepository`, com erros independentes de SQLite;
+- implementado `SQLiteRaceDataRepository`, que abre o arquivo canonico em modo somente leitura e reconstroi o agregado `RaceData` completo;
+- preservados metadados, circuito, corrida, pilotos, equipes, inscricoes, voltas, pit stops e identificadores de origem;
+- falhas de schema e dados persistidos sao traduzidas para `RaceDataRepositoryError`; corrida ausente usa `RaceDataNotFoundError`;
+- leitura rejeita chaves estrangeiras quebradas, metadados invalidos e identificadores de origem ausentes;
+- corrigido fechamento explicito das conexoes do writer SQLite, pois o context manager de `sqlite3.Connection` controla a transacao, mas nao fecha o recurso;
+- documentado o caminho de consumo em `docs/fluxo-etl.md`.
+
+Verificacoes:
+- `python3 -W always::ResourceWarning -m unittest -v`: 25 testes aprovados e sem ResourceWarning;
+- Ruff format/check aprovado nos arquivos alterados;
+- `git diff --check` aprovado;
+- arquivo real `data/curated/race-1141.sqlite` lido com sucesso: 20 pilotos, 10 equipes, 20 inscricoes, 1.133 voltas, 35 pit stops e 32 IDs de origem.
+
+Escopo deliberadamente adiado: nao foi criado `GetSimulationScenario` nem um novo DTO de tela, porque neste momento seriam apenas repasse sem regra propria. O proximo passo da issue e conectar a porta a um consumidor concreto da configuracao/simulacao; nesse ponto deve ser criada apenas a projecao exigida pelo contrato real. A issue permanece aberta.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:11:18Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-11-13T23:11:17Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-08-28T23:04:02Z — label adicionada: História por @Jmvjr
 
 </details>
 
@@ -2305,6 +1904,138 @@ Bandeiras verde, vermelha, amarela, saafety, etc</pre>
 
 </details>
 
+### [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#1 — Customização da simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/1)
+- **Sub-issues:** [#30 — implementar race data repository](https://github.com/guilherme-webster/mc857-o-projeto/issues/30), [#31 — implementar SQLiteRaceDataRepository](https://github.com/guilherme-webster/mc857-o-projeto/issues/31), [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32), [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34), [#53 — implementar etl para dados de pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/53), [#74 — Enriquecer ETL](https://github.com/guilherme-webster/mc857-o-projeto/issues/74)
+- **Criada:** 2026-08-30T06:22:43Z
+- **Atualizada:** 2026-11-13T23:01:59Z
+- **Fechada:** 2026-11-13T23:01:59Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>O dados devem ser extraídos seja via API&#x27;s ou CSV&#x27;s locais, tratados e deixados prontos para consumo das etapas que são de fato de interesse do usuário.
+
+as subissues envolvem implementar componentes que servirão para comunicação com o consumo dos dados do ETL.
+
+RaceDataRepository é apenas um contrato, não executa nada;
+SQLiteRaceDataRepository é quem realmente consulta o banco;
+GetSimulationScenario só se justifica se houver alguma regra ou composição além de repassar a consulta;
+
+Ideia de fluxo:
+
+Persistência SQLite
+        ↓
+SQLiteRaceDataRepository:  é quem realmente consulta o banco;
+        ↓ implementa a porta
+RaceDataRepository:  é apenas um contrato, não executa nada;
+        ↓
+Caso de uso GetSimulationScenario: só se justifica se houver alguma regra ou composição além de repassar a consulta; averiguar se faz sentido dentro do contexto do projeto
+        ↓
+DTO com as opções da corrida
+        ↓ futuramente
+Django → HTTP/JSON → Arcade
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (4)</summary>
+
+#### [@guilherme-webster em 2026-08-30T07:10:57Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467318681)
+
+<pre>Primeira fatia vertical do ETL implementada localmente.
+
+Etapa alcançada:
+- aquisição reproduzível da Base Trotman v128 com verificação SHA-256;
+- Adapter para CSV/ZIP e normalização de tipos, unidades e identificadores;
+- Factory para construir dados canônicos validados;
+- persistência SQLite e relatório JSON de qualidade;
+- amostra CC0 versionada para testes;
+- corrida 1141 usada apenas como exemplo, sem decidir o circuito oficial do MVP.
+
+Verificações:
+- 7 testes aprovados;
+- Ruff aprovado;
+- `git diff --check` aprovado;
+- arquivo real processado: 20 participantes, 1.133 voltas e 35 pit stops, sem chaves órfãs;
+- nulos foram preservados, sem preenchimento silencioso com zero.
+
+Próximos passos:
+1. escolher a corrida e o circuito oficiais;
+2. definir como tratar pit stops associados a interrupções/bandeira vermelha;
+3. conectar o SQLite canônico ao consumidor previsto na issue #3.
+
+Bloqueio atual: escolha do cenário oficial do MVP. A issue permanece aberta.</pre>
+
+#### [@guilherme-webster em 2026-08-30T07:20:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467355299)
+
+<pre>A entrega foi reorganizada para permitir commits pequenos e funcionais. Os testes foram separados por aquisição, Factory, Adapter, SQLite e ETL integrado. A descoberta padrão do unittest também foi corrigida (`tests` agora é pacote e expõe o layout `src`).
+
+Verificações atualizadas:
+- `python3 -m unittest -v`: 13 testes aprovados;
+- descoberta explícita com `unittest discover`: 13 testes aprovados;
+- Ruff aprovado;
+- `git diff --check` aprovado.
+
+A implementação permanece sem commits para revisão e divisão pelo responsável.</pre>
+
+#### [@guilherme-webster em 2026-08-30T08:06:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467542384)
+
+<pre>A fronteira do ETL foi revisada após feedback de legibilidade, importação e extensibilidade.
+
+Etapa alcançada:
+- documentado o layout `src` e o uso de `PYTHONPATH=src` para imports Python avulsos;
+- criados os contratos `RaceDatasetPort` e `RaceDataWriterPort`;
+- criado `RaceDataIngestionService` como articulador genérico entre adapters de datasets, Factory e domínio;
+- removidas as dependências diretas da aplicação em Trotman e SQLite; o script Trotman agora é o ponto de composição dos adapters concretos;
+- adicionadas docstrings sobre contratos, unidades, nulos, invariantes e atomicidade, além da regra correspondente em `CONTRIBUTING.md` e `AGENTS.md`;
+- ampliada a Factory para validar metadados da fonte, SHA-256, corrida sem participantes, equipes não representadas e posições finais duplicadas;
+- ampliado o teste de construção para comparar o agregado canônico completo (metadados, circuito, corrida, pilotos, equipes, inscrições, voltas, pit stops e IDs de origem), com casos inválidos de faixas e durações;
+- adicionado teste com adapter fictício para provar a substituição da fonte sem alterar o serviço.
+
+Verificações:
+- `python3 -m unittest -v`: 18 testes aprovados;
+- Ruff format/check: aprovado nos arquivos alterados;
+- `git diff --check`: aprovado;
+- import avulso com `PYTHONPATH=src`: aprovado;
+- ZIP real Trotman v128 processado: 20 participantes, 10 equipes, 1.133 voltas e 35 pit stops;
+- segunda execução sem `--overwrite`: recusada corretamente, preservando a saída existente.
+
+Próximos passos funcionais permanecem: escolher a corrida/circuito oficiais, decidir a política para pit stops associados a interrupções e conectar o dado canônico ao consumidor da issue #3. A issue #24 permanece aberta.
+</pre>
+
+#### [@guilherme-webster em 2026-08-30T08:25:23Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/24#issuecomment-5467625125)
+
+<pre>Documentacao complementar criada em `docs/fluxo-etl.md` para explicar o fluxo completo entre ponto de composicao, portas, adapter Trotman, DTO normalizado, servico de ingestao, Factory, dominio canonico e writer SQLite. O documento tambem inclui um exemplo de integracao de uma nova fonte e uma tabela resumindo as fronteiras. O README agora aponta para esse guia.
+
+Verificacao: `git diff --check` aprovado. Mudanca apenas documental; testes nao foram reexecutados.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:01:59Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-12T21:41:03Z — sub-issue adicionada: #74 por @guilherme-webster
+- 2026-09-11T20:22:54Z — sub-issue adicionada: #53 por @guilherme-webster
+- 2026-09-02T19:19:09Z — sub-issue adicionada: #34 por @guilherme-webster
+- 2026-09-01T22:36:36Z — sub-issue adicionada: #32 por @guilherme-webster
+- 2026-09-01T22:35:54Z — sub-issue adicionada: #31 por @guilherme-webster
+- 2026-09-01T22:35:19Z — sub-issue adicionada: #30 por @guilherme-webster
+- 2026-08-30T06:22:44Z — label adicionada: História por @guilherme-webster
+- 2026-08-30T06:22:43Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
 ### [#25 — Implementar CI](https://github.com/guilherme-webster/mc857-o-projeto/issues/25)
 
 - **Estado:** fechada
@@ -2624,6 +2355,45 @@ Verificacoes: 25 testes aprovados com `ResourceWarning` habilitado, Ruff aprovad
 
 </details>
 
+### [#32 — implementar GetSimulationScenario](https://github.com/guilherme-webster/mc857-o-projeto/issues/32)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#24 — ETL inicial](https://github.com/guilherme-webster/mc857-o-projeto/issues/24)
+- **Sub-issues:** —
+- **Criada:** 2026-09-01T22:36:34Z
+- **Atualizada:** 2026-11-13T23:01:31Z
+- **Fechada:** 2026-11-13T23:01:31Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:33:20Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/32#issuecomment-6866589299)
+
+<pre>Investigação: GetSimulationScenario não existe atualmente, mas a issue não define consumidor, entradas, resposta, regras nem erros. As portas e o adaptador SQLite existem, e há fluxos separados para execução de grid e leitura de resultados. Próximo passo: definir o contrato e o caso de uso concreto antes de implementar; issue permanece aberta.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:01:31Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-11-13T23:01:30Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-09-02T19:19:35Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
 ### [#34 — Implementar ETL para criação da pista](https://github.com/guilherme-webster/mc857-o-projeto/issues/34)
 
 - **Estado:** fechada
@@ -2813,6 +2583,68 @@ Esse ticket será um constante lembrete de implementar boas práticas de CI</pre
 
 - 2026-11-08T20:44:06Z — fechada por @Gustavo-Jun-Tsuji
 - 2026-09-04T22:15:04Z — label adicionada: História por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @DaviGabrielBC
+- **Labels:** Épico
+- **Milestone:** —
+- **Issue-pai:** —
+- **Sub-issues:** [#51 — Pistas de corrida](https://github.com/guilherme-webster/mc857-o-projeto/issues/51), [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60), [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61), [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62), [#63 — Pneu](https://github.com/guilherme-webster/mc857-o-projeto/issues/63)
+- **Criada:** 2026-09-04T23:01:05Z
+- **Atualizada:** 2026-11-13T23:13:31Z
+- **Fechada:** 2026-11-13T23:13:31Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Correlação entre atributos do carro, piloto, etc com tempo de uma volta
+</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-12T00:06:02Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/40#issuecomment-5642033711)
+
+<pre>Levantamento de modelagem concluído nesta sessão, sem implementação de código, conforme o pedido do usuário.
+
+Foram lidas as frentes #51 e #60–#63, as subtarefas #64–#69, os consumidores #70/#71 e as dependências relacionadas #43/#47/#54, confrontando descrições, comentários, responsáveis e estado com os MDs, ADRs e código atual. A develop 3ea8a0b e a main 570b631 têm árvores idênticas no ponto auditado.
+
+Proposta local documentada em docs/planejamento-modelagem.md, com link no README, ainda sem commit:
+- começar pelo participante da corrida (piloto, equipe/carro e ritmo de referência conjunto), para viabilizar um recorte determinístico antes de física e comportamento sofisticados;
+- aguardar o contrato do colega no backend para o consumo da pista; o usuário esclareceu que o modelo de trechos ainda é trabalho futuro;
+- diferenciar dados existentes na fonte, no contrato canônico, no SQLite local e na API;
+- refinar pneus e clima antes de atribuir efeitos ou coeficientes; faltam dados de compostos, meteorologia, peso/altura de piloto e potência/aerodinâmica do carro;
+- não inferir atrito da geometria nem tratar perfis de pilotos como fatos observados;
+- manter pendentes: cenário/temporada, passo de simulação, filtros de calibração, escopo físico, origem de parâmetros e contrato/local de execução da modelagem.
+
+Observações para integração: RaceDataRepository ainda não preenche a geometria opcional; o backend deverá definir sua composição com TrackGeometryRepository. O backend atual usa SQL direto em endpoints de inspeção. Há divergência entre FastAPI no código/README e Django no plano/CONTRIBUTING/ADR 0001; nenhuma escolha foi feita por esta proposta.
+
+Verificações: leitura dos cabeçalhos do ZIP Trotman e do esquema do SQLite local em modo somente leitura; 17 referências locais do documento e link no README validados; git diff --check passou. Nenhum dado ou código foi alterado, nenhum teste de execução/GUI foi realizado, pois a entrega é documental. Nenhum commit criado.
+
+Próximo passo: revisar a proposta com os responsáveis por modelagem/backend, refinar critérios das issues (especialmente #63, hoje sem descrição) e acordar o contrato antes de implementar os componentes dependentes. Recomendações não foram promovidas a decisões aceitas; issues e responsáveis permanecem como estavam.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:13:31Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T23:45:23Z — atribuida: @DaviGabrielBC por @DaviGabrielBC
+- 2026-09-11T22:22:11Z — sub-issue adicionada: #63 por @guilherme-webster
+- 2026-09-11T22:21:35Z — sub-issue adicionada: #62 por @guilherme-webster
+- 2026-09-11T22:20:20Z — sub-issue adicionada: #61 por @guilherme-webster
+- 2026-09-11T22:18:58Z — sub-issue adicionada: #60 por @guilherme-webster
+- 2026-09-08T22:18:09Z — sub-issue adicionada: #51 por @Jmvjr
+- 2026-09-04T23:02:44Z — label adicionada: Épico por @Gustavo-Jun-Tsuji
 
 </details>
 
@@ -3067,6 +2899,161 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 </details>
 
+### [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+- **Sub-issues:** [#64 — Consumo do backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/64), [#65 — Modelagem posterior](https://github.com/guilherme-webster/mc857-o-projeto/issues/65), [#97 — Modelagem do combustível](https://github.com/guilherme-webster/mc857-o-projeto/issues/97)
+- **Criada:** 2026-09-11T22:18:57Z
+- **Atualizada:** 2026-11-13T23:13:02Z
+- **Fechada:** 2026-11-13T23:13:02Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>Fazer modelagem do carro</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-11T22:36:33Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/60#issuecomment-5641418011)
+
+<pre>Levar em conta um modelo que leve em conta parâmetros como peso, cavalos, aerodinâmica do carro. Pode ser consumido via dados reais ou gerado via modelagem. Pensar em como levar isto em conta de maneira a gerar uma modelagem geral da corrida mais sofisticada. Documentar.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:13:02Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-10-22T23:41:51Z — sub-issue adicionada: #97 por @DaviGabrielBC
+- 2026-09-11T22:27:12Z — sub-issue adicionada: #65 por @guilherme-webster
+- 2026-09-11T22:26:46Z — sub-issue adicionada: #64 por @guilherme-webster
+- 2026-09-11T22:25:05Z — label adicionada: História por @guilherme-webster
+- 2026-09-11T22:25:01Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+- **Sub-issues:** [#66 — Consumir backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/66), [#67 — Modelagem pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/67)
+- **Criada:** 2026-09-11T22:20:19Z
+- **Atualizada:** 2026-11-13T23:03:17Z
+- **Fechada:** 2026-11-13T23:03:17Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-11T22:37:34Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/61#issuecomment-5641425322)
+
+<pre>Levar em conta um modelo que leve em conta parâmetros como peso, altura, e ter perfilamento de pilotos, sejam pilotos reais ou personas. Pode ser consumido via dados reais (altura, peso, etc) ou gerado via modelagem (perfilamento). Pensar em como levar isto em conta de maneira a gerar uma modelagem geral da corrida mais sofisticada. Documentar.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:03:17Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T22:33:04Z — label adicionada: Task por @guilherme-webster
+- 2026-09-11T22:32:51Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-09-11T22:30:20Z — sub-issue adicionada: #67 por @guilherme-webster
+- 2026-09-11T22:28:40Z — sub-issue adicionada: #66 por @guilherme-webster
+
+</details>
+
+### [#62 — Clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/62)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** História
+- **Milestone:** —
+- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+- **Sub-issues:** [#68 — Consumir backend e frontend para modelar clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/68), [#69 — Modelagem clima](https://github.com/guilherme-webster/mc857-o-projeto/issues/69)
+- **Criada:** 2026-09-11T22:21:34Z
+- **Atualizada:** 2026-11-13T23:09:00Z
+- **Fechada:** 2026-11-13T23:09:00Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-09-11T22:39:11Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/62#issuecomment-5641437211)
+
+<pre>Levar em conta um modelo que leve em conta parâmetros como chuva, neblina, etc. Pode ser consumido via dados reais ou gerado via modelagem. Pensar em como levar isto em conta de maneira a gerar uma modelagem geral da corrida mais sofisticada; por exemplo, como isto impactaria o atrito da pista, a visibilidade dos pilotos, isto afeta o perfil do piloto? Por exemplo, um piloto agressivo tende a ser mais conservador em chuvas ou vice versa? Um piloto que tende a  realizar ultrapassagens em curvas tende a ser menos insistente nisto quando temos chuva ou baixa visibilidade? Documentar.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:09:00Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T22:31:51Z — label adicionada: História por @guilherme-webster
+- 2026-09-11T22:31:37Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-09-11T22:31:27Z — sub-issue adicionada: #69 por @guilherme-webster
+- 2026-09-11T22:31:05Z — sub-issue adicionada: #68 por @guilherme-webster
+
+</details>
+
+### [#63 — Pneu](https://github.com/guilherme-webster/mc857-o-projeto/issues/63)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#40 — Modelagem dos dados](https://github.com/guilherme-webster/mc857-o-projeto/issues/40)
+- **Sub-issues:** [#104 — Desgate e combústivel dinâmicos](https://github.com/guilherme-webster/mc857-o-projeto/issues/104)
+- **Criada:** 2026-09-11T22:22:10Z
+- **Atualizada:** 2026-11-13T23:13:06Z
+- **Fechada:** 2026-11-13T23:13:06Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:13:06Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-10-26T23:08:01Z — sub-issue adicionada: #104 por @Jmvjr
+- 2026-09-11T22:33:26Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-09-11T22:33:26Z — label adicionada: Task por @guilherme-webster
+
+</details>
+
 ### [#64 — Consumo do backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/64)
 
 - **Estado:** fechada
@@ -3097,6 +3084,36 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 
 </details>
 
+### [#65 — Modelagem posterior](https://github.com/guilherme-webster/mc857-o-projeto/issues/65)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#60 — Carros](https://github.com/guilherme-webster/mc857-o-projeto/issues/60)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T22:27:10Z
+- **Atualizada:** 2026-11-13T23:02:56Z
+- **Fechada:** 2026-11-13T23:02:56Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>modelagem posterior dos dados com os dados pré tratados do backend</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:02:56Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T22:32:25Z — label adicionada: Task por @guilherme-webster
+- 2026-09-11T22:32:18Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
 ### [#66 — Consumir backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/66)
 
 - **Estado:** fechada
@@ -3124,6 +3141,76 @@ O visualizador agora sobrepõe automaticamente pit lane e ponto de serviço. Con
 - 2026-11-08T20:37:32Z — fechada por @Gustavo-Jun-Tsuji
 - 2026-09-11T22:32:45Z — label adicionada: Task por @guilherme-webster
 - 2026-09-11T22:32:40Z — atribuida: @guilherme-webster por @guilherme-webster
+
+</details>
+
+### [#67 — Modelagem pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/67)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @guilherme-webster
+- **Responsaveis:** @guilherme-webster
+- **Labels:** Task
+- **Milestone:** —
+- **Issue-pai:** [#61 — Pilotos](https://github.com/guilherme-webster/mc857-o-projeto/issues/61)
+- **Sub-issues:** —
+- **Criada:** 2026-09-11T22:30:19Z
+- **Atualizada:** 2026-11-13T23:09:15Z
+- **Fechada:** 2026-11-13T23:09:10Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>modelagem posterior para os pilotos</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@guilherme-webster em 2026-10-03T20:35:31Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/67#issuecomment-5973245886)
+
+<pre>## Andamento — modelagem heurística de pilotos e corrida (2026-10-03)
+
+**Etapa:** implementação concluída na branch `67-modelagem-pilotos` (12 commits sobre a `develop`, ainda **não publicados** — o merge será feito pelo responsável). Plano em `docs/prds/modelagem-pilotos-heuristica.md`, decisão no ADR 0008 e valores atuais de todas as heurísticas em **`docs/modelagem-heuristica.md`**.
+
+**Contexto:** por orientação do professor e decisão do grupo, perfis de pilotos, disputas, safety car/VSC/bandeiras e paradas passam a ser **heurísticos** (escolhidos e rotulados, não medidos). Os perfis nomeados são caracterizações fictícias, não afirmações sobre pessoas reais.
+
+### O que foi feito
+- **Integração** do motor calibrado da #40 (`40-modelagem-corrida-calibrada`, que não havia chegado à `develop`), com 7 conflitos resolvidos. Sem os recursos novos, o motor reproduz exatamente os resultados da branch original (verificado por hashes).
+- **Atributos de piloto:** `aggression` e `composure` acrescentados aos arquétipos; 24 perfis fictícios nomeados do grid de 2024 em `configs/drivers/perfis-ficticios.json`.
+- **Disputa** conforme os slides da #40: `p(passar) = P/(P+R)`, contato que retira um dos dois e bandeira azul.
+- **Controle de prova:** SC, VSC, amarela, vermelha, relargada e acidente individual.
+- **Paradas heurísticas:** decisão econômica, parada oportunista sob SC/VSC, regra de dois compostos.
+- **`POST /catalog/grid/run`** passa a usar o motor detalhado (o motor simples continua com `engine=&quot;simple&quot;`).
+- **Ajustes de realismo:** gestão de pneus amortecida no motor detalhado e volta de referência por circuito a partir do histórico (ex.: Mônaco 77,2 s em vez de 56 s).
+
+### Verificações
+- Suíte completa passando (eram 255 testes na `develop`; agora 490, 35 ignorados de GUI).
+- Neutralidade do motor calibrado fixada por teste.
+- Fluxo `POST /catalog/grid` → `POST /catalog/grid/run` testado pela API real: perfis aplicados, eventos de controle de prova e reprodutibilidade por semente.
+- Frequência medida em 3 sementes × 200 corridas: 0,60–0,70 SC+VSC e 0,09–0,10 vermelha por corrida (referência de 2024: ~0,6 e ~1 a cada 6).
+- Implementação das fatias 1 a 5 por agentes Codex, com revisão. Na revisão foram corrigidos um defeito da bandeira azul e um ajuste de frequência que valia para uma única semente.
+
+### Próximos passos
+- Merge da branch na `develop`. O colega da #40 deve revisar o merge da integração (commit `53c071e`), porque resolvi conflitos no código dele.
+- Revisar ou substituir o ADR 0007, cujo contexto ficou desatualizado com a calibração da #40.
+- Ajuste opcional: a pole ainda vence com frequência alta.
+
+### Bloqueios e dependências
+- A interface Arcade ainda não dispara nem reproduz a corrida volta a volta. O `track_view.py` anima em velocidade constante e não mostra ultrapassagens. O `scripts/race_report.py --html` da #40 pode servir de base para a tela.
+- O clima (#68/#69) ainda não afeta o tempo de volta nem os incidentes.
+- O modo `random` do grid sorteia pilotos de toda a história, então os perfis de 2024 só aparecem num grid `manual`.
+</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:09:15Z — atribuida: @guilherme-webster por @guilherme-webster
+- 2026-11-13T23:09:10Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-09-11T22:33:16Z — label adicionada: Task por @guilherme-webster
 
 </details>
 
@@ -4902,5 +4989,44 @@ Pendencias: `docs/progresso.md` ainda guarda handoffs de setembro/outubro (#40/#
 - 2026-11-13T22:28:25Z — fechada por @Jmvjr
 - 2026-11-13T18:00:39Z — label adicionada: bug por @Gustavo-Jun-Tsuji
 - 2026-11-13T17:37:38Z — label adicionada: Task por @Gustavo-Jun-Tsuji
+
+</details>
+
+### [#175 — Efeito &quot;sanfona&quot; nos carros durante a simulação](https://github.com/guilherme-webster/mc857-o-projeto/issues/175)
+
+- **Estado:** fechada
+- **Motivo do estado:** completed
+- **Autor:** @Gustavo-Jun-Tsuji
+- **Responsaveis:** @Gustavo-Jun-Tsuji
+- **Labels:** bug
+- **Milestone:** —
+- **Issue-pai:** [#170 — Bugs no Backend](https://github.com/guilherme-webster/mc857-o-projeto/issues/170)
+- **Sub-issues:** —
+- **Criada:** 2026-11-13T18:01:48Z
+- **Atualizada:** 2026-11-13T23:09:41Z
+- **Fechada:** 2026-11-13T23:09:41Z
+
+<details>
+<summary>Descricao original</summary>
+
+<pre>(sem descricao)</pre>
+
+</details>
+
+<details>
+<summary>Comentarios (1)</summary>
+
+#### [@Jmvjr em 2026-11-13T22:24:15Z](https://github.com/guilherme-webster/mc857-o-projeto/issues/175#issuecomment-6866415659)
+
+<pre>Foi integrada em uma branch isolada a correção existente do colega para a dinâmica espacial, com ajuste adicional na interpolação para impedir recuo entre amostras. A suíte completa passou (738 testes, 42 ignorados e 2 falhas esperadas); Ruff passou. Próximo passo: PR e verificação visual da simulação antes de considerar a issue concluída.</pre>
+
+</details>
+
+<details>
+<summary>Historico de estado</summary>
+
+- 2026-11-13T23:09:41Z — fechada por @Gustavo-Jun-Tsuji
+- 2026-11-13T23:09:39Z — atribuida: @Gustavo-Jun-Tsuji por @Gustavo-Jun-Tsuji
+- 2026-11-13T18:01:50Z — label adicionada: bug por @Gustavo-Jun-Tsuji
 
 </details>

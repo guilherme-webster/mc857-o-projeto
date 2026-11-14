@@ -27,7 +27,10 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, replace
 
-from f1_simulator.domain.attribute_effects import detailed_degradation_factor
+from f1_simulator.domain.attribute_effects import (
+    consistency_scale,
+    detailed_degradation_factor,
+)
 from f1_simulator.domain.dynamic_usage import (
     DynamicUsageParameters,
     curvature_profile,
@@ -399,6 +402,18 @@ def simulate_2d_race(
     # Atributos (DriverAttributes) por carro, para o painel mostra-los como
     # contexto ao lado da decomposicao; ``None`` quando o carro nao os traz.
     attributes_by_id: dict[str, object] = {}
+    # Ruido de ritmo por volta (issue #139). A escala e o residuo calibrado de
+    # ``model_parameters`` (ms, 1 sigma); o ``consistency_factor`` do piloto a
+    # multiplica, e e so por aqui que esse atributo atua no motor 2D. Sem
+    # ``model_parameters`` nao ha escala declarada e o efeito nao atua.
+    noise_sigma_ms = model_parameters.lap_noise_ms if model_parameters else 0.0
+    noise_skew = model_parameters.lap_noise_skew if model_parameters else 0.0
+    consistency_by_id: dict[str, float] = {}
+    # Um fluxo por piloto, derivado por rotulo: o ruido de um carro nao desloca
+    # o de outro nem os sorteios de contato e de falha mecanica do fluxo
+    # principal. Fontes de teste sem ``spawn`` compartilham o fluxo recebido.
+    noise_streams: dict[str, RandomSource] = {}
+    lap_noise_by_id: dict[str, dict[int, float]] = {}
     for entry in sorted(entrants, key=lambda e: e["grid_position"]):
         did = entry["driver_id"]
         names[did] = entry["name"]
@@ -415,6 +430,10 @@ def simulate_2d_race(
         physics = physics_for(attrs, base)
         attributes_by_id[did] = attrs
         management[did] = detailed_degradation_factor(attrs)
+        consistency_by_id[did] = consistency_scale(attrs)
+        lap_noise_by_id[did] = {}
+        spawn = getattr(rng, "spawn", None)
+        noise_streams[did] = spawn(f"lap-noise:{did}") if spawn else rng
         usage_totals[did] = dict(
             fuel_burned_kg=0.0,
             distance_wear_laps=0.0,
@@ -518,7 +537,8 @@ def simulate_2d_race(
     def _water(lap_number: int) -> float:
         if not track_states:
             return 0.0
-        return track_states[min(lap_number - 1, len(track_states) - 1)].surface_water
+        index = min(max(1, lap_number) - 1, len(track_states) - 1)
+        return track_states[index].surface_water
 
     def _tyre_penalty_ms(did: str, lap_number: int) -> float:
         if not tyre_active:
@@ -535,6 +555,27 @@ def simulate_2d_race(
             wear_laps=cars_by_id[did].tyre_wear_laps,
         ) * wear_factor(tyre.compound, _water(lap_number))
 
+    def _lap_noise_ms(did: str, lap_number: int) -> float:
+        """Desvio de ritmo do piloto nesta volta, em ms (positivo = mais lento).
+
+        Sorteado uma unica vez por carro e por volta e guardado: ``_apply_scale``
+        roda a cada passo de integracao e precisa enxergar sempre o mesmo valor.
+        ``sigma = lap_noise_ms * consistency_factor``; a assimetria calibrada
+        alarga o lado lento e estreita o rapido, como no ruido das paradas.
+        ``_apply_scale`` ja entrega a volta com piso em 1.
+        """
+
+        if noise_sigma_ms == 0.0:
+            return 0.0
+        drawn = lap_noise_by_id[did]
+        if lap_number not in drawn:
+            z = noise_streams[did].standard_normal(
+                f"lap-noise:{did}:lap:{lap_number}"
+            )
+            side = 1.0 + noise_skew if z > 0 else 1.0 - noise_skew
+            drawn[lap_number] = noise_sigma_ms * consistency_by_id[did] * side * z
+        return drawn[lap_number]
+
     def _record_breakdown(
         did: str,
         lap_number: int,
@@ -542,6 +583,7 @@ def simulate_2d_race(
         tyre_ms: float,
         fuel_ms: float,
         weather_ms: float,
+        noise_ms: float,
         eff: LapEffects,
         speed_scale: float,
     ) -> None:
@@ -554,7 +596,7 @@ def simulate_2d_race(
         multiplicativo/aditivo da volta, entao a sua fatia e o que sobra.
         """
 
-        penalty = tyre_ms + fuel_ms + weather_ms
+        penalty = tyre_ms + fuel_ms + weather_ms + noise_ms
         on_track_ms = base + penalty
         control_ms = on_track_ms * (eff.lap_time_factor - 1.0) + eff.lap_time_loss_ms
         # ``delta_ms`` e o tempo a mais (ou a menos) da volta sobre a referencia.
@@ -570,15 +612,19 @@ def simulate_2d_race(
                 "tyre": tyre_ms * unit,
                 "fuel": fuel_ms * unit,
                 "weather": weather_ms * unit,
+                "noise": noise_ms * unit,
                 "race_control": control_ms * unit,
             }
         else:
-            shares = {"tyre": 0.0, "fuel": 0.0, "weather": 0.0, "race_control": 0.0}
+            shares = dict.fromkeys(
+                ("tyre", "fuel", "weather", "noise", "race_control"), 0.0
+            )
         speed_breakdown[did][lap_number] = {
             "base_ms": round(base, 3),
             "tyre_ms": round(tyre_ms, 3),
             "fuel_ms": round(fuel_ms, 3),
             "weather_ms": round(weather_ms, 3),
+            "noise_ms": round(noise_ms, 3),
             "control_factor": eff.lap_time_factor,
             "control_loss_ms": eff.lap_time_loss_ms,
             "speed_scale": round(speed_scale, 6),
@@ -597,6 +643,11 @@ def simulate_2d_race(
         decomposição, sem alterar o ``speed_scale`` resultante.
         """
 
+        # Do grid ate a linha a distancia e negativa e a conta de volta da 0.
+        # Esse trecho pertence a volta 1: sem o piso, o indice -1 buscava o
+        # estado de pista da ULTIMA volta e o pelotao largava sob o clima do
+        # fim da corrida (chuva so no final deixava a largada 30% mais lenta).
+        lap_number = max(1, lap_number)
         did = car.driver_id
         base = ref_ms[did]
         eff = _lap_effects(lap_number)
@@ -615,11 +666,23 @@ def simulate_2d_race(
             )
             if grip_factor != 1.0:
                 weather_ms = grip_laps[did].delta_ms(grip_factor)
-        penalty = tyre_ms + fuel_ms + weather_ms
+        # Sob SC/VSC/vermelha o pelotao segue um ritmo imposto: o desvio do
+        # piloto nao se manifesta, e somar ruido ali o deixaria ultrapassar o
+        # ritmo neutralizado.
+        noise_ms = 0.0 if eff.neutralized else _lap_noise_ms(did, lap_number)
+        penalty = tyre_ms + fuel_ms + weather_ms + noise_ms
         on_track_ms = (base + penalty) * eff.lap_time_factor + eff.lap_time_loss_ms
         car.speed_scale = base / on_track_ms if on_track_ms > 0 else 1.0
         _record_breakdown(
-            did, lap_number, base, tyre_ms, fuel_ms, weather_ms, eff, car.speed_scale
+            did,
+            lap_number,
+            base,
+            tyre_ms,
+            fuel_ms,
+            weather_ms,
+            noise_ms,
+            eff,
+            car.speed_scale,
         )
 
     reliability_by_id = reliability_by_id or {}
@@ -1050,7 +1113,7 @@ def simulate_2d_race(
             {
                 "kind": "engine_2d",
                 "origin": "assumed",
-                "parameter_version": "motor-2d-v5",
+                "parameter_version": "motor-2d-v6",
                 "rationale": (
                     "ADR 0011: motor 2D de posicao continua. Velocidade, "
                     "ultrapassagem e colisao emergem da fisica espacial; "
@@ -1098,6 +1161,29 @@ def simulate_2d_race(
             "aggression": attrs.aggression,
             "composure": attrs.composure,
         }
+
+    if noise_sigma_ms > 0.0:
+        # A escala vem da calibracao; multiplica-la pelo atributo ficticio do
+        # piloto e uma escolha heuristica, por isso a premissa declara as duas
+        # origens em vez de herdar o rotulo "calibrado" (ADR 0008).
+        result["assumptions"].append(
+            {
+                "kind": "lap_pace_noise_2d",
+                "origin": "heuristic",
+                "parameter_version": "lap-pace-noise-2d-v1",
+                "lap_noise_ms": noise_sigma_ms,
+                "lap_noise_skew": noise_skew,
+                "lap_noise_origin": "calibrated",
+                "consistency_factor_by_driver": dict(sorted(consistency_by_id.items())),
+                "rationale": (
+                    "Issue #139: cada carro sorteia um desvio de ritmo por "
+                    "volta, sigma = lap_noise_ms * consistency_factor, num "
+                    "fluxo proprio por piloto. Sem ruido em voltas "
+                    "neutralizadas. O residuo calibrado mede voltas reais; "
+                    "aplicar o fator do piloto sobre ele e hipotese."
+                ),
+            }
+        )
 
     result["speed_breakdown"] = {
         "cars": {

@@ -12,6 +12,7 @@ import unittest
 
 from f1_simulator.domain.race_simulation_2d import simulate_2d_race
 from f1_simulator.domain.random_source import SeededRandomSource
+from tests.geometry_support import attribute
 from tests.model_support import parameters, track
 from tests.race_invariants import (
     assert_classification_invariants,
@@ -215,6 +216,75 @@ class RaceSimulation2DTest(unittest.TestCase):
         self.assertEqual(
             self.progress, [(lap, LONG_LAPS) for lap in range(1, LONG_LAPS + 1)]
         )
+
+
+class LapPaceNoiseTest(unittest.TestCase):
+    """Ruido de ritmo por volta escalado pelo ``consistency_factor`` (issue #139)."""
+
+    LAPS = 3
+
+    @classmethod
+    def setUpClass(cls):
+        cls.geometry = real_geometry()
+        cls.model = parameters()
+
+    def run_race(self, consistency: float | None, *, with_model: bool = True):
+        entry = entrants(1)[0]
+        if consistency is not None:
+            entry["attributes"] = attribute(
+                entry["driver_id"], consistency_factor=consistency
+            )
+        return simulate_2d_race(
+            [entry],
+            self.geometry,
+            total_laps=self.LAPS,
+            rng=SeededRandomSource(5),
+            model_parameters=self.model if with_model else None,
+            race_control=None,
+        )
+
+    @staticmethod
+    def noise_by_lap(race) -> dict[str, float]:
+        laps = race["speed_breakdown"]["cars"]["d1"]["laps"]
+        return {lap: data["noise_ms"] for lap, data in laps.items()}
+
+    def test_noise_scales_exactly_with_the_consistency_factor(self):
+        # Mesmo piloto e mesma semente: o fluxo do ruido e o mesmo, so a
+        # escala muda. E por aqui que o atributo atua no motor 2D.
+        steady = self.noise_by_lap(self.run_race(0.5))
+        erratic = self.noise_by_lap(self.run_race(1.5))
+        self.assertTrue(any(value != 0.0 for value in steady.values()))
+        for lap, value in steady.items():
+            with self.subTest(lap=lap):
+                self.assertAlmostEqual(erratic[lap], 3.0 * value, places=2)
+
+    def test_noise_follows_the_calibrated_scale(self):
+        # |z| <= 6 com folga: o desvio nao pode passar de alguns sigmas.
+        limit = 6.0 * self.model.lap_noise_ms
+        for value in self.noise_by_lap(self.run_race(1.0)).values():
+            self.assertLess(abs(value), limit)
+
+    def test_noise_changes_the_race_time(self):
+        steady = self.run_race(0.5)["classification"][0]["total_time_ms"]
+        erratic = self.run_race(1.5)["classification"][0]["total_time_ms"]
+        self.assertNotEqual(steady, erratic)
+
+    def test_without_model_parameters_there_is_no_noise(self):
+        race = self.run_race(1.5, with_model=False)
+        self.assertEqual(set(self.noise_by_lap(race).values()), {0.0})
+        kinds = {item["kind"] for item in race["assumptions"]}
+        self.assertNotIn("lap_pace_noise_2d", kinds)
+
+    def test_noise_is_disclosed_as_heuristic_over_a_calibrated_scale(self):
+        race = self.run_race(1.5)
+        entry = next(
+            item for item in race["assumptions"] if item["kind"] == "lap_pace_noise_2d"
+        )
+        self.assertEqual(entry["origin"], "heuristic")
+        self.assertEqual(entry["lap_noise_origin"], "calibrated")
+        self.assertEqual(entry["lap_noise_ms"], self.model.lap_noise_ms)
+        self.assertEqual(entry["consistency_factor_by_driver"], {"d1": 1.5})
+        self.assertEqual(race, self.run_race(1.5))
 
 
 if __name__ == "__main__":

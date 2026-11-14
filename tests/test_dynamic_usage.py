@@ -242,7 +242,10 @@ class DynamicUsageIntegrationTest(unittest.TestCase):
         self.assertAlmostEqual(a.tyre_wear_laps, b.tyre_wear_laps, places=5)
         self.assertGreater(a.fuel_kg, b.fuel_kg)
         self.assertLess(a.fuel_kg - b.fuel_kg, 0.01)
-        after = car.spatial_at(events["service_completed"]["time_ms"] + 100)
+        # O desgaste exportado muda em degrau na amostra seguinte ao servico:
+        # a margem cobre um periodo inteiro de amostragem da trajetoria (200
+        # ms), senao o resultado depende da fase do evento na grade.
+        after = car.spatial_at(events["service_completed"]["time_ms"] + 250)
         self.assertLess(after.tyre_wear_laps, b.tyre_wear_laps)
 
 
