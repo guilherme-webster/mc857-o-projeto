@@ -61,28 +61,29 @@ from frontend.arcade.track_client import fetch_track, fetch_tracks
 from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
-RULES_PANEL_BOUNDS = (28, 214, 544, 362)
-TRACK_CARD_BOUNDS = (586, 76, 666, 500)
-SCHEDULER_BOUNDS = (600, 91, 638, 418)
-TRACK_PREVIEW_BOUNDS = (614, 115, 320, 188)
-NAME_INPUT_BOUNDS = (230, 459, 322, 32)
-SEED_INPUT_BOUNDS = (232, 230, 320, 30)
-PREVIOUS_TRACK_BOUNDS = (622, 382, 34, 31)
-NEXT_TRACK_BOUNDS = (816, 382, 34, 31)
+RULES_PANEL_BOUNDS = (28, 172, 544, 404)
+TRACK_CARD_BOUNDS = (586, 45, 666, 531)
+SCHEDULER_BOUNDS = (600, 60, 638, 449)
+TRACK_PREVIEW_BOUNDS = (614, 100, 320, 228)
+NAME_INPUT_BOUNDS = (230, 476, 322, 32)
+SEED_INPUT_BOUNDS = (232, 201, 320, 30)
+PREVIOUS_TRACK_BOUNDS = (614, 396, 34, 31)
+NEXT_TRACK_BOUNDS = (900, 396, 34, 31)
 TOGGLE_TRACK_BOUNDS = (956, 286, 268, 42)
-REMOVE_TRACK_BOUNDS = (956, 236, 268, 42)
-AUTOMATIC_BOUNDS = (956, 186, 268, 42)
-# Abaixo do painel de regras, que termina em y=184.
-DRIVERS_BOUNDS = (28, 130, 288, 42)
-SAVED_TOURNAMENTS_BOUNDS = (28, 82, 288, 42)
+REMOVE_TRACK_BOUNDS = (956, 224, 268, 42)
+AUTOMATIC_BOUNDS = (956, 162, 268, 42)
+# Abaixo do painel de regras, que termina em y=172. A base do botao de baixo
+# alinha com a base do scheduler de pistas (y=60).
+DRIVERS_BOUNDS = (28, 110, 288, 42)
+SAVED_TOURNAMENTS_BOUNDS = (28, 60, 288, 42)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
-CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 40)
-SCORING_BOUNDS = (232, 420, 320, 34)
+CONFIRM_SERIES_BOUNDS = (956, 100, 268, 42)
+SCORING_BOUNDS = (232, 429, 320, 34)
 STAGES_DECREASE_BOUNDS = (232, 383, 28, 34)
 STAGES_INCREASE_BOUNDS = (326, 383, 28, 34)
-WEATHER_BOUNDS = (232, 344, 320, 34)
-REPEATS_BOUNDS = (232, 306, 44, 25)
-TIEBREAK_BOUNDS = (232, 268, 320, 34)
+WEATHER_BOUNDS = (232, 337, 320, 34)
+REPEATS_BOUNDS = (232, 295, 44, 25)
+TIEBREAK_BOUNDS = (232, 245, 320, 34)
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
@@ -230,7 +231,7 @@ class ParametersView(UIView):
         self._status_text = arcade.Text(
             self._status_message,
             956,
-            115,
+            81,
             self._status_color,
             10,
             width=268,
@@ -930,7 +931,7 @@ class ParametersView(UIView):
         self._native_text(
             self._status_message,
             956,
-            115,
+            81,
             self._status_color,
             10,
             width=268,
@@ -1251,8 +1252,8 @@ class ParametersView(UIView):
             ).draw()
         self._native_text(
             f"{self._selected_track_index + 1} / {len(self._tracks)}",
-            737,
-            397,
+            774,
+            411.5,
             SECONDARY_TEXT_COLOR,
             11,
             anchor_x="center",
@@ -1262,13 +1263,14 @@ class ParametersView(UIView):
     def _draw_rule_controls(self) -> None:
         """Draw compact controls matching the tournament rules panel."""
 
-        self._native_text("Regras do torneio", 48, 545, PRIMARY_TEXT_COLOR, 22).draw()
+        # Centro do espaco livre entre a borda da caixa (576) e o campo de nome (508).
         self._native_text(
-            "Defina as configurações gerais da competição.",
+            "Regras do torneio",
             48,
-            525,
-            SECONDARY_TEXT_COLOR,
-            12,
+            542,
+            PRIMARY_TEXT_COLOR,
+            22,
+            anchor_y="center",
         ).draw()
         left, bottom, width, height = NAME_INPUT_BOUNDS
         self._draw_rounded_panel(
@@ -1313,13 +1315,13 @@ class ParametersView(UIView):
             width=seed_width - 20,
         ).draw()
         labels = (
-            ("Nome do torneio", 467),
-            ("Sistema de pontuação", 429),
+            ("Nome do torneio", 484),
+            ("Sistema de pontuação", 438),
             ("Total de etapas", 392),
-            ("Clima", 354),
-            ("Permitir repetição de pista", 315),
-            ("Critério de desempate", 277),
-            ("Semente · Ctrl+C/V", 239),
+            ("Clima", 346),
+            ("Permitir repetição de pista", 300),
+            ("Critério de desempate", 254),
+            ("Semente · Ctrl+C/V", 208),
         )
         for label, y in labels:
             self._native_text(
@@ -1400,9 +1402,10 @@ class ParametersView(UIView):
         self._native_text(
             "Ativado" if self.rules.allow_repeats else "Desativado",
             290,
-            315,
+            REPEATS_BOUNDS[1] + REPEATS_BOUNDS[3] / 2,
             SECONDARY_TEXT_COLOR,
             11,
+            anchor_y="center",
         ).draw()
 
     def _draw_preview(self) -> None:
@@ -1462,6 +1465,15 @@ class ParametersView(UIView):
         length = (
             f"{track['lap_length_m'] / 1000:.3f} km".replace(".", ",") if track else ""
         )
+        # Mesmo nivel do titulo de regras: centro do espaco entre a borda e o catalogo.
+        self._native_text(
+            "Scheduler de pistas",
+            608,
+            542,
+            PRIMARY_TEXT_COLOR,
+            22,
+            anchor_y="center",
+        ).draw()
         for label, x, y, color, size in (
             ("SIMULADOR DE CORRIDA", 72, 692, SECONDARY_TEXT_COLOR, 11),
             ("Configuração do torneio", 40, 620, PRIMARY_TEXT_COLOR, 31),
@@ -1472,31 +1484,9 @@ class ParametersView(UIView):
                 SECONDARY_TEXT_COLOR,
                 14,
             ),
-            ("Scheduler de pistas", 608, 545, PRIMARY_TEXT_COLOR, 22),
-            (
-                "Monte a sequência de pistas do torneio.",
-                608,
-                525,
-                SECONDARY_TEXT_COLOR,
-                12,
-            ),
             ("CATÁLOGO DE PISTAS", 622, 481, ACCENT_COLOR, 10),
             (name, 622, 448, PRIMARY_TEXT_COLOR, 18),
-            (
-                f"Extensão da pista: {length}" if track else "",
-                622,
-                428,
-                SECONDARY_TEXT_COLOR,
-                11,
-            ),
-            (
-                f"{self.configuration.laps} voltas configuradas",
-                622,
-                373,
-                SECONDARY_TEXT_COLOR,
-                10,
-            ),
-            ("Clique na prévia para configurar", 622, 354, SECONDARY_TEXT_COLOR, 9),
+            ("Clique na prévia para configurar", 622, 82, SECONDARY_TEXT_COLOR, 9),
             (
                 f"SEQUÊNCIA • {len(self._selected_track_ids)} pista(s)",
                 956,
@@ -1508,6 +1498,22 @@ class ParametersView(UIView):
             self._native_text(
                 label, x, y, color, size, width=310 if x == 622 else None
             ).draw()
+        # Extensao e voltas centralizadas, logo acima da previa.
+        info = (
+            f"Extensão: {length} · {self.configuration.laps} voltas"
+            if track
+            else f"{self.configuration.laps} voltas"
+        )
+        preview_left, _preview_bottom, preview_width, _preview_height = TRACK_PREVIEW_BOUNDS
+        self._native_text(
+            info,
+            preview_left + preview_width / 2,
+            336,
+            SECONDARY_TEXT_COLOR,
+            11,
+            width=310,
+            anchor_x="center",
+        ).draw()
         names = {item["circuit_id"]: item["name"] for item in self._tracks}
         for slot, bounds in enumerate(SEQUENCE_ROW_BOUNDS):
             index = self._sequence_scroll_index + slot
@@ -1554,16 +1560,6 @@ class ParametersView(UIView):
                 9,
             ).draw()
             self._draw_sequence_scrollbar()
-        self._draw_rounded_panel(1175, 681, 78, 29, 6, (26, 36, 48), PANEL_BORDER_COLOR)
-        self._native_text(
-            "Ajuda",
-            1214,
-            696,
-            SECONDARY_TEXT_COLOR,
-            10,
-            anchor_x="center",
-            anchor_y="center",
-        ).draw()
 
     def _draw_sequence_scrollbar(self) -> None:
         """Show the visible fraction of the sequence beside its fixed row slots."""
