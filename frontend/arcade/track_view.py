@@ -8,6 +8,7 @@ from threading import Thread
 
 import arcade
 
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.race_control_feed import RaceControlFeed
 from frontend.arcade.race_playback import RacePlayback, track_condition_label
 from frontend.arcade.theme import (
@@ -610,20 +611,20 @@ class TrackView(arcade.View):
     def _switch_rect(self):
         """(left, bottom, width, height) do botao 'Salvar corrida'."""
 
-        width, height = 150, 34
+        width, height = 170, 38
         return self.window.width - width - 20, 20, width, height
 
     def _end_rect(self):
         """(left, bottom, width, height) do botao 'Pular pro fim'."""
 
-        width, height = 150, 34
+        width, height = 170, 38
         switch_left = self.window.width - width - 20
         return switch_left - width - 10, 20, width, height
 
     def _next_rect(self):
         """(left, bottom, width, height) do botao de proxima etapa/resultado."""
 
-        width, height = 190, 34
+        width, height = 210, 38
         end_left = self._end_rect()[0]
         return end_left - width - 10, 20, width, height
 
@@ -1209,6 +1210,7 @@ class TrackView(arcade.View):
         else:
             color = _ROW_HOVER if hover else _SWITCH_BG
         arcade.draw_lbwh_rectangle_filled(left, bottom, width, height, color)
+        fit_button_text(text, width - 16, 13)
         text.x = left + width / 2
         text.y = bottom + height / 2
         text.draw()
