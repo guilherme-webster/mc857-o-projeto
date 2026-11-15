@@ -170,11 +170,15 @@ def fetch_catalog(base_url: str = BASE_URL) -> dict:
     return _get("/catalog", base_url)
 
 
-def fetch_history_races(season: int, base_url: str = BASE_URL) -> dict:
-    """Corridas historicas de uma temporada, para montar grids de largada."""
+def fetch_history_races(season: int | None = None, base_url: str = BASE_URL) -> dict:
+    """Corridas historicas para montar grids de largada.
 
+    Sem ``season``, devolve as corridas de todas as temporadas do historico.
+    """
+
+    query = "" if season is None else f"?season={int(season)}"
     try:
-        return _get(f"/api/history/races?season={int(season)}", base_url)
+        return _get(f"/api/history/races{query}", base_url)
     except urllib.error.HTTPError as error:
         raise BackendError(error.code, _error_detail(error)) from error
 

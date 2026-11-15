@@ -243,9 +243,13 @@ class GridSourcesTest(unittest.TestCase):
                 {"race_id": "race:1", "name": "A", "season": 2024, "round_number": 1},
             ]
         }
-        sources = grid_sources(payload, 2024)
-        self.assertEqual([s.mode for s in sources], ["random", "race", "race"])
-        self.assertEqual([s.race_id for s in sources[1:]], ["race:1", "race:2"])
+        sources = grid_sources(payload)
+        self.assertEqual([s.mode for s in sources], ["random", "race", "race", "race"])
+        # Cronologico: temporada 2023 antes de 2024; dentro de 2024, rodada 1 e 2.
+        self.assertEqual(
+            [s.race_id for s in sources[1:]], ["race:9", "race:1", "race:2"]
+        )
+        self.assertEqual([s.season for s in sources[1:]], [2023, 2024, 2024])
         self.assertEqual(
             sources[0].request(), {"mode": "random", "size": RANDOM_GRID_SIZE}
         )
@@ -253,10 +257,20 @@ class GridSourcesTest(unittest.TestCase):
             sources[0].request(105),
             {"mode": "random", "size": RANDOM_GRID_SIZE, "seed": 105},
         )
-        self.assertEqual(sources[1].request(), {"mode": "race", "race_id": "race:1"})
+        self.assertEqual(sources[1].request(), {"mode": "race", "race_id": "race:9"})
+
+    def test_races_after_the_last_one_with_results_are_hidden(self) -> None:
+        payload = {
+            "races": [
+                {"race_id": "race:1180", "name": "Dutch", "season": 2026, "round_number": 12},
+                {"race_id": "race:1181", "name": "Italian", "season": 2026, "round_number": 13},
+            ]
+        }
+        sources = grid_sources(payload)
+        self.assertEqual([s.race_id for s in sources[1:]], ["race:1180"])
 
     def test_without_history_only_random_is_offered(self) -> None:
-        self.assertEqual(len(grid_sources(None, 2024)), 1)
+        self.assertEqual(len(grid_sources(None)), 1)
 
 
 class GridSizeTest(unittest.TestCase):

@@ -343,20 +343,6 @@ class TournamentResultView(arcade.View):
             self._scroll_hint.draw()
             self._draw_scrollbar(header_y, visible, len(self._rows))
 
-    def _draw_scrollbar(self, header_y: float, visible: int, total: int) -> None:
-        """Trilho e cursor a direita da tabela; o cursor acompanha ``self._scroll``."""
-
-        track_x = self.window.width - 26
-        track_top = header_y - 30 + 12
-        track_bottom = 80
-        track_h = track_top - track_bottom
-        arcade.draw_lbwh_rectangle_filled(track_x, track_bottom, 4, track_h, _SCROLL_TRACK)
-        thumb_h = max(track_h * visible / total, 24)
-        thumb_top = track_top - (track_h - thumb_h) * self._scroll / (total - visible)
-        arcade.draw_lbwh_rectangle_filled(
-            track_x, thumb_top - thumb_h, 4, thumb_h, _HEADER_COLOR
-        )
-
         if self._save_status.text:
             self._save_status.draw()
         for key, rect in self._button_rects().items():
@@ -371,6 +357,20 @@ class TournamentResultView(arcade.View):
             fit_button_text(text, w - 12, 13)
             text.x, text.y = left + w / 2, bottom + h / 2
             text.draw()
+
+    def _draw_scrollbar(self, header_y: float, visible: int, total: int) -> None:
+        """Trilho e cursor a direita da tabela; o cursor acompanha ``self._scroll``."""
+
+        track_x = self.window.width - 26
+        track_top = header_y - 30 + 12
+        track_bottom = 80
+        track_h = track_top - track_bottom
+        arcade.draw_lbwh_rectangle_filled(track_x, track_bottom, 4, track_h, _SCROLL_TRACK)
+        thumb_h = max(track_h * visible / total, 24)
+        thumb_top = track_top - (track_h - thumb_h) * self._scroll / (total - visible)
+        arcade.draw_lbwh_rectangle_filled(
+            track_x, thumb_top - thumb_h, 4, thumb_h, _HEADER_COLOR
+        )
 
 
 def _inside(x: float, y: float, rect: tuple[int, int, int, int]) -> bool:

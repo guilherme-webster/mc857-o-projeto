@@ -21,6 +21,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 RANDOM_GRID_SIZE = 20
+# Ultima corrida com resultados no historico (Dutch Grand Prix 2026, rodada 12).
+# As seguintes do calendario de 2026 nao tem resultados e nao aparecem na tela.
+LAST_HISTORY_RACE_ID = "race:1180"
 # Mesmos limites do backend (``MIN_GRID_SIZE``/``MAX_GRID_SIZE`` em
 # ``backend/app/services/catalog.py``).
 MIN_GRID_SIZE = 1
@@ -107,6 +110,7 @@ class GridSource:
     label: str
     mode: str
     race_id: str | None = None
+    season: int | None = None
 
     def request(self, seed: int | None = None, size: int = RANDOM_GRID_SIZE) -> dict:
         """Argumentos de ``track_client.build_grid`` para esta opcao."""
@@ -119,25 +123,33 @@ class GridSource:
         return request
 
 
-def grid_sources(races_payload: dict | None, season: int) -> tuple[GridSource, ...]:
-    """Aleatorio primeiro; depois a largada de cada corrida da temporada.
+def grid_sources(races_payload: dict | None) -> tuple[GridSource, ...]:
+    """Aleatorio primeiro; depois a largada de cada corrida do historico.
 
-    A lista de corridas vem de ``/api/history/races``; sem ela (historico nao
-    construido) so o grid aleatorio e oferecido.
+    As corridas vem de ``/api/history/races`` (todas as temporadas) e saem em
+    ordem cronologica: temporada e, dentro dela, rodada. Sem a lista (historico
+    nao construido) so o grid aleatorio e oferecido.
     """
 
     sources = [GridSource("Aleatório (todo o histórico)", "random")]
     races = (races_payload or {}).get("races") or []
-    for race in sorted(races, key=lambda item: item.get("round_number", 0)):
-        if race.get("season") != season:
-            continue
+    ordered = sorted(
+        races,
+        key=lambda item: (item.get("season", 0), item.get("round_number", 0)),
+    )
+    for race in ordered:
+        season = int(race["season"])
         sources.append(
             GridSource(
-                f"Largada: {race['name']} {season}",
+                f"{race['name']} {season}",
                 "race",
                 str(race["race_id"]),
+                season,
             )
         )
+        if str(race["race_id"]) == LAST_HISTORY_RACE_ID:
+            # Corridas depois dela ainda nao tem resultados: fora da lista.
+            break
     return tuple(sources)
 
 

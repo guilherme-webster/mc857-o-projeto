@@ -44,16 +44,15 @@ from frontend.arcade.theme import (
     SUCCESS_COLOR,
 )
 
-SEASON = 2024
 ROW_HEIGHT = 26
 # Linha de origem do grid: altura do display e do botao "Montar grid", largura
 # do botao e espaco entre os dois.
 _SOURCE_ROW_H = 40
 _BUILD_BUTTON_W = 190
+_PICK_BUTTON_W = 150
 _SOURCE_GAP = 10
 # Botoes da barra inferior (Voltar, Remover piloto, Adicionar piloto).
 _ACTION_X = 40
-_ACTION_W = 190
 _ACTION_GAP = 16
 _HEADER_COLOR = (130, 140, 150)
 _SELECTED_BG = (40, 56, 74)
@@ -114,7 +113,7 @@ class GridView(arcade.View):
         self._client = client
         self._results: SimpleQueue[tuple[str, str, object]] = SimpleQueue()
         self._draft: GridDraft | None = None
-        self._sources: tuple[GridSource, ...] = grid_sources(None, SEASON)
+        self._sources: tuple[GridSource, ...] = grid_sources(None)
         self._source_index = 0
         self._selected: str | None = None
         self._busy = False
@@ -138,8 +137,15 @@ class GridView(arcade.View):
         self._size_error: str | None = None
         self._size_replace = True
         self._pending_seed: int | None = None
+        # Popup de escolha de temporada e corrida; None-like quando fechado.
+        self._popup_open = False
+        self._popup_season: int | None = None
+        self._popup_scroll = 0
+        # Ano digitado no popup (None = nao esta digitando) e o erro da ultima tentativa.
+        self._popup_year_text: str | None = None
+        self._popup_year_error: str | None = None
         self._run("load-grid", self._client.fetch_current_grid)
-        self._run("load-races", lambda: self._client.fetch_history_races(SEASON))
+        self._run("load-races", self._client.fetch_history_races)
 
     # -- comunicacao com o backend -------------------------------------------
 
@@ -179,7 +185,7 @@ class GridView(arcade.View):
                 self._open_picker(payload)
                 continue
             if kind == "load-races":
-                self._sources = grid_sources(payload, SEASON)
+                self._sources = grid_sources(payload)
                 continue
             if kind == "load-grid" and payload is None:
                 self._set_status(
@@ -402,6 +408,254 @@ class GridView(arcade.View):
                 f"Piloto movido para P{position}; salve para confirmar a ordem.",
                 SECONDARY_TEXT_COLOR,
             )
+
+    # -- popup de temporada e corrida ------------------------------------------
+
+    def _popup_seasons(self) -> list[int]:
+        """Temporadas com corridas no historico, em ordem crescente."""
+
+        return sorted(
+            {s.season for s in self._sources if s.mode == "race" and s.season is not None}
+        )
+
+    def _open_race_popup(self) -> None:
+        seasons = self._popup_seasons()
+        if not seasons:
+            self._set_status("Não há corridas do histórico para escolher.", ERROR_COLOR)
+            return
+        current = self._sources[self._source_index]
+        # Abre na temporada da corrida atual; se a atual for o aleatorio, na mais recente.
+        self._popup_season = current.season if current.season in seasons else seasons[-1]
+        self._popup_scroll = 0
+        self._popup_year_text = None
+        self._popup_year_error = None
+        self._popup_open = True
+
+    def _popup_layout(self) -> dict:
+        width, height = self.window.width, self.window.height
+        panel_w, panel_h = 640, 560
+        left, bottom = (width - panel_w) / 2, (height - panel_h) / 2
+        return {
+            "panel": (left, bottom, panel_w, panel_h),
+            "season_prev": (left + 30, bottom + panel_h - 70, 44, 36),
+            "season_next": (left + panel_w - 74, bottom + panel_h - 70, 44, 36),
+            # Campo central: clicar nele permite digitar o ano.
+            "year": (left + panel_w / 2 - 110, bottom + panel_h - 70, 220, 36),
+            "list_top": bottom + panel_h - 110,
+            "list_bottom": bottom + 70,
+            "row_h": 30,
+            "close": (left + panel_w - 170, bottom + 20, 150, 36),
+        }
+
+    def _popup_races(self) -> list[tuple[int, GridSource]]:
+        """(indice em ``_sources``, corrida) das corridas da temporada do popup."""
+
+        return [
+            (index, source)
+            for index, source in enumerate(self._sources)
+            if source.mode == "race" and source.season == self._popup_season
+        ]
+
+    def _popup_rows(self) -> list[tuple[int, GridSource, tuple]]:
+        layout = self._popup_layout()
+        left, _bottom, panel_w, _panel_h = layout["panel"]
+        races = self._popup_races()
+        count = max(1, int((layout["list_top"] - layout["list_bottom"]) // layout["row_h"]))
+        self._popup_scroll = max(0, min(self._popup_scroll, len(races) - count))
+        rows = []
+        visible = races[self._popup_scroll : self._popup_scroll + count]
+        for offset, (index, source) in enumerate(visible):
+            y = layout["list_top"] - (offset + 1) * layout["row_h"]
+            rows.append((index, source, (left + 20, y, panel_w - 40, layout["row_h"] - 2)))
+        return rows
+
+    def _popup_click(self, x: float, y: float) -> None:
+        layout = self._popup_layout()
+        if _inside(x, y, layout["close"]) or not _inside(x, y, layout["panel"]):
+            self._popup_open = False
+            return
+        if _inside(x, y, layout["year"]):
+            self._popup_year_text = ""
+            self._popup_year_error = None
+            return
+        seasons = self._popup_seasons()
+        position = seasons.index(self._popup_season)
+        if _inside(x, y, layout["season_prev"]) and position > 0:
+            self._popup_season = seasons[position - 1]
+            self._popup_scroll = 0
+            return
+        if _inside(x, y, layout["season_next"]) and position < len(seasons) - 1:
+            self._popup_season = seasons[position + 1]
+            self._popup_scroll = 0
+            return
+        for index, source, rect in self._popup_rows():
+            if _inside(x, y, rect):
+                self._source_index = index
+                self._popup_open = False
+                self._set_status(f"Corrida escolhida: {source.label}.", SUCCESS_COLOR)
+                return
+
+    def _popup_type(self, text: str) -> None:
+        """Digitos vao para o ano; o campo aceita no maximo 4."""
+
+        if not text.isdigit():
+            return
+        current = self._popup_year_text or ""
+        if len(current) < 4:
+            self._popup_year_text = current + text
+            self._popup_year_error = None
+
+    def _popup_apply_year(self) -> None:
+        """Enter: troca para a temporada digitada, se ela tiver corridas."""
+
+        text = (self._popup_year_text or "").strip()
+        if not text:
+            self._popup_year_text = None
+            return
+        seasons = self._popup_seasons()
+        year = int(text)
+        if year not in seasons:
+            self._popup_year_error = (
+                f"Não há corridas do histórico em {text}. "
+                f"Temporadas: {seasons[0]} a {seasons[-1]}."
+            )
+            return
+        self._popup_year_text = None
+        self._popup_year_error = None
+        self._popup_season = year
+        self._popup_scroll = 0
+
+    def _popup_key_press(self, symbol: int) -> None:
+        if symbol == arcade.key.ESCAPE:
+            if self._popup_year_text is not None:
+                self._popup_year_text = None
+                self._popup_year_error = None
+            else:
+                self._popup_open = False
+        elif symbol in (arcade.key.ENTER, arcade.key.NUM_ENTER):
+            if self._popup_year_text is not None:
+                self._popup_apply_year()
+        elif symbol == arcade.key.BACKSPACE and self._popup_year_text:
+            self._popup_year_text = self._popup_year_text[:-1]
+
+    def _draw_race_popup(self, width: int, height: int) -> None:
+        layout = self._popup_layout()
+        arcade.draw_lbwh_rectangle_filled(0, 0, width, height, (0, 0, 0, 170))
+        left, bottom, panel_w, panel_h = layout["panel"]
+        arcade.draw_lbwh_rectangle_filled(left, bottom, panel_w, panel_h, PANEL_COLOR)
+        arcade.draw_lbwh_rectangle_outline(
+            left, bottom, panel_w, panel_h, PANEL_BORDER_COLOR, 1
+        )
+        self._text(
+            "pop:title",
+            "Escolher corrida",
+            left + 30,
+            bottom + panel_h - 30,
+            PRIMARY_TEXT_COLOR,
+            16,
+            bold=True,
+        ).draw()
+        seasons = self._popup_seasons()
+        position = seasons.index(self._popup_season)
+        for key, symbol, enabled in (
+            ("season_prev", "‹", position > 0),
+            ("season_next", "›", position < len(seasons) - 1),
+        ):
+            b_left, b_bottom, b_w, b_h = layout[key]
+            arcade.draw_lbwh_rectangle_filled(
+                b_left, b_bottom, b_w, b_h, _BUTTON_BG if enabled else (30, 36, 46)
+            )
+            self._text(
+                f"pop:{key}",
+                symbol,
+                b_left + b_w / 2,
+                b_bottom + b_h / 2,
+                PRIMARY_TEXT_COLOR if enabled else _HEADER_COLOR,
+                15,
+                anchor_x="center",
+                anchor_y="center",
+            ).draw()
+        y_left, y_bottom, y_w, y_h = layout["year"]
+        typing = self._popup_year_text is not None
+        arcade.draw_lbwh_rectangle_filled(y_left, y_bottom, y_w, y_h, _BUTTON_BG)
+        arcade.draw_lbwh_rectangle_outline(
+            y_left,
+            y_bottom,
+            y_w,
+            y_h,
+            _PRIMARY_BG if typing else PANEL_BORDER_COLOR,
+            2 if typing else 1,
+        )
+        year_label = (
+            f"Temporada {self._popup_year_text}|" if typing
+            else f"Temporada {self._popup_season}"
+        )
+        self._text(
+            "pop:season",
+            year_label,
+            y_left + y_w / 2,
+            y_bottom + y_h / 2,
+            PRIMARY_TEXT_COLOR,
+            14,
+            bold=True,
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+        hint, hint_color = (
+            (self._popup_year_error, ERROR_COLOR)
+            if self._popup_year_error
+            else (
+                "Digite o ano e tecle Enter, ou use ‹ ›.",
+                _HEADER_COLOR,
+            )
+        )
+        self._text(
+            "pop:hint",
+            hint,
+            left + 30,
+            layout["list_top"] + 8,
+            hint_color,
+            10,
+            width=panel_w - 60,
+        ).draw()
+        rows = self._popup_rows()
+        if not rows:
+            self._text(
+                "pop:empty",
+                "Nenhuma corrida nesta temporada.",
+                left + 20,
+                layout["list_top"] - 20,
+                SECONDARY_TEXT_COLOR,
+                11,
+            ).draw()
+        for index, source, (r_left, r_bottom, r_w, r_h) in rows:
+            current = index == self._source_index
+            arcade.draw_lbwh_rectangle_filled(
+                r_left, r_bottom, r_w, r_h, _SELECTED_BG if current else (30, 42, 56)
+            )
+            label_text = self._text(
+                f"pop:row:{index}",
+                source.label,
+                r_left + 10,
+                r_bottom + r_h / 2,
+                PRIMARY_TEXT_COLOR,
+                11,
+                anchor_y="center",
+            )
+            fit_button_text(label_text, r_w - 20, 11)
+            label_text.draw()
+        c_left, c_bottom, c_w, c_h = layout["close"]
+        arcade.draw_lbwh_rectangle_filled(c_left, c_bottom, c_w, c_h, _BUTTON_BG)
+        self._text(
+            "pop:close",
+            "Fechar",
+            c_left + c_w / 2,
+            c_bottom + c_h / 2,
+            PRIMARY_TEXT_COLOR,
+            13,
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
 
     # -- elenco: adicionar e remover pilotos ----------------------------------
 
@@ -638,19 +892,29 @@ class GridView(arcade.View):
             "prev-source": (display_left + 4, top + 3, 34, 34),
             "next-source": (display_left + display_w - 38, top + 3, 34, 34),
             "build": (build_left, top, _BUILD_BUTTON_W, _SOURCE_ROW_H),
-            "back": (_ACTION_X, 20, _ACTION_W, 36),
+
             "save": (width - 230, 20, 190, 36),
             "discard": (self._panel_left(), 20, 190, 36),
         }
         left = self._panel_left()
         # Setas na primeira linha da caixa, com o centro vertical do nome do piloto.
+        # "Escolher corrida" logo a direita do display (entre o display e o build).
+        rects["pick-race"] = (
+            display_left + display_w + _SOURCE_GAP,
+            top,
+            _PICK_BUTTON_W,
+            _SOURCE_ROW_H,
+        )
         rects["move-up"] = (left + _ARROW_UP_X, height - 228, 34, 30)
         rects["move-down"] = (left + _ARROW_DOWN_X, height - 228, 34, 30)
         # Elenco na barra inferior, entre "Voltar" e "Salvar alteracoes".
         # Voltar, Remover e Adicionar: mesma largura de botao e mesmo espaco.
-        remove_x = _ACTION_X + _ACTION_W + _ACTION_GAP
-        rects["remove"] = (remove_x, 20, _ACTION_W, 36)
-        rects["add"] = (remove_x + _ACTION_W + _ACTION_GAP, 20, _ACTION_W, 36)
+        # Voltar, Remover e Adicionar dividem a largura do grid, com o mesmo espaco.
+        action_w = (self._grid_right() - _ACTION_X - 2 * _ACTION_GAP) / 3
+        rects["back"] = (_ACTION_X, 20, action_w, 36)
+        remove_x = _ACTION_X + action_w + _ACTION_GAP
+        rects["remove"] = (remove_x, 20, action_w, 36)
+        rects["add"] = (remove_x + action_w + _ACTION_GAP, 20, action_w, 36)
         bottom, top = self._panel_region()
         for i, spec in enumerate(ATTRIBUTES):
             y = self._attribute_y(i)
@@ -727,6 +991,10 @@ class GridView(arcade.View):
             if _inside(x, y, layout["panel"]):
                 self._picker.scroll = max(0, self._picker.scroll - int(scroll_y))
             return
+        if self._popup_open:
+            if _inside(x, y, self._popup_layout()["panel"]):
+                self._popup_scroll = max(0, self._popup_scroll - int(scroll_y))
+            return
         if self._draft is None:
             return
         bottom, top = self._panel_region()
@@ -748,6 +1016,10 @@ class GridView(arcade.View):
         if self._size_text is not None:
             if button == arcade.MOUSE_BUTTON_LEFT:
                 self._size_click(x, y)
+            return
+        if self._popup_open:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self._popup_click(x, y)
             return
         self._editing_grid_seed = (
             button == arcade.MOUSE_BUTTON_LEFT
@@ -772,6 +1044,8 @@ class GridView(arcade.View):
             self.save_changes()
         elif key == "discard":
             self.discard_changes()
+        elif key == "pick-race":
+            self._open_race_popup()
         elif key == "add":
             self._request_picker()
         elif key == "remove":
@@ -798,6 +1072,9 @@ class GridView(arcade.View):
             return
         if self._size_text is not None:
             self._size_key(symbol)
+            return
+        if self._popup_open:
+            self._popup_key_press(symbol)
             return
         if self._editing_grid_seed:
             pasted = handle_clipboard_shortcut(
@@ -832,6 +1109,9 @@ class GridView(arcade.View):
             return
         if self._size_text is not None:
             self._size_type(text)
+            return
+        if self._popup_open:
+            self._popup_type(text)
             return
         if self._editing_grid_seed and text.isprintable():
             self._grid_seed_text += text
@@ -884,6 +1164,8 @@ class GridView(arcade.View):
             self._draw_picker(width, height)
         if self._size_text is not None:
             self._draw_size_dialog(width, height)
+        if self._popup_open:
+            self._draw_race_popup(width, height)
 
     def _draw_source_selector(self, height: int) -> None:
         top = height - 150
@@ -914,25 +1196,10 @@ class GridView(arcade.View):
             display_left + display_w - 46,
             top + _SOURCE_ROW_H / 2,
             _HEADER_COLOR,
-            11,
+            9,
             anchor_x="right",
             anchor_y="center",
         ).draw()
-
-    def _grid_right(self) -> int:
-        """Borda direita do grid: a da linha selecionada (ver ``_row_at``)."""
-
-        return self._panel_left() - 24
-
-    def _source_display_bounds(self) -> tuple[int, int]:
-        """(esquerda, largura) do display da corrida.
-
-        Display, espaco e botao "Montar grid" somam a largura do grid, da borda
-        esquerda da tabela (x=40) ate ``_grid_right``.
-        """
-
-        grid_w = self._grid_right() - 40
-        return 40, grid_w - _SOURCE_GAP - _BUILD_BUTTON_W
         if self._sources[self._source_index].mode == "random":
             left, bottom, width, field_height = self._seed_bounds()
             arcade.draw_lbwh_rectangle_filled(
@@ -963,6 +1230,21 @@ class GridView(arcade.View):
                 11,
                 anchor_y="center",
             ).draw()
+
+    def _grid_right(self) -> int:
+        """Borda direita do grid: a da linha selecionada (ver ``_row_at``)."""
+
+        return self._panel_left() - 24
+
+    def _source_display_bounds(self) -> tuple[int, int]:
+        """(esquerda, largura) do display da corrida.
+
+        Display, espaco e botao "Montar grid" somam a largura do grid, da borda
+        esquerda da tabela (x=40) ate ``_grid_right``.
+        """
+
+        grid_w = self._grid_right() - 40
+        return 40, grid_w - 2 * _SOURCE_GAP - _PICK_BUTTON_W - _BUILD_BUTTON_W
 
     def _seed_bounds(self) -> tuple[float, float, float, float]:
         # Mesma margem esquerda e largura da caixa de atributos (400 px).
@@ -1234,6 +1516,7 @@ class GridView(arcade.View):
             "move-down": "↓",
             "add": "Adicionar piloto",
             "remove": "Remover piloto",
+            "pick-race": "Escolher corrida",
         }
         for key, rect in self._buttons().items():
             if self._draft is None and key.startswith(

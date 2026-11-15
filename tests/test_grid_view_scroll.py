@@ -26,7 +26,7 @@ class _FakeClient:
     def fetch_current_grid(self):
         return None
 
-    def fetch_history_races(self, season):
+    def fetch_history_races(self, season=None):
         return {"races": []}
 
 
