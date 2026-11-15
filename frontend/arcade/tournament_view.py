@@ -41,6 +41,10 @@ _PRIMARY_HOVER = (225, 45, 60)
 # Acima disso as colunas por etapa nao cabem; a tabela mostra as ultimas.
 MAX_STAGE_COLUMNS = 12
 ROW_HEIGHT = 24
+# Pilotos visiveis de uma vez; o restante aparece rolando a tabela.
+MAX_VISIBLE_ROWS = 20
+# Trilho da barra de rolagem da tabela (o cursor usa _HEADER_COLOR).
+_SCROLL_TRACK = (33, 42, 53)
 
 
 class TournamentResultView(arcade.View):
@@ -63,6 +67,9 @@ class TournamentResultView(arcade.View):
         self._saveable = saveable
         self._saving = False
         self._save_status = arcade.Text("", 40, 70, SECONDARY_TEXT_COLOR, 12)
+        # Primeiro piloto visivel da tabela e dica com o intervalo mostrado.
+        self._scroll = 0
+        self._scroll_hint = arcade.Text("", 40, 48, SECONDARY_TEXT_COLOR, 10)
         self._return_view = return_view
         self._rows: list[StandingLine] = []
         self._names = tournament.driver_names()
@@ -145,12 +152,12 @@ class TournamentResultView(arcade.View):
             columns.append((f"E{stage}", stage_x, "right"))
             stage_x += 46
 
+        # Cabecalho com indice -1; celulas de piloto guardam o indice da linha.
         cells = [
-            (arcade.Text(label, x, 0, _HEADER_COLOR, 10, bold=True, anchor_x=anchor), 0)
+            (arcade.Text(label, x, 0, _HEADER_COLOR, 10, bold=True, anchor_x=anchor), -1)
             for label, x, anchor in columns
         ]
         for i, row in enumerate(self._rows):
-            offset = 30 + i * ROW_HEIGHT
             color = {1: _GOLD, 2: _SILVER, 3: _BRONZE}.get(
                 row.position, PRIMARY_TEXT_COLOR
             )
@@ -184,8 +191,24 @@ class TournamentResultView(arcade.View):
                 text = arcade.Text(
                     value, x, 0, cell_color, 13, bold=bold, anchor_x=anchor
                 )
-                cells.append((text, offset))
+                cells.append((text, i))
         return cells
+
+    def _visible_rows(self) -> int:
+        """Linhas de piloto que cabem abaixo do cabecalho, ate ``MAX_VISIBLE_ROWS``."""
+
+        # A primeira linha fica 30 px abaixo do cabecalho (height-130); a ultima
+        # precisa ficar acima da margem de 80 px.
+        fits = int((self.window.height - 130 - 30 - 80) // ROW_HEIGHT) + 1
+        return max(1, min(MAX_VISIBLE_ROWS, fits))
+
+    def _max_scroll(self) -> int:
+        return max(0, len(self._rows) - self._visible_rows())
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
+        """A roda do mouse rola a tabela uma linha por passo."""
+
+        self._scroll = min(max(self._scroll - int(scroll_y), 0), self._max_scroll())
 
     def on_show_view(self) -> None:
         arcade.set_background_color(BACKGROUND_COLOR)
@@ -299,13 +322,40 @@ class TournamentResultView(arcade.View):
         if not self._cells:
             self._message.y = header_y
             self._message.draw()
-        for text, offset in self._cells:
-            y = header_y - offset
-            if y < 80:
-                # Janela baixa demais: as ultimas linhas ficam de fora.
+        visible = self._visible_rows()
+        self._scroll = min(self._scroll, self._max_scroll())
+        for text, row in self._cells:
+            if row < 0:
+                y = header_y
+            elif self._scroll <= row < self._scroll + visible:
+                y = header_y - (30 + (row - self._scroll) * ROW_HEIGHT)
+            else:
+                # Fora da janela de rolagem: nao desenha.
                 continue
             text.y = y
             text.draw()
+        if len(self._rows) > visible:
+            first = self._scroll + 1
+            last = min(len(self._rows), self._scroll + visible)
+            self._scroll_hint.text = (
+                f"Pilotos {first}–{last} de {len(self._rows)} · role a tabela para ver os demais"
+            )
+            self._scroll_hint.draw()
+            self._draw_scrollbar(header_y, visible, len(self._rows))
+
+    def _draw_scrollbar(self, header_y: float, visible: int, total: int) -> None:
+        """Trilho e cursor a direita da tabela; o cursor acompanha ``self._scroll``."""
+
+        track_x = self.window.width - 26
+        track_top = header_y - 30 + 12
+        track_bottom = 80
+        track_h = track_top - track_bottom
+        arcade.draw_lbwh_rectangle_filled(track_x, track_bottom, 4, track_h, _SCROLL_TRACK)
+        thumb_h = max(track_h * visible / total, 24)
+        thumb_top = track_top - (track_h - thumb_h) * self._scroll / (total - visible)
+        arcade.draw_lbwh_rectangle_filled(
+            track_x, thumb_top - thumb_h, 4, thumb_h, _HEADER_COLOR
+        )
 
         if self._save_status.text:
             self._save_status.draw()
