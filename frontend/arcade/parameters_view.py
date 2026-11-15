@@ -1406,7 +1406,7 @@ class ParametersView(UIView):
             ("Clima padrão", 346),
             ("Permitir repetição de pista", 300),
             ("Critério de desempate", 254),
-            ("Semente · Ctrl+C/V", 208),
+            ("Semente", 208),
         )
         for label, y in labels:
             self._native_text(

@@ -1,7 +1,7 @@
 """Tela de carregamento enquanto o backend simula as etapas do plano.
 
 A esquerda mostra o grid de largada, a direita a etapa em foco (voltas, sessao,
-largada, motor e clima por volta) com setas para as demais etapas, e embaixo o
+motor e clima por volta) com setas para as demais etapas, e embaixo o
 status da simulacao com o botao de abortar. A simulacao roda numa thread; a
 tela so le a fila de resultados em ``on_update``, na thread do Arcade.
 """
@@ -372,16 +372,17 @@ class SimulationLoadingView(arcade.View):
             11,
         ).draw()
 
-    def _panel(self, rect, title: str, key: str) -> None:
+    def _panel(self, rect, title: str, key: str, fill=None) -> None:
         left, bottom, w, h = rect
-        _rounded(left, bottom, w, h, PANEL_COLOR, PANEL_BORDER_COLOR, radius=8)
+        _rounded(left, bottom, w, h, PANEL_COLOR if fill is None else fill, PANEL_BORDER_COLOR, radius=8)
         self._text(
             key, title, left + 20, bottom + h - 30, _HEADER_COLOR, 11, bold=True
         ).draw()
 
     def _draw_grid(self, rect) -> None:
         left, bottom, _w, _h = rect
-        self._panel(rect, "GRID DE LARGADA", "grid-title")
+        # Teste visual: fundo preto na caixa do grid, para ver se o contraste melhora.
+        self._panel(rect, "GRID DE LARGADA", "grid-title", fill=(0, 0, 0))
         top = bottom + rect[3] - 60
         if not self._grid_loaded:
             message = "Carregando o grid…"
@@ -404,16 +405,16 @@ class SimulationLoadingView(arcade.View):
                 str(entry.get("driver_name", ""))[:24],
                 left + 60,
                 y,
-                PRIMARY_TEXT_COLOR,
-                10,
+                (255, 255, 255),
+                12,
             ).draw()
             self._text(
                 f"grid-t:{index}",
                 str(entry.get("team_name", ""))[:22],
                 left + 300,
                 y,
-                SECONDARY_TEXT_COLOR,
-                9,
+                (255, 255, 255),
+                10,
             ).draw()
         self._draw_grid_scrollbar(rect, top, visible)
 
@@ -448,7 +449,6 @@ class SimulationLoadingView(arcade.View):
             (race.name, 18, True),
             (f"{laps} voltas", 13, False),
             (f"Voltas {first}–{last}", 12, False),
-            (f"Largada: {session.start_mode if session else 'Parada'}", 12, False),
         )
         for index, (text, size, bold) in enumerate(lines):
             self._text(
@@ -460,8 +460,9 @@ class SimulationLoadingView(arcade.View):
                 size,
                 bold=bold,
             ).draw()
-        # Abaixo do resumo: prévia da pista a esquerda e clima a direita.
-        body_top = top - 140
+        # Abaixo do resumo (3 linhas, a ultima na base top-56): prévia da pista a
+        # esquerda e clima a direita. Sem a linha "Largada", a prévia sobe.
+        body_top = top - 96
         body_bottom = bottom + 20
         column_w = min(220, (w - 40) // 2)
         column_left = left + w - 20 - column_w
