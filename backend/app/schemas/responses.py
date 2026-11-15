@@ -89,17 +89,29 @@ class AttributeOverride(BaseModel):
 
 
 class EditGridAttributesRequest(BaseModel):
-    """Edicoes atomicas dos atributos e/ou da ordem do grid atual."""
+    """Edicoes atomicas do grid atual: elenco, ordem e atributos.
+
+    ``remove`` recebe ``driver_id``; ``add`` recebe ``pair_id`` (``piloto@equipe``),
+    porque a mesma pessoa pode aparecer com mais de uma equipe no historico.
+    Quem entra vai ao fim do grid. Se ``order`` vier junto, deve ser a
+    permutacao do elenco resultante. Tudo e validado antes da gravacao.
+    """
 
     overrides: list[AttributeOverride] | None = Field(
         default=None, min_length=1, max_length=40
     )
     order: list[str] | None = Field(default=None, min_length=1, max_length=40)
+    add: list[str] | None = Field(default=None, min_length=1, max_length=40)
+    remove: list[str] | None = Field(default=None, min_length=1, max_length=40)
 
     @model_validator(mode="after")
     def _require_change(self) -> EditGridAttributesRequest:
-        if self.overrides is None and self.order is None:
-            raise ValueError("at least one of overrides or order is required")
+        if all(
+            value is None for value in (self.overrides, self.order, self.add, self.remove)
+        ):
+            raise ValueError(
+                "at least one of overrides, order, add or remove is required"
+            )
         if self.overrides is not None:
             ids = [item.driver_id for item in self.overrides]
             if len(ids) != len(set(ids)):

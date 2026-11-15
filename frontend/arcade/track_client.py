@@ -135,15 +135,33 @@ def edit_grid(
     base_url: str = BASE_URL,
     *,
     order: list[str] | None = None,
+    add: list[str] | None = None,
+    remove: list[str] | None = None,
 ) -> dict:
-    """Edite atributos e/ou a ordem do grid atual em um unico ``PATCH``."""
+    """Edite elenco, ordem e atributos do grid atual em um unico ``PATCH``.
+
+    ``add`` recebe pares ``piloto@equipe``; ``remove`` recebe ``driver_id``.
+    """
 
     payload = {}
     if overrides is not None:
         payload["overrides"] = overrides
     if order is not None:
         payload["order"] = order
+    if add is not None:
+        payload["add"] = add
+    if remove is not None:
+        payload["remove"] = remove
     return _post("/catalog/grid", payload, base_url, method="PATCH")
+
+
+def fetch_catalog(base_url: str = BASE_URL) -> dict:
+    """Pares piloto-equipe disponiveis no historico (``GET /catalog``).
+
+    Um piloto que trocou de equipe aparece mais de uma vez.
+    """
+
+    return _get("/catalog", base_url)
 
 
 def fetch_history_races(season: int, base_url: str = BASE_URL) -> dict:

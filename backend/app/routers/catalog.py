@@ -121,6 +121,8 @@ def edit_grid_attributes(request: EditGridAttributesRequest) -> BuildGridRespons
     pairs, attributes, seed = catalog.edit_current_grid(
         overrides=request.overrides,
         order=request.order,
+        add=request.add,
+        remove=request.remove,
     )
     return _grid_response(pairs, attributes, seed)
 

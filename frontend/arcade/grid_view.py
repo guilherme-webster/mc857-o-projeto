@@ -23,12 +23,17 @@ from frontend.arcade.configuration_state import (
 from frontend.arcade.grid_editor import (
     ARCHETYPE_LABELS,
     ATTRIBUTES,
+    MAX_GRID_SIZE,
+    MIN_GRID_SIZE,
+    RANDOM_GRID_SIZE,
     SOURCE_LABELS,
     GridDraft,
     GridSource,
     format_value,
     grid_sources,
+    parse_grid_size,
 )
+from frontend.arcade.grid_picker import PairPicker, pair_id
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
     ERROR_COLOR,
@@ -41,6 +46,15 @@ from frontend.arcade.theme import (
 
 SEASON = 2024
 ROW_HEIGHT = 26
+# Linha de origem do grid: altura do display e do botao "Montar grid", largura
+# do botao e espaco entre os dois.
+_SOURCE_ROW_H = 40
+_BUILD_BUTTON_W = 190
+_SOURCE_GAP = 10
+# Botoes da barra inferior (Voltar, Remover piloto, Adicionar piloto).
+_ACTION_X = 40
+_ACTION_W = 190
+_ACTION_GAP = 16
 _HEADER_COLOR = (130, 140, 150)
 _SELECTED_BG = (40, 56, 74)
 _BUTTON_BG = (46, 62, 80)
@@ -117,6 +131,13 @@ class GridView(arcade.View):
         # trocar de piloto a caixa volta ao topo.
         self._panel_scroll = 0
         self._panel_owner: str | None = None
+        # Seletor de pilotos aberto (overlay modal); None quando fechado.
+        self._picker: PairPicker | None = None
+        # Janela de numero de pilotos do grid aleatorio; None quando fechada.
+        self._size_text: str | None = None
+        self._size_error: str | None = None
+        self._size_replace = True
+        self._pending_seed: int | None = None
         self._run("load-grid", self._client.fetch_current_grid)
         self._run("load-races", lambda: self._client.fetch_history_races(SEASON))
 
@@ -153,6 +174,9 @@ class GridView(arcade.View):
                     # Sem historico, o grid aleatorio continua disponivel.
                     continue
                 self._set_status(f"Não foi possível concluir: {payload}", ERROR_COLOR)
+                continue
+            if kind == "load-catalog":
+                self._open_picker(payload)
                 continue
             if kind == "load-races":
                 self._sources = grid_sources(payload, SEASON)
@@ -208,12 +232,140 @@ class GridView(arcade.View):
         except ConfigurationFormError as error:
             self._set_status(str(error), ERROR_COLOR)
             return
-        request = source.request(seed)
+        if source.mode == "random":
+            # O numero de pilotos e pedido antes de montar.
+            self._pending_seed = seed
+            self._size_text = str(RANDOM_GRID_SIZE)
+            self._size_replace = True
+            self._size_error = None
+            self._set_status(
+                "Escolha o número de pilotos do grid.", SECONDARY_TEXT_COLOR
+            )
+            return
+        self._start_build(source, None, None)
+
+    def _start_build(self, source: GridSource, seed: int | None, size: int | None) -> None:
+        request = source.request(seed, size if size is not None else RANDOM_GRID_SIZE)
         self._start(
             "build",
             lambda: self._client.build_grid(**request),
             f"Montando: {source.label}…",
         )
+
+    # -- janela do numero de pilotos ------------------------------------------
+
+    def _confirm_size(self) -> None:
+        try:
+            size = parse_grid_size(self._size_text or "")
+        except ValueError as error:
+            self._size_error = str(error)
+            return
+        seed = self._pending_seed
+        self._size_text = None
+        self._size_error = None
+        self._start_build(self._sources[self._source_index], seed, size)
+
+    def _cancel_size(self) -> None:
+        self._size_text = None
+        self._size_error = None
+        self._set_status("Montagem cancelada.", SECONDARY_TEXT_COLOR)
+
+    def _size_layout(self) -> dict:
+        width, height = self.window.width, self.window.height
+        panel_w, panel_h = 460, 250
+        left, bottom = (width - panel_w) / 2, (height - panel_h) / 2
+        return {
+            "panel": (left, bottom, panel_w, panel_h),
+            "field": (left + 30, bottom + 100, panel_w - 60, 44),
+            "cancel": (left + 30, bottom + 24, 170, 40),
+            "confirm": (left + panel_w - 30 - 190, bottom + 24, 190, 40),
+        }
+
+    def _size_click(self, x: float, y: float) -> None:
+        layout = self._size_layout()
+        if _inside(x, y, layout["cancel"]) or not _inside(x, y, layout["panel"]):
+            self._cancel_size()
+        elif _inside(x, y, layout["confirm"]):
+            self._confirm_size()
+
+    def _size_key(self, symbol: int) -> None:
+        if symbol == arcade.key.ESCAPE:
+            self._cancel_size()
+        elif symbol in (arcade.key.ENTER, arcade.key.NUM_ENTER):
+            self._confirm_size()
+        elif symbol == arcade.key.BACKSPACE:
+            self._size_text = (self._size_text or "")[:-1]
+            self._size_replace = False
+
+    def _size_type(self, text: str) -> None:
+        if not text.isdigit():
+            return
+        current = "" if self._size_replace else (self._size_text or "")
+        if len(current) < 2:
+            self._size_text = current + text
+        self._size_replace = False
+
+    def _draw_size_dialog(self, width: int, height: int) -> None:
+        layout = self._size_layout()
+        arcade.draw_lbwh_rectangle_filled(0, 0, width, height, (0, 0, 0, 170))
+        left, bottom, panel_w, panel_h = layout["panel"]
+        arcade.draw_lbwh_rectangle_filled(left, bottom, panel_w, panel_h, PANEL_COLOR)
+        arcade.draw_lbwh_rectangle_outline(
+            left, bottom, panel_w, panel_h, PANEL_BORDER_COLOR, 1
+        )
+        self._text(
+            "sz:title",
+            "Número de pilotos",
+            left + 30,
+            bottom + panel_h - 40,
+            PRIMARY_TEXT_COLOR,
+            16,
+            bold=True,
+        ).draw()
+        self._text(
+            "sz:hint",
+            self._size_error or f"Digite de {MIN_GRID_SIZE} a {MAX_GRID_SIZE} pilotos.",
+            left + 30,
+            bottom + panel_h - 72,
+            ERROR_COLOR if self._size_error else SECONDARY_TEXT_COLOR,
+            11,
+        ).draw()
+        f_left, f_bottom, f_w, f_h = layout["field"]
+        arcade.draw_lbwh_rectangle_filled(f_left, f_bottom, f_w, f_h, _BUTTON_BG)
+        arcade.draw_lbwh_rectangle_outline(
+            f_left, f_bottom, f_w, f_h, _PRIMARY_BG, 2
+        )
+        shown = self._size_text or ""
+        self._text(
+            "sz:value",
+            shown + "|",
+            f_left + f_w / 2,
+            f_bottom + f_h / 2,
+            PRIMARY_TEXT_COLOR,
+            18,
+            bold=True,
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+        for key, text, primary in (
+            ("cancel", "Cancelar", False),
+            ("confirm", "Montar grid", True),
+        ):
+            b_left, b_bottom, b_w, b_h = layout[key]
+            arcade.draw_lbwh_rectangle_filled(
+                b_left, b_bottom, b_w, b_h, _PRIMARY_BG if primary else _BUTTON_BG
+            )
+            self._text(
+                f"sz:btn:{key}",
+                text,
+                b_left + b_w / 2,
+                b_bottom + b_h / 2,
+                PRIMARY_TEXT_COLOR,
+                13,
+                bold=primary,
+                anchor_x="center",
+                anchor_y="center",
+            ).draw()
 
     def save_changes(self) -> None:
         if self._draft is None or not self._draft.has_changes:
@@ -251,6 +403,222 @@ class GridView(arcade.View):
                 SECONDARY_TEXT_COLOR,
             )
 
+    # -- elenco: adicionar e remover pilotos ----------------------------------
+
+    def _remove_selected(self) -> None:
+        if self._draft is None or self._selected is None:
+            return
+        ids = [entry["driver_id"] for entry in self._draft.entries]
+        index = ids.index(self._selected)
+        name = self._draft.entries[index]["driver_name"]
+        error = self._draft.remove_driver(self._selected)
+        if error is not None:
+            self._set_status(f"Não foi possível remover: {error}", ERROR_COLOR)
+            return
+        remaining = [entry["driver_id"] for entry in self._draft.entries]
+        # O selecionado passa a ser o piloto que ocupava a mesma posicao.
+        self._selected = remaining[min(index, len(remaining) - 1)] if remaining else None
+        self._ensure_selected_visible()
+        self._set_status(
+            f"{name} removido do grid; salve para confirmar.", SECONDARY_TEXT_COLOR
+        )
+
+    def _request_picker(self) -> None:
+        if self._draft is None:
+            self._set_status(
+                "Monte ou carregue um grid antes de adicionar pilotos.", ERROR_COLOR
+            )
+            return
+        if len(self._draft.entries) >= MAX_GRID_SIZE:
+            self._set_status(f"O grid já tem {MAX_GRID_SIZE} pilotos.", ERROR_COLOR)
+            return
+        self._set_status("Carregando os pilotos do histórico…", SECONDARY_TEXT_COLOR)
+        self._run("load-catalog", self._client.fetch_catalog)
+
+    def _open_picker(self, payload: dict) -> None:
+        if self._draft is None:
+            return
+        self._picker = PairPicker(
+            entries=tuple(payload.get("entries") or ()),
+            in_grid=frozenset(entry["driver_id"] for entry in self._draft.entries),
+            room=MAX_GRID_SIZE - len(self._draft.entries),
+        )
+        self._set_status(
+            "Escolha os pilotos e clique em Adicionar.", SECONDARY_TEXT_COLOR
+        )
+
+    def _close_picker(self, message: str) -> None:
+        self._picker = None
+        self._set_status(message, SECONDARY_TEXT_COLOR)
+
+    def _confirm_picker(self) -> None:
+        if self._picker is None or self._draft is None:
+            return
+        chosen = self._picker.selected_entries()
+        self._picker = None
+        if not chosen:
+            self._set_status("Nenhum piloto escolhido.", SECONDARY_TEXT_COLOR)
+            return
+        added = 0
+        errors = []
+        for entry in chosen:
+            error = self._draft.add_pair(entry)
+            if error is None:
+                added += 1
+            else:
+                errors.append(error)
+        if errors:
+            self._set_status(
+                f"{added} adicionado(s); {errors[0]}", ERROR_COLOR
+            )
+        else:
+            self._set_status(
+                f"{added} piloto(s) adicionado(s) ao fim do grid; salve para confirmar.",
+                SUCCESS_COLOR,
+            )
+
+    def _picker_layout(self) -> dict:
+        width, height = self.window.width, self.window.height
+        left, bottom, panel_w, panel_h = 340, 120, width - 680, height - 240
+        return {
+            "panel": (left, bottom, panel_w, panel_h),
+            "search": (left + 20, bottom + panel_h - 70, panel_w - 40, 34),
+            "list_top": bottom + panel_h - 92,
+            "list_bottom": bottom + 74,
+            "row_h": 28,
+            "cancel": (left + 20, bottom + 20, 150, 36),
+            "confirm": (left + panel_w - 220, bottom + 20, 200, 36),
+        }
+
+    def _picker_rows(self) -> list[tuple[dict, tuple]]:
+        """Linhas visiveis do seletor, com a rolagem limitada ao fim da lista."""
+
+        layout = self._picker_layout()
+        picker = self._picker
+        left, _bottom, panel_w, _panel_h = layout["panel"]
+        visible = picker.visible()
+        count = max(1, int((layout["list_top"] - layout["list_bottom"]) // layout["row_h"]))
+        picker.scroll = max(0, min(picker.scroll, len(visible) - count))
+        rows = []
+        for offset, entry in enumerate(visible[picker.scroll : picker.scroll + count]):
+            y = layout["list_top"] - (offset + 1) * layout["row_h"]
+            rows.append((entry, (left + 20, y, panel_w - 40, layout["row_h"] - 2)))
+        return rows
+
+    def _picker_click(self, x: float, y: float) -> None:
+        layout = self._picker_layout()
+        if _inside(x, y, layout["cancel"]):
+            self._close_picker("Seleção cancelada.")
+            return
+        if _inside(x, y, layout["confirm"]):
+            self._confirm_picker()
+            return
+        if not _inside(x, y, layout["panel"]):
+            self._close_picker("Seleção cancelada.")
+            return
+        for entry, rect in self._picker_rows():
+            if _inside(x, y, rect):
+                error = self._picker.toggle(entry)
+                if error is not None:
+                    self._set_status(error, ERROR_COLOR)
+                return
+
+    def _picker_key(self, symbol: int) -> None:
+        if symbol == arcade.key.ESCAPE:
+            self._close_picker("Seleção cancelada.")
+        elif symbol == arcade.key.ENTER:
+            self._confirm_picker()
+        elif symbol == arcade.key.BACKSPACE:
+            self._picker.set_query(self._picker.query[:-1])
+
+    def _draw_picker(self, width: int, height: int) -> None:
+        layout = self._picker_layout()
+        # Cobre a janela inteira, para que nada por baixo receba clique ou desenho.
+        arcade.draw_lbwh_rectangle_filled(0, 0, width, height, (0, 0, 0, 170))
+        left, bottom, panel_w, panel_h = layout["panel"]
+        arcade.draw_lbwh_rectangle_filled(left, bottom, panel_w, panel_h, PANEL_COLOR)
+        arcade.draw_lbwh_rectangle_outline(
+            left, bottom, panel_w, panel_h, PANEL_BORDER_COLOR, 1
+        )
+        picker = self._picker
+        self._text(
+            "pk:title",
+            "Adicionar pilotos ao grid",
+            left + 20,
+            bottom + panel_h - 30,
+            PRIMARY_TEXT_COLOR,
+            16,
+            bold=True,
+        ).draw()
+        self._text(
+            "pk:count",
+            f"Escolhidos: {len(picker.selected)} · vagas: {picker.room}",
+            left + panel_w - 20,
+            bottom + panel_h - 30,
+            SECONDARY_TEXT_COLOR,
+            11,
+            anchor_x="right",
+        ).draw()
+        s_left, s_bottom, s_w, s_h = layout["search"]
+        arcade.draw_lbwh_rectangle_filled(s_left, s_bottom, s_w, s_h, _BUTTON_BG)
+        self._text(
+            "pk:query",
+            picker.query or "Buscar piloto ou equipe",
+            s_left + 10,
+            s_bottom + s_h / 2,
+            PRIMARY_TEXT_COLOR if picker.query else SECONDARY_TEXT_COLOR,
+            12,
+            anchor_y="center",
+        ).draw()
+        rows = self._picker_rows()
+        if not rows:
+            self._text(
+                "pk:empty",
+                "Nenhum piloto encontrado.",
+                left + 20,
+                layout["list_top"] - 20,
+                SECONDARY_TEXT_COLOR,
+                11,
+            ).draw()
+        for index, (entry, rect) in enumerate(rows):
+            r_left, r_bottom, r_w, r_h = rect
+            chosen = pair_id(entry) in picker.selected
+            blocked = picker.blocked_reason(entry)
+            arcade.draw_lbwh_rectangle_filled(
+                r_left, r_bottom, r_w, r_h, _SELECTED_BG if chosen else (30, 42, 56)
+            )
+            label = f"{'✓ ' if chosen else ''}{entry['driver_name']} · {entry['team_name']}"
+            if blocked is not None and not chosen:
+                label += f"  ({blocked})"
+            self._text(
+                f"pk:row:{index}",
+                label[:72],
+                r_left + 10,
+                r_bottom + r_h / 2,
+                SECONDARY_TEXT_COLOR if blocked is not None and not chosen else PRIMARY_TEXT_COLOR,
+                11,
+                anchor_y="center",
+            ).draw()
+        for key, text, primary in (
+            ("cancel", "Cancelar", False),
+            ("confirm", f"Adicionar ({len(picker.selected)})", True),
+        ):
+            b_left, b_bottom, b_w, b_h = layout[key]
+            arcade.draw_lbwh_rectangle_filled(
+                b_left, b_bottom, b_w, b_h, _PRIMARY_BG if primary else _BUTTON_BG
+            )
+            self._text(
+                f"pk:btn:{key}",
+                text,
+                b_left + b_w / 2,
+                b_bottom + b_h / 2,
+                PRIMARY_TEXT_COLOR,
+                13,
+                bold=primary,
+                anchor_x="center",
+                anchor_y="center",
+            ).draw()
+
     def _set_status(self, message: str, color) -> None:
         self._status = message
         self._status_color = color
@@ -263,11 +631,14 @@ class GridView(arcade.View):
     def _buttons(self) -> dict[str, tuple[float, float, float, float]]:
         width, height = self.window.width, self.window.height
         top = height - 150
+        display_left, display_w = self._source_display_bounds()
+        build_left = self._grid_right() - _BUILD_BUTTON_W
         rects = {
-            "prev-source": (40, top, 34, 34),
-            "next-source": (520, top, 34, 34),
-            "build": (570, top, 170, 34),
-            "back": (40, 20, 150, 36),
+            # Setas dentro do display do nome da corrida, uma em cada extremo.
+            "prev-source": (display_left + 4, top + 3, 34, 34),
+            "next-source": (display_left + display_w - 38, top + 3, 34, 34),
+            "build": (build_left, top, _BUILD_BUTTON_W, _SOURCE_ROW_H),
+            "back": (_ACTION_X, 20, _ACTION_W, 36),
             "save": (width - 230, 20, 190, 36),
             "discard": (self._panel_left(), 20, 190, 36),
         }
@@ -275,6 +646,11 @@ class GridView(arcade.View):
         # Setas na primeira linha da caixa, com o centro vertical do nome do piloto.
         rects["move-up"] = (left + _ARROW_UP_X, height - 228, 34, 30)
         rects["move-down"] = (left + _ARROW_DOWN_X, height - 228, 34, 30)
+        # Elenco na barra inferior, entre "Voltar" e "Salvar alteracoes".
+        # Voltar, Remover e Adicionar: mesma largura de botao e mesmo espaco.
+        remove_x = _ACTION_X + _ACTION_W + _ACTION_GAP
+        rects["remove"] = (remove_x, 20, _ACTION_W, 36)
+        rects["add"] = (remove_x + _ACTION_W + _ACTION_GAP, 20, _ACTION_W, 36)
         bottom, top = self._panel_region()
         for i, spec in enumerate(ATTRIBUTES):
             y = self._attribute_y(i)
@@ -346,6 +722,11 @@ class GridView(arcade.View):
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
         """Role a caixa do piloto ou a tabela, conforme o ponteiro esteja sobre."""
 
+        if self._picker is not None:
+            layout = self._picker_layout()
+            if _inside(x, y, layout["panel"]):
+                self._picker.scroll = max(0, self._picker.scroll - int(scroll_y))
+            return
         if self._draft is None:
             return
         bottom, top = self._panel_region()
@@ -359,6 +740,15 @@ class GridView(arcade.View):
         self._clamp_scroll()
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        if self._picker is not None:
+            # Com o seletor aberto, so ele recebe cliques.
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self._picker_click(x, y)
+            return
+        if self._size_text is not None:
+            if button == arcade.MOUSE_BUTTON_LEFT:
+                self._size_click(x, y)
+            return
         self._editing_grid_seed = (
             button == arcade.MOUSE_BUTTON_LEFT
             and self._sources[self._source_index].mode == "random"
@@ -382,6 +772,10 @@ class GridView(arcade.View):
             self.save_changes()
         elif key == "discard":
             self.discard_changes()
+        elif key == "add":
+            self._request_picker()
+        elif key == "remove":
+            self._remove_selected()
         elif key == "move-up":
             self.move_selected(-1)
         elif key == "move-down":
@@ -399,6 +793,12 @@ class GridView(arcade.View):
             self.step_attribute(name, -1 if action == "minus" else 1)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if self._picker is not None:
+            self._picker_key(symbol)
+            return
+        if self._size_text is not None:
+            self._size_key(symbol)
+            return
         if self._editing_grid_seed:
             pasted = handle_clipboard_shortcut(
                 self.window, symbol, modifiers, self._grid_seed_text
@@ -426,6 +826,13 @@ class GridView(arcade.View):
             self._ensure_selected_visible()
 
     def on_text(self, text: str) -> None:
+        if self._picker is not None:
+            if text.isprintable():
+                self._picker.set_query(self._picker.query + text)
+            return
+        if self._size_text is not None:
+            self._size_type(text)
+            return
         if self._editing_grid_seed and text.isprintable():
             self._grid_seed_text += text
 
@@ -462,41 +869,70 @@ class GridView(arcade.View):
         self._draw_scroll_hint()
         self._draw_panel(width, height)
         self._draw_buttons()
+        # Status logo abaixo do titulo, fora da barra inferior dos botoes.
         self._text(
             "status",
             self._status,
-            210,
-            32,
+            40,
+            height - 100,
             self._status_color,
             12,
-            width=width - 700,
+            width=width - 80,
             multiline=True,
         ).draw()
+        if self._picker is not None:
+            self._draw_picker(width, height)
+        if self._size_text is not None:
+            self._draw_size_dialog(width, height)
 
     def _draw_source_selector(self, height: int) -> None:
         top = height - 150
-        arcade.draw_lbwh_rectangle_filled(80, top, 434, 34, PANEL_COLOR)
-        arcade.draw_lbwh_rectangle_outline(80, top, 434, 34, PANEL_BORDER_COLOR, 1)
+        display_left, display_w = self._source_display_bounds()
+        arcade.draw_lbwh_rectangle_filled(
+            display_left, top, display_w, _SOURCE_ROW_H, PANEL_COLOR
+        )
+        arcade.draw_lbwh_rectangle_outline(
+            display_left, top, display_w, _SOURCE_ROW_H, PANEL_BORDER_COLOR, 1
+        )
         label = self._sources[self._source_index].label
-        self._text(
+        label_text = self._text(
             "source",
             label,
-            297,
-            top + 17,
+            display_left + display_w / 2,
+            top + _SOURCE_ROW_H / 2,
             PRIMARY_TEXT_COLOR,
             12,
             anchor_x="center",
             anchor_y="center",
-        ).draw()
+        )
+        # Espaco reservado para as setas e o contador nas extremidades.
+        fit_button_text(label_text, display_w - 200, 12)
+        label_text.draw()
         self._text(
             "source-count",
             f"{self._source_index + 1}/{len(self._sources)}",
-            760,
-            top + 17,
+            display_left + display_w - 46,
+            top + _SOURCE_ROW_H / 2,
             _HEADER_COLOR,
             11,
+            anchor_x="right",
             anchor_y="center",
         ).draw()
+
+    def _grid_right(self) -> int:
+        """Borda direita do grid: a da linha selecionada (ver ``_row_at``)."""
+
+        return self._panel_left() - 24
+
+    def _source_display_bounds(self) -> tuple[int, int]:
+        """(esquerda, largura) do display da corrida.
+
+        Display, espaco e botao "Montar grid" somam a largura do grid, da borda
+        esquerda da tabela (x=40) ate ``_grid_right``.
+        """
+
+        grid_w = self._grid_right() - 40
+        return 40, grid_w - _SOURCE_GAP - _BUILD_BUTTON_W
         if self._sources[self._source_index].mode == "random":
             left, bottom, width, field_height = self._seed_bounds()
             arcade.draw_lbwh_rectangle_filled(
@@ -579,7 +1015,7 @@ class GridView(arcade.View):
                 value = self._draft.value(driver_id, spec.name)
                 source = self._draft.source(driver_id, spec.name)
                 cells[spec.short] = (
-                    format_value(spec.name, value),
+                    _display_value(spec.name, value),
                     SOURCE_COLORS.get(source, PRIMARY_TEXT_COLOR),
                 )
             for label, x, anchor in _TABLE_COLUMNS:
@@ -758,7 +1194,7 @@ class GridView(arcade.View):
             )
             fit_button_text(hint_text, _PANEL_TEXT_WIDTH, 10)
             hint_text.draw()
-            value = format_value(
+            value = _display_value(
                 spec.name, self._draft.value(self._selected, spec.name)
             )
             self._text(
@@ -796,10 +1232,12 @@ class GridView(arcade.View):
             "discard": "Descartar",
             "move-up": "↑",
             "move-down": "↓",
+            "add": "Adicionar piloto",
+            "remove": "Remover piloto",
         }
         for key, rect in self._buttons().items():
             if self._draft is None and key.startswith(
-                ("minus:", "plus:", "save", "discard", "move-")
+                ("minus:", "plus:", "save", "discard", "move-", "add", "remove")
             ):
                 continue
             left, bottom, w, h = rect
@@ -822,6 +1260,12 @@ class GridView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
             ).draw()
+
+
+def _display_value(name: str, value: float | None) -> str:
+    """Valor formatado, ou "—" para piloto recem-adicionado sem atributos locais."""
+
+    return "—" if value is None else format_value(name, value)
 
 
 def _inside(x: float, y: float, rect) -> bool:

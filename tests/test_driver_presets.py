@@ -101,11 +101,15 @@ class DriverAttributesV2Test(unittest.TestCase):
                     self.assertLessEqual(getattr(item, field), high)
 
     def test_v1_fields_keep_exact_values_for_the_same_seed(self) -> None:
-        """Literais capturados antes de aggression/composure serem adicionados.
+        """Literais da geracao atual para a semente 42.
 
-        Consistencia e gestao de pneu seguem os valores originais. O ritmo foi
-        recapturado na v3 (issue #139): o sorteio e o mesmo, mas a faixa agora
-        e unica para os tres arquetipos (-0,60 a +0,40).
+        Histórico: os literais foram capturados antes de aggression/composure e
+        recapturados na v3 (issue #139, faixa de ritmo unica). A v4 passou a
+        sortear o arquetipo com fluxo proprio por piloto (so semente e ID); por
+        isso o arquetipo de ``driver:830`` e os campos que dependem dele mudaram,
+        e ``driver:839`` nao mudou. Quem reproduzir uma montagem da semente 42
+        feita antes da v4 recebe valores diferentes; grids ja salvos nao mudam,
+        pois os atributos ficam gravados no JSON do grid.
         """
 
         items = generated(["driver:830", "driver:839"], seed=42)
@@ -124,10 +128,10 @@ class DriverAttributesV2Test(unittest.TestCase):
             (
                 (
                     "driver:830",
-                    "balanced",
+                    "aggressive",
                     0.07317790770241128,
-                    0.9817340034573214,
-                    1.0789226634671676,
+                    1.2226010051859821,
+                    1.418383995200751,
                 ),
                 (
                     "driver:839",
