@@ -20,6 +20,12 @@ _OPENER = urllib.request.build_opener()
 # Rodar o grid no motor detalhado leva alguns segundos numa corrida longa;
 # as consultas de catalogo continuam com o limite curto.
 RUN_TIMEOUT_S = 120
+# Salvar corrida ou torneio envia o registro completo (com a trajetoria de todos
+# os carros): com 40 pilotos o pedido passa dos 10 s do padrao.
+SAVE_TIMEOUT_S = 60
+# Carregar as corridas e os torneios salvos le registros completos do disco; com
+# 40 pilotos a resposta passa dos 10 s do padrao.
+LOAD_TIMEOUT_S = 60
 
 
 class SimulationCancelled(Exception):
@@ -35,8 +41,8 @@ class BackendError(RuntimeError):
         self.detail = detail
 
 
-def _get(path: str, base_url: str) -> dict:
-    with _OPENER.open(f"{base_url}{path}", timeout=10) as response:
+def _get(path: str, base_url: str, timeout: float = 10) -> dict:
+    with _OPENER.open(f"{base_url}{path}", timeout=timeout) as response:
         return json.loads(response.read())
 
 
@@ -90,11 +96,11 @@ def fetch_race(base_url: str = BASE_URL) -> dict:
 
 
 def fetch_saved_races(base_url: str = BASE_URL) -> dict:
-    return _get("/simulation/saved", base_url)
+    return _get("/simulation/saved", base_url, timeout=LOAD_TIMEOUT_S)
 
 
 def fetch_saved_race(race_id: str, base_url: str = BASE_URL) -> dict:
-    return _get(f"/simulation/saved/{race_id}", base_url)
+    return _get(f"/simulation/saved/{race_id}", base_url, timeout=LOAD_TIMEOUT_S)
 
 
 def fetch_current_grid(base_url: str = BASE_URL) -> dict | None:
@@ -135,22 +141,44 @@ def edit_grid(
     base_url: str = BASE_URL,
     *,
     order: list[str] | None = None,
+    add: list[str] | None = None,
+    remove: list[str] | None = None,
 ) -> dict:
-    """Edite atributos e/ou a ordem do grid atual em um unico ``PATCH``."""
+    """Edite elenco, ordem e atributos do grid atual em um unico ``PATCH``.
+
+    ``add`` recebe pares ``piloto@equipe``; ``remove`` recebe ``driver_id``.
+    """
 
     payload = {}
     if overrides is not None:
         payload["overrides"] = overrides
     if order is not None:
         payload["order"] = order
+    if add is not None:
+        payload["add"] = add
+    if remove is not None:
+        payload["remove"] = remove
     return _post("/catalog/grid", payload, base_url, method="PATCH")
 
 
-def fetch_history_races(season: int, base_url: str = BASE_URL) -> dict:
-    """Corridas historicas de uma temporada, para montar grids de largada."""
+def fetch_catalog(base_url: str = BASE_URL) -> dict:
+    """Pares piloto-equipe disponiveis no historico (``GET /catalog``).
 
+    Um piloto que trocou de equipe aparece mais de uma vez.
+    """
+
+    return _get("/catalog", base_url)
+
+
+def fetch_history_races(season: int | None = None, base_url: str = BASE_URL) -> dict:
+    """Corridas historicas para montar grids de largada.
+
+    Sem ``season``, devolve as corridas de todas as temporadas do historico.
+    """
+
+    query = "" if season is None else f"?season={int(season)}"
     try:
-        return _get(f"/api/history/races?season={int(season)}", base_url)
+        return _get(f"/api/history/races{query}", base_url)
     except urllib.error.HTTPError as error:
         raise BackendError(error.code, _error_detail(error)) from error
 
@@ -264,7 +292,7 @@ def save_race(race: dict, name: str | None = None, base_url: str = BASE_URL) -> 
     payload: dict = {"race": race}
     if name:
         payload["name"] = name
-    return _post("/simulation/saved", payload, base_url)
+    return _post("/simulation/saved", payload, base_url, timeout=SAVE_TIMEOUT_S)
 
 
 def rename_saved_race(race_id: str, name: str, base_url: str = BASE_URL) -> dict:
@@ -286,14 +314,14 @@ def delete_saved_tournament(tournament_id: str, base_url: str = BASE_URL) -> dic
 def save_tournament(payload: dict, base_url: str = BASE_URL) -> dict:
     """Salve um torneio ja simulado (``POST /tournaments``); devolve o resumo."""
 
-    return _post("/tournaments", payload, base_url)
+    return _post("/tournaments", payload, base_url, timeout=SAVE_TIMEOUT_S)
 
 
 def fetch_saved_tournaments(base_url: str = BASE_URL) -> dict:
     """Resumo dos torneios salvos, do mais recente ao mais antigo."""
 
     try:
-        return _get("/tournaments", base_url)
+        return _get("/tournaments", base_url, timeout=LOAD_TIMEOUT_S)
     except urllib.error.HTTPError as error:
         raise BackendError(error.code, _error_detail(error)) from error
 
@@ -302,7 +330,7 @@ def fetch_saved_tournament(tournament_id: str, base_url: str = BASE_URL) -> dict
     """Registro completo de um torneio salvo, com as corridas de cada etapa."""
 
     try:
-        return _get(f"/tournaments/{tournament_id}", base_url)
+        return _get(f"/tournaments/{tournament_id}", base_url, timeout=LOAD_TIMEOUT_S)
     except urllib.error.HTTPError as error:
         raise BackendError(error.code, _error_detail(error)) from error
 

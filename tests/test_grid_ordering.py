@@ -112,6 +112,8 @@ class EditGridRequestTest(unittest.TestCase):
         edit.assert_called_once_with(
             overrides=request.overrides,
             order=["driver:2", "driver:1", "driver:3"],
+            add=None,
+            remove=None,
         )
 
 

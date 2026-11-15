@@ -37,6 +37,8 @@ _PRIMARY_BG = (190, 30, 45)
 _PRIMARY_HOVER = (225, 45, 60)
 _HEADER_COLOR = (130, 140, 150)
 _ROW_HEIGHT = 22
+# Pilotos visiveis de uma vez no grid; o restante aparece rolando a caixa.
+_MAX_VISIBLE_ROWS = 20
 _SCROLLBAR_COLOR = (33, 42, 53)
 
 
@@ -231,7 +233,8 @@ class SimulationLoadingView(arcade.View):
 
         panel_top, panel_bottom = self.window.height - 110, 130
         first_row_y = panel_top - 60
-        return max(1, int((first_row_y - panel_bottom - 20) // _ROW_HEIGHT) + 1)
+        fits = int((first_row_y - panel_bottom - 20) // _ROW_HEIGHT) + 1
+        return max(1, min(_MAX_VISIBLE_ROWS, fits))
 
     def _max_grid_scroll(self) -> int:
         return max(0, len(self._grid) - self._visible_rows())

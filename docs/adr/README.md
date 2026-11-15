@@ -28,6 +28,7 @@ Nao altere silenciosamente um ADR aceito: crie outro que o substitua.
 | [0013](0013-torneio-salvo-e-reexecucao.md) | aceita; atualiza o 0006 | Torneio salvo com grid congelado e resultados: reabrir sem simular ou reexecutar pelo `POST /catalog/grid/run`. |
 | [0014](0014-consumo-e-desgaste-por-movimento.md) | aceita; atualiza o 0011/0012 | Consumo e desgaste contínuos por esforço e carga de curva, com parâmetros assumidos e auditáveis. |
 | [0015](0015-aderencia-fisica-e-estado-da-pista.md) | proposta; atualiza o 0010 | Velocidade de curva por aderência e downforce com raio em metros (`mu` e `C_L·A` estimados contra as voltas de referência) e estado dinâmico da pista (água, temperatura, borracha) como fator de aderência. |
+| [0016](0016-elenco-do-grid-e-geracao-por-piloto.md) | aceita; atualiza o 0007 (reprodutibilidade por semente) e o contrato de `PATCH /catalog/grid` | Elenco do grid editável por `add`/`remove` no PATCH (1 a 40 pilotos), e atributos gerados por piloto a partir de `(semente, driver_id)`. |
 
 ## Modelo
 

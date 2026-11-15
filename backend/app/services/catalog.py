@@ -25,6 +25,10 @@ _HISTORY_NOT_FOUND = (
     "run POST /api/history/build to import the full history"
 )
 _GRID_NOT_FOUND = "no current grid; run POST /catalog/grid to build one"
+# Limite de elenco do grid (mesmo teto de ``BuildGridRequest.size``, de
+# ``EditGridAttributesRequest`` e do PATCH de ordem/atributos).
+MIN_GRID_SIZE = 1
+MAX_GRID_SIZE = 40
 
 # O caminho fica nesta composition root porque ``backend/app/config.py`` nao
 # pertence a esta fatia. O default atende execucao local a partir do checkout;
@@ -139,6 +143,14 @@ def build_grid(size, *, mode, manual_pair_ids, seed, race_id=None):
     used_seed = seed if seed is not None else _new_seed()
     if mode == "race":
         manual_pair_ids = _race_pair_ids(race_id)
+        if len(manual_pair_ids) > MAX_GRID_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    f"a largada de {race_id} tem {len(manual_pair_ids)} pilotos; "
+                    f"o grid aceita no máximo {MAX_GRID_SIZE}"
+                ),
+            )
         size, mode = len(manual_pair_ids), "manual"
     pairs = _select_pairs(list_entries(), size, mode, manual_pair_ids, used_seed)
     attributes = _generate([entry.driver_id for entry in pairs], used_seed)
@@ -239,7 +251,85 @@ def read_current_grid():
     return _deserialize_grid(state)
 
 
-def edit_current_grid(*, overrides=None, order=None):
+def _remove_drivers(pairs, attributes, remove):
+    """Tire pilotos do grid; IDs repetidos ou fora dele sao 422."""
+
+    if not remove:
+        return pairs, attributes
+    if len(set(remove)) != len(remove):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="remove contem driver_id repetido",
+        )
+    current = {entry.driver_id for entry in pairs}
+    unknown = [driver_id for driver_id in remove if driver_id not in current]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"piloto fora do grid atual: {unknown}",
+        )
+    removed = set(remove)
+    kept_pairs = tuple(entry for entry in pairs if entry.driver_id not in removed)
+    kept_attributes = {
+        driver_id: item
+        for driver_id, item in attributes.items()
+        if driver_id not in removed
+    }
+    return kept_pairs, kept_attributes
+
+
+def _add_pairs(pairs, attributes, add, seed):
+    """Acrescente pares ``piloto@equipe`` ao fim do grid, com atributos novos.
+
+    Os pilotos ja presentes mantem valores e origens; so os recem-adicionados
+    sao gerados, com a mesma semente do grid. A geracao e determinista por
+    piloto (``generate_attributes``), entao o resultado de cada um e o mesmo
+    que teria numa montagem completa.
+    """
+
+    from f1_simulator.application.build_grid import GridEntry
+
+    if not add:
+        return pairs, attributes
+    if len(set(add)) != len(add):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="add contem par repetido",
+        )
+    # Mesmo formato de ``build_grid._pair_id``: o par identifica um piloto numa
+    # equipe, e o historico pode ter o mesmo piloto em mais de uma.
+    catalog_by_pair = {
+        f"{entry.driver_id}@{entry.team_id}": entry for entry in list_entries()
+    }
+    unknown = [pair_id for pair_id in add if pair_id not in catalog_by_pair]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"par fora do catalogo: {unknown}",
+        )
+    present = {entry.driver_id for entry in pairs}
+    new_entries = []
+    for pair_id in add:
+        entry = catalog_by_pair[pair_id]
+        if entry.driver_id in present:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"piloto já está no grid: {entry.driver_id}",
+            )
+        present.add(entry.driver_id)
+        new_entries.append(
+            GridEntry(
+                driver_id=entry.driver_id,
+                driver_name=entry.driver_name,
+                team_id=entry.team_id,
+                team_name=entry.team_name,
+            )
+        )
+    generated = _generate([entry.driver_id for entry in new_entries], seed)
+    return pairs + tuple(new_entries), {**attributes, **generated}
+
+
+def edit_current_grid(*, overrides=None, order=None, add=None, remove=None):
     """Aplique atributos e/ou uma permutacao e publique o grid uma unica vez.
 
     Todas as validacoes acontecem antes da escrita atomica. Reordenar reutiliza
@@ -251,6 +341,18 @@ def edit_current_grid(*, overrides=None, order=None):
     from f1_simulator.application.generate_attributes import apply_overrides
 
     pairs, attributes, seed = read_current_grid()
+    # Ordem das etapas: remover, depois acrescentar (novos vao ao fim), depois
+    # ordenar e editar. Tudo fica em memoria; so a gravacao final escreve.
+    pairs, attributes = _remove_drivers(pairs, attributes, remove)
+    pairs, attributes = _add_pairs(pairs, attributes, add, seed)
+    if not MIN_GRID_SIZE <= len(pairs) <= MAX_GRID_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                f"o grid precisa ter de {MIN_GRID_SIZE} a {MAX_GRID_SIZE} pilotos; "
+                f"com essa edição teria {len(pairs)}"
+            ),
+        )
     if order is not None:
         try:
             pairs = reorder_grid(pairs, order)
@@ -505,9 +607,10 @@ def run_grid(
     # Uma corrida cancelada nunca chega a substituir o resultado anterior.
     from contextlib import nullcontext
 
+    # So a corrida atual e gravada aqui. Salvar em "Simulacoes salvas" e uma acao
+    # explicita do usuario (``save_current_race``), nao um efeito da simulacao.
     with cancellation.commit() if cancellation else nullcontext():
         _write_json(CURRENT_RACE_JSON, result)
-        _persist_saved_race(result, _default_race_name(result))
     return result
 
 

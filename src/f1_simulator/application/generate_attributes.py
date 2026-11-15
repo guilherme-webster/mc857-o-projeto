@@ -91,8 +91,10 @@ def generate_attributes(
 ) -> tuple[DriverAttributes, ...]:
     """Sorteie atributos por piloto usando fluxos e rotulos estaveis.
 
-    Cada piloto recebe um filho de ``rng`` e cada campo usa seu proprio nome
-    como rotulo. Campos novos sao acrescentados ao fim de ``ATTRIBUTE_FIELDS``
+    Cada piloto recebe um filho de ``rng`` para o arquetipo e outro para os
+    campos, ambos chaveados pelo ID. Assim, o resultado de um piloto depende
+    apenas da semente e do ID, e nao do elenco do grid. Cada campo usa seu
+    proprio nome como rotulo. Campos novos sao acrescentados ao fim de ``ATTRIBUTE_FIELDS``
     para que os valores historicos dos campos v1 nao mudem para a mesma semente.
     """
 
@@ -105,14 +107,16 @@ def generate_attributes(
         raise ValueError(f"forced archetype for unknown driver: {unknown}")
 
     names = tuple(profile.name for profile in catalogue)
-    archetype_source = rng.spawn("attributes:archetype")
 
     result = []
     for driver_id in sorted(unique):
         if driver_id in forced:
             name = forced[driver_id]
         else:
-            name = names[uniform_index(archetype_source, f"archetype:{driver_id}", len(names))]
+            # Fluxo proprio do piloto: o arquetipo nao depende de quem mais esta
+            # no grid, so da semente e do ID.
+            archetype_source = rng.spawn(f"attributes:archetype:{driver_id}")
+            name = names[uniform_index(archetype_source, "archetype", len(names))]
         profile = archetype_profile(name, catalogue)
         field_source = rng.spawn(f"attributes:{driver_id}")
         values = {

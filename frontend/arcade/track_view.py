@@ -103,6 +103,10 @@ _TRACK_TINT = {
 }
 _FEED_TINT = {**_TRACK_TINT, "GREEN": (70, 211, 142)}
 _FEED_LINES = 6
+# Classificacao: ate 20 posicoes de uma vez, e a lista para acima do feed de
+# mensagens (texto de 52 px a 52 + 18*(N-1), com folga para a dica de rolagem).
+_STANDINGS_MAX_VISIBLE = 20
+_STANDINGS_BOTTOM = 52 + 18 * (_FEED_LINES - 1) + 14 + 30
 _FEED_COLOR = (190, 198, 210)
 
 # Composto -> (letra, cor). Composto desconhecido aparece como "?".
@@ -451,6 +455,9 @@ class TrackView(arcade.View):
         self._show_breakdown = self._playback.has_speed_breakdown
         self._breakdown_panels: list[_BreakdownPanel] = []
         self._standing_row_rects: list[tuple[str, tuple[float, float, float, float]]] = []
+        # Primeira posicao visivel da classificacao e dica de rolagem.
+        self._standing_scroll = 0
+        self._standings_hint = arcade.Text("", 20, 0, _HEADER_COLOR, 9)
         # Painel em arraste e offset do cursor ate o canto, e contador de
         # cascata para paineis novos nao nascerem exatamente sobrepostos.
         self._dragging_panel: _BreakdownPanel | None = None
@@ -1447,6 +1454,23 @@ class TrackView(arcade.View):
             cursor += seg_w
         arcade.draw_lbwh_rectangle_outline(left, y, bar_w, bar_h, _HEADER_COLOR, 1)
 
+    def _standings_visible(self, top: float, line_h: float) -> int:
+        """Posicoes que cabem entre ``top`` e a margem acima do feed, no maximo 20."""
+
+        fits = int((top - _STANDINGS_BOTTOM) // line_h) + 1
+        return max(1, min(_STANDINGS_MAX_VISIBLE, fits))
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
+        """Roda sobre a classificacao rola uma posicao por passo."""
+
+        if x > self._standings_width:
+            return
+        total = len(self._playback.standings(self._elapsed))
+        visible = self._standings_visible(self.window.height - 96, 20)
+        self._standing_scroll = min(
+            max(self._standing_scroll - int(scroll_y), 0), max(0, total - visible)
+        )
+
     def _draw_standings(self, height: int) -> None:
         """Classificacao ao vivo com pneu, paradas, posicoes ganhas e combustivel.
 
@@ -1485,9 +1509,14 @@ class TrackView(arcade.View):
                 }
             )
         self._standing_row_rects = []
-        for i, row in enumerate(standings):
-            texts = self._row_texts[i]
-            y = top - i * line_h
+        visible = self._standings_visible(top, line_h)
+        self._standing_scroll = min(
+            self._standing_scroll, max(0, len(standings) - visible)
+        )
+        start = self._standing_scroll
+        for offset, row in enumerate(standings[start : start + visible]):
+            texts = self._row_texts[offset]
+            y = top - offset * line_h
             car_color = self._color_by_driver.get(row.driver_id, PRIMARY_TEXT_COLOR)
             cells = self._standing_cells(row, car_color)
             # Guarda a faixa clicavel da linha (do topo para baixo) para a
@@ -1517,6 +1546,14 @@ class TrackView(arcade.View):
                 if key == "tyre" and value:
                     arcade.draw_circle_outline(text.x, y, _TYRE_RADIUS, color, 2)
                 text.draw()
+        if len(standings) > visible:
+            self._standings_hint.text = (
+                f"Posições {start + 1}–{start + visible} de {len(standings)} · "
+                "role a lista para ver as demais"
+            )
+            self._standings_hint.x = left
+            self._standings_hint.y = top - visible * line_h - 2
+            self._standings_hint.draw()
 
     @staticmethod
     def _fit_name_and_time(texts: dict) -> None:

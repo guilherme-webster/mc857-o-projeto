@@ -252,7 +252,7 @@ class ParametersViewTest(unittest.TestCase):
             def fetch_current_grid(self):
                 return None
 
-            def fetch_history_races(self, season):
+            def fetch_history_races(self, season=None):
                 return {"races": []}
 
         grid_view = GridView(client=IdleGridClient())
@@ -279,13 +279,13 @@ class ParametersViewTest(unittest.TestCase):
             def fetch_current_grid(self):
                 return None
 
-            def fetch_history_races(self, season):
+            def fetch_history_races(self, season=None):
                 return {
                     "races": [
                         {
                             "race_id": "race:1141",
                             "name": "São Paulo Grand Prix",
-                            "season": season,
+                            "season": 2024,
                             "round_number": 21,
                         }
                     ]
