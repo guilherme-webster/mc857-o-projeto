@@ -1309,27 +1309,6 @@ class TrackView(arcade.View):
         )
         title.draw()
 
-    @staticmethod
-    def _fit_breakdown_title(title, name: str, avail: float, build) -> None:
-        """Escreve o titulo do painel dentro de ``avail`` px.
-
-        Primeiro reduz a fonte (ate 8 pt). Se ainda nao couber, encurta o nome
-        com reticencias. Medimos a largura real, porque a fonte varia entre
-        maquinas.
-        """
-
-        title.font_size = _BREAKDOWN_TITLE_PT
-        title.text = build(name)
-        if title.content_width > avail:
-            title.font_size = max(
-                _BREAKDOWN_TITLE_MIN_PT,
-                _BREAKDOWN_TITLE_PT * avail / title.content_width,
-            )
-        size = len(name)
-        while title.content_width > avail and size > 1:
-            size -= 1
-            title.text = build(name[:size] + "…")
-
         bar_w = _PANEL_W - 16
         bar_h = 16.0
         left = panel.x + 8
@@ -1368,6 +1347,27 @@ class TrackView(arcade.View):
         self._draw_breakdown_context(
             panel, did, left, gives_y - 16 - legend_rows * row_h
         )
+
+    @staticmethod
+    def _fit_breakdown_title(title, name: str, avail: float, build) -> None:
+        """Escreve o titulo do painel dentro de ``avail`` px.
+
+        Primeiro reduz a fonte (ate 8 pt). Se ainda nao couber, encurta o nome
+        com reticencias. Medimos a largura real, porque a fonte varia entre
+        maquinas.
+        """
+
+        title.font_size = _BREAKDOWN_TITLE_PT
+        title.text = build(name)
+        if title.content_width > avail:
+            title.font_size = max(
+                _BREAKDOWN_TITLE_MIN_PT,
+                _BREAKDOWN_TITLE_PT * avail / title.content_width,
+            )
+        size = len(name)
+        while title.content_width > avail and size > 1:
+            size -= 1
+            title.text = build(name[:size] + "…")
 
     def _draw_breakdown_context(self, panel, did, bar_w_left, top_y) -> None:
         """Seção de contexto: velocidade base (v_max) e atributos do piloto.
