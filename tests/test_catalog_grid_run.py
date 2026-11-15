@@ -92,7 +92,8 @@ class CatalogGridRunServiceTest(unittest.TestCase):
                 )
 
             self.assertTrue((output_dir / "current-race.json").is_file())
-            self.assertEqual(len(tuple((output_dir / "saved-races").glob("*.json"))), 1)
+            # A simulacao nao grava corrida salva: so o usuario salva, na tela.
+            self.assertEqual(tuple((output_dir / "saved-races").glob("*.json")), ())
 
         self.assertEqual(result["seed"], 42)
         self.assertIs(run.call_args.kwargs["parameters"], model)

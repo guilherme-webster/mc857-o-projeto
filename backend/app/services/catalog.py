@@ -607,9 +607,10 @@ def run_grid(
     # Uma corrida cancelada nunca chega a substituir o resultado anterior.
     from contextlib import nullcontext
 
+    # So a corrida atual e gravada aqui. Salvar em "Simulacoes salvas" e uma acao
+    # explicita do usuario (``save_current_race``), nao um efeito da simulacao.
     with cancellation.commit() if cancellation else nullcontext():
         _write_json(CURRENT_RACE_JSON, result)
-        _persist_saved_race(result, _default_race_name(result))
     return result
 
 
