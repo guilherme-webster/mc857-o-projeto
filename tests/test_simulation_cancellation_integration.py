@@ -145,8 +145,12 @@ class CancelIntegrationTest(unittest.TestCase):
                                      "spatial-contact-severity-assumed-v2")
                     self.assertIn("contact_events_2d", result)
                     self.assertIn("contact_damage_by_driver", result)
-                    self.assertEqual(json.loads(current.read_text()), result)
-                    self.assertEqual(len(list(saved.glob("*.json"))), 1)
+                    self.assertEqual(
+                        json.loads(current.read_text(encoding="utf-8")), result
+                    )
+                    # A simulacao grava so a corrida atual; salvar em
+                    # "Simulacoes salvas" e acao explicita do usuario.
+                    self.assertEqual(len(list(saved.glob("*.json"))), 0)
                 finally:
                     server.should_exit = True
                     thread.join(10)
