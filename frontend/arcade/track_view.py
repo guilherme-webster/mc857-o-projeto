@@ -146,6 +146,10 @@ _FUEL_COLUMNS = ("fuel", "saving")
 # altura) em px. A barra cheia e ``max_fuel_kg``, o teto regulamentar.
 _FUEL_GAUGE = (400, 28, 7)
 _TYRE_RADIUS = 8
+# Folga minima entre o nome e o intervalo, e o tamanho minimo (pt) ao reduzir
+# textos da classificacao para caber nessa folga.
+_ROW_TEXT_GAP = 8
+_ROW_MIN_FONT_PT = 7
 # Largura reservada a esquerda para a classificacao; a pista e desenhada so no
 # espaco restante, para que tabela e tracado nao se sobreponham. As colunas de
 # combustivel alargam a tabela apenas nas corridas que as tem.
@@ -183,6 +187,9 @@ _PANEL_W = 300.0
 _PANEL_H = 267.0
 _PANEL_TITLE_H = 20.0  # faixa de titulo (arrastar aqui)
 _PANEL_CLOSE = 16.0  # lado do botao de fechar
+# Tamanho do titulo do painel (pt): padrao e minimo antes de encurtar o nome.
+_BREAKDOWN_TITLE_PT = 11
+_BREAKDOWN_TITLE_MIN_PT = 8
 _PANEL_BG = (22, 30, 40)
 _PANEL_BORDER = (70, 84, 100)
 _PANEL_CASCADE = 24.0  # deslocamento entre paineis novos
@@ -1285,13 +1292,43 @@ class TrackView(arcade.View):
         title = self._breakdown_title
         title.x = panel.x + 8
         title.y = tb + th / 2
+        # O titulo termina antes do botao de fechar (com uma folga).
+        avail = cl - 6 - title.x
         if breakdown is None or breakdown.speed_kmh < 1.0:
-            title.text = f"{name[:20]} · parado"
+            self._fit_breakdown_title(
+                title, name[:20], avail, lambda n: f"{n} · parado"
+            )
             title.draw()
             return
         pct = breakdown.effective * 100.0
-        title.text = f"{name[:16]}  {breakdown.speed_kmh:.0f} km/h · {pct:.0f}%"
+        self._fit_breakdown_title(
+            title,
+            name[:16],
+            avail,
+            lambda n: f"{n}  {breakdown.speed_kmh:.0f} km/h · {pct:.0f}%",
+        )
         title.draw()
+
+    @staticmethod
+    def _fit_breakdown_title(title, name: str, avail: float, build) -> None:
+        """Escreve o titulo do painel dentro de ``avail`` px.
+
+        Primeiro reduz a fonte (ate 8 pt). Se ainda nao couber, encurta o nome
+        com reticencias. Medimos a largura real, porque a fonte varia entre
+        maquinas.
+        """
+
+        title.font_size = _BREAKDOWN_TITLE_PT
+        title.text = build(name)
+        if title.content_width > avail:
+            title.font_size = max(
+                _BREAKDOWN_TITLE_MIN_PT,
+                _BREAKDOWN_TITLE_PT * avail / title.content_width,
+            )
+        size = len(name)
+        while title.content_width > avail and size > 1:
+            size -= 1
+            title.text = build(name[:size] + "…")
 
         bar_w = _PANEL_W - 16
         bar_h = 16.0
@@ -1472,9 +1509,43 @@ class TrackView(arcade.View):
                 text.color = color
                 text.x = left + _STANDING_COLUMNS[key][1]
                 text.y = y
+            self._fit_name_and_time(texts)
+            for key, (value, color) in cells.items():
+                if key in _FUEL_COLUMNS and not self._show_fuel:
+                    continue
+                text = texts[key]
                 if key == "tyre" and value:
                     arcade.draw_circle_outline(text.x, y, _TYRE_RADIUS, color, 2)
                 text.draw()
+
+    @staticmethod
+    def _fit_name_and_time(texts: dict) -> None:
+        """Impede que o intervalo (ou "CONTATO", "BATIDA"...) cubra o nome.
+
+        O nome e alinhado a esquerda e o intervalo, a direita. Medimos a largura
+        real dos textos, porque a fonte muda de uma maquina para outra: primeiro
+        reduzimos o intervalo ate caber entre o fim do nome e a sua coluna; se o
+        nome ainda invadir essa folga, reduzimos o nome. Os tamanhos sao
+        restaurados a cada quadro, entao linhas normais continuam em 12 pt.
+        """
+
+        name, time = texts["name"], texts["time"]
+        name.font_size = 12
+        time.font_size = 12
+        # O intervalo e alinhado a direita: ``time.x`` e a borda direita dele.
+        name_right = name.x + name.content_width
+        room_for_time = time.x - (name_right + _ROW_TEXT_GAP)
+        if time.content_width > room_for_time > 0:
+            time.font_size = max(
+                _ROW_MIN_FONT_PT, 12 * room_for_time / time.content_width
+            )
+        time_left = time.x - time.content_width
+        if name_right > time_left - _ROW_TEXT_GAP and name.content_width > 0:
+            room_for_name = time_left - _ROW_TEXT_GAP - name.x
+            if room_for_name > 0:
+                name.font_size = max(
+                    _ROW_MIN_FONT_PT, 12 * room_for_name / name.content_width
+                )
 
     def _draw_fuel_gauge(
         self, left: float, y: float, fuel_kg: float, lift_and_coast: bool
