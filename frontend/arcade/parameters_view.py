@@ -336,7 +336,7 @@ class ParametersView(UIView):
                     0,
                 )
                 if not self._initial_supplied:
-                    self.configuration = configuration_for_track(self.selected_track)
+                    self.configuration = self._fresh_configuration(self.selected_track)
                     self.initial = self.configuration
                     self.laps_input.text = str(self.configuration.laps)
                     self._update_weather_summary()
@@ -405,9 +405,11 @@ class ParametersView(UIView):
             self._selected_track_index = (self._selected_track_index + step) % len(
                 self._tracks
             )
-            self.configuration = configuration_for_track(
-                self.selected_track,
-                self._track_configurations.get(self.selected_track["circuit_id"]),
+            existing = self._track_configurations.get(self.selected_track["circuit_id"])
+            self.configuration = (
+                existing
+                if existing is not None
+                else self._fresh_configuration(self.selected_track)
             )
             self.laps_input.text = str(self.configuration.laps)
             self._update_weather_summary()
@@ -483,7 +485,7 @@ class ParametersView(UIView):
         catalog = {track["circuit_id"]: track for track in self._tracks}
         for circuit_id in self._selected_track_ids:
             self._track_configurations.setdefault(
-                circuit_id, configuration_for_track(catalog[circuit_id])
+                circuit_id, self._fresh_configuration(catalog[circuit_id])
             )
         self._sequence_scroll_index = 0
         self._set_status("Sequência automática gerada.", SUCCESS_COLOR)
@@ -697,7 +699,7 @@ class ParametersView(UIView):
         self.configuration = (
             self.initial
             if self._initial_supplied or self.selected_track is None
-            else configuration_for_track(self.selected_track)
+            else self._fresh_configuration(self.selected_track)
         )
         self._selected_track_ids.clear()
         self._track_configurations.clear()
@@ -794,7 +796,7 @@ class ParametersView(UIView):
         self.open_track_configuration(stage_index)
 
     def restore_tournament_defaults(self) -> None:
-        """Volta clima (seco) e voltas padrão de cada pista da sequência.
+        """Volta o clima padrão e as voltas padrão de cada pista da sequência.
 
         O número de voltas volta ao padrão da pista; a sessão mantém só o modo
         de início escolhido, com a volta inicial 1 e a final igual ao novo total.
@@ -802,7 +804,7 @@ class ParametersView(UIView):
 
         catalog = {track["circuit_id"]: track for track in self._tracks}
         for circuit_id in self._selected_track_ids:
-            default = configuration_for_track(catalog[circuit_id])
+            default = self._fresh_configuration(catalog[circuit_id])
             self._track_configurations[circuit_id] = default
             session = self._session_configurations.get(circuit_id)
             if session is not None:
@@ -1025,7 +1027,7 @@ class ParametersView(UIView):
             self._cycle_rule("scoring", SCORING_OPTIONS)
             return
         if self._contains(WEATHER_BOUNDS, x, y):
-            self._cycle_rule("weather_mode", WEATHER_MODE_OPTIONS)
+            self._cycle_default_weather()
             return
         if self._contains(TIEBREAK_BOUNDS, x, y):
             self._cycle_rule("tiebreak", TIEBREAK_OPTIONS)
@@ -1129,6 +1131,59 @@ class ParametersView(UIView):
         return self._update_rules(
             **{name: options[(options.index(current) + 1) % len(options)]}
         )
+
+    def _cycle_default_weather(self) -> None:
+        """Avança o clima padrão e pinta todas as voltas das pistas do torneio."""
+
+        options = WEATHER_MODE_OPTIONS
+        current = self.rules.weather_mode
+        # Valor legado (torneio salvo antes do clima padrão) comeca de Seco.
+        index = options.index(current) if current in options else -1
+        weather = options[(index + 1) % len(options)]
+        if not self._update_rules(weather_mode=weather):
+            return
+        self._apply_default_weather()
+
+    def _default_weather(self) -> str:
+        """Clima padrão atual; valores legados contam como Seco."""
+
+        current = self.rules.weather_mode
+        return current if current in WEATHER_MODE_OPTIONS else WEATHER_MODE_OPTIONS[0]
+
+    def _fresh_configuration(self, track: dict) -> ConfigurationFormData:
+        """Configuração inicial de uma pista: padrão de voltas e clima padrão."""
+
+        base = configuration_for_track(track)
+        return ConfigurationFormData(
+            preset=base.preset,
+            laps=base.laps,
+            weather_schedule=WeatherSchedule.uniform(base.laps, self._default_weather()),
+        )
+
+    def _apply_default_weather(self) -> None:
+        """Grava o clima padrão em todas as voltas de cada pista da sequência.
+
+        As etapas seguem editáveis: a pintura de uma etapa altera só essa etapa.
+        """
+
+        weather = self._default_weather()
+        for circuit_id in self._selected_track_ids:
+            current = self._track_configurations[circuit_id]
+            self._track_configurations[circuit_id] = ConfigurationFormData(
+                preset=current.preset,
+                laps=current.laps,
+                weather_schedule=WeatherSchedule.uniform(current.laps, weather),
+            )
+        if self.selected_track is not None:
+            self.configuration = ConfigurationFormData(
+                preset=self.configuration.preset,
+                laps=self.configuration.laps,
+                weather_schedule=WeatherSchedule.uniform(
+                    self.configuration.laps, weather
+                ),
+            )
+        self._update_weather_summary()
+        self._set_status(f"Clima padrão: {weather} em todas as etapas.", SUCCESS_COLOR)
 
     def _draw_selection_button(self) -> None:
         """Show whether the highlighted circuit participates in the sequence."""
@@ -1348,7 +1403,7 @@ class ParametersView(UIView):
             ("Nome do torneio", 484),
             ("Sistema de pontuação", 438),
             ("Total de etapas", 392),
-            ("Clima", 346),
+            ("Clima padrão", 346),
             ("Permitir repetição de pista", 300),
             ("Critério de desempate", 254),
             ("Semente · Ctrl+C/V", 208),

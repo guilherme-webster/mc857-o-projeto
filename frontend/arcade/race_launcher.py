@@ -28,7 +28,6 @@ from typing import Protocol
 
 from frontend.arcade import track_client
 from frontend.arcade.configuration_state import (
-    WEATHER_MODE_OPTIONS,
     PlannedRace,
     SimulationPlan,
     TournamentRules,
@@ -42,7 +41,6 @@ WEATHER_TO_RAIN = {
     "Chuva leve": "light_rain",
     "Chuva intensa": "heavy_rain",
 }
-_ALL_DRY = WEATHER_MODE_OPTIONS[1]
 
 
 class RaceClient(Protocol):
@@ -113,24 +111,20 @@ def run_setup(
     """``setup`` do ``POST /catalog/grid/run`` para uma etapa.
 
     O clima vai como faixas contiguas, inclusive as secas, para que o
-    resultado ecoe exatamente o que foi pedido. Com a regra "Seco em todas" a
-    etapa inteira e seca, independentemente do clima configurado nela.
+    resultado ecoe exatamente o que foi pedido. O clima padrão do torneio
+    já está gravado no clima de cada etapa, então ``rules.weather_mode`` não
+    altera o setup.
     """
 
     configuration = planned.configuration
-    if rules.weather_mode == _ALL_DRY:
-        weather = [
-            {"from_lap": 1, "to_lap": configuration.laps, "rain": "dry"},
-        ]
-    else:
-        weather = [
-            {
-                "from_lap": item.start_lap,
-                "to_lap": item.end_lap,
-                "rain": WEATHER_TO_RAIN[item.weather],
-            }
-            for item in configuration.weather_schedule.ranges()
-        ]
+    weather = [
+        {
+            "from_lap": item.start_lap,
+            "to_lap": item.end_lap,
+            "rain": WEATHER_TO_RAIN[item.weather],
+        }
+        for item in configuration.weather_schedule.ranges()
+    ]
     setup = {
         "total_laps": configuration.laps,
         "track_id": planned.circuit_id,

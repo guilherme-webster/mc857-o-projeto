@@ -99,6 +99,15 @@ class WeatherSchedule:
         _validate_laps(laps)
         return cls((WEATHER_OPTIONS[0],) * laps)
 
+    @classmethod
+    def uniform(cls, laps: int, weather: str) -> WeatherSchedule:
+        """Create a schedule with the same condition ``weather`` for all ``laps``."""
+
+        _validate_laps(laps)
+        if weather not in WEATHER_OPTIONS:
+            raise ConfigurationFormError("condição climática desconhecida")
+        return cls((weather,) * laps)
+
     @property
     def total_laps(self) -> int:
         """Return the number of configured laps."""
@@ -190,7 +199,12 @@ def _validate_laps(laps: int) -> None:
 DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(DEFAULT_LAPS_FALLBACK)
 
 SCORING_OPTIONS = ("F1 oficial", "Sem pontuação")
-WEATHER_MODE_OPTIONS = ("Configuração por corrida", "Seco em todas")
+# Clima padrão do torneio: ao escolher uma condição, todas as voltas de todas as
+# pistas da sequência recebem essa condição. Cada etapa continua editável.
+WEATHER_MODE_OPTIONS = WEATHER_OPTIONS
+# Valores de torneios salvos antes do clima padrão. Continuam válidos ao carregar;
+# o clima de cada etapa é a fonte da verdade, então eles não forçam nada.
+LEGACY_WEATHER_MODES = ("Configuração por corrida", "Seco em todas")
 TIEBREAK_OPTIONS = ("Melhor posição média", "Mais vitórias")
 
 
@@ -215,7 +229,7 @@ class TournamentRules:
             raise ConfigurationFormError("sistema de pontuação desconhecido")
         if self.generation_mode not in ("Manual", "Automática"):
             raise ConfigurationFormError("modo de geração desconhecido")
-        if self.weather_mode not in WEATHER_MODE_OPTIONS:
+        if self.weather_mode not in WEATHER_MODE_OPTIONS + LEGACY_WEATHER_MODES:
             raise ConfigurationFormError("modo de clima desconhecido")
         if self.tiebreak not in TIEBREAK_OPTIONS:
             raise ConfigurationFormError("critério de desempate desconhecido")
