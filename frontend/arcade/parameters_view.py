@@ -11,6 +11,7 @@ from threading import Thread
 import arcade
 from arcade.gui import UIDropdown, UIFlatButton, UIInputText, UIView
 
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.canvas_fit import (
     MINIMUM_WINDOW_SIZE,
     CanvasFit,
@@ -58,7 +59,6 @@ from frontend.arcade.theme import (
     SUCCESS_COLOR,
 )
 from frontend.arcade.track_client import fetch_track, fetch_tracks
-from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
 RULES_PANEL_BOUNDS = (28, 172, 544, 404)

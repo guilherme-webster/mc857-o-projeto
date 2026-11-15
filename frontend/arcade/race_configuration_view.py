@@ -13,8 +13,8 @@ import arcade
 from frontend.arcade.canvas_fit import CanvasFit
 from frontend.arcade.configuration_state import (
     MAX_LAPS,
-    ConfigurationFormError,
     WEATHER_OPTIONS,
+    ConfigurationFormError,
     SessionConfiguration,
     WeatherSchedule,
 )
