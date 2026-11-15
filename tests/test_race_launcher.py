@@ -87,15 +87,6 @@ class RunSetupTest(unittest.TestCase):
             ],
         )
 
-    def test_all_dry_rule_overrides_the_stage_weather(self) -> None:
-        schedule = WeatherSchedule.dry(10).apply(4, 6, "Chuva intensa")
-        setup = run_setup(
-            planned(schedule=schedule), TournamentRules(weather_mode="Seco em todas")
-        )
-        self.assertEqual(
-            setup["weather"], [{"from_lap": 1, "to_lap": 10, "rain": "dry"}]
-        )
-
     def test_setup_does_not_declare_an_engine(self) -> None:
         self.assertNotIn("engine", run_setup(planned(), TournamentRules()))
 

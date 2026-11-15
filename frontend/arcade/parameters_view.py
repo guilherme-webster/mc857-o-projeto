@@ -11,6 +11,7 @@ from threading import Thread
 import arcade
 from arcade.gui import UIDropdown, UIFlatButton, UIInputText, UIView
 
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.canvas_fit import (
     MINIMUM_WINDOW_SIZE,
     CanvasFit,
@@ -60,30 +61,29 @@ from frontend.arcade.theme import (
 from frontend.arcade.track_client import fetch_track, fetch_tracks
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
-RULES_PANEL_BOUNDS = (28, 214, 544, 362)
-TRACK_CARD_BOUNDS = (586, 76, 666, 500)
-SCHEDULER_BOUNDS = (600, 91, 638, 418)
-TRACK_PREVIEW_BOUNDS = (614, 115, 320, 188)
-NAME_INPUT_BOUNDS = (230, 459, 322, 32)
-SEED_INPUT_BOUNDS = (232, 230, 320, 30)
-PREVIOUS_TRACK_BOUNDS = (622, 382, 34, 31)
-NEXT_TRACK_BOUNDS = (816, 382, 34, 31)
-TOGGLE_TRACK_BOUNDS = (956, 286, 268, 38)
-REMOVE_TRACK_BOUNDS = (956, 236, 268, 38)
-AUTOMATIC_BOUNDS = (956, 186, 268, 38)
-# Abaixo do painel de regras, que termina em y=184.
-DRIVERS_BOUNDS = (28, 130, 268, 38)
-SAVED_TOURNAMENTS_BOUNDS = (28, 82, 268, 38)
+RULES_PANEL_BOUNDS = (28, 172, 544, 404)
+TRACK_CARD_BOUNDS = (586, 45, 666, 531)
+SCHEDULER_BOUNDS = (600, 60, 638, 449)
+TRACK_PREVIEW_BOUNDS = (614, 100, 320, 228)
+NAME_INPUT_BOUNDS = (230, 476, 322, 32)
+SEED_INPUT_BOUNDS = (232, 201, 320, 30)
+PREVIOUS_TRACK_BOUNDS = (614, 396, 34, 31)
+NEXT_TRACK_BOUNDS = (900, 396, 34, 31)
+TOGGLE_TRACK_BOUNDS = (956, 286, 268, 42)
+REMOVE_TRACK_BOUNDS = (956, 224, 268, 42)
+AUTOMATIC_BOUNDS = (956, 162, 268, 42)
+# Abaixo do painel de regras, que termina em y=172. A base do botao de baixo
+# alinha com a base do scheduler de pistas (y=60).
+DRIVERS_BOUNDS = (28, 110, 288, 42)
+SAVED_TOURNAMENTS_BOUNDS = (28, 60, 288, 42)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
-CONFIRM_SERIES_BOUNDS = (1070, 13, 182, 36)
-SAVE_RULES_BOUNDS = (916, 13, 138, 36)
-BACK_BOUNDS = (28, 13, 134, 36)
-SCORING_BOUNDS = (232, 420, 320, 34)
+CONFIRM_SERIES_BOUNDS = (956, 100, 268, 42)
+SCORING_BOUNDS = (232, 429, 320, 34)
 STAGES_DECREASE_BOUNDS = (232, 383, 28, 34)
 STAGES_INCREASE_BOUNDS = (326, 383, 28, 34)
-WEATHER_BOUNDS = (232, 344, 320, 34)
-REPEATS_BOUNDS = (232, 306, 44, 25)
-TIEBREAK_BOUNDS = (232, 268, 320, 34)
+WEATHER_BOUNDS = (232, 337, 320, 34)
+REPEATS_BOUNDS = (232, 295, 44, 25)
+TIEBREAK_BOUNDS = (232, 245, 320, 34)
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
@@ -231,7 +231,7 @@ class ParametersView(UIView):
         self._status_text = arcade.Text(
             self._status_message,
             956,
-            115,
+            81,
             self._status_color,
             10,
             width=268,
@@ -336,7 +336,7 @@ class ParametersView(UIView):
                     0,
                 )
                 if not self._initial_supplied:
-                    self.configuration = configuration_for_track(self.selected_track)
+                    self.configuration = self._fresh_configuration(self.selected_track)
                     self.initial = self.configuration
                     self.laps_input.text = str(self.configuration.laps)
                     self._update_weather_summary()
@@ -405,9 +405,11 @@ class ParametersView(UIView):
             self._selected_track_index = (self._selected_track_index + step) % len(
                 self._tracks
             )
-            self.configuration = configuration_for_track(
-                self.selected_track,
-                self._track_configurations.get(self.selected_track["circuit_id"]),
+            existing = self._track_configurations.get(self.selected_track["circuit_id"])
+            self.configuration = (
+                existing
+                if existing is not None
+                else self._fresh_configuration(self.selected_track)
             )
             self.laps_input.text = str(self.configuration.laps)
             self._update_weather_summary()
@@ -483,7 +485,7 @@ class ParametersView(UIView):
         catalog = {track["circuit_id"]: track for track in self._tracks}
         for circuit_id in self._selected_track_ids:
             self._track_configurations.setdefault(
-                circuit_id, configuration_for_track(catalog[circuit_id])
+                circuit_id, self._fresh_configuration(catalog[circuit_id])
             )
         self._sequence_scroll_index = 0
         self._set_status("Sequência automática gerada.", SUCCESS_COLOR)
@@ -697,7 +699,7 @@ class ParametersView(UIView):
         self.configuration = (
             self.initial
             if self._initial_supplied or self.selected_track is None
-            else configuration_for_track(self.selected_track)
+            else self._fresh_configuration(self.selected_track)
         )
         self._selected_track_ids.clear()
         self._track_configurations.clear()
@@ -735,6 +737,19 @@ class ParametersView(UIView):
         track = self.selected_track
         if track is None:
             self._set_status("Aguarde o catálogo de pistas carregar.", ERROR_COLOR)
+            return
+        # Um clique na previa abre so pistas que estao na sequencia do torneio.
+        # Pista destacada fora dela (ex.: a previa mostra Interlagos, mas a
+        # sequencia e Suzuka e Monaco) nao pode ter configuracao aberta: salvar
+        # essa tela gravaria clima para uma pista que nao participa do torneio.
+        if stage_index is None and track["circuit_id"] not in self._selected_track_ids:
+            if not self._selected_track_ids:
+                self._set_status(
+                    "Adicione uma pista à sequência antes de configurá-la.",
+                    ERROR_COLOR,
+                )
+                return
+            self.open_tournament_stage(1)
             return
         try:
             self.configuration = ConfigurationFormData.from_text(
@@ -779,6 +794,23 @@ class ParametersView(UIView):
         self.configuration = self._track_configurations[circuit_id]
         self.laps_input.text = str(self.configuration.laps)
         self.open_track_configuration(stage_index)
+
+    def restore_tournament_defaults(self) -> None:
+        """Volta o clima padrão e as voltas padrão de cada pista da sequência.
+
+        O número de voltas volta ao padrão da pista; a sessão mantém só o modo
+        de início escolhido, com a volta inicial 1 e a final igual ao novo total.
+        """
+
+        catalog = {track["circuit_id"]: track for track in self._tracks}
+        for circuit_id in self._selected_track_ids:
+            default = self._fresh_configuration(catalog[circuit_id])
+            self._track_configurations[circuit_id] = default
+            session = self._session_configurations.get(circuit_id)
+            if session is not None:
+                self._session_configurations[circuit_id] = SessionConfiguration(
+                    1, default.laps, session.start_mode
+                )
 
     def accept_session_configuration(
         self, circuit_id: str, session: SessionConfiguration
@@ -871,9 +903,14 @@ class ParametersView(UIView):
         y: float,
         color: tuple[int, ...] = PRIMARY_TEXT_COLOR,
         font_size: float = 12,
+        fit_width: float | None = None,
         **kwargs: object,
     ) -> _NativeText:
-        """Place a label in logical layout units but render its glyphs natively."""
+        """Place a label in logical layout units but render its glyphs natively.
+
+        ``fit_width`` (unidades logicas) e a largura do botao: o rotulo reduz a
+        fonte ate caber nela, para janelas menores ou fontes mais largas.
+        """
 
         fit = self._canvas_fit()
         width = kwargs.get("width")
@@ -886,6 +923,8 @@ class ParametersView(UIView):
             font_size * fit.scale,
             **kwargs,
         )
+        if fit_width is not None:
+            fit_button_text(label, (fit_width - 12) * fit.scale, font_size * fit.scale)
         return _NativeText(label, self._native_labels)
 
     def _logical_pointer(self, x: int, y: int) -> tuple[int, int]:
@@ -924,7 +963,7 @@ class ParametersView(UIView):
         self._native_text(
             self._status_message,
             956,
-            115,
+            81,
             self._status_color,
             10,
             width=268,
@@ -988,7 +1027,7 @@ class ParametersView(UIView):
             self._cycle_rule("scoring", SCORING_OPTIONS)
             return
         if self._contains(WEATHER_BOUNDS, x, y):
-            self._cycle_rule("weather_mode", WEATHER_MODE_OPTIONS)
+            self._cycle_default_weather()
             return
         if self._contains(TIEBREAK_BOUNDS, x, y):
             self._cycle_rule("tiebreak", TIEBREAK_OPTIONS)
@@ -1026,14 +1065,6 @@ class ParametersView(UIView):
             return
         if self._contains(CONFIRM_SERIES_BOUNDS, x, y):
             self.submit_configuration()
-            return
-        if self._contains(SAVE_RULES_BOUNDS, x, y):
-            self._update_rules()
-            return
-        if self._contains(BACK_BOUNDS, x, y):
-            self._set_status(
-                "Esta é a primeira tela; não há etapa anterior.", SECONDARY_TEXT_COLOR
-            )
             return
         if self._catalog_error and self._contains(CONFIGURE_TRACK_BOUNDS, x, y):
             self._load_track_catalog()
@@ -1101,6 +1132,59 @@ class ParametersView(UIView):
             **{name: options[(options.index(current) + 1) % len(options)]}
         )
 
+    def _cycle_default_weather(self) -> None:
+        """Avança o clima padrão e pinta todas as voltas das pistas do torneio."""
+
+        options = WEATHER_MODE_OPTIONS
+        current = self.rules.weather_mode
+        # Valor legado (torneio salvo antes do clima padrão) comeca de Seco.
+        index = options.index(current) if current in options else -1
+        weather = options[(index + 1) % len(options)]
+        if not self._update_rules(weather_mode=weather):
+            return
+        self._apply_default_weather()
+
+    def _default_weather(self) -> str:
+        """Clima padrão atual; valores legados contam como Seco."""
+
+        current = self.rules.weather_mode
+        return current if current in WEATHER_MODE_OPTIONS else WEATHER_MODE_OPTIONS[0]
+
+    def _fresh_configuration(self, track: dict) -> ConfigurationFormData:
+        """Configuração inicial de uma pista: padrão de voltas e clima padrão."""
+
+        base = configuration_for_track(track)
+        return ConfigurationFormData(
+            preset=base.preset,
+            laps=base.laps,
+            weather_schedule=WeatherSchedule.uniform(base.laps, self._default_weather()),
+        )
+
+    def _apply_default_weather(self) -> None:
+        """Grava o clima padrão em todas as voltas de cada pista da sequência.
+
+        As etapas seguem editáveis: a pintura de uma etapa altera só essa etapa.
+        """
+
+        weather = self._default_weather()
+        for circuit_id in self._selected_track_ids:
+            current = self._track_configurations[circuit_id]
+            self._track_configurations[circuit_id] = ConfigurationFormData(
+                preset=current.preset,
+                laps=current.laps,
+                weather_schedule=WeatherSchedule.uniform(current.laps, weather),
+            )
+        if self.selected_track is not None:
+            self.configuration = ConfigurationFormData(
+                preset=self.configuration.preset,
+                laps=self.configuration.laps,
+                weather_schedule=WeatherSchedule.uniform(
+                    self.configuration.laps, weather
+                ),
+            )
+        self._update_weather_summary()
+        self._set_status(f"Clima padrão: {weather} em todas as etapas.", SUCCESS_COLOR)
+
     def _draw_selection_button(self) -> None:
         """Show whether the highlighted circuit participates in the sequence."""
 
@@ -1114,6 +1198,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1129,6 +1214,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1144,6 +1230,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1159,11 +1246,12 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
         self._native_text(
-            "Grid usado pelo Iniciar e atributos dos pilotos.",
+            "Configurações do grid e dos pilotos",
             left + width + 14,
             bottom + height / 2,
             SECONDARY_TEXT_COLOR,
@@ -1182,6 +1270,7 @@ class ParametersView(UIView):
             bottom + height / 2,
             PRIMARY_TEXT_COLOR,
             11,
+            fit_width=width,
             anchor_x="center",
             anchor_y="center",
         ).draw()
@@ -1212,8 +1301,6 @@ class ParametersView(UIView):
         """Offer a visible action to finalize the chosen order."""
 
         for bounds, label, fill, border in (
-            (BACK_BOUNDS, "‹   Voltar", (26, 36, 48), PANEL_BORDER_COLOR),
-            (SAVE_RULES_BOUNDS, "Salvar regras", (26, 36, 48), PANEL_BORDER_COLOR),
             (CONFIRM_SERIES_BOUNDS, "Confirmar torneio", (203, 27, 43), (236, 50, 65)),
         ):
             left, bottom, width, height = bounds
@@ -1224,6 +1311,7 @@ class ParametersView(UIView):
                 bottom + height / 2,
                 PRIMARY_TEXT_COLOR,
                 11,
+                fit_width=width,
                 anchor_x="center",
                 anchor_y="center",
             ).draw()
@@ -1249,8 +1337,8 @@ class ParametersView(UIView):
             ).draw()
         self._native_text(
             f"{self._selected_track_index + 1} / {len(self._tracks)}",
-            737,
-            397,
+            774,
+            411.5,
             SECONDARY_TEXT_COLOR,
             11,
             anchor_x="center",
@@ -1260,13 +1348,14 @@ class ParametersView(UIView):
     def _draw_rule_controls(self) -> None:
         """Draw compact controls matching the tournament rules panel."""
 
-        self._native_text("Regras do torneio", 48, 545, PRIMARY_TEXT_COLOR, 22).draw()
+        # Centro do espaco livre entre a borda da caixa (576) e o campo de nome (508).
         self._native_text(
-            "Defina as configurações gerais da competição.",
+            "Regras do torneio",
             48,
-            525,
-            SECONDARY_TEXT_COLOR,
-            12,
+            542,
+            PRIMARY_TEXT_COLOR,
+            22,
+            anchor_y="center",
         ).draw()
         left, bottom, width, height = NAME_INPUT_BOUNDS
         self._draw_rounded_panel(
@@ -1311,13 +1400,13 @@ class ParametersView(UIView):
             width=seed_width - 20,
         ).draw()
         labels = (
-            ("Nome do torneio", 467),
-            ("Sistema de pontuação", 429),
+            ("Nome do torneio", 484),
+            ("Sistema de pontuação", 438),
             ("Total de etapas", 392),
-            ("Clima", 354),
-            ("Permitir repetição de pista", 315),
-            ("Critério de desempate", 277),
-            ("Semente · Ctrl+C/V", 239),
+            ("Clima padrão", 346),
+            ("Permitir repetição de pista", 300),
+            ("Critério de desempate", 254),
+            ("Semente", 208),
         )
         for label, y in labels:
             self._native_text(
@@ -1398,9 +1487,10 @@ class ParametersView(UIView):
         self._native_text(
             "Ativado" if self.rules.allow_repeats else "Desativado",
             290,
-            315,
+            REPEATS_BOUNDS[1] + REPEATS_BOUNDS[3] / 2,
             SECONDARY_TEXT_COLOR,
             11,
+            anchor_y="center",
         ).draw()
 
     def _draw_preview(self) -> None:
@@ -1460,6 +1550,15 @@ class ParametersView(UIView):
         length = (
             f"{track['lap_length_m'] / 1000:.3f} km".replace(".", ",") if track else ""
         )
+        # Mesmo nivel do titulo de regras: centro do espaco entre a borda e o catalogo.
+        self._native_text(
+            "Scheduler de pistas",
+            608,
+            542,
+            PRIMARY_TEXT_COLOR,
+            22,
+            anchor_y="center",
+        ).draw()
         for label, x, y, color, size in (
             ("SIMULADOR DE CORRIDA", 72, 692, SECONDARY_TEXT_COLOR, 11),
             ("Configuração do torneio", 40, 620, PRIMARY_TEXT_COLOR, 31),
@@ -1470,31 +1569,9 @@ class ParametersView(UIView):
                 SECONDARY_TEXT_COLOR,
                 14,
             ),
-            ("Scheduler de pistas", 608, 545, PRIMARY_TEXT_COLOR, 22),
-            (
-                "Monte a sequência de pistas do torneio.",
-                608,
-                525,
-                SECONDARY_TEXT_COLOR,
-                12,
-            ),
             ("CATÁLOGO DE PISTAS", 622, 481, ACCENT_COLOR, 10),
             (name, 622, 448, PRIMARY_TEXT_COLOR, 18),
-            (
-                f"Extensão da pista: {length}" if track else "",
-                622,
-                428,
-                SECONDARY_TEXT_COLOR,
-                11,
-            ),
-            (
-                f"{self.configuration.laps} voltas configuradas",
-                622,
-                373,
-                SECONDARY_TEXT_COLOR,
-                10,
-            ),
-            ("Clique na prévia para configurar", 622, 354, SECONDARY_TEXT_COLOR, 9),
+            ("Clique na prévia para configurar", 622, 82, SECONDARY_TEXT_COLOR, 9),
             (
                 f"SEQUÊNCIA • {len(self._selected_track_ids)} pista(s)",
                 956,
@@ -1506,6 +1583,22 @@ class ParametersView(UIView):
             self._native_text(
                 label, x, y, color, size, width=310 if x == 622 else None
             ).draw()
+        # Extensao e voltas centralizadas, logo acima da previa.
+        info = (
+            f"Extensão: {length} · {self.configuration.laps} voltas"
+            if track
+            else f"{self.configuration.laps} voltas"
+        )
+        preview_left, _preview_bottom, preview_width, _preview_height = TRACK_PREVIEW_BOUNDS
+        self._native_text(
+            info,
+            preview_left + preview_width / 2,
+            336,
+            SECONDARY_TEXT_COLOR,
+            11,
+            width=310,
+            anchor_x="center",
+        ).draw()
         names = {item["circuit_id"]: item["name"] for item in self._tracks}
         for slot, bounds in enumerate(SEQUENCE_ROW_BOUNDS):
             index = self._sequence_scroll_index + slot
@@ -1552,16 +1645,6 @@ class ParametersView(UIView):
                 9,
             ).draw()
             self._draw_sequence_scrollbar()
-        self._draw_rounded_panel(1175, 681, 78, 29, 6, (26, 36, 48), PANEL_BORDER_COLOR)
-        self._native_text(
-            "Ajuda",
-            1214,
-            696,
-            SECONDARY_TEXT_COLOR,
-            10,
-            anchor_x="center",
-            anchor_y="center",
-        ).draw()
 
     def _draw_sequence_scrollbar(self) -> None:
         """Show the visible fraction of the sequence beside its fixed row slots."""

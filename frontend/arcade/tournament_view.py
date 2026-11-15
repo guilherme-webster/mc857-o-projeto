@@ -13,6 +13,7 @@ from threading import Thread
 
 import arcade
 
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.saved_tournaments import save_request
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
@@ -317,6 +318,7 @@ class TournamentResultView(arcade.View):
                 background = _BUTTON_HOVER if hover else _BUTTON_BG
             arcade.draw_lbwh_rectangle_filled(left, bottom, w, h, background)
             text = self._button_texts[key]
+            fit_button_text(text, w - 12, 13)
             text.x, text.y = left + w / 2, bottom + h / 2
             text.draw()
 

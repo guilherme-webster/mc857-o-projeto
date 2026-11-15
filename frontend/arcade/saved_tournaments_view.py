@@ -24,6 +24,7 @@ from threading import Thread
 import arcade
 
 from frontend.arcade import track_client
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.race_launcher import LaunchOutcome
 from frontend.arcade.saved_tournaments import (
     HttpTournamentClient,
@@ -600,6 +601,7 @@ class SavedTournamentsView(arcade.View):
                 background = _BUTTON_HOVER if hover else _BUTTON_BG
             arcade.draw_lbwh_rectangle_filled(left, bottom, width, button_height, background)
             text = self._label_texts[label]
+            fit_button_text(text, width - 12, 12)
             text.x, text.y = left + width / 2, bottom + button_height / 2
             text.draw()
 

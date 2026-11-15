@@ -113,10 +113,16 @@ class GridScrollTest(unittest.TestCase):
         self.assertIn(f"minus:{last}", view._buttons())
 
     def test_wheel_over_the_side_box_scrolls_it_not_the_table(self) -> None:
+        # A caixa rola 3 passos, mas para no ultimo atributo (ver grid_view).
+        probe = _view(720, 30)
+        probe._panel_scroll = 10_000
+        probe._clamp_panel_scroll()
+        max_scroll = probe._panel_scroll
+
         view = _view(720, 30)
         left = view._panel_left()
         view.on_mouse_scroll(left + 40, 300, 0, -3)
-        self.assertEqual(view._panel_scroll, 3 * 32)
+        self.assertEqual(view._panel_scroll, min(3 * 32, max_scroll))
         self.assertEqual(view._scroll, 0)
 
 

@@ -14,6 +14,7 @@ from threading import Thread
 import arcade
 
 from frontend.arcade import track_client
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.clipboard import handle_clipboard_shortcut
 from frontend.arcade.configuration_state import (
     ConfigurationFormError,
@@ -63,17 +64,26 @@ _TABLE_COLUMNS = (
 # inicial em relacao ao topo da area rolavel, e passo de cada giro da roda.
 _PANEL_ROW_HEIGHT = 64
 _PANEL_FIRST_ROW_OFFSET = 34
-_PANEL_DISCLAIMER_SPACE = 90
+# Altura minima, acima da base da area rolavel, em que o ultimo atributo para
+# de subir: deixa o aviso de rodape (abaixo dele) visivel.
+_PANEL_LAST_ROW_MARGIN = 80
 _PANEL_SCROLL_STEP = 32
 _PANEL_LEFT_MARGIN = 40
 # Caixa lateral do piloto selecionado: largura total (inclui a margem direita
 # de 40 px) e posicao dos controles em relacao a borda esquerda da caixa.
 _PANEL_TOTAL_WIDTH = 440
+# Texto de cada atributo (nome e dica) comeca a 24 px da borda da caixa e
+# precisa parar antes do botao "−", com 10 px de folga.
+_PANEL_TEXT_X = 24
+_PANEL_TEXT_WIDTH = 240 - _PANEL_TEXT_X - 10
+# Setas de subir e descer na primeira linha da caixa, nas bordas internas; o
+# nome do piloto fica centralizado entre elas.
+_ARROW_UP_X = 24
+_ARROW_DOWN_X = _PANEL_TOTAL_WIDTH - 40 - 24 - 34
 _CONTROL_X = {
-    "minus": 240,
-    "value": 317,
-    "move-down": 316,
-    "plus": 360,
+    "minus": 272,
+    "value": 328,
+    "plus": 350,
 }
 
 
@@ -259,11 +269,12 @@ class GridView(arcade.View):
             "build": (570, top, 170, 34),
             "back": (40, 20, 150, 36),
             "save": (width - 230, 20, 190, 36),
-            "discard": (width - 430, 20, 190, 36),
+            "discard": (self._panel_left(), 20, 190, 36),
         }
         left = self._panel_left()
-        rects["move-up"] = (left + _CONTROL_X["minus"], height - 332, 66, 30)
-        rects["move-down"] = (left + _CONTROL_X["move-down"], height - 332, 66, 30)
+        # Setas na primeira linha da caixa, com o centro vertical do nome do piloto.
+        rects["move-up"] = (left + _ARROW_UP_X, height - 228, 34, 30)
+        rects["move-down"] = (left + _ARROW_DOWN_X, height - 228, 34, 30)
         bottom, top = self._panel_region()
         for i, spec in enumerate(ATTRIBUTES):
             y = self._attribute_y(i)
@@ -446,15 +457,6 @@ class GridView(arcade.View):
             26,
             bold=True,
         ).draw()
-        self._text(
-            "subtitle",
-            "Monte o grid usado pelo Iniciar, reordene com ↑/↓ e ajuste atributos. "
-            "Cores: sorteado · perfil · editado.",
-            40,
-            height - 92,
-            SECONDARY_TEXT_COLOR,
-            12,
-        ).draw()
         self._draw_source_selector(height)
         self._draw_table(height)
         self._draw_scroll_hint()
@@ -510,7 +512,7 @@ class GridView(arcade.View):
             )
             self._text(
                 "grid-seed-label",
-                "Semente do grid aleatório · Ctrl+C / Ctrl+V",
+                "Semente de grid aleatório",
                 left,
                 bottom + field_height + 5,
                 _HEADER_COLOR,
@@ -527,7 +529,8 @@ class GridView(arcade.View):
             ).draw()
 
     def _seed_bounds(self) -> tuple[float, float, float, float]:
-        return (800, self.window.height - 150, 245, 34)
+        # Mesma margem esquerda e largura da caixa de atributos (400 px).
+        return (self._panel_left(), self.window.height - 150, 400, 34)
 
     def _draw_table(self, height: int) -> None:
         if self._draft is None:
@@ -595,7 +598,7 @@ class GridView(arcade.View):
     def _panel_region(self) -> tuple[float, float]:
         """(base, topo) da area rolavel da caixa, abaixo da linha de posicao."""
 
-        return 88.0, self.window.height - 340.0
+        return 88.0, self.window.height - 332.0
 
     def _attribute_y(self, index: int) -> float:
         """Y do atributo ``index`` com a rolagem da caixa aplicada."""
@@ -611,12 +614,10 @@ class GridView(arcade.View):
 
     def _clamp_panel_scroll(self) -> None:
         bottom, top = self._panel_region()
-        content = (
-            _PANEL_FIRST_ROW_OFFSET
-            + len(ATTRIBUTES) * _PANEL_ROW_HEIGHT
-            + _PANEL_DISCLAIMER_SPACE
-        )
-        max_scroll = max(0, content - (top - bottom))
+        # A rolagem para quando o ultimo atributo sobe ate a margem de baixo
+        # (com espaco para o aviso de rodape); nao sobra area vazia no fim.
+        last_row_at_rest = top - _PANEL_FIRST_ROW_OFFSET - (len(ATTRIBUTES) - 1) * _PANEL_ROW_HEIGHT
+        max_scroll = max(0, bottom + _PANEL_LAST_ROW_MARGIN - last_row_at_rest)
         self._panel_scroll = int(min(max(0, self._panel_scroll), max_scroll))
 
     def _clip_panel_region(self) -> None:
@@ -659,11 +660,14 @@ class GridView(arcade.View):
     def _draw_panel(self, width: int, height: int) -> None:
         left = self._panel_left()
         bottom, top = 80, height - 200
+        # Topo da caixa alinhado ao cabecalho do grid (y=height-200, texto) e base
+        # alinhada ao fim das linhas de pilotos (y=80).
+        box_top = height - 190
         arcade.draw_lbwh_rectangle_filled(
-            left, bottom, width - left - 40, top - bottom + 30, PANEL_COLOR
+            left, bottom, width - left - 40, box_top - bottom, PANEL_COLOR
         )
         arcade.draw_lbwh_rectangle_outline(
-            left, bottom, width - left - 40, top - bottom + 30, PANEL_BORDER_COLOR, 1
+            left, bottom, width - left - 40, box_top - bottom, PANEL_BORDER_COLOR, 1
         )
         if self._draft is None or self._selected is None:
             return
@@ -673,21 +677,27 @@ class GridView(arcade.View):
         self._clamp_panel_scroll()
         entry = next(e for e in self._draft.entries if e["driver_id"] == self._selected)
         x = left + 24
-        self._text(
+        # Nome centralizado entre as setas, na mesma linha delas.
+        name_center = left + (_ARROW_UP_X + 34 + _ARROW_DOWN_X) / 2
+        name_text = self._text(
             "p:name",
             entry["driver_name"],
-            x,
-            top - 10,
+            name_center,
+            height - 213,
             PRIMARY_TEXT_COLOR,
             18,
             bold=True,
-        ).draw()
+            anchor_x="center",
+            anchor_y="center",
+        )
+        fit_button_text(name_text, _ARROW_DOWN_X - _ARROW_UP_X - 34 - 16, 18)
+        name_text.draw()
         archetype = ARCHETYPE_LABELS.get(entry["attributes"]["archetype"], "")
         self._text(
             "p:team",
             f"{entry['team_name']} · {archetype}",
             x,
-            top - 36,
+            top - 54,
             SECONDARY_TEXT_COLOR,
             12,
         ).draw()
@@ -701,7 +711,7 @@ class GridView(arcade.View):
             "p:profile",
             characterization,
             x,
-            top - 62,
+            top - 68,
             (225, 215, 180) if profile else _HEADER_COLOR,
             11,
             width=width - left - 90,
@@ -717,7 +727,7 @@ class GridView(arcade.View):
             "p:position",
             f"Posição de largada: P{position}",
             x,
-            height - 320,
+            height - 318,
             PRIMARY_TEXT_COLOR,
             11,
             bold=True,
@@ -726,7 +736,7 @@ class GridView(arcade.View):
         for i, spec in enumerate(ATTRIBUTES):
             y = self._attribute_y(i)
             source = self._draft.source(self._selected, spec.name)
-            self._text(
+            label_text = self._text(
                 f"a:{spec.name}:label",
                 spec.label,
                 x,
@@ -734,15 +744,20 @@ class GridView(arcade.View):
                 PRIMARY_TEXT_COLOR,
                 13,
                 bold=True,
-            ).draw()
-            self._text(
+            )
+            # Nome e dica ficam antes do botao "−": a fonte diminui se preciso.
+            fit_button_text(label_text, _PANEL_TEXT_WIDTH, 13)
+            label_text.draw()
+            hint_text = self._text(
                 f"a:{spec.name}:hint",
                 f"{spec.hint} · {SOURCE_LABELS.get(source, source)}",
                 x,
                 y - 8,
                 _HEADER_COLOR,
                 10,
-            ).draw()
+            )
+            fit_button_text(hint_text, _PANEL_TEXT_WIDTH, 10)
+            hint_text.draw()
             value = format_value(
                 spec.name, self._draft.value(self._selected, spec.name)
             )
@@ -752,7 +767,7 @@ class GridView(arcade.View):
                 left + _CONTROL_X["value"],
                 y + 9,
                 SOURCE_COLORS.get(source, PRIMARY_TEXT_COLOR),
-                14,
+                11,
                 bold=True,
                 anchor_x="center",
                 anchor_y="center",
@@ -779,8 +794,8 @@ class GridView(arcade.View):
             "back": "‹ Voltar",
             "save": "Salvar alterações",
             "discard": "Descartar",
-            "move-up": "↑ Subir",
-            "move-down": "↓ Descer",
+            "move-up": "↑",
+            "move-down": "↓",
         }
         for key, rect in self._buttons().items():
             if self._draft is None and key.startswith(
