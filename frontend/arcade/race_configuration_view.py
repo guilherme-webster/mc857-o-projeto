@@ -14,6 +14,7 @@ from frontend.arcade.canvas_fit import CanvasFit
 from frontend.arcade.configuration_state import (
     MAX_LAPS,
     ConfigurationFormError,
+    WEATHER_OPTIONS,
     SessionConfiguration,
     WeatherSchedule,
 )
@@ -41,8 +42,8 @@ CANVAS_ORIGIN_X = 416
 DESIGN_SIZE = (1672 - CANVAS_ORIGIN_X, 900)
 TRACK_MAP_BOUNDS = (474, 130, 492, 400)
 SESSION_FIELD_BOUNDS = {
-    "first_lap": (1030, 498, 290, 38),
-    "last_lap": (1340, 498, 290, 38),
+    "first_lap": (1030, 538, 290, 38),
+    "last_lap": (1340, 538, 290, 38),
 }
 SESSION_STEPPER_BOUNDS = {
     field: (
@@ -51,18 +52,50 @@ SESSION_STEPPER_BOUNDS = {
     )
     for field, (left, bottom, width, height) in SESSION_FIELD_BOUNDS.items()
 }
-CANCEL_BOUNDS = (1100, 8, 152, 42)
-SAVE_BOUNDS = (1270, 8, 169, 42)
-ADVANCE_BOUNDS = (1454, 8, 186, 42)
+# Botoes de acao ficam no canto inferior direito da caixa de clima.
+RESET_BOUNDS = (1160, 56, 150, 40)
+CANCEL_BOUNDS = (1320, 56, 150, 40)
+SAVE_BOUNDS = (1480, 56, 150, 40)
+# Caixa de clima: x 1010..1640 (centro 1325). Paleta (150+10+150+10+160 = 480 px)
+# e campos de volta (120+10+120 = 250 px) sao centralizados nesse eixo.
 WEATHER_PALETTE_BOUNDS = {
-    "Seco": (1030, 280, 150, 40),
-    "Chuva leve": (1190, 280, 150, 40),
-    "Chuva intensa": (1350, 280, 160, 40),
+    "Seco": (1085, 375, 150, 40),
+    "Chuva leve": (1245, 375, 150, 40),
+    "Chuva intensa": (1405, 375, 160, 40),
 }
-WEATHER_START_BOUNDS = (1030, 210, 120, 40)
-WEATHER_END_BOUNDS = (1160, 210, 120, 40)
-WEATHER_APPLY_BOUNDS = (1290, 210, 160, 40)
-WEATHER_TIMELINE_BOUNDS = (1030, 152, 580, 24)
+WEATHER_START_BOUNDS = (1200, 305, 120, 40)
+WEATHER_END_BOUNDS = (1330, 305, 120, 40)
+WEATHER_TIMELINE_BOUNDS = (1030, 220, 580, 24)
+
+
+def weather_breakdown(schedule: WeatherSchedule) -> list[str]:
+    """Uma linha por condicao climatica, listando as voltas em que ela ocorre.
+
+    Exemplo: ``"Seco: voltas 1-3, 6"``. As voltas de cada condicao sao agrupadas
+    em faixas consecutivas (``a-b``), na ordem de ``WEATHER_OPTIONS``. Condicoes
+    sem nenhuma volta nao aparecem.
+    """
+
+    laps_by_weather: dict[str, list[int]] = {weather: [] for weather in WEATHER_OPTIONS}
+    for lap, weather in enumerate(schedule.by_lap, start=1):
+        laps_by_weather[weather].append(lap)
+
+    lines: list[str] = []
+    for weather in WEATHER_OPTIONS:
+        laps = laps_by_weather[weather]
+        if not laps:
+            continue
+        runs: list[str] = []
+        start = previous = laps[0]
+        for lap in laps[1:] + [None]:
+            if lap is not None and lap == previous + 1:
+                previous = lap
+                continue
+            runs.append(f"{start}-{previous}" if previous != start else f"{start}")
+            if lap is not None:
+                start = previous = lap
+        lines.append(f"{weather}: voltas {', '.join(runs)}")
+    return lines
 
 
 class RaceConfigurationView(arcade.View):
@@ -199,7 +232,7 @@ class RaceConfigurationView(arcade.View):
         self._draw_session()
         self._draw_track_summary()
         self._draw_weather_editor()
-        self._draw_footer()
+        self._draw_weather_actions()
 
     def _draw_header(self) -> None:
         arcade.draw_lbwh_rectangle_filled(0, 844, 1672, 56, (12, 17, 24))
@@ -207,34 +240,31 @@ class RaceConfigurationView(arcade.View):
         arcade.draw_texture_rect(self._logo, arcade.LBWH(450, 860, 50, 25))
         self._text("SIMULADOR DE CORRIDA", 524, 866, 15, SECONDARY_TEXT_COLOR)
         self._text("Configuração da corrida", 450, 795, 38)
-        self._text(
-            "Ajuste os parâmetros específicos de cada etapa do torneio.",
-            450,
-            768,
-            17,
-            SECONDARY_TEXT_COLOR,
-        )
 
     def _draw_stage_header(self) -> None:
         """Faixa da etapa: so as setas de navegacao e o nome do circuito, centralizados."""
 
         self._panel((450, 645, 1190, 103))
         center_x = 450 + 1190 / 2
-        center_y = 645 + 103 / 2
+        name_y = 712
         title = self._text(
             self.track_name,
             center_x,
-            center_y,
+            name_y,
             24,
             anchor_x="center",
             anchor_y="center",
         )
+        total = len(self.parent.selected_track_ids)
+        stage_text = (
+            "Etapa Única" if total <= 1 else f"Etapa {self.stage_index} de {total}"
+        )
+        self._text(stage_text, center_x, 668, 14, SECONDARY_TEXT_COLOR, anchor_x="center", anchor_y="center")
         # Largura do nome em unidades de design: as setas ficam logo ao lado dele.
         half_width = title.content_width / self._canvas_fit().scale / 2
         arrow_size = 34
-        arrow_bottom = center_y - arrow_size / 2
+        arrow_bottom = name_y - arrow_size / 2
         self._stage_arrows = {}
-        total = len(self.parent.selected_track_ids)
         if self.stage_index > 1:
             left = center_x - half_width - 12 - arrow_size
             self._stage_arrows["previous"] = (left, arrow_bottom, arrow_size, arrow_size)
@@ -245,11 +275,11 @@ class RaceConfigurationView(arcade.View):
             self._button(bounds, "‹" if key == "previous" else "›")
 
     def _draw_session(self) -> None:
-        self._panel((1010, 405, 630, 230))
+        self._panel((1010, 520, 630, 115))
         self._text(
             "Altere o número de voltas do circuito.",
             1030,
-            598,
+            612,
             14,
             SECONDARY_TEXT_COLOR,
         )
@@ -258,7 +288,7 @@ class RaceConfigurationView(arcade.View):
             ("Volta final", 1340),
         )
         for label, x in labels:
-            self._text(label, x, 544, 14, SECONDARY_TEXT_COLOR)
+            self._text(label, x, 582, 14, SECONDARY_TEXT_COLOR)
         for key, value in (
             ("first_lap", str(self.session.first_lap)),
             ("last_lap", str(self.session.last_lap)),
@@ -290,28 +320,24 @@ class RaceConfigurationView(arcade.View):
                     anchor_x="center",
                     anchor_y="center",
                 )
-        self._text(
-            "Estas opções afetam apenas a corrida selecionada.",
-            1030,
-            472,
-            13,
-            SECONDARY_TEXT_COLOR,
-        )
 
     def _draw_track_summary(self) -> None:
         self._panel((450, 40, 540, 595))
-        self._text("Resumo da pista", 474, 608, 24)
+        # A caixa da pista tem ~490 px: nomes longos como "Shanghai International
+        # Circuit" cabem; so cortamos acima de 40 caracteres.
         summary_name = (
             self.track_name
-            if len(self.track_name) <= 28
-            else self.track_name[:25] + "…"
+            if len(self.track_name) <= 40
+            else self.track_name[:37] + "…"
         )
-        self._text(summary_name, 474, 580, 16)
+        # Centro horizontal da caixa da pista (x de 450 a 990).
+        # Sem o titulo "Resumo da pista", o nome ocupa o topo da caixa.
+        self._text(summary_name, 720, 600, 26, anchor_x="center")
         laps_text = f"{self.schedule.total_laps} voltas"
         if self._preview is not None:
             length = f"{self._preview.lap_length_m / 1000:.3f}".replace(".", ",")
             laps_text += f"   ·   {length} km"
-        self._text(laps_text, 474, 556, 15, SECONDARY_TEXT_COLOR)
+        self._text(laps_text, 720, 556, 15, SECONDARY_TEXT_COLOR, anchor_x="center")
         self._panel(TRACK_MAP_BOUNDS, (8, 19, 16))
         if self._preview is None:
             message = self._track_error or "Carregando geometria..."
@@ -354,12 +380,12 @@ class RaceConfigurationView(arcade.View):
         antigo; a linha do tempo mostra os intervalos ja definidos.
         """
 
-        self._panel((1010, 40, 630, 355))
-        self._text("Clima por volta", 1030, 360, 22)
+        self._panel((1010, 40, 630, 470))
+        self._text("Clima por volta", 1030, 475, 22)
         self._text(
             "Escolha uma condição e arraste sobre a barra para pintar as voltas.",
             1030,
-            338,
+            443,
             13,
             SECONDARY_TEXT_COLOR,
         )
@@ -381,7 +407,14 @@ class RaceConfigurationView(arcade.View):
             ("Volta final", WEATHER_END_BOUNDS, self._weather_end_text, "end"),
         ):
             left, bottom, width, height = bounds
-            self._text(label, left, bottom + height + 6, 12, SECONDARY_TEXT_COLOR)
+            self._text(
+                label,
+                left + width / 2,
+                bottom + height + 6,
+                12,
+                SECONDARY_TEXT_COLOR,
+                anchor_x="center",
+            )
             self._panel(
                 bounds,
                 (23, 33, 45),
@@ -395,8 +428,11 @@ class RaceConfigurationView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
             )
-        self._button(WEATHER_APPLY_BOUNDS, "Aplicar às voltas", primary=True)
-        self._text(self._status, 1030, 190, 12, SECONDARY_TEXT_COLOR, width=580)
+        self._text(self._status, 1030, 268, 12, SECONDARY_TEXT_COLOR, width=580)
+        # Resumo por condicao, abaixo da barra de pintura e a esquerda dos botoes
+        # Cancelar/Salvar (que comecam em x=1320).
+        for index, line in enumerate(weather_breakdown(self.schedule)):
+            self._text(line, 1030, 166 - 22 * index, 13, SECONDARY_TEXT_COLOR, width=280)
         left, bottom, width, height = WEATHER_TIMELINE_BOUNDS
         self._text("1", left, bottom - 20, 12, SECONDARY_TEXT_COLOR)
         self._text(
@@ -440,21 +476,19 @@ class RaceConfigurationView(arcade.View):
                 (*WEATHER_TIMELINE_COLORS[self.selected_weather], 190),
             )
 
-    def _draw_footer(self) -> None:
+    def _draw_weather_actions(self) -> None:
+        """Cancelar e Salvar corrida, no canto inferior da caixa de clima."""
+
+        self._button(RESET_BOUNDS, "Redefinir")
         self._button(CANCEL_BOUNDS, "Cancelar")
-        self._button(SAVE_BOUNDS, "Salvar corrida")
-        self._button(ADVANCE_BOUNDS, "Salvar e avançar", primary=True)
+        self._button(SAVE_BOUNDS, "Salvar", primary=True)
 
     def on_mouse_release(self, x: int, y: int, button: int, modifiers: int) -> None:
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
         x, y = self._logical_pointer(x, y)
-        if self._contains(self._stage_arrows.get("previous", (0, 0, 0, 0)), x, y):
-            self._go_to_stage(self.stage_index - 1)
-            return
-        if self._contains(self._stage_arrows.get("next", (0, 0, 0, 0)), x, y):
-            self._go_to_stage(self.stage_index + 1)
-            return
+        # O arrasto pendente vem antes das setas: soltar o botao sobre uma seta
+        # nao pode descartar a pintura do clima antes de salvar a etapa.
         if self._weather_drag_start is not None:
             self._weather_drag_end = self._weather_lap_at(x)
             first, last = sorted((self._weather_drag_start, self._weather_drag_end))
@@ -464,14 +498,20 @@ class RaceConfigurationView(arcade.View):
             self._weather_drag_start = self._weather_drag_end = None
             self._status = f"{self.selected_weather} aplicado às voltas {first}–{last}."
             return
+        if self._contains(self._stage_arrows.get("previous", (0, 0, 0, 0)), x, y):
+            self._go_to_stage(self.stage_index - 1)
+            return
+        if self._contains(self._stage_arrows.get("next", (0, 0, 0, 0)), x, y):
+            self._go_to_stage(self.stage_index + 1)
+            return
         if self._contains(SAVE_BOUNDS, x, y):
             self.save_and_return()
             return
+        if self._contains(RESET_BOUNDS, x, y):
+            self.reset_tournament_defaults()
+            return
         if self._contains(CANCEL_BOUNDS, x, y):
             self.cancel()
-            return
-        if self._contains(ADVANCE_BOUNDS, x, y):
-            self.save_and_advance()
             return
         self._handle_weather_click(x, y)
         for field, buttons in SESSION_STEPPER_BOUNDS.items():
@@ -544,8 +584,6 @@ class RaceConfigurationView(arcade.View):
                 self._weather_replace_on_type = True
                 return
         self._weather_focused_field = None
-        if self._contains(WEATHER_APPLY_BOUNDS, x, y):
-            self.apply_weather_range()
 
     def apply_weather_range(self) -> None:
         """Apply the selected condition to the inclusive numeric interval."""
@@ -630,6 +668,7 @@ class RaceConfigurationView(arcade.View):
             current = "" if self._weather_replace_on_type else getattr(self, attribute)
             setattr(self, attribute, current + text)
             self._weather_replace_on_type = False
+            self.apply_weather_range()
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if self._session_focused_field is not None:
@@ -653,6 +692,7 @@ class RaceConfigurationView(arcade.View):
             current = "" if self._weather_replace_on_type else getattr(self, attribute)
             setattr(self, attribute, current[:-1])
             self._weather_replace_on_type = False
+            self.apply_weather_range()
         elif symbol in (arcade.key.ENTER, arcade.key.TAB):
             self._weather_focused_field = None
             self.apply_weather_range()
@@ -682,6 +722,16 @@ class RaceConfigurationView(arcade.View):
         self.parent.accept_session_configuration(self.circuit_id, self.session)
         self.window.show_view(self.parent)
 
+    def reset_tournament_defaults(self) -> None:
+        """Restaura clima e voltas padrão de todas as pistas do torneio.
+
+        Edições não salvas desta etapa também são descartadas: a tela é reaberta
+        a partir do estado restaurado no torneio.
+        """
+
+        self.parent.restore_tournament_defaults()
+        self.parent.open_tournament_stage(self.stage_index)
+
     def cancel(self) -> None:
         """Leave the stage without copying unsaved settings to the tournament."""
 
@@ -699,15 +749,6 @@ class RaceConfigurationView(arcade.View):
 
         self._save_stage()
         self.parent.open_tournament_stage(stage_index)
-
-    def save_and_advance(self) -> None:
-        self._commit_session_text()
-        self.parent.accept_weather_schedule(self.schedule)
-        self.parent.accept_session_configuration(self.circuit_id, self.session)
-        if self.stage_index < len(self.parent.selected_track_ids):
-            self.parent.open_tournament_stage(self.stage_index + 1)
-        else:
-            self.window.show_view(self.parent)
 
     @staticmethod
     def _contains(bounds: tuple[int, int, int, int], x: int, y: int) -> bool:

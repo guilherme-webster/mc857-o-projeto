@@ -736,6 +736,19 @@ class ParametersView(UIView):
         if track is None:
             self._set_status("Aguarde o catálogo de pistas carregar.", ERROR_COLOR)
             return
+        # Um clique na previa abre so pistas que estao na sequencia do torneio.
+        # Pista destacada fora dela (ex.: a previa mostra Interlagos, mas a
+        # sequencia e Suzuka e Monaco) nao pode ter configuracao aberta: salvar
+        # essa tela gravaria clima para uma pista que nao participa do torneio.
+        if stage_index is None and track["circuit_id"] not in self._selected_track_ids:
+            if not self._selected_track_ids:
+                self._set_status(
+                    "Adicione uma pista à sequência antes de configurá-la.",
+                    ERROR_COLOR,
+                )
+                return
+            self.open_tournament_stage(1)
+            return
         try:
             self.configuration = ConfigurationFormData.from_text(
                 preset=self.preset_dropdown.value or "",
@@ -779,6 +792,23 @@ class ParametersView(UIView):
         self.configuration = self._track_configurations[circuit_id]
         self.laps_input.text = str(self.configuration.laps)
         self.open_track_configuration(stage_index)
+
+    def restore_tournament_defaults(self) -> None:
+        """Volta clima (seco) e voltas padrão de cada pista da sequência.
+
+        O número de voltas volta ao padrão da pista; a sessão mantém só o modo
+        de início escolhido, com a volta inicial 1 e a final igual ao novo total.
+        """
+
+        catalog = {track["circuit_id"]: track for track in self._tracks}
+        for circuit_id in self._selected_track_ids:
+            default = configuration_for_track(catalog[circuit_id])
+            self._track_configurations[circuit_id] = default
+            session = self._session_configurations.get(circuit_id)
+            if session is not None:
+                self._session_configurations[circuit_id] = SessionConfiguration(
+                    1, default.laps, session.start_mode
+                )
 
     def accept_session_configuration(
         self, circuit_id: str, session: SessionConfiguration

@@ -28,7 +28,6 @@ try:
         CANVAS_ORIGIN_X,
         SESSION_FIELD_BOUNDS,
         SESSION_STEPPER_BOUNDS,
-        WEATHER_APPLY_BOUNDS,
         WEATHER_END_BOUNDS,
         WEATHER_START_BOUNDS,
         WEATHER_TIMELINE_BOUNDS,
@@ -694,12 +693,7 @@ class ParametersViewTest(unittest.TestCase):
                 0,
             )
             race_view.on_text(value)
-        bounds = WEATHER_APPLY_BOUNDS
-        race_view.on_mouse_release(
-            *self.to_window(race_view, bounds[0] + 10, bounds[1] + 10),
-            arcade.MOUSE_BUTTON_LEFT,
-            0,
-        )
+        # O intervalo digitado e aplicado ao mudar cada campo, sem botao.
         self.assertEqual(race_view.schedule.by_lap[4:7], ("Chuva intensa",) * 3)
         self.assertEqual(race_view.schedule.by_lap[3], "Seco")
         race_view._weather_start_text = "0"
