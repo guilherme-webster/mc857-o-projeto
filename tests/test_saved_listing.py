@@ -119,8 +119,10 @@ class ManageSavedRaceTest(unittest.TestCase):
                 renamed = catalog_service.rename_saved_race(meta["id"], "  Nova  ")
 
                 self.assertEqual(renamed["name"], "Nova")
+                # O nome vale do sidecar; o documento nao e regravado.
+                sidecar = json.loads((Path(directory) / f"{meta['id']}.meta.json").read_text())
+                self.assertEqual(sidecar["name"], "Nova")
                 stored = json.loads((Path(directory) / f"{meta['id']}.json").read_text())
-                self.assertEqual(stored["meta"]["name"], "Nova")
                 self.assertEqual(stored["race"], self.RACE)
 
     def test_blank_name_is_refused(self) -> None:

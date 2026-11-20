@@ -896,7 +896,13 @@ def _saved_race_path(race_id: str):
 
 
 def rename_saved_race(race_id: str, name: str) -> dict:
-    """Troca o nome da corrida salva; o resto do arquivo fica como estava."""
+    """Troca o nome da corrida salva, regravando so o sidecar.
+
+    O documento tem as trajetorias inteiras (varios MB); regrava-lo a cada
+    renomeacao deixava a tela lenta. Com o sidecar, o nome vale para a lista e
+    o ``meta`` do documento fica com o nome antigo. Esse ``meta`` so e lido de
+    novo se o sidecar faltar, e nesse caso o backfill o usa.
+    """
 
     if not name.strip():
         raise HTTPException(
@@ -904,11 +910,13 @@ def rename_saved_race(race_id: str, name: str) -> dict:
             detail="informe um nome para a corrida",
         )
     path = _saved_race_path(race_id)
-    document = json.loads(path.read_text(encoding="utf-8"))
-    document["meta"]["name"] = name.strip()
-    _write_json(path, document)
-    _write_summary(path, document["meta"])
-    return document["meta"]
+    summary = _read_summary(path)
+    if summary is None:
+        # Corrida sem sidecar (salva antes dele): o meta do documento e o resumo.
+        summary = json.loads(path.read_text(encoding="utf-8"))["meta"]
+    summary = {**summary, "name": name.strip()}
+    _write_summary(path, summary)
+    return summary
 
 
 def delete_saved_race(race_id: str) -> None:

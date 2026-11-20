@@ -109,6 +109,10 @@ def read_saved_tournament(tournament_id: str) -> dict:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
+    # O nome vale do sidecar: o rename o atualiza sem regravar este registro.
+    summary = catalog._read_summary(path)
+    if summary is not None and "name" in summary:
+        record["name"] = summary["name"]
     return record
 
 
@@ -122,11 +126,18 @@ def rename_saved_tournament(tournament_id: str, name: str) -> dict:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="informe um nome para o torneio",
         )
-    record = read_saved_tournament(tournament_id)
-    record["name"] = name.strip()
     path = _tournament_path(tournament_id)
-    catalog._write_json(path, record)
-    summary = tournament_summary(record)
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"saved tournament not found: {tournament_id}",
+        )
+    # So o sidecar muda: o registro tem todas as corridas e seria regravado
+    # inteiro. ``read_saved_tournament`` aplica esse nome ao registro aberto.
+    summary = catalog._read_summary(path)
+    if summary is None:
+        summary = tournament_summary(read_saved_tournament(tournament_id))
+    summary = {**summary, "name": name.strip()}
     catalog._write_summary(path, summary)
     return summary
 
