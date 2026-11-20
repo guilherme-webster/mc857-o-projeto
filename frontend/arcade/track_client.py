@@ -95,8 +95,23 @@ def fetch_race(base_url: str = BASE_URL) -> dict:
     return _get("/simulation/race", base_url)
 
 
-def fetch_saved_races(base_url: str = BASE_URL) -> dict:
-    return _get("/simulation/saved", base_url, timeout=LOAD_TIMEOUT_S)
+def _page_query(offset: int, limit: int | None) -> str:
+    query = f"offset={int(offset)}"
+    if limit is not None:
+        query += f"&limit={int(limit)}"
+    return f"?{query}"
+
+
+def fetch_saved_races(
+    base_url: str = BASE_URL, *, offset: int = 0, limit: int | None = None
+) -> dict:
+    """Uma pagina das corridas salvas: ``count`` e o total, ``saved`` a pagina."""
+
+    return _get(
+        f"/simulation/saved{_page_query(offset, limit)}",
+        base_url,
+        timeout=LOAD_TIMEOUT_S,
+    )
 
 
 def fetch_saved_race(race_id: str, base_url: str = BASE_URL) -> dict:
@@ -317,11 +332,17 @@ def save_tournament(payload: dict, base_url: str = BASE_URL) -> dict:
     return _post("/tournaments", payload, base_url, timeout=SAVE_TIMEOUT_S)
 
 
-def fetch_saved_tournaments(base_url: str = BASE_URL) -> dict:
-    """Resumo dos torneios salvos, do mais recente ao mais antigo."""
+def fetch_saved_tournaments(
+    base_url: str = BASE_URL, *, offset: int = 0, limit: int | None = None
+) -> dict:
+    """Uma pagina dos torneios salvos, do mais recente ao mais antigo."""
 
     try:
-        return _get("/tournaments", base_url, timeout=LOAD_TIMEOUT_S)
+        return _get(
+            f"/tournaments{_page_query(offset, limit)}",
+            base_url,
+            timeout=LOAD_TIMEOUT_S,
+        )
     except urllib.error.HTTPError as error:
         raise BackendError(error.code, _error_detail(error)) from error
 
