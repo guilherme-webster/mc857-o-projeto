@@ -16,7 +16,7 @@ from frontend.arcade.theme import (
     PRIMARY_TEXT_COLOR,
     TRACK_EDGE_COLOR,
 )
-from frontend.arcade.tournament_session import TournamentSession
+from frontend.arcade.tournament_session import TournamentSession, single_race_session
 from frontend.arcade.track_client import (
     fetch_race,
     fetch_saved_race,
@@ -130,6 +130,12 @@ _HEADER_COLOR = (130, 140, 150)
 _FUEL_COLOR = (170, 180, 195)
 _LIFT_COAST_COLOR = (90, 200, 250)
 # Colunas da classificacao: (cabecalho, x em px a partir da margem, ancora).
+# Coluna KM/H, a partir da margem da tabela (x = 20). A faixa 2D avanca ate
+# ~19 px antes do inicio da area da pista (meia faixa de _TRACK_LANE_MAX_PX),
+# entao o numero termina ~11 px antes desse limite, sem encostar nos carros.
+# Com combustivel, a coluna fica logo a direita de "L&C", sem se sobrepor.
+_SPEED_X_FUEL = 530
+_SPEED_X_PLAIN = 460
 # Cada coluna e um texto proprio porque a fonte "monospace" nem sempre e
 # monoespacada e alinhar com espacos deixava as colunas tortas.
 _STANDING_COLUMNS = {
@@ -142,7 +148,7 @@ _STANDING_COLUMNS = {
     "delta": ("+/-", 392, "right"),
     "fuel": ("COMB (kg)", 472, "right"),
     "saving": ("", 478, "left"),
-    "speed": ("KM/H", 560, "right"),
+    "speed": ("KM/H", _SPEED_X_FUEL, "right"),
 }
 # Colunas que so existem quando a corrida traz o modelo de massa.
 _FUEL_COLUMNS = ("fuel", "saving")
@@ -211,6 +217,16 @@ class _BreakdownPanel:
 _SWITCH_BG = (46, 62, 80)
 _PRIMARY_BG = (190, 30, 45)
 _PRIMARY_HOVER = (225, 45, 60)
+# Barra inferior: ordem da esquerda para a direita e largura de cada posicao.
+_BAR_ORDER = ("save", "prev", "next", "end", "results")
+_BAR_WIDTHS = {"save": 170, "prev": 170, "next": 210, "end": 170, "results": 170}
+# Setas das etapas: so o simbolo, entao ocupam pouco espaco. "Voltar a lista"
+# usa a mesma posicao da proxima etapa, mas com o texto inteiro (largura cheia).
+_ARROW_WIDTH = 44
+_BAR_GAP = 10
+_BAR_RIGHT_MARGIN = 20
+_BAR_BOTTOM = 20
+_BAR_HEIGHT = 38
 
 
 def _normalize(points):
@@ -359,11 +375,13 @@ class TrackView(arcade.View):
         opcoes ignoradas pelo motor), mostrados no canto superior direito.
 
         Com ``tournament``, a view mostra a etapa ``stage_index`` e oferece o
-        botao para a proxima etapa ou, na ultima, para o resultado final.
+        botao para a proxima etapa. O botao "Resultados" existe sempre: sem
+        torneio, mostra a corrida avulsa como um torneio de uma etapa.
         """
 
         super().__init__()
         self._tournament = tournament
+        self._track_data = track
         # Lista de simulacoes salvas de onde a corrida foi aberta; sem ela, nao
         # ha botao de voltar. O botao ocupa o lugar do "Proxima etapa", que so
         # existe em torneio.
@@ -472,8 +490,9 @@ class TrackView(arcade.View):
         self._end_hover = False
         self._next_hover = False
         self._prev_hover = False
+        self._results_hover = False
         self._prev_text = arcade.Text(
-            "‹  Etapa anterior",
+            "‹",
             0,
             0,
             PRIMARY_TEXT_COLOR,
@@ -527,7 +546,7 @@ class TrackView(arcade.View):
             anchor_y="center",
         )
         self._end_text = arcade.Text(
-            "Pular pro fim",
+            "Fim da Etapa",
             0,
             0,
             PRIMARY_TEXT_COLOR,
@@ -535,13 +554,20 @@ class TrackView(arcade.View):
             anchor_x="center",
             anchor_y="center",
         )
+        self._results_text = arcade.Text(
+            "Resultados",
+            0,
+            0,
+            PRIMARY_TEXT_COLOR,
+            13,
+            bold=True,
+            anchor_x="center",
+            anchor_y="center",
+        )
+        # So existe com uma etapa seguinte; na ultima a posicao fica vazia.
         next_label = None
-        if tournament is not None:
-            next_label = (
-                "Próxima etapa"
-                if tournament.has_next(stage_index)
-                else "Resultado do torneio"
-            )
+        if tournament is not None and tournament.has_next(stage_index):
+            next_label = "›"
         self._next_text = (
             arcade.Text(
                 next_label,
@@ -622,31 +648,60 @@ class TrackView(arcade.View):
         super().on_show_view()
         arcade.set_background_color(BACKGROUND_COLOR)
 
+    def _bar_rect(self, key: str) -> tuple[int, int, int, int]:
+        """(left, bottom, width, height) do botao ``key`` na barra inferior.
+
+        A barra tem cinco posicoes fixas, da esquerda para a direita: salvar,
+        etapa anterior, proxima etapa (ou voltar a lista), fim da etapa e
+        resultados. Um botao oculto deixa a sua posicao vazia, para que os
+        demais nao mudem de lugar ao trocar de etapa.
+        """
+
+        left = self.window.width - _BAR_RIGHT_MARGIN
+        for name in reversed(_BAR_ORDER):
+            width = self._bar_width(name)
+            left -= width
+            if name == key:
+                return left, _BAR_BOTTOM, width, _BAR_HEIGHT
+            left -= _BAR_GAP
+        raise KeyError(key)
+
+    def _bar_width(self, name: str) -> int:
+        """Largura da posicao ``name`` da barra; as setas sao estreitas."""
+
+        if name == "prev":
+            return _ARROW_WIDTH
+        if name == "next":
+            # Com "Voltar a lista" na posicao, o texto precisa da largura cheia.
+            if self._next_text is None and self._list_view is not None:
+                return _BAR_WIDTHS["next"]
+            return _ARROW_WIDTH
+        return _BAR_WIDTHS[name]
+
     def _switch_rect(self):
         """(left, bottom, width, height) do botao 'Salvar corrida'."""
 
-        width, height = 170, 38
-        return self.window.width - width - 20, 20, width, height
-
-    def _end_rect(self):
-        """(left, bottom, width, height) do botao 'Pular pro fim'."""
-
-        width, height = 170, 38
-        switch_left = self.window.width - width - 20
-        return switch_left - width - 10, 20, width, height
-
-    def _next_rect(self):
-        """(left, bottom, width, height) do botao de proxima etapa/resultado."""
-
-        width, height = 210, 38
-        end_left = self._end_rect()[0]
-        return end_left - width - 10, 20, width, height
+        return self._bar_rect("save")
 
     def _prev_rect(self):
-        """(left, bottom, width, height) do botao de etapa anterior: a esquerda da proxima."""
+        """(left, bottom, width, height) do botao de etapa anterior."""
 
-        left, bottom, width, height = self._next_rect()
-        return left - width - 10, bottom, width, height
+        return self._bar_rect("prev")
+
+    def _next_rect(self):
+        """(left, bottom, width, height) do botao de proxima etapa ou voltar a lista."""
+
+        return self._bar_rect("next")
+
+    def _end_rect(self):
+        """(left, bottom, width, height) do botao 'Fim da Etapa'."""
+
+        return self._bar_rect("end")
+
+    def _results_rect(self):
+        """(left, bottom, width, height) do botao 'Resultados', na borda direita."""
+
+        return self._bar_rect("results")
 
     def _has_previous(self) -> bool:
         return self._tournament is not None and self._stage_index > 1
@@ -688,12 +743,27 @@ class TrackView(arcade.View):
                 )
             )
             return
+        self._open_results()
+
+    def _open_results(self) -> None:
+        """Abra o resultado da corrida inteira, com volta para esta tela.
+
+        Sem torneio (corrida salva ou aberta da lista), a corrida vira um
+        torneio de uma etapa, para a tela de resultados ser a mesma.
+        """
+
         from frontend.arcade.tournament_view import TournamentResultView
 
-        self.window.show_view(
-            TournamentResultView(
-                tournament, return_view=self, saveable=self._saveable
+        tournament = self._tournament
+        if tournament is None:
+            tournament = single_race_session(
+                self._track_data,
+                self._race,
+                _race_title(self._race, self._track_data),
+                self._total_laps,
             )
+        self.window.show_view(
+            TournamentResultView(tournament, return_view=self, saveable=self._saveable)
         )
 
     def _projected(self) -> list[tuple[float, float]]:
@@ -746,6 +816,7 @@ class TrackView(arcade.View):
     def on_mouse_motion(self, x, y, dx, dy) -> None:
         self._switch_hover = self._saveable and self._in_rect(x, y, self._switch_rect())
         self._end_hover = self._in_rect(x, y, self._end_rect())
+        self._results_hover = self._in_rect(x, y, self._results_rect())
         self._back_hover = self._list_view is not None and self._in_rect(
             x, y, self._next_rect()
         )
@@ -766,6 +837,9 @@ class TrackView(arcade.View):
             return
         if self._saveable and self._in_rect(x, y, self._switch_rect()):
             self._save_race()
+            return
+        if self._in_rect(x, y, self._results_rect()):
+            self._open_results()
             return
         if self._in_rect(x, y, self._end_rect()):
             self._elapsed = self._race_len_ms
@@ -1207,15 +1281,16 @@ class TrackView(arcade.View):
                 self._save_message.x = left + width
                 self._save_message.y = bottom + height + 6
                 self._save_message.draw()
-        self._draw_button(self._end_rect(), self._end_text, self._end_hover)
-        if self._list_view is not None:
-            self._draw_button(self._next_rect(), self._back_text, self._back_hover)
         if self._has_previous():
             self._draw_button(self._prev_rect(), self._prev_text, self._prev_hover)
         if self._next_text is not None:
-            self._draw_button(
-                self._next_rect(), self._next_text, self._next_hover, primary=True
-            )
+            self._draw_button(self._next_rect(), self._next_text, self._next_hover)
+        elif self._list_view is not None:
+            self._draw_button(self._next_rect(), self._back_text, self._back_hover)
+        self._draw_button(self._end_rect(), self._end_text, self._end_hover)
+        self._draw_button(
+            self._results_rect(), self._results_text, self._results_hover, primary=True
+        )
 
     def _draw_button(self, rect, text, hover, primary: bool = False) -> None:
         left, bottom, width, height = rect
@@ -1471,6 +1546,17 @@ class TrackView(arcade.View):
             max(self._standing_scroll - int(scroll_y), 0), max(0, total - visible)
         )
 
+    def _column_x(self, key: str) -> int:
+        """Posicao x, a partir da margem da tabela, da coluna ``key``.
+
+        A coluna KM/H depende da largura da tabela: sem combustivel a tabela e
+        mais estreita e a pista comeca antes, entao a coluna recua.
+        """
+
+        if key == "speed":
+            return _SPEED_X_FUEL if self._show_fuel else _SPEED_X_PLAIN
+        return _STANDING_COLUMNS[key][1]
+
     def _draw_standings(self, height: int) -> None:
         """Classificacao ao vivo com pneu, paradas, posicoes ganhas e combustivel.
 
@@ -1487,7 +1573,7 @@ class TrackView(arcade.View):
         for key, text in self._header_texts.items():
             if key in _FUEL_COLUMNS and not self._show_fuel:
                 continue
-            text.x = left + _STANDING_COLUMNS[key][1]
+            text.x = left + self._column_x(key)
             text.y = header_y
             text.draw()
 
@@ -1536,7 +1622,7 @@ class TrackView(arcade.View):
                 text = texts[key]
                 text.text = value
                 text.color = color
-                text.x = left + _STANDING_COLUMNS[key][1]
+                text.x = left + self._column_x(key)
                 text.y = y
             self._fit_name_and_time(texts)
             for key, (value, color) in cells.items():

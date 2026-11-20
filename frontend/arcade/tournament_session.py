@@ -15,7 +15,10 @@ from dataclasses import dataclass
 from frontend.arcade.configuration_state import (
     SCORING_OPTIONS,
     TIEBREAK_OPTIONS,
+    ConfigurationFormData,
+    PlannedRace,
     TournamentRules,
+    WeatherSchedule,
 )
 from frontend.arcade.race_launcher import LaunchedRace
 
@@ -142,6 +145,28 @@ def parse_standings(payload: dict, total_stages: int) -> list[StandingLine]:
     if any(len(line.stage_positions) != total_stages for line in lines):
         raise ValueError("resposta de campeonato com número de etapas diferente")
     return lines
+
+
+def single_race_session(track: dict, race: dict, name: str, laps: int) -> TournamentSession:
+    """Corrida avulsa (salva) como torneio de uma etapa, so para a tela de resultados.
+
+    Uma corrida salva nao guarda plano nem regras, entao a etapa recebe o nome
+    da corrida e o clima seco. A pontuacao e a padrao (F1 oficial), aplicada a
+    unica etapa. Esse torneio nao e salvo nem reexecutado; a tela de resultados
+    e a unica que o usa.
+    """
+
+    planned = PlannedRace(
+        circuit_id=str((race.get("setup") or {}).get("track_id", "")),
+        name=name,
+        configuration=ConfigurationFormData(
+            laps=laps, weather_schedule=WeatherSchedule.dry(laps)
+        ),
+    )
+    return TournamentSession(
+        (LaunchedRace(planned=planned, race=race, track=track),),
+        TournamentRules(name=name),
+    )
 
 
 def _classification(race: LaunchedRace) -> list[dict]:
