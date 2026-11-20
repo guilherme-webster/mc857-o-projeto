@@ -9,6 +9,7 @@ from threading import Thread
 import arcade
 
 from frontend.arcade.button_text import fit_button_text
+from frontend.arcade.drawing import draw_rounded_panel
 from frontend.arcade.race_control_feed import RaceControlFeed
 from frontend.arcade.race_playback import RacePlayback, track_condition_label
 from frontend.arcade.theme import (
@@ -32,6 +33,10 @@ CAR_RADIUS = 7
 # E so apresentacao: a largura fisica real vem de ``track_space_2d.width_m``.
 _TRACK_LANE_MIN_PX = 14.0
 _TRACK_LANE_MAX_PX = 34.0
+# Balao de velocidade sobre o carro de um painel aberto.
+_BALLOON_BG = (20, 28, 38)
+_BALLOON_H = 20
+_BALLOON_RADIUS = 6
 
 
 def _car_half_size_px(length_m: float, width_m: float, pixels_per_m: float) -> tuple[float, float]:
@@ -203,6 +208,11 @@ _BREAKDOWN_TITLE_MIN_PT = 8
 _PANEL_BG = (22, 30, 40)
 _PANEL_BORDER = (70, 84, 100)
 _PANEL_CASCADE = 24.0  # deslocamento entre paineis novos
+# Coluna dos paineis: o primeiro fica na borda direita do espaco da classificacao,
+# do fundo da janela para cima. Cada painel novo sobe _PANEL_STEP px.
+_PANEL_RIGHT_GAP = 10.0
+_PANEL_BOTTOM = 20.0
+_PANEL_STEP = 50.0
 
 
 class _BreakdownPanel:
@@ -465,6 +475,9 @@ class TrackView(arcade.View):
         self._elapsed = self._playback.lap_start_ms(self._start_lap)
         self._speed = 1.0
         self._speed_kmh: dict[str, float] = {}
+        # Posicao na tela de cada carro neste quadro, para o balao acompanhar.
+        self._car_anchors: dict[str, tuple[float, float]] = {}
+        self._balloon_texts: dict[str, arcade.Text] = {}
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
         # Decomposicao de velocidade: paineis flutuantes, um por piloto. A
@@ -888,13 +901,15 @@ class TrackView(arcade.View):
                 self._breakdown_panels.remove(panel)
                 return
         # Cascata a partir do canto inferior direito, sempre dentro da janela.
-        shift = (self._panel_opened_count % 6) * _PANEL_CASCADE
-        self._panel_opened_count += 1
         max_x = max(0.0, self.window.width - _PANEL_W)
         max_y = max(0.0, self.window.height - _PANEL_H)
-        base_x = min(self.window.width - _PANEL_W - MARGIN, max_x)
-        x = max(0.0, min(base_x - shift, max_x))
-        y = max(0.0, min(20.0 + shift, max_y))
+        # Coluna esquerda, onde ficam a classificacao e as mensagens: o primeiro
+        # painel nasce embaixo e os seguintes sobem a cada abertura, sem sair da
+        # janela. Cobrir a classificacao e a pista de fundo e aceito.
+        slot = len(self._breakdown_panels)
+        # Encostado na borda direita do espaco da classificacao, perto da pista.
+        x = max(0.0, min(self._standings_width - _PANEL_W - _PANEL_RIGHT_GAP, max_x))
+        y = min(_PANEL_BOTTOM + slot * _PANEL_STEP, max_y)
         self._breakdown_panels.append(_BreakdownPanel(driver_id, x, y))
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
@@ -1066,6 +1081,7 @@ class TrackView(arcade.View):
             if lookup is not None:
                 self._speed_kmh[driver_id] = lookup(dist)
             x, y = self._pos_at(screen, dist)
+            self._car_anchors[driver_id] = (x, y)
             arcade.draw_circle_filled(
                 x, y, CAR_RADIUS, self._color_by_driver[driver_id]
             )
@@ -1199,6 +1215,7 @@ class TrackView(arcade.View):
                 x, y, nx, ny = self._pit_pos_at(point.pit_distance_m)
             else:
                 x, y, nx, ny = self._space_pos_at(screen, lane_px, dist, lateral)
+            self._car_anchors[driver_id] = (x, y)
             # Tangente = perpendicular da normal; orienta o retangulo na pista.
             tx, ty = -ny, nx
             corners = [
@@ -1212,8 +1229,60 @@ class TrackView(arcade.View):
             if half_wid >= 1.5:
                 arcade.draw_polygon_outline(corners, (12, 14, 18), 1.0)
 
+    def _driver_surname(self, driver_id: str) -> str:
+        name = self._playback.car(driver_id).name
+        return name.split()[-1].upper() if name else driver_id
+
+    def _balloon_text(self, driver_id: str) -> arcade.Text:
+        """Texto do balao: sobrenome e velocidade atual, reaproveitando o mesmo objeto."""
+
+        text = self._balloon_texts.get(driver_id)
+        if text is None:
+            text = arcade.Text(
+                "", 0, 0, PRIMARY_TEXT_COLOR, 9, bold=True, anchor_y="center"
+            )
+            self._balloon_texts[driver_id] = text
+        speed = self._speed_kmh.get(driver_id)
+        speed_part = "" if speed is None else f"  {speed:.0f} km/h"
+        text.text = f"{self._driver_surname(driver_id)}{speed_part}"
+        return text
+
+    def _draw_balloons(self) -> None:
+        """Balao com sobrenome e velocidade sobre cada carro com painel aberto.
+
+        A ancora e a mesma posicao que desenhou o carro neste quadro, entao o balao
+        acompanha o movimento. Carro fora da pista (ou abandonado) nao tem ancora,
+        e o balao nao aparece.
+        """
+
+        if not self._show_breakdown:
+            return
+        width = self.window.width
+        for panel in self._breakdown_panels:
+            anchor = self._car_anchors.get(panel.driver_id)
+            if anchor is None:
+                continue
+            x, y = anchor
+            text = self._balloon_text(panel.driver_id)
+            box_w = text.content_width + 14
+            # O balao fica sempre dentro da janela; a ponta continua no carro.
+            left = min(max(x - box_w / 2, 4.0), width - box_w - 4.0)
+            bottom = y + 16
+            tip_x = min(max(x, left + 8), left + box_w - 8)
+            color = self._color_by_driver[panel.driver_id]
+            arcade.draw_polygon_filled(
+                [(tip_x - 5, bottom), (tip_x + 5, bottom), (x, y + 8)], _BALLOON_BG
+            )
+            draw_rounded_panel(
+                left, bottom, box_w, _BALLOON_H, _BALLOON_RADIUS, _BALLOON_BG, color
+            )
+            text.x = left + 7
+            text.y = bottom + _BALLOON_H / 2
+            text.draw()
+
     def on_draw(self) -> None:
         self.clear()
+        self._car_anchors = {}
         width, height = self.window.width, self.window.height
         screen = self._projected()
 
@@ -1269,6 +1338,7 @@ class TrackView(arcade.View):
         )
         self._hud.draw()
         self._help.draw()
+        self._draw_balloons()
         self._draw_standings(height)
         if self._show_breakdown:
             for panel in self._breakdown_panels:
