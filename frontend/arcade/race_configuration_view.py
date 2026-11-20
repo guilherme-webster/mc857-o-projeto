@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import arcade
 
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.canvas_fit import CanvasFit
 from frontend.arcade.configuration_state import (
     MAX_LAPS,
@@ -325,16 +326,12 @@ class RaceConfigurationView(arcade.View):
 
     def _draw_track_summary(self) -> None:
         self._panel((450, 40, 540, 595))
-        # A caixa da pista tem ~490 px: nomes longos como "Shanghai International
-        # Circuit" cabem; so cortamos acima de 40 caracteres.
-        summary_name = (
-            self.track_name
-            if len(self.track_name) <= 40
-            else self.track_name[:37] + "…"
-        )
         # Centro horizontal da caixa da pista (x de 450 a 990).
-        # Sem o titulo "Resumo da pista", o nome ocupa o topo da caixa.
-        self._text(summary_name, 720, 600, 26, anchor_x="center")
+        # Sem o titulo "Resumo da pista", o nome ocupa o topo da caixa. O nome
+        # encolhe ate caber em 500 unidades de design (a caixa tem 540).
+        self._text(
+            self.track_name, 720, 600, 26, anchor_x="center", fit_width=500
+        )
         laps_text = f"{self.schedule.total_laps} voltas"
         if self._preview is not None:
             length = f"{self._preview.lap_length_m / 1000:.3f}".replace(".", ",")
@@ -780,6 +777,8 @@ class RaceConfigurationView(arcade.View):
         """
 
         fit = self._canvas_fit()
+        # fit_width (unidades de design): reduz a fonte ate caber nessa largura.
+        fit_width = kwargs.pop("fit_width", None)
         width = kwargs.get("width")
         if width is not None:
             kwargs["width"] = int(width * fit.scale)
@@ -790,6 +789,8 @@ class RaceConfigurationView(arcade.View):
             size * fit.scale,
             **kwargs,
         )
+        if fit_width is not None:
+            fit_button_text(label, fit_width * fit.scale, size * fit.scale)
         with self.window.default_camera.activate():
             label.draw()
         return label

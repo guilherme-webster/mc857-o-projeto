@@ -58,7 +58,7 @@ ACTION_H = 36
 # Limite de caracteres das linhas de texto; o que passa disso e cortado.
 _NAME_LIMIT = 60
 _STAGES_LIMIT = 90
-_NEW_NAME_LIMIT = 120
+_NEW_NAME_LIMIT = 60
 _TITLE_X = 200
 _TOURNAMENT = "tournament"
 _RACE = "race"

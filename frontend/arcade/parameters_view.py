@@ -93,6 +93,8 @@ TIEBREAK_BOUNDS = (232, 219, 320, 34)
 OPTION_HEIGHT = 30
 # Modos do campo "Voltas padrao": o texto da opcao "Customizavel" e so o rotulo.
 LAPS_MODE_OPTIONS = ("Padrão", "Customizável")
+# Limite de caracteres do nome do torneio, para caber no campo.
+TOURNAMENT_NAME_LIMIT = 40
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
@@ -1123,7 +1125,8 @@ class ParametersView(UIView):
         """Edit the tournament name with the same data field used by validation."""
 
         if self._editing_name and text.isprintable():
-            self.tournament_name_input.text += text
+            room = TOURNAMENT_NAME_LIMIT - len(self.tournament_name_input.text)
+            self.tournament_name_input.text += text[: max(0, room)]
         elif self._editing_seed and text.isprintable():
             self.tournament_seed_input.text += text
         elif self._editing_laps and self._custom_laps is not None and text.isdigit():
@@ -1648,7 +1651,7 @@ class ParametersView(UIView):
             PRIMARY_TEXT_COLOR,
             12,
             anchor_y="center",
-            width=width - 20,
+            fit_width=width - 20,
         ).draw()
         seed_left, seed_bottom, seed_width, seed_height = SEED_INPUT_BOUNDS
         self._draw_rounded_panel(

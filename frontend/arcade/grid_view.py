@@ -66,6 +66,13 @@ SOURCE_COLORS = {
     "preset": (245, 197, 66),
     "manual": (90, 200, 250),
 }
+# Colunas que nao rolam na horizontal (ficam para dar nome aos pilotos).
+_TABLE_FROZEN = ("P", "PILOTO")
+# Onde comeca a area que rola na horizontal, e quanto cada giro desloca.
+_TABLE_SCROLL_LEFT = 266
+_TABLE_SCROLL_STEP = 40
+# Folga apos a ultima coluna, para o valor alinhado a direita nao encostar na borda.
+_TABLE_COLUMN_MARGIN = 40
 _TABLE_COLUMNS = (
     ("P", 30, "right"),
     ("PILOTO", 42, "left"),
@@ -130,6 +137,8 @@ class GridView(arcade.View):
         self._texts: dict[str, arcade.Text] = {}
         # Indice do primeiro piloto visivel na tabela (rolagem).
         self._scroll = 0
+        # Deslocamento horizontal das colunas que rolam (pixels).
+        self._hscroll = 0
         # Rolagem da caixa de atributos e o piloto a que ela pertence; ao
         # trocar de piloto a caixa volta ao topo.
         self._panel_scroll = 0
@@ -1042,6 +1051,11 @@ class GridView(arcade.View):
             return
         if self._draft is None:
             return
+        # Scroll horizontal (roda lateral ou trackpad) sobre a tabela e sua barra.
+        if scroll_x and _TABLE_SCROLL_LEFT <= x <= self._table_right() and 56 <= y <= self.window.height - 190:
+            self._hscroll -= scroll_x * _TABLE_SCROLL_STEP
+            self._clamp_hscroll()
+            return
         bottom, top = self._panel_region()
         if x >= self._panel_left() and bottom <= y <= top:
             self._panel_scroll -= int(scroll_y) * _PANEL_SCROLL_STEP
@@ -1299,17 +1313,13 @@ class GridView(arcade.View):
         if self._draft is None:
             return
         header_y = height - 200
+        self._clamp_hscroll()
         for label, x, anchor in _TABLE_COLUMNS:
-            self._text(
-                f"h:{label}",
-                label,
-                40 + x,
-                header_y,
-                _HEADER_COLOR,
-                10,
-                bold=True,
-                anchor_x=anchor,
-            ).draw()
+            self._table_text(
+                f"h:{label}", label, label, x, header_y, _HEADER_COLOR, 10,
+                anchor, bold=True,
+            )
+        self._draw_table_hscrollbar()
         self._clamp_scroll()
         top = self._table_top()
         entries = self._draft.entries
@@ -1347,16 +1357,73 @@ class GridView(arcade.View):
                 )
             for label, x, anchor in _TABLE_COLUMNS:
                 value, color = cells[label]
-                self._text(
-                    f"r{i}:{label}",
-                    value,
-                    40 + x,
-                    y,
-                    color,
-                    12,
-                    anchor_x=anchor,
-                    anchor_y="center",
-                ).draw()
+                self._table_text(
+                    f"r{i}:{label}", label, value, x, y, color, 12,
+                    anchor, anchor_y="center",
+                )
+
+    def _table_right(self) -> float:
+        """Borda direita da tabela, antes do painel de detalhes."""
+
+        return self._panel_left() - 24
+
+    def _hscroll_max(self) -> float:
+        """Deslocamento maximo: quanto a ultima coluna que rola passa da borda da tabela."""
+
+        last_x = max(x for label, x, _ in _TABLE_COLUMNS if label not in _TABLE_FROZEN)
+        needed = 40 + last_x + _TABLE_COLUMN_MARGIN - self._table_right()
+        return max(0.0, needed)
+
+    def _clamp_hscroll(self) -> None:
+        self._hscroll = min(max(0.0, self._hscroll), self._hscroll_max())
+
+    def _column_x(self, label: str, x: int) -> float:
+        """Posicao na tela de uma coluna: as fixas ficam; as demais rolam."""
+
+        if label in _TABLE_FROZEN:
+            return 40 + x
+        return 40 + x - self._hscroll
+
+    def _table_text(
+        self,
+        key: str,
+        label: str,
+        value: str,
+        x: int,
+        y: float,
+        color: tuple[int, ...],
+        size: float,
+        anchor: str,
+        bold: bool = False,
+        anchor_y: str = "baseline",
+    ) -> None:
+        """Desenha uma celula da tabela; as colunas que rolam ficam recortadas na area."""
+
+        text = self._text(
+            key, value, self._column_x(label, x), y, color, size,
+            bold=bold, anchor_x=anchor, anchor_y=anchor_y,
+        )
+        if label in _TABLE_FROZEN:
+            text.draw()
+        else:
+            left, right = _TABLE_SCROLL_LEFT, self._table_right()
+            # Area de linhas: do cabecalho (height-190) ate o rodape (y=80).
+            self._draw_clipped(text, left, 80, right - left, self.window.height - 190 - 80)
+
+    def _draw_table_hscrollbar(self) -> None:
+        """Barra horizontal sob a tabela; so aparece quando as colunas nao cabem."""
+
+        max_scroll = self._hscroll_max()
+        if max_scroll <= 0:
+            return
+        left, right = _TABLE_SCROLL_LEFT, self._table_right()
+        rail_w = right - left
+        thumb_w = max(24.0, rail_w * rail_w / (rail_w + max_scroll))
+        travel = rail_w - thumb_w
+        thumb_x = left + travel * self._hscroll / max_scroll
+        y, h = 62, 6
+        arcade.draw_lbwh_rectangle_filled(left, y, rail_w, h, (33, 42, 53))
+        arcade.draw_lbwh_rectangle_filled(thumb_x, y, thumb_w, h, (111, 127, 148))
 
     def _panel_region(self) -> tuple[float, float]:
         """(base, topo) da area rolavel da caixa, abaixo da linha de posicao."""
@@ -1500,7 +1567,7 @@ class GridView(arcade.View):
             if profile
             else "Sem perfil nomeado: atributos sorteados no arquétipo."
         )
-        self._text(
+        profile_text = self._text(
             "p:profile",
             characterization,
             x,
@@ -1510,7 +1577,11 @@ class GridView(arcade.View):
             width=width - left - 90,
             multiline=True,
             anchor_y="top",
-        ).draw()
+        )
+        # Perfil com no maximo 40 px de altura: a linha "Posicao de largada" vem logo
+        # abaixo. Se o texto for longo, a fonte diminui em vez de sobrepor.
+        _shrink_to_height(profile_text, 40, 11, 8)
+        profile_text.draw()
         position = next(
             index
             for index, item in enumerate(self._draft.entries, start=1)
@@ -1630,6 +1701,16 @@ class GridView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
             ).draw()
+
+
+def _shrink_to_height(text: arcade.Text, max_height: float, base: float, floor: float) -> None:
+    """Reduz a fonte de ``text`` ate que a altura dele caiba em ``max_height`` px."""
+
+    size = base
+    text.font_size = size
+    while text.content_height > max_height and size > floor:
+        size -= 1
+        text.font_size = size
 
 
 def _draw_step_sign(cx: float, cy: float, plus: bool) -> None:
