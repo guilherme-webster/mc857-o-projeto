@@ -17,9 +17,10 @@ BASE_URL = os.environ.get("F1_API_BASE_URL", "http://localhost:8000").rstrip("/"
 _OPENER = urllib.request.build_opener()
 
 
-# Rodar o grid no motor detalhado leva alguns segundos numa corrida longa;
-# as consultas de catalogo continuam com o limite curto.
-RUN_TIMEOUT_S = 120
+# Rodar o grid leva minutos em corridas longas (40 pilotos, 200 voltas): o
+# limite vale para o silencio da conexao, entao precisa cobrir a montagem do
+# resultado completo. As consultas de catalogo continuam com o limite curto.
+RUN_TIMEOUT_S = 600
 # Salvar corrida ou torneio envia o registro completo (com a trajetoria de todos
 # os carros): com 40 pilotos o pedido passa dos 10 s do padrao.
 SAVE_TIMEOUT_S = 60
