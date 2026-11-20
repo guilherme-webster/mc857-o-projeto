@@ -62,6 +62,11 @@ class SpatialPosition:
     pit_distance_m: float | None
     fuel_kg: float | None = None
     tyre_wear_laps: float | None = None
+    #: Decomposicao da velocidade no instante (campos 7/8 da trajetoria):
+    #: ``speed_scale`` e a reparticao das fatias. ``None`` em corridas salvas
+    #: antes da decomposicao por tick; o leitor cai no registro por volta.
+    speed_scale: float | None = None
+    delta_shares: Mapping[str, float] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,12 +194,17 @@ class CarTimeline:
                 return a[index]
             return a[index] + (b[index] - a[index]) * f
 
+        # Fatias (campo 8) nao sao interpolaveis numericamente (dict); usa as
+        # do inicio do segmento. ``speed_scale`` (campo 7) e escalar e interpola.
+        shares = a[8] if len(a) > 8 else None
         return SpatialPosition(
             _distance(),
             *(a[i] + (b[i] - a[i]) * f for i in (2, 3)),
             pit,
             resource(5),
             resource(6),
+            resource(7),
+            shares,
         )
 
     @property
@@ -475,6 +485,8 @@ class RacePlayback:
             speed_kmh=spatial.speed_kmh,
             lap=lap,
             t_ms=t_ms,
+            speed_scale=spatial.speed_scale,
+            delta_shares=spatial.delta_shares,
         )
 
     def driver_v_max_kmh(self, driver_id: str) -> float | None:
@@ -834,26 +846,50 @@ def _next_lap_end(car: CarTimeline, laps: float) -> float:
     return times[min(floor(laps), len(times) - 1)]
 
 
-def track_condition_label(race: Mapping, lap: int) -> str | None:
-    """Agua e temperatura do asfalto na volta ``lap``, para o painel de clima.
+def track_condition_label(race: Mapping, lap: int, t_ms: float | None = None) -> str | None:
+    """Agua e temperatura do asfalto, para o painel de clima.
 
-    Le ``track_conditions`` do resultado (um registro por volta, ADR 0015);
-    voltas alem do fim usam o ultimo registro. Corridas antigas, sem o bloco,
-    devolvem ``None`` e o painel mostra so a chuva, como antes. A agua sai em
+    Prefere ``track_conditions_live`` (serie temporal por tick: ``[t_ms,
+    surface_water, track_temp_c]``) quando a corrida a traz e ``t_ms`` e dado,
+    interpolando linearmente no tempo -- e assim que o painel varia por tick, e
+    nao em degraus de volta. Sem a serie (corridas salvas antes dela), cai em
+    ``track_conditions`` por volta (ADR 0015). Corridas antigas sem nenhum dos
+    dois devolvem ``None`` e o painel mostra so a chuva. A agua sai em
     porcentagem do indice 0-1 (nao e milimetro de chuva).
     """
 
-    rows = race.get("track_conditions") if isinstance(race, Mapping) else None
-    if not isinstance(rows, Sequence) or not rows:
-        return None
-    row = rows[min(max(lap, 1), len(rows)) - 1]
-    if not isinstance(row, Mapping):
-        return None
-    water = row.get("surface_water")
-    temp = row.get("track_temp_c")
+    water: float | None = None
+    temp: float | None = None
+    live = race.get("track_conditions_live") if isinstance(race, Mapping) else None
+    if isinstance(live, Sequence) and live and t_ms is not None:
+        water, temp = _interpolate_track_condition(live, t_ms)
+    else:
+        rows = race.get("track_conditions") if isinstance(race, Mapping) else None
+        if not isinstance(rows, Sequence) or not rows:
+            return None
+        row = rows[min(max(lap, 1), len(rows)) - 1]
+        if not isinstance(row, Mapping):
+            return None
+        water = row.get("surface_water")
+        temp = row.get("track_temp_c")
     parts = []
     if isinstance(water, (int, float)) and water > 0:
         parts.append(f"agua {round(water * 100)}%")
     if isinstance(temp, (int, float)):
         parts.append(f"pista {temp:.0f} °C")
     return " · ".join(parts) or None
+
+
+def _interpolate_track_condition(
+    series: Sequence, t_ms: float
+) -> tuple[float | None, float | None]:
+    """Agua e temperatura interpoladas no tempo na serie ``[t_ms, agua, temp]``."""
+
+    index = bisect_right(series, t_ms, key=lambda p: p[0])
+    a = series[max(0, index - 1)]
+    b = series[min(index, len(series) - 1)]
+    span = b[0] - a[0]
+    f = max(0.0, min(1.0, (t_ms - a[0]) / span)) if span else 0.0
+    water = a[1] + (b[1] - a[1]) * f
+    temp = a[2] + (b[2] - a[2]) * f
+    return water, temp

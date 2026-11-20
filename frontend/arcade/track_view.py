@@ -1174,7 +1174,9 @@ class TrackView(arcade.View):
 
         rain = self._current_rain()
         label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
-        condition = track_condition_label(self._race, self._current_lap())
+        condition = track_condition_label(
+            self._race, self._current_lap(), self._elapsed
+        )
         self._weather_text.text = f"{label} · {condition}" if condition else label
         self._weather_text.color = color
         self._weather_text.x = width - 20

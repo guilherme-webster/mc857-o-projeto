@@ -72,7 +72,7 @@ from f1_simulator.domain.strategy import (
     StrategyState,
     TyreStrategy,
 )
-from f1_simulator.domain.track_condition import TrackState
+from f1_simulator.domain.track_condition import LiveTrackCondition, TrackState
 from f1_simulator.domain.track_geometry import TrackGeometry
 from f1_simulator.domain.track_space import (
     ASSUMED_CAR_LENGTH_M,
@@ -86,13 +86,29 @@ from f1_simulator.domain.track_space import (
     integrate_field,
 )
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
-from f1_simulator.domain.wet_tyres import relative_grip, wear_factor, wet_compound_used
+from f1_simulator.domain.wet_tyres import (
+    crash_multiplier,
+    relative_grip,
+    wear_factor,
+    wet_compound_used,
+)
 
 RUNNING = "RUNNING"
 RETIRED = "RETIRED"
 CONTACT = "CONTACT"
 MECHANICAL = "MECHANICAL"
 FUEL = "FUEL"
+
+#: Chance-base de um carro rodar sozinho por volta com a pista SATURADA (agua
+#: 1,0) e o pneu adequado. O risco real por volta e
+#: ``base * agua * crash_multiplier(composto, agua, compostura)``: cresce com a
+#: agua e dispara com o pneu errado (``crash_multiplier``), e a compostura do
+#: piloto o atenua. Com pista seca (agua 0) nao ha risco. Hipotese ``assumed``,
+#: nao calibrada; escolhida pequena para "um pequeno impacto" -- em pista
+#: saturada da ordem de poucos por cento de chance por carro ao longo de uma
+#: corrida, mais com pneu errado. So atua no motor 2D, como o abandono mecanico.
+ASSUMED_WEATHER_CRASH_BASE_PER_LAP = 0.0008
+WEATHER_CRASH_PARAMETER_VERSION = "assumed-weather-crash-v1"
 
 #: Espacamento longitudinal (m) entre posicoes de largada no grid 2D. Cada
 #: carro fica numa posicao longitudinal distinta (fila escalonada, nao 2x2),
@@ -192,6 +208,7 @@ def _trajectories_2d(
         return "out" if car.pit_state.serviced else "in"
 
     def _point(t_ms: float, car) -> list[float | None]:
+        bd = car.speed_breakdown
         return [
             round(t_ms, 1),
             round(car.distance_m, 2),
@@ -202,6 +219,8 @@ def _trajectories_2d(
             else None,
             round(car.fuel_kg, 6) if car.fuel_kg is not None else None,
             round(car.tyre_wear_laps, 6) if car.tyre_wear_laps is not None else None,
+            bd["speed_scale"] if bd is not None else None,
+            bd["delta_shares"] if bd is not None else None,
         ]
 
     def _push(did: str, point: list[float | None]) -> None:
@@ -302,6 +321,7 @@ def simulate_2d_race(
     model_parameters: ModelParameters | None = None,
     fuel: FuelPlan | None = None,
     track_states: Sequence[TrackState] | None = None,
+    live_track: LiveTrackCondition | None = None,
     reliability_by_id: dict[str, float] | None = None,
     mechanical_hazard_per_lap: float = 0.0,
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
@@ -547,6 +567,8 @@ def simulate_2d_race(
         return lap_effects_by_lap.get(lap_number) or effects(RaceControlState())
 
     def _water(lap_number: int) -> float:
+        if live_track is not None:
+            return live_track.surface_water
         if not track_states:
             return 0.0
         index = min(max(1, lap_number) - 1, len(track_states) - 1)
@@ -631,7 +653,7 @@ def simulate_2d_race(
             shares = dict.fromkeys(
                 ("tyre", "fuel", "weather", "noise", "race_control"), 0.0
             )
-        speed_breakdown[did][lap_number] = {
+        record = {
             "base_ms": round(base, 3),
             "tyre_ms": round(tyre_ms, 3),
             "fuel_ms": round(fuel_ms, 3),
@@ -643,6 +665,8 @@ def simulate_2d_race(
             "speed_delta_fraction": round(speed_delta, 6),
             "delta_shares": {k: round(v, 6) for k, v in shares.items()},
         }
+        speed_breakdown[did][lap_number] = record
+        return record
 
     def _apply_scale(car: CarSpaceState, lap_number: int) -> None:
         """Converta as penalidades de tempo da volta em fator de velocidade.
@@ -670,7 +694,14 @@ def simulate_2d_race(
                 0.0, car.fuel_kg - fuel.parameters.finish_reserve_kg
             )
         weather_ms = 0.0
-        if track_states:
+        if live_track is not None:
+            water = live_track.surface_water
+            grip_factor = live_track.grip_factor * relative_grip(
+                tyre_by_id[did].compound, water
+            )
+            if grip_factor != 1.0:
+                weather_ms = grip_laps[did].delta_ms(grip_factor)
+        elif track_states:
             idx = min(lap_number - 1, len(track_states) - 1)
             water = track_states[idx].surface_water
             grip_factor = track_states[idx].grip_factor * relative_grip(
@@ -685,7 +716,7 @@ def simulate_2d_race(
         penalty = tyre_ms + fuel_ms + weather_ms + noise_ms
         on_track_ms = (base + penalty) * eff.lap_time_factor + eff.lap_time_loss_ms
         car.speed_scale = base / on_track_ms if on_track_ms > 0 else 1.0
-        _record_breakdown(
+        record = _record_breakdown(
             did,
             lap_number,
             base,
@@ -696,10 +727,30 @@ def simulate_2d_race(
             eff,
             car.speed_scale,
         )
+        # Snapshot enxuto do instante, emitido por amostra na trajetoria: so os
+        # valores que variam por tick (speed_scale e a reparticao das fatias).
+        # O frontend os usa para decompor a velocidade por tick, nao por volta.
+        car.speed_breakdown = {
+            "speed_scale": record["speed_scale"],
+            "delta_shares": record["delta_shares"],
+        }
 
     reliability_by_id = reliability_by_id or {}
     mechanical_retired: dict[str, int] = {}
     fuel_retired: dict[str, int] = {}
+    weather_retired: dict[str, int] = {}
+
+    # Timestamp do ultimo avanco do clima (live_track): garante que o estado da
+    # pista avanca uma unica vez por tick, independente de quantos carros
+    # disparam _on_motion no mesmo passo.
+    _last_weather_time_s = -1.0
+    # Snapshots do estado da pista por volta, para o resultado exportado.
+    _live_track_snapshots: list[TrackState] = []
+    # Serie temporal do estado da pista (agua, temperatura) por tick, para o
+    # painel de clima do frontend variar por tick e nao por volta. O estado e
+    # global (igual para todos os carros), entao vai numa serie propria, nao
+    # por carro: [t_ms, surface_water, track_temp_c].
+    _live_track_series: list[list[float]] = []
 
     def _advance_control(lap: int, incidents: list[Incident]) -> None:
         """Avance o controle de prova uma volta e registre estado e eventos."""
@@ -725,6 +776,25 @@ def simulate_2d_race(
 
     def _on_motion(car: CarSpaceState, motion: MotionIncrement) -> None:
         """Integre recursos e atualize o ritmo, antes dos eventos de serviço/volta."""
+
+        nonlocal _last_weather_time_s
+        # Avanca o clima uma unica vez por tick (todos os carros no mesmo passo
+        # compartilham o mesmo time_s).
+        if live_track is not None and motion.time_s > _last_weather_time_s:
+            car_lap = max(1, int(car.distance_m // lap_length_m) + 1)
+            live_track.advance(motion.dt_s, car_lap)
+            _last_weather_time_s = motion.time_s
+            t_ms = motion.time_s * 1000.0
+            if not _live_track_series or (
+                t_ms - _live_track_series[-1][0] >= TRAJECTORY_SAMPLE_MS - 1e-6
+            ):
+                _live_track_series.append(
+                    [
+                        round(t_ms, 1),
+                        round(live_track.surface_water, 4),
+                        round(live_track.track_temp_c, 2),
+                    ]
+                )
 
         if not usage_active:
             return
@@ -855,7 +925,9 @@ def simulate_2d_race(
             ),
             tyre_wear_laps=car.tyre_wear_laps,
             # Radar: a agua prevista para a volta que comeca (como no detalhado).
-            surface_water=_water(lap_number) if track_states else None,
+            surface_water=_water(lap_number)
+            if (live_track is not None or track_states)
+            else None,
         )
         decision = strategy.decide(state)
         if not decision.pit:
@@ -955,6 +1027,10 @@ def simulate_2d_race(
     def on_lap_complete(car: CarSpaceState, lap: int) -> None:
         nonlocal control_laps_done, progress_lap_done
         did = car.driver_id
+        # Snapshot do estado da pista ao fim da volta (uma vez por volta da
+        # corrida, na primeira ocorrencia).
+        if live_track is not None and lap > len(_live_track_snapshots):
+            _live_track_snapshots.append(live_track.snapshot(lap))
         # Progresso: emite quando a volta mais avancada do pelotao cresce, uma
         # vez por volta da corrida. Callback puro injetado; o nucleo nao conhece
         # HTTP nem a tela (a borda decide o que fazer com o progresso).
@@ -971,6 +1047,25 @@ def simulate_2d_race(
                     Incident(lap, "mechanical", (did,))
                 )
                 return
+        # Acidente por chuva: o carro roda sozinho. So com live_track (clima
+        # por tick) e pista molhada.
+        if live_track is not None and lap < total_laps:
+            water = _water(lap)
+            if water > 0.0:
+                attrs = attributes_by_id.get(did)
+                wet_skill = getattr(attrs, "composure", 1.0) if attrs else 1.0
+                risk = (
+                    ASSUMED_WEATHER_CRASH_BASE_PER_LAP
+                    * water
+                    * crash_multiplier(tyre_by_id[did].compound, water, wet_skill)
+                )
+                if rng.uniform01(f"weather-crash:{did}:lap:{lap}") < risk:
+                    car.retired = True
+                    weather_retired[did] = lap
+                    pending_incidents.setdefault(lap, []).append(
+                        Incident(lap, "solo_crash", (did,))
+                    )
+                    return
         tyre_by_id[did] = tyre_by_id[did].aged()
 
         # Retrato do estado ao fim desta volta (pneu ja envelhecido ou resetado
@@ -997,6 +1092,7 @@ def simulate_2d_race(
                     and other.driver_id not in retired_seen
                     and other.driver_id not in mechanical_retired
                     and other.driver_id not in fuel_retired
+                    and other.driver_id not in weather_retired
                 ):
                     retired_seen.add(other.driver_id)
                     incidents.append(Incident(lap, "contact", (other.driver_id,)))
@@ -1168,9 +1264,27 @@ def simulate_2d_race(
                 "fuel_active": fuel is not None,
                 "refuel_active": refuel_mode,
                 "pit_active": pit_active,
-                "weather_active": bool(track_states)
-                and any(state.surface_water > 0 for state in track_states),
-                "track_condition_active": bool(track_states),
+                "weather_active": (
+                    live_track is not None
+                    or (
+                        bool(track_states)
+                        and any(state.surface_water > 0 for state in track_states)
+                    )
+                ),
+                "track_condition_active": live_track is not None or bool(track_states),
+                "weather_crash": {
+                    "origin": "assumed",
+                    "parameter_version": WEATHER_CRASH_PARAMETER_VERSION,
+                    "base_per_lap": ASSUMED_WEATHER_CRASH_BASE_PER_LAP,
+                    "active": live_track is not None,
+                    "rationale": (
+                        "Acidente por chuva no 2D: chance por volta = base * "
+                        "agua * crash_multiplier(composto, agua, compostura). "
+                        "Cresce com a agua, dispara com o pneu errado, atenua "
+                        "com a compostura; so com pista molhada. Hipotese "
+                        "assumed, nao calibrada."
+                    ),
+                },
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
                 "side_contact": {
@@ -1195,6 +1309,14 @@ def simulate_2d_race(
             }
         ],
     }
+    # Snapshots do estado da pista gravados pelo motor ao vivo (por volta);
+    # o chamador (run_grid_simulation) os extrai para o resultado exportado.
+    if _live_track_snapshots:
+        result["_live_track_snapshots"] = list(_live_track_snapshots)
+    # Serie temporal da pista (agua, temperatura) para o painel de clima por
+    # tick: [t_ms, surface_water, track_temp_c]. Ausente sem live_track.
+    if _live_track_series:
+        result["track_conditions_live"] = list(_live_track_series)
     # Decomposicao da velocidade por carro: ritmo fisico de referencia, teto de
     # reta e, por volta, quanto pneu/combustivel/clima/controle tiram do ritmo.
     # A curva e lida ponto a ponto no frontend (teto do ponto vs v_max); aqui

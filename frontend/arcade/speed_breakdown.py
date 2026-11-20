@@ -1,8 +1,10 @@
 """Decomposicao da velocidade de um carro para o grafico da reproducao.
 
-Le ``result["speed_breakdown"]`` (penalidades por volta, do motor 2D) e
+Le a decomposicao da velocidade (``speed_scale`` e as fatias do motor 2D) e
 ``result["speed_profiles"]`` (teto fisico por ponto) e devolve, para um
-instante, as fatias que somam a velocidade maxima de reta do carro:
+instante, as fatias que somam a velocidade maxima de reta do carro. A
+decomposicao vem da amostra da trajetoria (por tick) quando a corrida a traz;
+corridas salvas antes disso caem no registro por volta de ``speed_breakdown``:
 
 - ``corner``: quanto a curvatura do ponto atual tira do teto de reta;
 - ``tyre``/``fuel``/``weather``/``noise``/``race_control``: quanto cada condicao
@@ -30,6 +32,12 @@ from dataclasses import dataclass
 #: velocidade efetiva para o topo da barra.
 PENALTY_FACTORS = ("tyre", "fuel", "weather", "noise", "race_control")
 
+#: Piso da fatia de clima na reta, como fracao do clima medio da volta. A chuva
+#: concentra a perda nas curvas (``mu``), mas a reta nao e imune (aquaplanagem,
+#: tracao na saida): com 0.15, a reta mostra ~15% do clima medio e as curvas o
+#: resto. So afeta a EXIBICAO da decomposicao; a fisica do movimento nao muda.
+WEATHER_STRAIGHT_SHARE = 0.15
+
 
 @dataclass(frozen=True, slots=True)
 class SpeedBreakdown:
@@ -55,6 +63,7 @@ class SpeedBreakdown:
     transient: float
     corner: float
     penalties: Mapping[str, float]
+    ceiling_frac: float  # teto local / v_max; permite exibir penalidades como % do teto
 
     @property
     def effective_pct(self) -> float:
@@ -146,12 +155,16 @@ class SpeedBreakdownReader:
         speed_kmh: float,
         lap: int,
         t_ms: float = 0.0,
+        speed_scale: float | None = None,
+        delta_shares: Mapping[str, float] | None = None,
     ) -> SpeedBreakdown | None:
         """Fatias da velocidade do carro no ponto e na volta dados.
 
         ``distance_m`` e ``speed_kmh`` vem da trajetoria exportada; ``lap`` e a
-        volta em andamento, que escolhe as penalidades. Devolve ``None`` quando
-        a corrida nao traz a decomposicao desse carro.
+        volta em andamento. ``speed_scale``/``delta_shares``, quando vem da
+        amostra (decomposicao por tick), tem precedencia sobre o registro por
+        volta; corridas salvas antes disso os deixam nulos e caem no por volta.
+        Devolve ``None`` quando a corrida nao traz a decomposicao desse carro.
         """
 
         car = self._cars.get(driver_id)
@@ -170,9 +183,14 @@ class SpeedBreakdownReader:
             ceiling_frac = max(0.0, min(1.0, ceiling_kmh / v_max))
             corner = 1.0 - ceiling_frac
 
-        data = self._lap_data(driver_id, lap)
-        speed_scale = float(data["speed_scale"]) if data else 1.0
-        shares = dict(data["delta_shares"]) if data else {}
+        # Decomposicao por tick (da amostra) quando disponivel; senao, o
+        # registro por volta (corridas salvas antes da decomposicao por tick).
+        if speed_scale is not None and delta_shares is not None:
+            shares = dict(delta_shares)
+        else:
+            data = self._lap_data(driver_id, lap)
+            speed_scale = float(data["speed_scale"]) if data else 1.0
+            shares = dict(data["delta_shares"]) if data else {}
 
         # Em fracao de v_max: a curva tira ``corner``; as penalidades tiram
         # ``ceiling_frac * (1 - speed_scale)`` do que a curva deixou; o resto e
@@ -187,10 +205,34 @@ class SpeedBreakdownReader:
             for k in PENALTY_FACTORS:
                 penalties[k] = 0.0
 
+        # Clima por ponto: a chuva reduz o ``mu``, que derruba a velocidade de
+        # CURVA (depende de ``mu``) e mexe pouco na de RETA (limitada por
+        # potencia/arrasto, mas nao imune -- aquaplanagem e tracao na saida
+        # ainda custam). O motor entrega so o efeito medio da volta; aqui a
+        # fatia de clima e reponderada pela curvatura local.
+        #
+        # O peso mistura uma parcela UNIFORME (vale na reta tambem) com uma por
+        # CURVATURA (``corner / corner_medio``, grande na curva, 0 na reta):
+        #   peso = WEATHER_STRAIGHT_SHARE * 1 + (1 - WEATHER_STRAIGHT_SHARE) * curva
+        # Ambos os termos tem media 1 na volta, entao qualquer mistura PRESERVA
+        # a media (o clima total da volta nao muda). ``WEATHER_STRAIGHT_SHARE``
+        # e o piso na reta: com 0.15, a reta sente ~15% do clima medio e a curva
+        # leva o resto. A diferenca para a parcela uniforme vai para
+        # ``transient``, entao as demais fatias NAO mudam e a soma segue ~1.0.
+        weather_uniform = penalties.get("weather", 0.0)
+        curve_term = corner / max(1e-6, 1.0 - speed_scale)
+        curve_weight = (
+            WEATHER_STRAIGHT_SHARE + (1.0 - WEATHER_STRAIGHT_SHARE) * curve_term
+        )
+        weather_by_point = weather_uniform * curve_weight
+        penalties["weather"] = weather_by_point
+        weather_shift = weather_by_point - weather_uniform
+
         # Velocidade de regime do ponto (teto reduzido pelas condicoes) versus a
         # velocidade real agora: o vao e o transitorio de aceleracao/frenagem,
         # o que falta (ou sobra) para o carro atingir o regime naquele ponto.
-        target = ceiling_frac * speed_scale
+        # ``weather_shift`` corrige o regime pela redistribuicao do clima acima.
+        target = ceiling_frac * speed_scale - weather_shift
         events = self._damage_events.get(driver_id, ())
         damage_index = bisect_right(events, t_ms, key=lambda e: e[0]) - 1
         damage = events[damage_index][1] if damage_index >= 0 else 0.0
@@ -207,4 +249,5 @@ class SpeedBreakdownReader:
             transient=transient,
             corner=corner,
             penalties=penalties,
+            ceiling_frac=ceiling_frac,
         )

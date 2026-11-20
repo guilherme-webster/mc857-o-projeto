@@ -267,6 +267,12 @@ class CarSpaceState:
     tyre_wear_laps: float | None = None
     #: Dano fisico acumulado [0,1], separado de pneu, combustivel e margem de seguranca.
     contact_damage: float = 0.0
+    #: Decomposicao da velocidade no instante corrente (speed_scale e as fatias
+    #: que variam por tick: pneu, combustivel, clima). Preenchido pelo
+    #: orquestrador a cada ``_apply_scale``; emitido nos snapshots para o
+    #: frontend mostrar a decomposicao por tick, nao por volta. ``None`` quando
+    #: a decomposicao nao esta ativa.
+    speed_breakdown: dict | None = None
 
     def clamp_lateral(self, bounds: LateralBounds) -> None:
         """Mantenha o carro dentro da pista, sem estourar a borda."""
@@ -1507,4 +1513,5 @@ def _frozen(car: CarSpaceState) -> CarSpaceState:
         fuel_kg=car.fuel_kg,
         tyre_wear_laps=car.tyre_wear_laps,
         contact_damage=car.contact_damage,
+        speed_breakdown=car.speed_breakdown,
     )

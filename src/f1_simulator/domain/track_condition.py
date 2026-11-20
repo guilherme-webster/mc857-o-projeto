@@ -1,6 +1,8 @@
-"""Estado dinamico da pista por volta e a aderencia que ele permite (ADR 0015).
+"""Estado dinamico da pista e a aderencia que ele permite (ADR 0015).
 
-A pista muda durante a corrida por tres motivos, todos modelados aqui:
+A evolucao pode ser por volta (``simulate_track_conditions``, motor antigo)
+ou por tick (``LiveTrackCondition``, motor 2D). Em ambos os casos a pista
+muda durante a corrida por tres motivos, todos modelados aqui:
 
 - **agua** (``weather.py``): a chuva acumula, a pista drena e evapora;
 - **temperatura do asfalto**: a chuva esfria a pista, o sol a devolve ao
@@ -188,6 +190,110 @@ class TrackState:
             "rubber": round(self.rubber, 3),
             "grip_factor": round(self.grip_factor, 4),
         }
+
+
+class LiveTrackCondition:
+    """Estado mutavel da pista, avancado por ``advance`` a cada tick do motor 2D.
+
+    A entrada do cenario (``RainLevel`` por volta) e discreta; a evolucao da
+    agua, borracha e aderencia e continua, com passo igual ao dt do integrador.
+    ``rain_by_lap`` mapeia volta (1-based) -> RainLevel; voltas alem do fim
+    mantem o ultimo nivel.
+    """
+
+    __slots__ = (
+        "_weather", "_temp", "_rubber", "_rain_by_lap", "_total_laps",
+        "_parameters", "_weather_parameters",
+        "surface_water", "grip_factor", "humidity_pct", "track_temp_c",
+        "rubber", "rain",
+    )
+
+    def __init__(
+        self,
+        rain_by_lap: Sequence[RainLevel],
+        *,
+        parameters: TrackConditionParameters = ASSUMED_TRACK_CONDITION,
+        weather_parameters: WeatherParameters = ASSUMED_WEATHER_PARAMETERS,
+        initial_weather: WeatherState = WeatherState(50.0, 0.0),
+        initial_track_temp_c: float | None = None,
+    ) -> None:
+        if not rain_by_lap:
+            raise ValueError("rain_by_lap deve conter pelo menos uma volta")
+        self._rain_by_lap = rain_by_lap
+        self._total_laps = len(rain_by_lap)
+        self._parameters = parameters
+        self._weather_parameters = weather_parameters
+        self._weather = initial_weather
+        self._temp = (
+            parameters.dry_track_temp_c
+            if initial_track_temp_c is None
+            else float(initial_track_temp_c)
+        )
+        self._rubber = parameters.initial_rubber
+        # Estado publico inicial (pista seca antes da volta 1).
+        self.surface_water = initial_weather.surface_water
+        self.humidity_pct = initial_weather.humidity_pct
+        self.track_temp_c = self._temp
+        self.rubber = self._rubber
+        self.rain = rain_by_lap[0]
+        self.grip_factor = (
+            water_grip_factor(self.surface_water, parameters)
+            * rubber_grip_factor(self._rubber, parameters)
+        )
+
+    def rain_for_lap(self, lap: int) -> RainLevel:
+        """RainLevel da volta ``lap`` (1-based); alem do fim, repete o ultimo."""
+        idx = min(max(1, lap) - 1, self._total_laps - 1)
+        return self._rain_by_lap[idx]
+
+    def advance(self, dt_s: float, lap: int) -> None:
+        """Avance o estado da pista por ``dt_s`` segundos sob o clima da ``lap``.
+
+        Reutiliza ``step_weather`` com ``lap_minutes = dt_s / 60``, de modo que
+        os fluxos de agua e umidade escalam pelo mesmo mecanismo da evolucao
+        por volta, so que em passos de fracao de segundo.
+        """
+        rain = self.rain_for_lap(lap)
+        minutes = dt_s / 60.0
+        p = self._parameters
+        evaporation_scale = min(
+            2.0, max(0.3, 1.0 + p.evaporation_per_degree * (self._temp - 30.0))
+        )
+        self._weather = step_weather(
+            self._weather,
+            rain,
+            self._weather_parameters,
+            lap_minutes=minutes,
+            evaporation_scale=evaporation_scale,
+        )
+        water = self._weather.surface_water
+        target = p.dry_track_temp_c - p.wet_cooling_c * water
+        relax = 1.0 - exp(-p.temp_response_per_min * minutes)
+        self._temp += relax * (target - self._temp)
+        self._rubber += p.rubber_gain_per_lap * (1.0 - self._rubber) * (minutes / self._weather_parameters.reference_lap_minutes)
+        self._rubber *= 1.0 - p.rubber_wash_per_lap_saturated * water * (minutes / self._weather_parameters.reference_lap_minutes)
+        self._rubber = max(0.0, min(1.0, self._rubber))
+        # Atualiza estado publico.
+        self.rain = rain
+        self.surface_water = water
+        self.humidity_pct = self._weather.humidity_pct
+        self.track_temp_c = self._temp
+        self.rubber = self._rubber
+        self.grip_factor = water_grip_factor(water, p) * rubber_grip_factor(
+            self._rubber, p
+        )
+
+    def snapshot(self, lap: int) -> TrackState:
+        """Retrato imutavel do estado atual, para registro por volta."""
+        return TrackState(
+            lap=lap,
+            rain=self.rain,
+            humidity_pct=self.humidity_pct,
+            surface_water=self.surface_water,
+            track_temp_c=self.track_temp_c,
+            rubber=self.rubber,
+            grip_factor=self.grip_factor,
+        )
 
 
 def simulate_track_conditions(
