@@ -247,7 +247,7 @@ class RaceConfigurationView(arcade.View):
         self._panel((450, 645, 1190, 103))
         center_x = 450 + 1190 / 2
         name_y = 712
-        title = self._text(
+        self._text(
             self.track_name,
             center_x,
             name_y,
@@ -260,16 +260,18 @@ class RaceConfigurationView(arcade.View):
             "Etapa Única" if total <= 1 else f"Etapa {self.stage_index} de {total}"
         )
         self._text(stage_text, center_x, 668, 14, SECONDARY_TEXT_COLOR, anchor_x="center", anchor_y="center")
-        # Largura do nome em unidades de design: as setas ficam logo ao lado dele.
-        half_width = title.content_width / self._canvas_fit().scale / 2
+        # Setas em posicao fixa, nas bordas de uma faixa central: o tamanho do nome
+        # nao as desloca. Nomes longos ficam entre elas.
         arrow_size = 34
         arrow_bottom = name_y - arrow_size / 2
+        # Distancia do centro da faixa ao centro de cada seta, em unidades de design.
+        arrow_offset = 360
         self._stage_arrows = {}
-        if self.stage_index > 1:
-            left = center_x - half_width - 12 - arrow_size
+        # Carrossel ciclico: com mais de uma etapa, as setas sempre aparecem.
+        if total > 1:
+            left = center_x - arrow_offset - arrow_size / 2
             self._stage_arrows["previous"] = (left, arrow_bottom, arrow_size, arrow_size)
-        if self.stage_index < total:
-            left = center_x + half_width + 12
+            left = center_x + arrow_offset - arrow_size / 2
             self._stage_arrows["next"] = (left, arrow_bottom, arrow_size, arrow_size)
         for key, bounds in self._stage_arrows.items():
             self._button(bounds, "‹" if key == "previous" else "›")
@@ -499,10 +501,10 @@ class RaceConfigurationView(arcade.View):
             self._status = f"{self.selected_weather} aplicado às voltas {first}–{last}."
             return
         if self._contains(self._stage_arrows.get("previous", (0, 0, 0, 0)), x, y):
-            self._go_to_stage(self.stage_index - 1)
+            self._go_to_stage(self._neighbor_stage(-1))
             return
         if self._contains(self._stage_arrows.get("next", (0, 0, 0, 0)), x, y):
-            self._go_to_stage(self.stage_index + 1)
+            self._go_to_stage(self._neighbor_stage(1))
             return
         if self._contains(SAVE_BOUNDS, x, y):
             self.save_and_return()
@@ -743,6 +745,12 @@ class RaceConfigurationView(arcade.View):
         self._commit_session_text()
         self.parent.accept_weather_schedule(self.schedule)
         self.parent.accept_session_configuration(self.circuit_id, self.session)
+
+    def _neighbor_stage(self, step: int) -> int:
+        """Etapa anterior (step -1) ou seguinte (step +1) no ciclo de 1 ate o total."""
+
+        total = len(self.parent.selected_track_ids)
+        return (self.stage_index - 1 + step) % total + 1
 
     def _go_to_stage(self, stage_index: int) -> None:
         """Salva esta etapa e abre outra do torneio (setas de navegacao)."""
