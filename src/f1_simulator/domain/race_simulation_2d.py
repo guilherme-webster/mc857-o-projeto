@@ -221,6 +221,7 @@ def _trajectories_2d(
             round(car.tyre_wear_laps, 6) if car.tyre_wear_laps is not None else None,
             bd["speed_scale"] if bd is not None else None,
             bd["delta_shares"] if bd is not None else None,
+            bd.get("grip_factor") if bd is not None else None,
         ]
 
     def _push(did: str, point: list[float | None]) -> None:
@@ -620,6 +621,7 @@ def simulate_2d_race(
         noise_ms: float,
         eff: LapEffects,
         speed_scale: float,
+        grip_factor: float = 1.0,
     ) -> None:
         """Guarde a decomposicao da velocidade da volta, em ms e em fracao perdida.
 
@@ -664,6 +666,7 @@ def simulate_2d_race(
             "speed_scale": round(speed_scale, 6),
             "speed_delta_fraction": round(speed_delta, 6),
             "delta_shares": {k: round(v, 6) for k, v in shares.items()},
+            "grip_factor": round(grip_factor, 4),
         }
         speed_breakdown[did][lap_number] = record
         return record
@@ -694,6 +697,7 @@ def simulate_2d_race(
                 0.0, car.fuel_kg - fuel.parameters.finish_reserve_kg
             )
         weather_ms = 0.0
+        grip_factor = 1.0
         if live_track is not None:
             water = live_track.surface_water
             grip_factor = live_track.grip_factor * relative_grip(
@@ -726,13 +730,15 @@ def simulate_2d_race(
             noise_ms,
             eff,
             car.speed_scale,
+            grip_factor,
         )
-        # Snapshot enxuto do instante, emitido por amostra na trajetoria: so os
-        # valores que variam por tick (speed_scale e a reparticao das fatias).
-        # O frontend os usa para decompor a velocidade por tick, nao por volta.
+        # Snapshot enxuto do instante, emitido por amostra na trajetoria: os
+        # valores que variam por tick (speed_scale, fatias e aderencia).
+        # O frontend os usa para decompor a velocidade e mostrar a aderencia por tick.
         car.speed_breakdown = {
             "speed_scale": record["speed_scale"],
             "delta_shares": record["delta_shares"],
+            "grip_factor": record["grip_factor"],
         }
 
     reliability_by_id = reliability_by_id or {}
@@ -746,10 +752,10 @@ def simulate_2d_race(
     _last_weather_time_s = -1.0
     # Snapshots do estado da pista por volta, para o resultado exportado.
     _live_track_snapshots: list[TrackState] = []
-    # Serie temporal do estado da pista (agua, temperatura) por tick, para o
-    # painel de clima do frontend variar por tick e nao por volta. O estado e
-    # global (igual para todos os carros), entao vai numa serie propria, nao
-    # por carro: [t_ms, surface_water, track_temp_c].
+    # Serie temporal do estado da pista (agua, temperatura, borracha, umidade)
+    # por tick, para o painel de clima do frontend variar por tick e nao por
+    # volta. O estado e global (igual para todos os carros), entao vai numa serie
+    # propria, nao por carro: [t_ms, surface_water, track_temp_c, rubber, humidity_pct].
     _live_track_series: list[list[float]] = []
 
     def _advance_control(lap: int, incidents: list[Incident]) -> None:
@@ -793,6 +799,8 @@ def simulate_2d_race(
                         round(t_ms, 1),
                         round(live_track.surface_water, 4),
                         round(live_track.track_temp_c, 2),
+                        round(live_track.rubber, 4),
+                        round(live_track.humidity_pct, 1),
                     ]
                 )
 
@@ -1313,8 +1321,9 @@ def simulate_2d_race(
     # o chamador (run_grid_simulation) os extrai para o resultado exportado.
     if _live_track_snapshots:
         result["_live_track_snapshots"] = list(_live_track_snapshots)
-    # Serie temporal da pista (agua, temperatura) para o painel de clima por
-    # tick: [t_ms, surface_water, track_temp_c]. Ausente sem live_track.
+    # Serie temporal da pista (agua, temperatura, borracha, umidade) para o
+    # painel de clima por tick: [t_ms, surface_water, track_temp_c, rubber,
+    # humidity_pct]. Ausente sem live_track.
     if _live_track_series:
         result["track_conditions_live"] = list(_live_track_series)
     # Decomposicao da velocidade por carro: ritmo fisico de referencia, teto de

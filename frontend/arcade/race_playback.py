@@ -67,6 +67,7 @@ class SpatialPosition:
     #: antes da decomposicao por tick; o leitor cai no registro por volta.
     speed_scale: float | None = None
     delta_shares: Mapping[str, float] | None = None
+    grip_factor: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +197,7 @@ class CarTimeline:
 
         # Fatias (campo 8) nao sao interpolaveis numericamente (dict); usa as
         # do inicio do segmento. ``speed_scale`` (campo 7) e escalar e interpola.
+        # ``grip_factor`` (campo 9) e escalar e interpola.
         shares = a[8] if len(a) > 8 else None
         return SpatialPosition(
             _distance(),
@@ -205,6 +207,7 @@ class CarTimeline:
             resource(6),
             resource(7),
             shares,
+            resource(9),
         )
 
     @property
@@ -487,6 +490,7 @@ class RacePlayback:
             t_ms=t_ms,
             speed_scale=spatial.speed_scale,
             delta_shares=spatial.delta_shares,
+            grip_factor=spatial.grip_factor,
         )
 
     def driver_v_max_kmh(self, driver_id: str) -> float | None:
@@ -847,22 +851,24 @@ def _next_lap_end(car: CarTimeline, laps: float) -> float:
 
 
 def track_condition_label(race: Mapping, lap: int, t_ms: float | None = None) -> str | None:
-    """Agua e temperatura do asfalto, para o painel de clima.
+    """Agua, temperatura do asfalto, umidade e borracha, para o painel de clima.
 
     Prefere ``track_conditions_live`` (serie temporal por tick: ``[t_ms,
-    surface_water, track_temp_c]``) quando a corrida a traz e ``t_ms`` e dado,
-    interpolando linearmente no tempo -- e assim que o painel varia por tick, e
-    nao em degraus de volta. Sem a serie (corridas salvas antes dela), cai em
+    surface_water, track_temp_c, rubber, humidity_pct]``) quando a corrida a traz e
+    ``t_ms`` e dado, interpolando linearmente no tempo -- e assim que o painel varia por
+    tick, e nao em degraus de volta. Sem a serie (corridas salvas antes dela), cai em
     ``track_conditions`` por volta (ADR 0015). Corridas antigas sem nenhum dos
-    dois devolvem ``None`` e o painel mostra so a chuva. A agua sai em
-    porcentagem do indice 0-1 (nao e milimetro de chuva).
+    dois devolvem ``None`` e o painel mostra so a chuva. A agua e a borracha
+    saem em porcentagem do indice 0-1.
     """
 
     water: float | None = None
     temp: float | None = None
+    rubber: float | None = None
+    humidity: float | None = None
     live = race.get("track_conditions_live") if isinstance(race, Mapping) else None
     if isinstance(live, Sequence) and live and t_ms is not None:
-        water, temp = _interpolate_track_condition(live, t_ms)
+        water, temp, rubber, humidity = _interpolate_track_condition(live, t_ms)
     else:
         rows = race.get("track_conditions") if isinstance(race, Mapping) else None
         if not isinstance(rows, Sequence) or not rows:
@@ -872,18 +878,24 @@ def track_condition_label(race: Mapping, lap: int, t_ms: float | None = None) ->
             return None
         water = row.get("surface_water")
         temp = row.get("track_temp_c")
+        rubber = row.get("rubber")
+        humidity = row.get("humidity_pct")
     parts = []
     if isinstance(water, (int, float)) and water > 0:
         parts.append(f"agua {round(water * 100)}%")
     if isinstance(temp, (int, float)):
         parts.append(f"pista {temp:.0f} °C")
+    if isinstance(humidity, (int, float)):
+        parts.append(f"umidade {round(humidity)}%")
+    if isinstance(rubber, (int, float)):
+        parts.append(f"borracha {round(rubber * 100)}%")
     return " · ".join(parts) or None
 
 
 def _interpolate_track_condition(
     series: Sequence, t_ms: float
-) -> tuple[float | None, float | None]:
-    """Agua e temperatura interpoladas no tempo na serie ``[t_ms, agua, temp]``."""
+) -> tuple[float | None, float | None, float | None, float | None]:
+    """Agua, temperatura, borracha e umidade interpoladas na serie temporal."""
 
     index = bisect_right(series, t_ms, key=lambda p: p[0])
     a = series[max(0, index - 1)]
@@ -892,4 +904,20 @@ def _interpolate_track_condition(
     f = max(0.0, min(1.0, (t_ms - a[0]) / span)) if span else 0.0
     water = a[1] + (b[1] - a[1]) * f
     temp = a[2] + (b[2] - a[2]) * f
-    return water, temp
+    rubber = None
+    if (
+        len(a) > 3
+        and len(b) > 3
+        and isinstance(a[3], (int, float))
+        and isinstance(b[3], (int, float))
+    ):
+        rubber = a[3] + (b[3] - a[3]) * f
+    humidity = None
+    if (
+        len(a) > 4
+        and len(b) > 4
+        and isinstance(a[4], (int, float))
+        and isinstance(b[4], (int, float))
+    ):
+        humidity = a[4] + (b[4] - a[4]) * f
+    return water, temp, rubber, humidity

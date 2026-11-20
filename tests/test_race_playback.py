@@ -671,6 +671,65 @@ class TrackConditionLabelTest(unittest.TestCase):
         self.assertEqual(track_condition_label(race, 2), "agua 42% · pista 30 °C")
         self.assertEqual(track_condition_label(race, 9), "agua 42% · pista 30 °C")
 
+    def test_label_includes_rubber_when_present(self):
+        from frontend.arcade.race_playback import track_condition_label
+
+        race = {
+            "track_conditions": [
+                {"lap": 1, "surface_water": 0.0, "track_temp_c": 35.0, "rubber": 0.8},
+                {"lap": 2, "surface_water": 0.42, "track_temp_c": 30.4, "rubber": 0.75},
+            ]
+        }
+        self.assertEqual(track_condition_label(race, 1), "pista 35 °C · borracha 80%")
+        self.assertEqual(track_condition_label(race, 2), "agua 42% · pista 30 °C · borracha 75%")
+
+    def test_label_includes_humidity_when_present(self):
+        from frontend.arcade.race_playback import track_condition_label
+
+        race = {
+            "track_conditions": [
+                {"lap": 1, "surface_water": 0.0, "track_temp_c": 35.0, "humidity_pct": 50.0, "rubber": 0.8},
+                {"lap": 2, "surface_water": 0.42, "track_temp_c": 30.4, "humidity_pct": 82.0, "rubber": 0.75},
+            ]
+        }
+        self.assertEqual(track_condition_label(race, 1), "pista 35 °C · umidade 50% · borracha 80%")
+        self.assertEqual(track_condition_label(race, 2), "agua 42% · pista 30 °C · umidade 82% · borracha 75%")
+
+    def test_label_interpolates_rubber_from_live_series(self):
+        from frontend.arcade.race_playback import track_condition_label
+
+        race = {
+            "track_conditions_live": [
+                [0.0, 0.0, 35.0, 0.8],
+                [1000.0, 0.1, 34.0, 0.82],
+            ]
+        }
+        self.assertEqual(track_condition_label(race, 1, t_ms=0.0), "pista 35 °C · borracha 80%")
+        self.assertEqual(track_condition_label(race, 1, t_ms=500.0), "agua 5% · pista 34 °C · borracha 81%")
+
+    def test_label_interpolates_humidity_from_live_series(self):
+        from frontend.arcade.race_playback import track_condition_label
+
+        race = {
+            "track_conditions_live": [
+                [0.0, 0.0, 35.0, 0.8, 50.0],
+                [1000.0, 0.1, 34.0, 0.82, 70.0],
+            ]
+        }
+        self.assertEqual(track_condition_label(race, 1, t_ms=0.0), "pista 35 °C · umidade 50% · borracha 80%")
+        self.assertEqual(track_condition_label(race, 1, t_ms=500.0), "agua 5% · pista 34 °C · umidade 60% · borracha 81%")
+
+    def test_label_interpolates_live_series_without_rubber(self):
+        from frontend.arcade.race_playback import track_condition_label
+
+        race = {
+            "track_conditions_live": [
+                [0.0, 0.0, 35.0],
+                [1000.0, 0.1, 34.0],
+            ]
+        }
+        self.assertEqual(track_condition_label(race, 1, t_ms=0.0), "pista 35 °C")
+
     def test_older_races_without_the_block_show_only_the_rain(self):
         from frontend.arcade.race_playback import track_condition_label
 

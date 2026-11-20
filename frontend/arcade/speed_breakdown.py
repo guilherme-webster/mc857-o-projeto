@@ -64,6 +64,7 @@ class SpeedBreakdown:
     corner: float
     penalties: Mapping[str, float]
     ceiling_frac: float  # teto local / v_max; permite exibir penalidades como % do teto
+    grip_factor: float | None = None
 
     @property
     def effective_pct(self) -> float:
@@ -157,6 +158,7 @@ class SpeedBreakdownReader:
         t_ms: float = 0.0,
         speed_scale: float | None = None,
         delta_shares: Mapping[str, float] | None = None,
+        grip_factor: float | None = None,
     ) -> SpeedBreakdown | None:
         """Fatias da velocidade do carro no ponto e na volta dados.
 
@@ -191,6 +193,11 @@ class SpeedBreakdownReader:
             data = self._lap_data(driver_id, lap)
             speed_scale = float(data["speed_scale"]) if data else 1.0
             shares = dict(data["delta_shares"]) if data else {}
+
+        if grip_factor is None:
+            data = self._lap_data(driver_id, lap)
+            if data and "grip_factor" in data and isinstance(data["grip_factor"], (int, float)):
+                grip_factor = float(data["grip_factor"])
 
         # Em fracao de v_max: a curva tira ``corner``; as penalidades tiram
         # ``ceiling_frac * (1 - speed_scale)`` do que a curva deixou; o resto e
@@ -250,4 +257,5 @@ class SpeedBreakdownReader:
             corner=corner,
             penalties=penalties,
             ceiling_frac=ceiling_frac,
+            grip_factor=grip_factor,
         )
