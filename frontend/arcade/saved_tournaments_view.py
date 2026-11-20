@@ -62,6 +62,9 @@ _NEW_NAME_LIMIT = 120
 _TITLE_X = 200
 _TOURNAMENT = "tournament"
 _RACE = "race"
+# Itens por pagina ao carregar a lista. Pequeno para a primeira pagina chegar
+# logo; a tela cresce a cada pagina publicada, sem esperar a lista inteira.
+_PAGE_SIZE = 8
 _LABELS = (
     "‹  Voltar",
     "Atualizar",
@@ -80,13 +83,13 @@ class SavedTournamentsView(arcade.View):
     def __init__(
         self,
         return_view: arcade.View | None = None,
-        lister: Callable[[], dict] = track_client.fetch_saved_tournaments,
+        lister: Callable[..., dict] = track_client.fetch_saved_tournaments,
         loader: Callable[[str], dict] = track_client.fetch_saved_tournament,
         reopener: Callable[[dict], LaunchOutcome] = reopen,
         rerunner: Callable[[dict], Callable[..., LaunchOutcome]] = (
             lambda record: rerun_runner(record, HttpTournamentClient())
         ),
-        race_lister: Callable[[], dict] = track_client.fetch_saved_races,
+        race_lister: Callable[..., dict] = track_client.fetch_saved_races,
         race_renamer: Callable[[str, str], dict] = track_client.rename_saved_race,
         race_deleter: Callable[[str], dict] = track_client.delete_saved_race,
         tournament_renamer: Callable[[str, str], dict] = track_client.rename_saved_tournament,
@@ -149,6 +152,10 @@ class SavedTournamentsView(arcade.View):
     # Acoes (chamadas pelos cliques; publicas para os testes) ---------------
 
     def refresh(self) -> None:
+        # Zera a lista: as paginas recebidas durante o carregamento so acrescentam.
+        self._tournaments = []
+        self._races = []
+        self._rows = _build_rows([], [])
         self._run("list", self._load_listing)
 
     def open_saved(self, tournament_id: str) -> None:
@@ -244,15 +251,41 @@ class SavedTournamentsView(arcade.View):
         self._run("deleted", work, "Excluindo…")
 
     def _load_listing(self, progress) -> dict:
-        """Torneios e corridas. Se as corridas falharem, os torneios ainda aparecem."""
+        """Torneios e corridas, em paginas. Se as corridas falharem, os torneios ainda aparecem.
 
-        tournaments = list(self._lister().get("saved", []))
+        Cada pagina e publicada em ``self._results`` assim que chega, e a thread
+        de desenho a acrescenta a lista. O retorno final traz a lista completa,
+        que substitui a parcial com o mesmo conteudo.
+        """
+
+        tournaments = self._load_pages(self._lister, _TOURNAMENT)
+        collected_races: list[dict] = []
         try:
-            races = list(self._race_lister().get("saved", []))
+            races = self._load_pages(self._race_lister, _RACE, collected_races)
             race_error = None
         except (OSError, RuntimeError, ValueError) as error:
-            races, race_error = [], str(error)
+            # Mantem as corridas das paginas que ja chegaram.
+            races, race_error = collected_races, str(error)
         return {"tournaments": tournaments, "races": races, "race_error": race_error}
+
+    def _load_pages(
+        self, lister: Callable[..., dict], kind: str, collected: list[dict] | None = None
+    ) -> list[dict]:
+        """Le todas as paginas de ``lister``, publicando cada uma; ``collected`` recebe os itens."""
+
+        items = collected if collected is not None else []
+        offset = 0
+        while True:
+            page = lister(offset=offset, limit=_PAGE_SIZE)
+            saved = list(page.get("saved", []))
+            items.extend(saved)
+            self._results.put(("page", {"kind": kind, "items": saved}))
+            offset += len(saved)
+            total = int(page.get("count", len(items)))
+            # Pagina vazia ou total atingido: fim. Sem a checagem de pagina
+            # vazia, um servidor que encolhe no meio da leitura faria o laco girar.
+            if not saved or offset >= total:
+                return items
 
     def _run(self, kind: str, work, message: str | None = None) -> None:
         if self._busy:
@@ -286,6 +319,12 @@ class SavedTournamentsView(arcade.View):
             if kind == "progress":
                 self._set_status(str(payload), SECONDARY_TEXT_COLOR)
                 continue
+            if kind == "page":
+                # Carregamento ainda em andamento: a operacao segue ocupada.
+                self._apply_page(payload)
+                loaded = len(self._tournaments) + len(self._races)
+                self._set_status(f"Carregando… {loaded} item(ns)", SECONDARY_TEXT_COLOR)
+                continue
             self._busy = False
             if kind == "error":
                 self._set_status(f"Falha: {payload}", ERROR_COLOR)
@@ -298,9 +337,9 @@ class SavedTournamentsView(arcade.View):
             elif kind == "rerun":
                 self._start_rerun(payload)
             elif kind == "renamed":
+                # Sem nova listagem: o nome ja foi trocado na lista local.
                 self._apply_rename(payload)
                 self._set_status("Nome atualizado.", SECONDARY_TEXT_COLOR)
-                self.refresh()
             elif kind == "deleted":
                 self._apply_delete(payload)
                 self._set_status("Simulação excluída.", SECONDARY_TEXT_COLOR)
@@ -327,6 +366,15 @@ class SavedTournamentsView(arcade.View):
         if self._renaming is not None and self._renaming[1] == change["id"]:
             self._renaming = None
         self._clamp_scroll()
+
+    def _apply_page(self, page: dict) -> None:
+        """Acrescenta uma pagina recebida durante o carregamento."""
+
+        if page["kind"] == _RACE:
+            self._races.extend(page["items"])
+        else:
+            self._tournaments.extend(page["items"])
+        self._rows = _build_rows(self._tournaments, self._races)
 
     def _apply_listing(self, payload: dict) -> None:
         self._tournaments = list(payload["tournaments"])

@@ -201,7 +201,9 @@ DEFAULT_WEATHER_SCHEDULE = WeatherSchedule.dry(DEFAULT_LAPS_FALLBACK)
 SCORING_OPTIONS = ("F1 oficial", "Sem pontuação")
 # Clima padrão do torneio: ao escolher uma condição, todas as voltas de todas as
 # pistas da sequência recebem essa condição. Cada etapa continua editável.
-WEATHER_MODE_OPTIONS = WEATHER_OPTIONS
+# "Aleatório" sorteia um clima de WEATHER_OPTIONS para cada etapa; é o padrão.
+WEATHER_MODE_RANDOM = "Aleatório"
+WEATHER_MODE_OPTIONS = (WEATHER_MODE_RANDOM, *WEATHER_OPTIONS)
 # Valores de torneios salvos antes do clima padrão. Continuam válidos ao carregar;
 # o clima de cada etapa é a fonte da verdade, então eles não forçam nada.
 LEGACY_WEATHER_MODES = ("Configuração por corrida", "Seco em todas")
@@ -216,7 +218,7 @@ class TournamentRules:
     total_stages: int = 1
     scoring: str = SCORING_OPTIONS[0]
     generation_mode: str = "Manual"
-    weather_mode: str = WEATHER_MODE_OPTIONS[0]
+    weather_mode: str = WEATHER_MODE_RANDOM
     allow_repeats: bool = False
     tiebreak: str = TIEBREAK_OPTIONS[0]
 

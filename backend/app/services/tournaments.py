@@ -58,35 +58,35 @@ def save_tournament(request) -> dict:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(error)
         ) from error
-    catalog._write_json(SAVED_TOURNAMENTS_DIR / f"{tournament_id}.json", record)
+    document_path = SAVED_TOURNAMENTS_DIR / f"{tournament_id}.json"
+    catalog._write_json(document_path, record)
+    summary = tournament_summary(record)
+    catalog._write_summary(document_path, summary)
+    return summary
+
+
+def _summarize_document(record: dict) -> dict:
+    """Resumo de um torneio valido; registro invalido levanta ``ValueError``."""
+
+    from f1_simulator.application.saved_tournament import (
+        check_saved_tournament,
+        tournament_summary,
+    )
+
+    check_saved_tournament(record)
     return tournament_summary(record)
 
 
-def list_saved_tournaments() -> list[dict]:
-    """Resumo de cada torneio legivel, do mais recente ao mais antigo.
+def list_saved_tournaments(offset: int = 0, limit: int | None = None) -> dict:
+    """Uma pagina dos resumos dos torneios, do mais recente ao mais antigo.
 
     Arquivos corrompidos ou de outra versao sao ignorados na listagem, como nas
     corridas salvas; abri-los diretamente devolve o erro detalhado.
     """
 
-    from f1_simulator.application.saved_tournament import (
-        SavedTournamentError,
-        check_saved_tournament,
-        tournament_summary,
+    return catalog.list_saved_summaries(
+        SAVED_TOURNAMENTS_DIR, _summarize_document, offset=offset, limit=limit
     )
-
-    if not SAVED_TOURNAMENTS_DIR.exists():
-        return []
-    saved = []
-    for path in SAVED_TOURNAMENTS_DIR.glob("*.json"):
-        try:
-            record = json.loads(path.read_text(encoding="utf-8"))
-            check_saved_tournament(record)
-            saved.append(tournament_summary(record))
-        except (OSError, ValueError, KeyError, TypeError, SavedTournamentError):
-            continue
-    saved.sort(key=lambda item: item["saved_at"], reverse=True)
-    return saved
 
 
 def read_saved_tournament(tournament_id: str) -> dict:
@@ -109,6 +109,10 @@ def read_saved_tournament(tournament_id: str) -> dict:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
+    # O nome vale do sidecar: o rename o atualiza sem regravar este registro.
+    summary = catalog._read_summary(path)
+    if summary is not None and "name" in summary:
+        record["name"] = summary["name"]
     return record
 
 
@@ -122,10 +126,20 @@ def rename_saved_tournament(tournament_id: str, name: str) -> dict:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="informe um nome para o torneio",
         )
-    record = read_saved_tournament(tournament_id)
-    record["name"] = name.strip()
-    catalog._write_json(_tournament_path(tournament_id), record)
-    return tournament_summary(record)
+    path = _tournament_path(tournament_id)
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"saved tournament not found: {tournament_id}",
+        )
+    # So o sidecar muda: o registro tem todas as corridas e seria regravado
+    # inteiro. ``read_saved_tournament`` aplica esse nome ao registro aberto.
+    summary = catalog._read_summary(path)
+    if summary is None:
+        summary = tournament_summary(read_saved_tournament(tournament_id))
+    summary = {**summary, "name": name.strip()}
+    catalog._write_summary(path, summary)
+    return summary
 
 
 def delete_saved_tournament(tournament_id: str) -> None:
@@ -136,6 +150,7 @@ def delete_saved_tournament(tournament_id: str) -> None:
             detail=f"saved tournament not found: {tournament_id}",
         )
     path.unlink()
+    catalog._remove_summary(path)
 
 
 def _tournament_path(tournament_id: str):

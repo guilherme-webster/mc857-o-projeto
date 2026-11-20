@@ -7,7 +7,7 @@ caminho de uma simulacao nova (ADR 0013).
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.routers.catalog import _grid_response
 from app.schemas.responses import (
@@ -28,11 +28,16 @@ def save_tournament(request: SaveTournamentRequest) -> SavedTournamentMeta:
 
 
 @router.get("", response_model=SavedTournamentsResponse)
-def list_tournaments() -> SavedTournamentsResponse:
-    saved = tournaments.list_saved_tournaments()
+def list_tournaments(
+    offset: int = Query(default=0, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
+) -> SavedTournamentsResponse:
+    """Pagina dos torneios salvos; ``count`` e o total, ``saved`` so a pagina."""
+
+    page = tournaments.list_saved_tournaments(offset=offset, limit=limit)
     return SavedTournamentsResponse(
-        count=len(saved),
-        saved=[SavedTournamentMeta(**item) for item in saved],
+        count=page["total"],
+        saved=[SavedTournamentMeta(**item) for item in page["items"]],
     )
 
 

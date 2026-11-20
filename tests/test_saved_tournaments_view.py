@@ -86,7 +86,7 @@ class SavedTournamentViewsTest(unittest.TestCase):
         outcome = LaunchOutcome((), "nota", ())
         loaded: list[str] = []
         view = SavedTournamentsView(
-            lister=lambda: {"saved": [SUMMARY]},
+            lister=lambda **_: {"saved": [SUMMARY]},
             loader=lambda tournament_id: (
                 loaded.append(tournament_id) or {"id": tournament_id}
             ),
@@ -134,7 +134,7 @@ class SavedTournamentViewsTest(unittest.TestCase):
             ],
         }
         view = SavedTournamentsView(
-            lister=lambda: {"saved": [SUMMARY]},
+            lister=lambda **_: {"saved": [SUMMARY]},
             loader=lambda tournament_id: record,
             rerunner=lambda loaded: failing_runner,
         )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.config import CURRENT_RACE_JSON
 from app.schemas.responses import (
@@ -42,11 +42,16 @@ def save_race(request: SaveRaceRequest) -> SavedRaceMeta:
 
 
 @router.get("/saved", response_model=SavedRacesResponse)
-def list_saved() -> SavedRacesResponse:
-    saved = catalog.list_saved_races()
+def list_saved(
+    offset: int = Query(default=0, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=100),
+) -> SavedRacesResponse:
+    """Pagina das corridas salvas; ``count`` e o total, ``saved`` so a pagina."""
+
+    page = catalog.list_saved_races(offset=offset, limit=limit)
     return SavedRacesResponse(
-        count=len(saved),
-        saved=[SavedRaceMeta(**item) for item in saved],
+        count=page["total"],
+        saved=[SavedRaceMeta(**item) for item in page["items"]],
     )
 
 

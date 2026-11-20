@@ -211,11 +211,11 @@ class GridView(arcade.View):
             self._grid_seed_text = str(self._draft.seed)
         message = {
             "load-grid": "Grid atual carregado.",
-            "build": "Grid montado. O Iniciar da configuração usará este grid.",
+            "build": "Grid montado.",
             "save": "Alterações salvas no grid atual.",
         }[kind]
         self._set_status(
-            f"{message} {len(self._draft.entries)} pilotos, semente {self._draft.seed}.",
+            f"{message} {len(self._draft.entries)} pilotos. Semente {self._draft.seed}.",
             SUCCESS_COLOR,
         )
 
@@ -538,6 +538,31 @@ class GridView(arcade.View):
         elif symbol == arcade.key.BACKSPACE and self._popup_year_text:
             self._popup_year_text = self._popup_year_text[:-1]
 
+    @staticmethod
+    def _draw_list_scrollbar(layout: dict, total: int, offset: int) -> None:
+        """Barra de rolagem na borda direita da lista de um painel (seletor ou popup).
+
+        O cursor mostra a parte da lista visivel e acompanha ``offset``. So aparece
+        quando a lista nao cabe inteira.
+        """
+
+        list_top, list_bottom = layout["list_top"], layout["list_bottom"]
+        count = max(1, int((list_top - list_bottom) // layout["row_h"]))
+        if total <= count:
+            return
+        left, _bottom, panel_w, _panel_h = layout["panel"]
+        rail_h = list_top - list_bottom
+        thumb_h = max(20.0, rail_h * count / total)
+        max_offset = total - count
+        travel = rail_h - thumb_h
+        thumb_top = list_top - travel * min(offset, max_offset) / max_offset
+        # Dentro do painel, a direita das linhas (que terminam 20 px antes da borda).
+        x = left + panel_w - 14
+        arcade.draw_lbwh_rectangle_filled(x, list_bottom, 6, rail_h, (33, 42, 53))
+        arcade.draw_lbwh_rectangle_filled(
+            x, thumb_top - thumb_h, 6, thumb_h, (111, 127, 148)
+        )
+
     def _draw_race_popup(self, width: int, height: int) -> None:
         layout = self._popup_layout()
         arcade.draw_lbwh_rectangle_filled(0, 0, width, height, (0, 0, 0, 170))
@@ -619,6 +644,7 @@ class GridView(arcade.View):
             width=panel_w - 60,
         ).draw()
         rows = self._popup_rows()
+        self._draw_list_scrollbar(layout, len(self._popup_races()), self._popup_scroll)
         if not rows:
             self._text(
                 "pop:empty",
@@ -825,6 +851,7 @@ class GridView(arcade.View):
             anchor_y="center",
         ).draw()
         rows = self._picker_rows()
+        self._draw_list_scrollbar(layout, len(self._picker.visible()), self._picker.scroll)
         if not rows:
             self._text(
                 "pk:empty",
@@ -1146,7 +1173,7 @@ class GridView(arcade.View):
         ).draw()
         self._draw_source_selector(height)
         self._draw_table(height)
-        self._draw_scroll_hint()
+        self._draw_table_scrollbar()
         self._draw_panel(width, height)
         self._draw_buttons()
         # Status logo abaixo do titulo, fora da barra inferior dos botoes.
@@ -1355,8 +1382,12 @@ class GridView(arcade.View):
     def _unclip_panel_region(self) -> None:
         self.window.ctx.scissor = None
 
-    def _draw_scroll_hint(self) -> None:
-        """Avisa quais pilotos estao na tela quando a lista nao cabe inteira."""
+    def _draw_table_scrollbar(self) -> None:
+        """Barra de rolagem da lista de pilotos, na borda esquerda da tabela.
+
+        O cursor (thumb) mostra qual parte da lista esta visivel e acompanha
+        ``self._scroll``. So aparece quando a lista nao cabe inteira.
+        """
 
         if self._draft is None:
             return
@@ -1364,16 +1395,18 @@ class GridView(arcade.View):
         visible = self._visible_count()
         if total <= visible:
             return
-        first = self._scroll + 1
-        last = min(total, self._scroll + visible)
-        self._text(
-            "table-hint",
-            f"Pilotos {first}–{last} de {total} · role a lista para ver os demais",
-            40,
-            66,
-            _HEADER_COLOR,
-            10,
-        ).draw()
+        rail_top = self._table_top() + ROW_HEIGHT / 2
+        rail_bottom = 80
+        rail_h = rail_top - rail_bottom
+        thumb_h = max(24.0, rail_h * visible / total)
+        max_scroll = total - visible
+        travel = rail_h - thumb_h
+        thumb_top = rail_top - travel * min(self._scroll, max_scroll) / max_scroll
+        left, width = 6, 6
+        arcade.draw_lbwh_rectangle_filled(left, rail_bottom, width, rail_h, (33, 42, 53))
+        arcade.draw_lbwh_rectangle_filled(
+            left, thumb_top - thumb_h, width, thumb_h, (111, 127, 148)
+        )
 
     def _draw_panel(self, width: int, height: int) -> None:
         left = self._panel_left()
