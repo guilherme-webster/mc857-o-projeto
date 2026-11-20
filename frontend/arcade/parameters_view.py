@@ -1838,13 +1838,6 @@ class ParametersView(UIView):
         for label, x, y, color, size in (
             ("SIMULADOR DE CORRIDA", 72, 692, SECONDARY_TEXT_COLOR, 11),
             ("Configuração do torneio", 40, 620, PRIMARY_TEXT_COLOR, 31),
-            (
-                "Defina as regras gerais e monte o scheduler de pistas.",
-                40,
-                596,
-                SECONDARY_TEXT_COLOR,
-                14,
-            ),
             ("CATÁLOGO DE PISTAS", 622, 481, ACCENT_COLOR, 10),
             (name, 622, 448, PRIMARY_TEXT_COLOR, 18),
             ("Clique na prévia para configurar", 622, 82, SECONDARY_TEXT_COLOR, 9),

@@ -486,9 +486,8 @@ class TrackView(arcade.View):
         self._show_breakdown = self._playback.has_speed_breakdown
         self._breakdown_panels: list[_BreakdownPanel] = []
         self._standing_row_rects: list[tuple[str, tuple[float, float, float, float]]] = []
-        # Primeira posicao visivel da classificacao e dica de rolagem.
+        # Primeira posicao visivel da classificacao.
         self._standing_scroll = 0
-        self._standings_hint = arcade.Text("", 20, 0, _HEADER_COLOR, 9)
         # Painel em arraste e offset do cursor ate o canto, e contador de
         # cascata para paineis novos nao nascerem exatamente sobrepostos.
         self._dragging_panel: _BreakdownPanel | None = None
@@ -1599,6 +1598,30 @@ class TrackView(arcade.View):
             cursor += seg_w
         arcade.draw_lbwh_rectangle_outline(left, y, bar_w, bar_h, _HEADER_COLOR, 1)
 
+    def _draw_standings_scrollbar(
+        self, top: float, line_h: float, visible: int, total: int, start: int
+    ) -> None:
+        """Barra de rolagem a esquerda da classificacao; so aparece se ela nao couber.
+
+        O cursor vai do topo ao fim da faixa de linhas visiveis e acompanha
+        ``start``, a primeira posicao mostrada.
+        """
+
+        if total <= visible:
+            return
+        rail_top = top + line_h / 2
+        rail_h = visible * line_h
+        rail_bottom = rail_top - rail_h
+        thumb_h = max(20.0, rail_h * visible / total)
+        max_start = total - visible
+        travel = rail_h - thumb_h
+        thumb_top = rail_top - travel * min(start, max_start) / max_start
+        left, width = 6, 6
+        arcade.draw_lbwh_rectangle_filled(left, rail_bottom, width, rail_h, (33, 42, 53))
+        arcade.draw_lbwh_rectangle_filled(
+            left, thumb_top - thumb_h, width, thumb_h, (111, 127, 148)
+        )
+
     def _standings_visible(self, top: float, line_h: float) -> int:
         """Posicoes que cabem entre ``top`` e a margem acima do feed, no maximo 20."""
 
@@ -1702,14 +1725,7 @@ class TrackView(arcade.View):
                 if key == "tyre" and value:
                     arcade.draw_circle_outline(text.x, y, _TYRE_RADIUS, color, 2)
                 text.draw()
-        if len(standings) > visible:
-            self._standings_hint.text = (
-                f"Posições {start + 1}–{start + visible} de {len(standings)} · "
-                "role a lista para ver as demais"
-            )
-            self._standings_hint.x = left
-            self._standings_hint.y = top - visible * line_h - 2
-            self._standings_hint.draw()
+        self._draw_standings_scrollbar(top, line_h, visible, len(standings), start)
 
     @staticmethod
     def _fit_name_and_time(texts: dict) -> None:
