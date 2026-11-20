@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
@@ -30,6 +31,8 @@ from frontend.arcade.configuration_state import (
     SCORING_OPTIONS,
     TIEBREAK_OPTIONS,
     WEATHER_MODE_OPTIONS,
+    WEATHER_MODE_RANDOM,
+    WEATHER_OPTIONS,
     ConfigurationFormData,
     ConfigurationFormError,
     PlannedRace,
@@ -1059,10 +1062,10 @@ class ParametersView(UIView):
                 self._press_rule(rule, x)
                 return
         if self._contains(STAGES_DECREASE_BOUNDS, x, y):
-            self._update_rules(total_stages=max(1, self.rules.total_stages - 1))
+            self._step_total_stages(-1)
             return
         if self._contains(STAGES_INCREASE_BOUNDS, x, y):
-            self._update_rules(total_stages=min(24, self.rules.total_stages + 1))
+            self._step_total_stages(1)
             return
         if self._contains(REPEATS_BOUNDS, x, y):
             self._update_rules(allow_repeats=not self.rules.allow_repeats)
@@ -1173,7 +1176,29 @@ class ParametersView(UIView):
         """Clima padrão atual; valores legados contam como Seco."""
 
         current = self.rules.weather_mode
-        return current if current in WEATHER_MODE_OPTIONS else WEATHER_MODE_OPTIONS[0]
+        return current if current in WEATHER_MODE_OPTIONS else WEATHER_OPTIONS[0]
+
+    def _default_weather_for(self, circuit_id: str, index: int) -> str:
+        """Clima da etapa ``index`` pela regra do padrão: o escolhido ou um sorteio.
+
+        Com "Aleatório", cada etapa recebe um clima de WEATHER_OPTIONS. Com a semente
+        digitada, o sorteio segue dela (pista e posição entram na chave), entao a
+        mesma sequencia sorteia os mesmos climas. Sem semente, o sorteio e livre e
+        fica gravado na etapa.
+        """
+
+        current = self._default_weather()
+        if current != WEATHER_MODE_RANDOM:
+            return current
+        try:
+            seed = parse_optional_seed(self.tournament_seed_input.text)
+        except ConfigurationFormError:
+            seed = None
+        if seed is None:
+            rng = random.Random()
+        else:
+            rng = random.Random(f"{seed}:clima:{index}:{circuit_id}")
+        return rng.choice(WEATHER_OPTIONS)
 
     def _fresh_configuration(self, track: dict) -> ConfigurationFormData:
         """Configuração inicial de uma pista: padrão de voltas e clima padrão."""
@@ -1184,7 +1209,12 @@ class ParametersView(UIView):
         return ConfigurationFormData(
             preset=base.preset,
             laps=laps,
-            weather_schedule=WeatherSchedule.uniform(laps, self._default_weather()),
+            weather_schedule=WeatherSchedule.uniform(
+                laps,
+                self._default_weather_for(
+                    track["circuit_id"], len(self._selected_track_ids)
+                ),
+            ),
         )
 
     # -- voltas padrao da sequencia -------------------------------------------
@@ -1206,6 +1236,13 @@ class ParametersView(UIView):
         except ConfigurationFormError:
             return None
         return laps
+
+    def _step_total_stages(self, step: int) -> None:
+        """Carrossel de 1 a 24 etapas: voltar em 1 vai para 24, avancar em 24 vai para 1."""
+
+        last = 24
+        total = (self.rules.total_stages - 1 + step) % last + 1
+        self._update_rules(total_stages=total)
 
     # -- listas suspensas das regras ---------------------------------------------
 
@@ -1349,7 +1386,7 @@ class ParametersView(UIView):
         """
 
         catalog = {track["circuit_id"]: track for track in self._tracks}
-        for circuit_id in self._selected_track_ids:
+        for index, circuit_id in enumerate(self._selected_track_ids):
             track = catalog[circuit_id]
             current = self._track_configurations.get(circuit_id)
             preset = (
@@ -1358,10 +1395,15 @@ class ParametersView(UIView):
                 else configuration_for_track(track).preset
             )
             laps = laps_for(track)
+            if self._default_weather() == WEATHER_MODE_RANDOM and current is not None:
+                # Sorteio ja feito: mudar as voltas nao deve sortear de novo a cada digito.
+                weather = current.weather_schedule.by_lap[0]
+            else:
+                weather = self._default_weather_for(circuit_id, index)
             self._track_configurations[circuit_id] = ConfigurationFormData(
                 preset=preset,
                 laps=laps,
-                weather_schedule=WeatherSchedule.uniform(laps, self._default_weather()),
+                weather_schedule=WeatherSchedule.uniform(laps, weather),
             )
             session = self._session_configurations.get(circuit_id)
             if session is not None:
@@ -1385,24 +1427,37 @@ class ParametersView(UIView):
         As etapas seguem editáveis: a pintura de uma etapa altera só essa etapa.
         """
 
-        weather = self._default_weather()
-        for circuit_id in self._selected_track_ids:
+        for index, circuit_id in enumerate(self._selected_track_ids):
             current = self._track_configurations[circuit_id]
+            weather = self._default_weather_for(circuit_id, index)
             self._track_configurations[circuit_id] = ConfigurationFormData(
                 preset=current.preset,
                 laps=current.laps,
                 weather_schedule=WeatherSchedule.uniform(current.laps, weather),
             )
         if self.selected_track is not None:
-            self.configuration = ConfigurationFormData(
-                preset=self.configuration.preset,
-                laps=self.configuration.laps,
-                weather_schedule=WeatherSchedule.uniform(
-                    self.configuration.laps, weather
-                ),
-            )
+            circuit_id = self.selected_track["circuit_id"]
+            if circuit_id in self._selected_track_ids:
+                self.configuration = self._track_configurations[circuit_id]
+            else:
+                weather = self._default_weather_for(
+                    circuit_id, len(self._selected_track_ids)
+                )
+                self.configuration = ConfigurationFormData(
+                    preset=self.configuration.preset,
+                    laps=self.configuration.laps,
+                    weather_schedule=WeatherSchedule.uniform(
+                        self.configuration.laps, weather
+                    ),
+                )
+        mode = self._default_weather()
+        detail = (
+            "um sorteio por etapa"
+            if mode == WEATHER_MODE_RANDOM
+            else "em todas as etapas"
+        )
         self._update_weather_summary()
-        self._set_status(f"Clima padrão: {weather} em todas as etapas.", SUCCESS_COLOR)
+        self._set_status(f"Clima padrão: {mode}, {detail}.", SUCCESS_COLOR)
 
     def _draw_selection_button(self) -> None:
         """Show whether the highlighted circuit participates in the sequence."""
