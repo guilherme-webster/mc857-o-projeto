@@ -46,6 +46,7 @@ from frontend.arcade.configuration_state import (
     generate_seed,
     parse_optional_seed,
 )
+from frontend.arcade.drawing import caret_visible
 from frontend.arcade.race_launcher import (
     HttpRaceClient,
     LaunchOutcome,
@@ -1409,7 +1410,7 @@ class ParametersView(UIView):
     def _laps_display(self) -> str:
         if self._custom_laps is None:
             return "Padrão"
-        caret = "|" if self._editing_laps else ""
+        caret = "|" if self._editing_laps and caret_visible() else ""
         return f"Customizável: {self._custom_laps}{caret}"
 
     def _custom_laps_value(self) -> int | None:

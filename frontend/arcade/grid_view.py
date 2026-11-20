@@ -20,6 +20,7 @@ from frontend.arcade.configuration_state import (
     ConfigurationFormError,
     parse_optional_seed,
 )
+from frontend.arcade.drawing import caret_visible
 from frontend.arcade.grid_editor import (
     ARCHETYPE_LABELS,
     ATTRIBUTES,
@@ -627,10 +628,10 @@ class GridView(arcade.View):
             2 if typing else 1,
         )
         year_label = (
-            f"Temporada {self._popup_year_text}|" if typing
+            f"Temporada {self._popup_year_text}" if typing
             else f"Temporada {self._popup_season}"
         )
-        self._text(
+        season_label = self._text(
             "pop:season",
             year_label,
             y_left + y_w / 2,
@@ -640,7 +641,13 @@ class GridView(arcade.View):
             bold=True,
             anchor_x="center",
             anchor_y="center",
-        ).draw()
+        )
+        season_label.draw()
+        # Cursor como linha logo depois do ano digitado (o texto centralizado nao treme).
+        if typing and caret_visible():
+            x = season_label.x + season_label.content_width / 2 + 2
+            y = season_label.y
+            arcade.draw_line(x, y - 8, x, y + 8, PRIMARY_TEXT_COLOR, 2)
         hint, hint_color = (
             (self._popup_year_error, ERROR_COLOR)
             if self._popup_year_error
@@ -856,7 +863,7 @@ class GridView(arcade.View):
         ).draw()
         s_left, s_bottom, s_w, s_h = layout["search"]
         arcade.draw_lbwh_rectangle_filled(s_left, s_bottom, s_w, s_h, _BUTTON_BG)
-        self._text(
+        query_label = self._text(
             "pk:query",
             picker.query or "Buscar piloto ou equipe",
             s_left + 10,
@@ -864,7 +871,13 @@ class GridView(arcade.View):
             PRIMARY_TEXT_COLOR if picker.query else SECONDARY_TEXT_COLOR,
             12,
             anchor_y="center",
-        ).draw()
+        )
+        query_label.draw()
+        # Cursor como linha: no fim do texto digitado, ou no inicio se o campo esta vazio.
+        if caret_visible():
+            x = s_left + 10 + (query_label.content_width if picker.query else 0)
+            y = s_bottom + s_h / 2
+            arcade.draw_line(x, y - 8, x, y + 8, PRIMARY_TEXT_COLOR, 2)
         rows = self._picker_rows()
         self._draw_list_scrollbar(layout, len(self._picker.visible()), self._picker.scroll)
         if not rows:

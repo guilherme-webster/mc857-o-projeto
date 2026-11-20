@@ -19,7 +19,7 @@ from frontend.arcade.configuration_state import (
     SessionConfiguration,
     WeatherSchedule,
 )
-from frontend.arcade.drawing import draw_rounded_panel
+from frontend.arcade.drawing import caret_visible, draw_rounded_panel
 from frontend.arcade.theme import (
     ACCENT_COLOR,
     BACKGROUND_COLOR,
@@ -303,7 +303,7 @@ class RaceConfigurationView(arcade.View):
             self._panel(bounds)
             if focused:
                 arcade.draw_lbwh_rectangle_outline(*bounds, ACCENT_COLOR, 2)
-            self._text(
+            label = self._text(
                 value,
                 bounds[0] + (bounds[2] - 74) / 2,
                 bounds[1] + 19,
@@ -311,6 +311,10 @@ class RaceConfigurationView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
             )
+            # Cursor como linha logo apos o numero: o texto nao muda de largura, entao
+            # ele nao treme quando o cursor aparece e some.
+            if focused and caret_visible():
+                self._draw_caret_after(label)
             for button_bounds, symbol in zip(
                 SESSION_STEPPER_BOUNDS[key], ("−", "+"), strict=True
             ):
@@ -323,6 +327,14 @@ class RaceConfigurationView(arcade.View):
                     anchor_x="center",
                     anchor_y="center",
                 )
+
+    def _draw_caret_after(self, label: arcade.Text) -> None:
+        """Linha de cursor logo depois do texto centralizado ``label`` (pixels da janela)."""
+
+        x = label.x + label.content_width / 2 + 2
+        half = label.content_height * 0.4
+        with self.window.default_camera.activate():
+            arcade.draw_line(x, label.y - half, x, label.y + half, PRIMARY_TEXT_COLOR, 2)
 
     def _draw_track_summary(self) -> None:
         self._panel((450, 40, 540, 595))
