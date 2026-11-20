@@ -7,6 +7,7 @@ from copy import deepcopy
 from pathlib import Path
 from queue import Empty, SimpleQueue
 from threading import Thread
+from types import SimpleNamespace
 
 import arcade
 from arcade.gui import UIDropdown, UIFlatButton, UIInputText, UIView
@@ -85,6 +86,10 @@ LAPS_BOUNDS = (232, 345, 320, 34)
 WEATHER_BOUNDS = (232, 303, 320, 34)
 REPEATS_BOUNDS = (232, 261, 44, 25)
 TIEBREAK_BOUNDS = (232, 219, 320, 34)
+# Altura de cada opcao na lista suspensa das regras.
+OPTION_HEIGHT = 30
+# Modos do campo "Voltas padrao": o texto da opcao "Customizavel" e so o rotulo.
+LAPS_MODE_OPTIONS = ("Padrão", "Customizável")
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
@@ -198,6 +203,10 @@ class ParametersView(UIView):
         # com o numero digitado. Nao vai para as regras salvas no torneio.
         self._custom_laps: str | None = None
         self._editing_laps = False
+        # Lista de opcoes aberta ("scoring", "laps", "weather" ou "tiebreak").
+        self._open_rule: str | None = None
+        # Proximo digito substitui o valor atual do campo customizado.
+        self._laps_replace_on_type = False
         self._screen_camera: arcade.Camera2D | None = None
         self._native_labels: list[arcade.Text] = []
         name_style = deepcopy(UIInputText.DEFAULT_STYLE)
@@ -969,6 +978,7 @@ class ParametersView(UIView):
         self._draw_track_navigation()
         self._draw_preview()
         self._draw_track_texts()
+        self._draw_open_dropdown()
         self._native_text(
             self._status_message,
             956,
@@ -1033,18 +1043,21 @@ class ParametersView(UIView):
             self._dragged_sequence_index = None
             return
         self._dragged_sequence_index = None
-        if self._contains(SCORING_BOUNDS, x, y):
-            self._cycle_rule("scoring", SCORING_OPTIONS)
-            return
-        if self._contains(LAPS_BOUNDS, x, y):
-            self._press_custom_laps(x)
-            return
-        if self._contains(WEATHER_BOUNDS, x, y):
-            self._cycle_default_weather()
-            return
-        if self._contains(TIEBREAK_BOUNDS, x, y):
-            self._cycle_rule("tiebreak", TIEBREAK_OPTIONS)
-            return
+        if self._open_rule is not None:
+            # Lista aberta: clique numa opcao aplica; clique fora fecha. Clique na
+            # mesma caixa so fecha; em outra caixa, ela abre logo em seguida.
+            rule = self._open_rule
+            self._open_rule = None
+            index = self._dropdown_index_at(rule, x, y)
+            if index is not None:
+                self._choose_rule_option(rule, index)
+                return
+            if self._contains(self._rule_bounds(rule), x, y):
+                return
+        for rule in ("scoring", "laps", "weather", "tiebreak"):
+            if self._contains(self._rule_bounds(rule), x, y):
+                self._press_rule(rule, x)
+                return
         if self._contains(STAGES_DECREASE_BOUNDS, x, y):
             self._update_rules(total_stages=max(1, self.rules.total_stages - 1))
             return
@@ -1111,10 +1124,16 @@ class ParametersView(UIView):
         elif self._editing_seed and text.isprintable():
             self.tournament_seed_input.text += text
         elif self._editing_laps and self._custom_laps is not None and text.isdigit():
-            if len(self._custom_laps) < 3:
-                self._type_custom_laps(self._custom_laps + text)
+            # Primeiro digito apos abrir o campo substitui o valor atual.
+            base = "" if self._laps_replace_on_type else self._custom_laps
+            self._laps_replace_on_type = False
+            if len(base) < 3:
+                self._type_custom_laps(base + text)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if symbol == arcade.key.ESCAPE and self._open_rule is not None:
+            self._open_rule = None
+            return
         if not (self._editing_name or self._editing_seed or self._editing_laps):
             return
         if self._editing_seed:
@@ -1149,23 +1168,6 @@ class ParametersView(UIView):
                 return index
         return None
 
-    def _cycle_rule(self, name: str, options: tuple[str, ...]) -> bool:
-        current = getattr(self.rules, name)
-        return self._update_rules(
-            **{name: options[(options.index(current) + 1) % len(options)]}
-        )
-
-    def _cycle_default_weather(self) -> None:
-        """Avança o clima padrão e pinta todas as voltas das pistas do torneio."""
-
-        options = WEATHER_MODE_OPTIONS
-        current = self.rules.weather_mode
-        # Valor legado (torneio salvo antes do clima padrão) comeca de Seco.
-        index = options.index(current) if current in options else -1
-        weather = options[(index + 1) % len(options)]
-        if not self._update_rules(weather_mode=weather):
-            return
-        self._apply_default_weather()
 
     def _default_weather(self) -> str:
         """Clima padrão atual; valores legados contam como Seco."""
@@ -1205,20 +1207,117 @@ class ParametersView(UIView):
             return None
         return laps
 
-    def _press_custom_laps(self, x: float) -> None:
-        """Clique na caixa de voltas: liga o modo; a seta desliga; o texto edita."""
+    # -- listas suspensas das regras ---------------------------------------------
 
-        left, _, width, _ = LAPS_BOUNDS
-        if self._custom_laps is None:
+    def _rule_bounds(self, rule: str) -> tuple[int, int, int, int]:
+        return {
+            "scoring": SCORING_BOUNDS,
+            "laps": LAPS_BOUNDS,
+            "weather": WEATHER_BOUNDS,
+            "tiebreak": TIEBREAK_BOUNDS,
+        }[rule]
+
+    def _rule_options(self, rule: str) -> tuple[str, ...]:
+        return {
+            "scoring": SCORING_OPTIONS,
+            "laps": LAPS_MODE_OPTIONS,
+            "weather": WEATHER_MODE_OPTIONS,
+            "tiebreak": TIEBREAK_OPTIONS,
+        }[rule]
+
+    def _rule_value(self, rule: str) -> str:
+        if rule == "scoring":
+            return self.rules.scoring
+        if rule == "tiebreak":
+            return self.rules.tiebreak
+        if rule == "weather":
+            return self.rules.weather_mode
+        return LAPS_MODE_OPTIONS[0] if self._custom_laps is None else LAPS_MODE_OPTIONS[1]
+
+    def _press_rule(self, rule: str, x: float) -> None:
+        """Clique numa caixa de regra: abre a lista; no texto de voltas customizadas, edita."""
+
+        if rule == "laps" and self._custom_laps is not None:
+            left, _, width, _ = LAPS_BOUNDS
+            if x < left + width - 36:
+                self._editing_laps = True
+                self._laps_replace_on_type = True
+                return
+        self._open_rule = rule
+
+    def _dropdown_index_at(self, rule: str, x: float, y: float) -> int | None:
+        """Indice da opcao sob o ponteiro; a lista abre logo abaixo da caixa."""
+
+        left, bottom, width, _ = self._rule_bounds(rule)
+        for index in range(len(self._rule_options(rule))):
+            top = bottom - OPTION_HEIGHT * index
+            if self._contains((left, top - OPTION_HEIGHT, width, OPTION_HEIGHT), x, y):
+                return index
+        return None
+
+    def _choose_rule_option(self, rule: str, index: int) -> None:
+        option = self._rule_options(rule)[index]
+        if rule == "scoring":
+            self._update_rules(scoring=option)
+        elif rule == "tiebreak":
+            self._update_rules(tiebreak=option)
+        elif rule == "weather":
+            if option != self.rules.weather_mode and self._update_rules(weather_mode=option):
+                self._apply_default_weather()
+        elif option == LAPS_MODE_OPTIONS[1] and self._custom_laps is None:
             self._enable_custom_laps()
-        elif x >= left + width - 36:
+        elif option == LAPS_MODE_OPTIONS[0] and self._custom_laps is not None:
             self._disable_custom_laps()
-        else:
-            self._editing_laps = True
+
+    def _defer_panel(
+        self,
+        left: float,
+        bottom: float,
+        width: float,
+        height: float,
+        fill: tuple[int, ...],
+        border: tuple[int, ...],
+    ) -> None:
+        """Enfileira o fundo na mesma fila dos textos, para cobrir os que ja foram desenhados.
+
+        As formas saem antes de todos os textos. Um fundo desenhado direto deixaria
+        os textos das linhas de cima visiveis por cima da lista.
+        """
+
+        def draw() -> None:
+            if self._screen_camera is None:
+                self._draw_rounded_panel(left, bottom, width, height, 6, fill, border)
+                return
+            with self._screen_camera.activate():
+                self._draw_rounded_panel(left, bottom, width, height, 6, fill, border)
+
+        self._native_labels.append(SimpleNamespace(draw=draw))
+
+    def _draw_open_dropdown(self) -> None:
+        """Desenha a lista aberta por cima de tudo, com a opcao atual destacada."""
+
+        rule = self._open_rule
+        if rule is None:
+            return
+        left, bottom, width, _ = self._rule_bounds(rule)
+        current = self._rule_value(rule)
+        for index, option in enumerate(self._rule_options(rule)):
+            y = bottom - OPTION_HEIGHT * (index + 1)
+            fill = (30, 42, 56) if option == current else (21, 31, 42)
+            self._defer_panel(left, y, width, OPTION_HEIGHT, fill, PANEL_BORDER_COLOR)
+            self._native_text(
+                option,
+                left + 12,
+                y + OPTION_HEIGHT / 2,
+                PRIMARY_TEXT_COLOR,
+                11,
+                anchor_y="center",
+            ).draw()
 
     def _enable_custom_laps(self) -> None:
         self._custom_laps = str(self.configuration.laps)
         self._editing_laps = True
+        self._laps_replace_on_type = True
         self._apply_custom_laps()
 
     def _disable_custom_laps(self) -> None:
