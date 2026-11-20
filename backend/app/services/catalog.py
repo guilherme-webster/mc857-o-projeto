@@ -757,7 +757,9 @@ def _persist_saved_race(race: dict, name: str) -> dict:
         "total_laps": setup.get("total_laps"),
         "car_count": len(race.get("classification", [])),
     }
-    _write_json(SAVED_RACES_DIR / f"{race_id}.json", {"meta": meta, "race": race})
+    document_path = SAVED_RACES_DIR / f"{race_id}.json"
+    _write_json(document_path, {"meta": meta, "race": race})
+    _write_summary(document_path, meta)
     return meta
 
 
@@ -791,18 +793,80 @@ def _default_race_name(race: dict) -> str:
     return f"{track} · {stamp}"
 
 
-def list_saved_races():
-    if not SAVED_RACES_DIR.exists():
-        return []
-    saved = []
-    for path in SAVED_RACES_DIR.glob("*.json"):
-        try:
-            document = json.loads(path.read_text(encoding="utf-8"))
-            saved.append(document["meta"])
-        except (OSError, ValueError, KeyError):
+def _race_summary(document: dict) -> dict:
+    return document["meta"]
+
+
+def list_saved_races(offset: int = 0, limit: int | None = None) -> dict:
+    """Uma pagina dos resumos das corridas salvas; ver ``list_saved_summaries``."""
+
+    return list_saved_summaries(
+        SAVED_RACES_DIR, _race_summary, offset=offset, limit=limit
+    )
+
+
+def _sidecar_path(document_path):
+    """Resumo leve ao lado do documento: ``<id>.meta.json`` para ``<id>.json``.
+
+    O sidecar existe porque o documento de uma corrida pode ter varios MB de
+    trajetorias; a listagem so pode ler o resumo. Ids nunca contem ponto
+    (``_safe_id``), entao ``*.meta.json`` nao se confunde com um documento.
+    """
+
+    return document_path.with_name(f"{document_path.stem}.meta.json")
+
+
+def _write_summary(document_path, summary: dict) -> None:
+    _write_json(_sidecar_path(document_path), summary)
+
+
+def _remove_summary(document_path) -> None:
+    _sidecar_path(document_path).unlink(missing_ok=True)
+
+
+def _read_summary(document_path) -> dict | None:
+    try:
+        summary = json.loads(_sidecar_path(document_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return summary if isinstance(summary, dict) else None
+
+
+def list_saved_summaries(directory, summarize, *, offset: int = 0, limit: int | None = None) -> dict:
+    """Pagina os resumos de ``directory``, do mais recente ao mais antigo.
+
+    Le apenas os sidecars. Um documento sem sidecar (salvo antes do sidecar
+    existir) e aberto uma unica vez, resumido por ``summarize`` e recebe o
+    sidecar, para que as proximas listagens nao o abram de novo. Documentos
+    invalidos, que ``summarize`` recusa com ``ValueError``, ``KeyError`` ou
+    ``TypeError``, sao ignorados.
+
+    ``total`` conta todos os resumos validos; ``items`` e so a pagina pedida.
+    ``limit=None`` devolve tudo a partir de ``offset``.
+    """
+
+    if not directory.exists():
+        return {"total": 0, "items": []}
+    summaries = []
+    for path in directory.glob("*.json"):
+        if path.name.endswith(".meta.json"):
             continue
-    saved.sort(key=lambda item: item.get("saved_at", ""), reverse=True)
-    return saved
+        summary = _read_summary(path)
+        if summary is None:
+            try:
+                document = json.loads(path.read_text(encoding="utf-8"))
+                summary = summarize(document)
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            try:
+                _write_summary(path, summary)
+            except OSError:
+                # Sem o sidecar so se paga a leitura completa de novo depois.
+                pass
+        summaries.append(summary)
+    summaries.sort(key=lambda item: item.get("saved_at", ""), reverse=True)
+    end = None if limit is None else offset + limit
+    return {"total": len(summaries), "items": summaries[offset:end]}
 
 
 def read_saved_race(race_id):
@@ -843,11 +907,14 @@ def rename_saved_race(race_id: str, name: str) -> dict:
     document = json.loads(path.read_text(encoding="utf-8"))
     document["meta"]["name"] = name.strip()
     _write_json(path, document)
+    _write_summary(path, document["meta"])
     return document["meta"]
 
 
 def delete_saved_race(race_id: str) -> None:
-    _saved_race_path(race_id).unlink()
+    path = _saved_race_path(race_id)
+    path.unlink()
+    _remove_summary(path)
 
 
 def _slug(name: str) -> str:
