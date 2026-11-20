@@ -392,6 +392,15 @@ def simulate_2d_race(
     reference_usage = usage_reference(geometry, curvature, base_physics, usage_parameters) if usage_active else None
     pit_active = tyre_active and model_parameters is not None
     pit_lane = build_pit_lane(geometry) if pit_active else None
+    if pit_lane is not None and lap_length_m > 1000.0:
+        # Em circuitos reais, a rampa tangencial de acesso inicia 60m antes da speed limiter line
+        # e termina 60m depois na pista principal, garantindo alinhamento físico e visual contínuo:
+        ramp_offset = 60.0
+        pit_lane = replace(
+            pit_lane,
+            entry_distance_m=pit_lane.entry_distance_m - ramp_offset,
+            exit_distance_m=pit_lane.exit_distance_m + ramp_offset,
+        )
     refuel_mode = pit_active and fuel is not None and fuel.parameters.refuelling_allowed
     pit_events: list[dict] = []
     pending_compounds: dict[str, str] = {}
@@ -444,6 +453,7 @@ def simulate_2d_race(
     # piloto pelo mesmo motivo do ruido de volta. ``pit_draws`` conta as
     # paradas ja sorteadas e compoe o rotulo do sorteio.
     pit_streams: dict[str, RandomSource] = {}
+    pit_duration_streams: dict[str, RandomSource] = {}
     pit_draws: dict[str, int] = {}
     for entry in sorted(entrants, key=lambda e: e["grid_position"]):
         did = entry["driver_id"]
@@ -466,6 +476,7 @@ def simulate_2d_race(
         spawn = getattr(rng, "spawn", None)
         noise_streams[did] = spawn(f"lap-noise:{did}") if spawn else rng
         pit_streams[did] = spawn(f"pit-stop:{did}") if spawn else rng
+        pit_duration_streams[did] = spawn(f"pit-duration:{did}") if spawn else rng
         pit_draws[did] = 0
         usage_totals[did] = dict(
             fuel_burned_kg=0.0,
@@ -530,6 +541,7 @@ def simulate_2d_race(
                 lateral_m=lateral,
                 fuel_kg=start_fuel_kg_by_id.get(did),
                 tyre_wear_laps=0.0 if tyre_active else None,
+                team_name=team_names.get(did, ""),
             )
         )
 
@@ -884,25 +896,27 @@ def simulate_2d_race(
         _apply_scale(car, int(car.distance_m // lap_length_m) + 1)
 
     def _service_time_s(did: str, execution: float) -> float:
-        """Tempo parado desta parada (s): nominal x equipe, mais o desvio sorteado.
+        """Tempo parado desta parada (s): sorteado entre 2.2 e 2.8 s x execucao da equipe.
 
         ``execution`` e o fator heuristico da equipe (1.0 neutro) e escala a
-        media e o desvio: uma equipe melhor para mais rapido e erra menos. A
-        normal assimetrica e a mesma de ``sample_refuel_stops``: paradas lentas
-        sao mais comuns que as excepcionalmente rapidas. O piso de metade do
-        nominal so barra uma cauda fisicamente impossivel.
+        duracao: uma equipe melhor para mais rapido e erra menos. Cada parada
+        sorteia uma duracao base entre 2,2 s e 2,8 s no fluxo deterministico
+        do piloto. Com ``pit_stop_variation``, desvios adicionais calibrados
+        (eventuais erros graves no pit) sao somados a esse tempo.
         """
 
-        nominal = pit_parameters.service_time_s * execution
-        if pit_stop_variation is None or pit_stop_variation.stop_sigma_ms == 0.0:
-            return nominal
         index = pit_draws[did]
         pit_draws[did] += 1
+        u = pit_duration_streams[did].uniform01(f"pit-duration:{did}:duration:{index}")
+        base_s = max(1.5, (pit_parameters.service_time_s + (u - 0.5) * 0.6)) * execution
+
+        if pit_stop_variation is None or pit_stop_variation.stop_sigma_ms == 0.0:
+            return base_s
         z = pit_streams[did].standard_normal(f"pit-stop:{did}:stop:{index}")
         skew = pit_stop_variation.stop_skew
         side = 1.0 + skew if z > 0 else 1.0 - skew
         deviation_s = z * pit_stop_variation.stop_sigma_ms / 1000.0 * side * execution
-        return max(0.5 * nominal, nominal + deviation_s)
+        return max(2.2 * execution, base_s + deviation_s)
 
     def _request_pit(car: CarSpaceState, lap_number: int) -> None:
         """Decida no início da volta; o pedido só troca pneus no serviço."""

@@ -18,7 +18,7 @@ from __future__ import annotations
 from bisect import bisect_right
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from math import ceil, hypot
+from math import ceil, hypot, sin
 
 from f1_simulator.domain.pit_lane import (
     PitLaneParameters,
@@ -273,6 +273,7 @@ class CarSpaceState:
     #: frontend mostrar a decomposicao por tick, nao por volta. ``None`` quando
     #: a decomposicao nao esta ativa.
     speed_breakdown: dict | None = None
+    team_name: str = ""
 
     def clamp_lateral(self, bounds: LateralBounds) -> None:
         """Mantenha o carro dentro da pista, sem estourar a borda."""
@@ -529,22 +530,80 @@ def _advance_pit_lane(
             if not blocked:
                 car.pit_state = None
                 car.pit_request = None
-                car.lateral_m = car.target_lateral_m = 0.0
+                car.target_lateral_m = car.lateral_m
                 event("exit")
             break
 
         target = path.length_m if state.serviced else path.service_distance_m
+        nearest_ahead = None
+        min_ahead_gap = 1e9
+
         for other in cars:
             if other is car or other.retired or other.pit_state is None:
                 continue
-            ahead = other.pit_state.path_distance_m
-            if ahead > state.path_distance_m:
-                target = min(target, ahead - (car.length_m + other.length_m) / 2)
+            ahead_dist = other.pit_state.path_distance_m
+            if ahead_dist > state.path_distance_m:
+                # Se o carro a frente esta parado em servico (trocando pneus no box):
+                # Carros de equipes rivais estao estacionados na sua baia (working lane)
+                # e nao bloqueiam a fast lane. Apenas companheiros de equipe (mesmo box)
+                # fazem fila de double-stack.
+                if (
+                    other.pit_state.service_remaining_s > 0
+                    and car.team_name
+                    and other.team_name
+                    and car.team_name != other.team_name
+                ):
+                    continue
+                safe_gap = (car.length_m + other.length_m) / 2.0
+                target = min(target, ahead_dist - safe_gap)
+                gap_to_car = ahead_dist - state.path_distance_m - safe_gap
+                if gap_to_car < min_ahead_gap:
+                    min_ahead_gap = gap_to_car
+                    nearest_ahead = other
+
+        v_limit = parameters.speed_limit_kmh / 3.6
+        # Variacao individual deterministica de velocidade no pit lane (entre ~66 e ~76 km/h):
+        did_seed = (abs(hash(car.driver_id)) % 1000) / 1000.0
+        driver_base_speed = (66.0 + 10.0 * did_seed) / 3.6
+        s_pit = state.path_distance_m
+        total_pit = max(100.0, path.length_m)
+
+        # Variacao gradual e aleatoria ao longo do percurso (-10% gradual e oscilacao suave):
+        path_gradient = 1.0 - 0.10 * (s_pit / total_pit)
+        path_oscillation = 0.04 * sin(s_pit / 14.0 + did_seed * 6.28)
+        transit_speed = max(12.0, driver_base_speed * (path_gradient + path_oscillation))
+
+        if not state.serviced:
+            # Aproximacao do box de servico: desaceleracao gradual nos ultimos 35 metros
+            dist_to_box = path.service_distance_m - s_pit
+            if dist_to_box <= 0:
+                cur_target_speed = 0.0
+            elif dist_to_box < 35.0:
+                cur_target_speed = max(1.0, transit_speed * ((dist_to_box / 35.0) ** 0.6))
+            else:
+                cur_target_speed = transit_speed
+        else:
+            # Saida do box de servico: aceleracao gradual nos primeiros 25 metros
+            dist_from_box = s_pit - path.service_distance_m
+            if dist_from_box < 25.0:
+                cur_target_speed = max(2.0, transit_speed * min(1.0, 0.25 + 0.75 * ((dist_from_box + 1.0) / 25.0) ** 0.5))
+            else:
+                cur_target_speed = transit_speed
+
+        # Seguimento de carro a frente na mesma via:
+        # Se o carro a frente esta em movimento, acompanhamos o ritmo dele!
+        # Apenas se estiver parado (double-stack) desaceleramos ate parar atras dele.
+        if nearest_ahead is not None and min_ahead_gap < 20.0:
+            ahead_v = nearest_ahead.speed_ms
+            ratio = max(0.0, min(1.0, min_ahead_gap / 20.0))
+            follow_v = ahead_v + (transit_speed - ahead_v) * (ratio ** 0.5)
+            cur_target_speed = min(cur_target_speed, max(ahead_v, follow_v))
+
         step = max(
             0.0,
             min(
                 target - state.path_distance_m,
-                remaining * parameters.speed_limit_kmh / 3.6,
+                remaining * cur_target_speed,
             ),
         )
         if step <= 1e-10:
@@ -560,10 +619,10 @@ def _advance_pit_lane(
                 in_pit=True,
             )
             break
-        elapsed = step / (parameters.speed_limit_kmh / 3.6)
+        elapsed = min(remaining, step / max(cur_target_speed, 1e-6))
         remaining -= elapsed
         start_distance = car.distance_m
-        car.speed_ms = parameters.speed_limit_kmh / 3.6
+        car.speed_ms = cur_target_speed
         car.pit_state = replace(state, path_distance_m=state.path_distance_m + step)
         car.distance_m = path.race_distance(
             request.entry_distance_m, car.pit_state.path_distance_m
@@ -727,6 +786,21 @@ def integrate_field(
             if neutralized:
                 car.overtaking = None
                 car.target_lateral_m = 0.0
+            elif (
+                car.pit_request is not None
+                and pit_lane is not None
+                and len(pit_lane.points) > 1
+                and 0 < car.pit_request.entry_distance_m - car.distance_m <= 60.0
+            ):
+                # Carro que vai parar nos boxes vai para o lado da entrada do pit lane:
+                p_enter = pit_lane.points[1]
+                c_x, c_y = track.position(car.pit_request.entry_distance_m, 0.0)
+                pos_l = track.position(car.pit_request.entry_distance_m, 1.0)
+                nx, ny = pos_l[0] - c_x, pos_l[1] - c_y
+                dx, dy = p_enter[1] - c_x, p_enter[2] - c_y
+                entry_side = 1.0 if (dx * nx + dy * ny) >= 0 else -1.0
+                car.overtaking = None
+                car.target_lateral_m = entry_side * usable * 0.75
             else:
                 car.target_lateral_m = _lane_decision(
                     car,
@@ -753,6 +827,17 @@ def integrate_field(
             # Os limites dependem da velocidade (downforce), como no ADR 0015.
             target = (_ceiling_at(cum, ceiling, car.distance_m) * car.speed_scale
                       * (1.0 - ASSUMED_CONTACT.maximum_speed_loss * car.contact_damage))
+            # Se vai entrar no pit lane, desacelera gradualmente nos ultimos 80 metros:
+            if (
+                car.pit_request is not None
+                and 0 < car.pit_request.entry_distance_m - car.distance_m <= 80.0
+            ):
+                dist_to_entry = car.pit_request.entry_distance_m - car.distance_m
+                pit_entry_speed = pit_parameters.speed_limit_kmh / 3.6
+                target = min(
+                    target,
+                    pit_entry_speed + (target - pit_entry_speed) * (dist_to_entry / 80.0)
+                )
             speed = car.speed_ms
             if speed < target:
                 car.speed_ms = min(target, speed + physics.accel_limit_ms2(speed) * dt_s)
@@ -783,21 +868,19 @@ def integrate_field(
             if request is not None and proposed >= request.entry_distance_m:
                 if pit_lane is None:
                     raise ValueError("pedido de parada sem geometria de pit lane")
-                # A entrada também faz fila: dois pedidos no mesmo passo não
-                # podem criar dois carros na mesma posição do caminho aberto.
+                # Apenas bloqueia se outro carro acabou de ingressar no mesmo exato instante (marco zero):
                 entry_blocked = any(
                     other is not car
                     and not other.retired
                     and other.pit_state is not None
-                    and other.pit_state.path_distance_m
-                    < (car.length_m + other.length_m) / 2
+                    and other.pit_state.path_distance_m < 0.1
                     for other in cars
                 )
                 if entry_blocked:
                     car.distance_m = max(
-                        car.distance_m, request.entry_distance_m - 1e-6
+                        start_distance, request.entry_distance_m - 0.1
                     )
-                    car.speed_ms = 0.0
+                    car.speed_ms = min(car.speed_ms, pit_parameters.speed_limit_kmh / 3.6)
                     _notify_motion(car, on_motion, start_distance, start_speed, dt_s, time_s)
                     continue
                 travel_s = max(
@@ -816,7 +899,7 @@ def integrate_field(
                 )
                 if car.retired:
                     continue
-                car.lateral_m = car.target_lateral_m = 0.0
+                car.target_lateral_m = car.lateral_m
                 car.overtaking = None
                 car.pit_state = PitLaneState()
                 car.speed_ms = min(car.speed_ms, pit_parameters.speed_limit_kmh / 3.6)
@@ -1514,4 +1597,5 @@ def _frozen(car: CarSpaceState) -> CarSpaceState:
         tyre_wear_laps=car.tyre_wear_laps,
         contact_damage=car.contact_damage,
         speed_breakdown=car.speed_breakdown,
+        team_name=car.team_name,
     )
