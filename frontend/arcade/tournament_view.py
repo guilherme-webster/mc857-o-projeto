@@ -67,6 +67,7 @@ _STAGE_COLUMNS = (
     ("EQUIPE", 210, "left"),
     ("PTS", 380, "right"),
     ("GANHO", 440, "right"),
+    ("PARADAS", 520, "right"),
 )
 _OVERALL_COLUMNS = (
     ("P", 40, "right"),
@@ -74,7 +75,8 @@ _OVERALL_COLUMNS = (
     ("EQUIPE", 210, "left"),
     ("PTS", 380, "right"),
     ("V", 440, "right"),
-    ("PÓD", 510, "right"),
+    ("PÓD", 480, "right"),
+    ("MÉD", 540, "right"),
 )
 
 _ACTION_LABELS = {
@@ -179,6 +181,11 @@ class TournamentResultView(arcade.View):
             for row in race.get("starting_grid", [])
             if row.get("position") is not None
         }
+        # Paradas da corrida: cada carro da classificacao traz ``stops_made``.
+        stops = {
+            str(car["driver_id"]): int(car.get("stops_made") or 0)
+            for car in race.get("classification", [])
+        }
         index = selection - 1
         entries = []
         for line in self._rows:
@@ -194,6 +201,7 @@ class TournamentResultView(arcade.View):
                     "retired": retired,
                     "points": self._points_for(position, retired),
                     "gain": _gain_text(start, position, retired),
+                    "stops": stops.get(line.driver_id, 0),
                 }
             )
         entries.sort(key=lambda entry: (entry["retired"], entry["position"]))
@@ -208,6 +216,7 @@ class TournamentResultView(arcade.View):
                 "points": line.points,
                 "wins": line.wins,
                 "podiums": line.podiums,
+                "average": line.average_position,
             }
             for line in self._rows
         ]
@@ -249,6 +258,9 @@ class TournamentResultView(arcade.View):
                 "V": str(entry.get("wins", 0)),
                 "PÓD": str(entry.get("podiums", 0)),
                 "GANHO": gain,
+                # Media das posicoes nas etapas disputadas (criterio de desempate).
+                "MÉD": f"{entry['average']:.1f}" if "average" in entry else "",
+                "PARADAS": str(entry.get("stops", 0)),
             }
             for label, x, anchor in columns:
                 value = values[label]

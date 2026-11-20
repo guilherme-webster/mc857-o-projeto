@@ -211,11 +211,11 @@ class GridView(arcade.View):
             self._grid_seed_text = str(self._draft.seed)
         message = {
             "load-grid": "Grid atual carregado.",
-            "build": "Grid montado. O Iniciar da configuração usará este grid.",
+            "build": "Grid montado.",
             "save": "Alterações salvas no grid atual.",
         }[kind]
         self._set_status(
-            f"{message} {len(self._draft.entries)} pilotos, semente {self._draft.seed}.",
+            f"{message} {len(self._draft.entries)} pilotos. Semente {self._draft.seed}.",
             SUCCESS_COLOR,
         )
 
