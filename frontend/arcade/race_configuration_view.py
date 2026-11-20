@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import arcade
 
+from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.canvas_fit import CanvasFit
 from frontend.arcade.configuration_state import (
     MAX_LAPS,
@@ -18,7 +19,7 @@ from frontend.arcade.configuration_state import (
     SessionConfiguration,
     WeatherSchedule,
 )
-from frontend.arcade.drawing import draw_rounded_panel
+from frontend.arcade.drawing import caret_visible, draw_rounded_panel
 from frontend.arcade.theme import (
     ACCENT_COLOR,
     BACKGROUND_COLOR,
@@ -302,7 +303,7 @@ class RaceConfigurationView(arcade.View):
             self._panel(bounds)
             if focused:
                 arcade.draw_lbwh_rectangle_outline(*bounds, ACCENT_COLOR, 2)
-            self._text(
+            label = self._text(
                 value,
                 bounds[0] + (bounds[2] - 74) / 2,
                 bounds[1] + 19,
@@ -310,6 +311,10 @@ class RaceConfigurationView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
             )
+            # Cursor como linha logo apos o numero: o texto nao muda de largura, entao
+            # ele nao treme quando o cursor aparece e some.
+            if focused and caret_visible():
+                self._draw_caret_after(label)
             for button_bounds, symbol in zip(
                 SESSION_STEPPER_BOUNDS[key], ("−", "+"), strict=True
             ):
@@ -323,18 +328,22 @@ class RaceConfigurationView(arcade.View):
                     anchor_y="center",
                 )
 
+    def _draw_caret_after(self, label: arcade.Text) -> None:
+        """Linha de cursor logo depois do texto centralizado ``label`` (pixels da janela)."""
+
+        x = label.x + label.content_width / 2 + 2
+        half = label.content_height * 0.4
+        with self.window.default_camera.activate():
+            arcade.draw_line(x, label.y - half, x, label.y + half, PRIMARY_TEXT_COLOR, 2)
+
     def _draw_track_summary(self) -> None:
         self._panel((450, 40, 540, 595))
-        # A caixa da pista tem ~490 px: nomes longos como "Shanghai International
-        # Circuit" cabem; so cortamos acima de 40 caracteres.
-        summary_name = (
-            self.track_name
-            if len(self.track_name) <= 40
-            else self.track_name[:37] + "…"
-        )
         # Centro horizontal da caixa da pista (x de 450 a 990).
-        # Sem o titulo "Resumo da pista", o nome ocupa o topo da caixa.
-        self._text(summary_name, 720, 600, 26, anchor_x="center")
+        # Sem o titulo "Resumo da pista", o nome ocupa o topo da caixa. O nome
+        # encolhe ate caber em 500 unidades de design (a caixa tem 540).
+        self._text(
+            self.track_name, 720, 600, 26, anchor_x="center", fit_width=500
+        )
         laps_text = f"{self.schedule.total_laps} voltas"
         if self._preview is not None:
             length = f"{self._preview.lap_length_m / 1000:.3f}".replace(".", ",")
@@ -780,6 +789,8 @@ class RaceConfigurationView(arcade.View):
         """
 
         fit = self._canvas_fit()
+        # fit_width (unidades de design): reduz a fonte ate caber nessa largura.
+        fit_width = kwargs.pop("fit_width", None)
         width = kwargs.get("width")
         if width is not None:
             kwargs["width"] = int(width * fit.scale)
@@ -790,6 +801,8 @@ class RaceConfigurationView(arcade.View):
             size * fit.scale,
             **kwargs,
         )
+        if fit_width is not None:
+            fit_button_text(label, fit_width * fit.scale, size * fit.scale)
         with self.window.default_camera.activate():
             label.draw()
         return label

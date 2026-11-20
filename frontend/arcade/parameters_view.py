@@ -46,6 +46,7 @@ from frontend.arcade.configuration_state import (
     generate_seed,
     parse_optional_seed,
 )
+from frontend.arcade.drawing import caret_visible
 from frontend.arcade.race_launcher import (
     HttpRaceClient,
     LaunchOutcome,
@@ -93,6 +94,29 @@ TIEBREAK_BOUNDS = (232, 219, 320, 34)
 OPTION_HEIGHT = 30
 # Modos do campo "Voltas padrao": o texto da opcao "Customizavel" e so o rotulo.
 LAPS_MODE_OPTIONS = ("Padrão", "Customizável")
+# Limite de caracteres do nome do torneio, para caber no campo.
+TOURNAMENT_NAME_LIMIT = 40
+# Campo do nome: fonte, recuo do texto na caixa e repeticao de teclas seguradas
+# (o SO nao repete as teclas de edicao de forma confiavel; o proprio view repete).
+_NAME_FONT_SIZE = 12
+_NAME_TEXT_PAD = 10
+_NAME_REPEAT_DELAY = 0.4
+# A repeticao comeca em _NAME_REPEAT_START segundos entre passos e acelera a cada
+# passo (fator _NAME_REPEAT_ACCEL) ate o minimo _NAME_REPEAT_MIN.
+_NAME_REPEAT_START = 0.12
+_NAME_REPEAT_MIN = 0.03
+_NAME_REPEAT_ACCEL = 0.9
+# Sem eventos dessa tecla por este tempo, ela e tratada como solta, mesmo que o
+# evento de soltar nao tenha chegado (senao a proxima pressao seria ignorada).
+_NAME_HOLD_TIMEOUT = 1.0
+_NAME_EDIT_KEYS = (
+    arcade.key.BACKSPACE,
+    arcade.key.DELETE,
+    arcade.key.LEFT,
+    arcade.key.RIGHT,
+    arcade.key.HOME,
+    arcade.key.END,
+)
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
@@ -202,6 +226,23 @@ class ParametersView(UIView):
         self._dragged_sequence_index: int | None = None
         self._editing_name = False
         self._editing_seed = False
+        # Campo do nome: posicao do cursor (indice), rolagem do texto em pixels,
+        # piscada do cursor e a tecla segurada com o proximo passo de repeticao.
+        # Cursor comeca no fim do nome padrao.
+        self._name_caret = len(TournamentRules().name)
+        self._name_shift = 0.0
+        self._name_blink = 0.0
+        self._name_hold: int | None = None
+        self._name_hold_time = 0.0
+        self._name_next_repeat = 0.0
+        self._name_interval = _NAME_REPEAT_START
+        # Relogio proprio do campo e instante do ultimo evento da tecla segurada.
+        self._name_clock = 0.0
+        self._name_last_event = 0.0
+        self._name_measure = arcade.Text("", 0, 0, PRIMARY_TEXT_COLOR, _NAME_FONT_SIZE)
+        self._name_label = arcade.Text(
+            "", 0, 0, PRIMARY_TEXT_COLOR, _NAME_FONT_SIZE, anchor_y="center"
+        )
         # Voltas padrao: None e o modo "Padrao"; um texto e o modo "Customizavel"
         # com o numero digitado. Nao vai para as regras salvas no torneio.
         self._custom_laps: str | None = None
@@ -304,6 +345,8 @@ class ParametersView(UIView):
 
     def on_update(self, delta_time: float) -> None:
         """Accept completed catalog responses on the Arcade thread."""
+
+        self._tick_name_keys(delta_time)
 
         del delta_time
         try:
@@ -725,6 +768,7 @@ class ParametersView(UIView):
         self._session_configurations.clear()
         self.rules = TournamentRules()
         self.tournament_name_input.text = self.rules.name
+        self._name_caret = len(self.rules.name)
         self.tournament_seed_input.text = ""
         self.preset_dropdown.value = self.initial.preset
         self.laps_input.text = str(self.configuration.laps)
@@ -1005,7 +1049,18 @@ class ParametersView(UIView):
 
         x, y = self._logical_pointer(x, y)
         if button == arcade.MOUSE_BUTTON_LEFT:
+            was_editing = self._editing_name
             self._editing_name = self._contains(NAME_INPUT_BOUNDS, x, y)
+            if self._editing_name:
+                # Ao ganhar o foco, o cursor vai para o fim do texto; cliques com o
+                # campo ja em edicao posicionam o cursor no ponto clicado.
+                self._name_caret = (
+                    self._name_index_at(x)
+                    if was_editing
+                    else len(self.tournament_name_input.text)
+                )
+                self._name_blink = 0.0
+                self._name_hold = None
             self._editing_seed = self._contains(SEED_INPUT_BOUNDS, x, y)
             self._editing_laps = self._contains(LAPS_BOUNDS, x, y)
         if button == arcade.MOUSE_BUTTON_LEFT and self.selected_track is not None:
@@ -1119,11 +1174,133 @@ class ParametersView(UIView):
 
         return max(0, len(self._selected_track_ids) - len(SEQUENCE_ROW_BOUNDS))
 
+    # -- campo do nome: cursor, clique, rolagem e teclas ---------------------------
+
+    def _name_px(self, text: str) -> float:
+        """Largura em pixels da janela de ``text`` na fonte do campo do nome."""
+
+        measure = self._name_measure
+        measure.font_size = _NAME_FONT_SIZE * self._canvas_fit().scale
+        measure.text = text
+        return measure.content_width
+
+    def _name_index_at(self, x: float) -> int:
+        """Indice do cursor mais proximo de ``x`` (unidades de design) no texto do nome."""
+
+        fit = self._canvas_fit()
+        target = (x - NAME_INPUT_BOUNDS[0] - _NAME_TEXT_PAD) * fit.scale + self._name_shift
+        text = self.tournament_name_input.text
+        best, best_distance = 0, float("inf")
+        for index in range(len(text) + 1):
+            distance = abs(self._name_px(text[:index]) - target)
+            if distance < best_distance:
+                best, best_distance = index, distance
+        return best
+
+    def _name_edit(self, symbol: int) -> None:
+        """Aplica uma tecla de edicao no texto do nome, na posicao do cursor."""
+
+        text = self.tournament_name_input.text
+        caret = min(self._name_caret, len(text))
+        if symbol == arcade.key.BACKSPACE and caret > 0:
+            text = text[: caret - 1] + text[caret:]
+            caret -= 1
+        elif symbol == arcade.key.DELETE and caret < len(text):
+            text = text[:caret] + text[caret + 1 :]
+        elif symbol == arcade.key.LEFT:
+            caret = max(0, caret - 1)
+        elif symbol == arcade.key.RIGHT:
+            caret = min(len(text), caret + 1)
+        elif symbol == arcade.key.HOME:
+            caret = 0
+        elif symbol == arcade.key.END:
+            caret = len(text)
+        self.tournament_name_input.text = text
+        self._name_caret = caret
+        self._name_blink = 0.0
+
+    def _tick_name_keys(self, delta_time: float) -> None:
+        """Piscada do cursor e repeticao da tecla segurada (BACKSPACE, setas...)."""
+
+        self._name_blink += delta_time
+        self._name_clock += delta_time
+        if self._name_hold is None or not self._editing_name:
+            return
+        if self._name_clock - self._name_last_event > _NAME_HOLD_TIMEOUT:
+            self._name_hold = None
+            return
+        self._name_hold_time += delta_time
+        while self._name_hold_time >= self._name_next_repeat:
+            self._name_edit(self._name_hold)
+            # Cada passo e um pouco mais rapido: a tecla acelera enquanto segura.
+            self._name_interval = max(
+                _NAME_REPEAT_MIN, self._name_interval * _NAME_REPEAT_ACCEL
+            )
+            self._name_next_repeat += self._name_interval
+
+    def _draw_name_field(self, left: float, bottom: float, width: float, height: float) -> None:
+        """Texto do nome com cursor piscando; o texto rola para o cursor ficar visivel.
+
+        O desenho e adiado (como os textos da tela) e recortado a caixa, entao o
+        comeco do texto some pela borda esquerda quando ele passa da caixa.
+        """
+
+        fit = self._canvas_fit()
+        text = self.tournament_name_input.text
+        self._name_caret = min(self._name_caret, len(text))
+        field_px = (width - 2 * _NAME_TEXT_PAD) * fit.scale
+        caret_px = self._name_px(text[: self._name_caret])
+        full_px = self._name_px(text)
+        shift = self._name_shift
+        if caret_px - shift > field_px:
+            shift = caret_px - field_px
+        if caret_px - shift < 0:
+            shift = caret_px
+        shift = min(max(0.0, shift), max(0.0, full_px - field_px))
+        self._name_shift = shift
+        px, py = fit.to_window(left + _NAME_TEXT_PAD, bottom + height / 2)
+        x0, y0 = fit.to_window(left, bottom)
+        x1, y1 = fit.to_window(left + width, bottom + height)
+        blink_on = self._editing_name and (self._name_blink % 1.0) < 0.55
+        ratio = self.window.get_pixel_ratio()
+        span = 8 * fit.scale
+
+        def draw() -> None:
+            label = self._name_label
+            label.font_size = _NAME_FONT_SIZE * fit.scale
+            label.text = text
+            label.x, label.y = px - shift, py
+            previous = self.window.ctx.scissor
+            self.window.ctx.scissor = (
+                int(min(x0, x1) * ratio),
+                int(min(y0, y1) * ratio),
+                int(abs(x1 - x0) * ratio),
+                int(abs(y1 - y0) * ratio),
+            )
+            try:
+                label.draw()
+                if blink_on:
+                    cx = px - shift + caret_px
+                    arcade.draw_line(cx, py - span, cx, py + span, PRIMARY_TEXT_COLOR, 1.5)
+            finally:
+                self.window.ctx.scissor = previous
+
+        self._native_labels.append(SimpleNamespace(text=text, draw=draw))
+
+    def on_key_release(self, symbol: int, modifiers: int) -> None:
+        if symbol == self._name_hold:
+            self._name_hold = None
+
     def on_text(self, text: str) -> None:
         """Edit the tournament name with the same data field used by validation."""
 
         if self._editing_name and text.isprintable():
-            self.tournament_name_input.text += text
+            current = self.tournament_name_input.text
+            caret = min(self._name_caret, len(current))
+            chunk = text[: max(0, TOURNAMENT_NAME_LIMIT - len(current))]
+            self.tournament_name_input.text = current[:caret] + chunk + current[caret:]
+            self._name_caret = caret + len(chunk)
+            self._name_blink = 0.0
         elif self._editing_seed and text.isprintable():
             self.tournament_seed_input.text += text
         elif self._editing_laps and self._custom_laps is not None and text.isdigit():
@@ -1149,9 +1326,20 @@ class ParametersView(UIView):
                     pasted.message, SUCCESS_COLOR if pasted.ok else ERROR_COLOR
                 )
                 return
-        if symbol == arcade.key.BACKSPACE and self._editing_name:
-            self.tournament_name_input.text = self.tournament_name_input.text[:-1]
-        elif symbol == arcade.key.BACKSPACE and self._editing_seed:
+        if self._editing_name and symbol in _NAME_EDIT_KEYS:
+            # Repeticoes do SO chegam como novos eventos da mesma tecla: elas so
+            # atualizam o instante do evento; a repeticao propria cuida do resto.
+            if symbol == self._name_hold:
+                self._name_last_event = self._name_clock
+                return
+            self._name_hold = symbol
+            self._name_last_event = self._name_clock
+            self._name_hold_time = 0.0
+            self._name_next_repeat = _NAME_REPEAT_DELAY
+            self._name_interval = _NAME_REPEAT_START
+            self._name_edit(symbol)
+            return
+        if symbol == arcade.key.BACKSPACE and self._editing_seed:
             self.tournament_seed_input.text = self.tournament_seed_input.text[:-1]
         elif (
             symbol == arcade.key.BACKSPACE
@@ -1222,7 +1410,7 @@ class ParametersView(UIView):
     def _laps_display(self) -> str:
         if self._custom_laps is None:
             return "Padrão"
-        caret = "|" if self._editing_laps else ""
+        caret = "|" if self._editing_laps and caret_visible() else ""
         return f"Customizável: {self._custom_laps}{caret}"
 
     def _custom_laps_value(self) -> int | None:
@@ -1328,7 +1516,7 @@ class ParametersView(UIView):
             with self._screen_camera.activate():
                 self._draw_rounded_panel(left, bottom, width, height, 6, fill, border)
 
-        self._native_labels.append(SimpleNamespace(draw=draw))
+        self._native_labels.append(SimpleNamespace(text="", draw=draw))
 
     def _draw_open_dropdown(self) -> None:
         """Desenha a lista aberta por cima de tudo, com a opcao atual destacada."""
@@ -1641,15 +1829,7 @@ class ParametersView(UIView):
             (20, 30, 40),
             (111, 127, 148) if self._editing_name else PANEL_BORDER_COLOR,
         )
-        self._native_text(
-            self.tournament_name_input.text,
-            left + 10,
-            bottom + height / 2,
-            PRIMARY_TEXT_COLOR,
-            12,
-            anchor_y="center",
-            width=width - 20,
-        ).draw()
+        self._draw_name_field(left, bottom, width, height)
         seed_left, seed_bottom, seed_width, seed_height = SEED_INPUT_BOUNDS
         self._draw_rounded_panel(
             seed_left,
@@ -1850,7 +2030,7 @@ class ParametersView(UIView):
             ),
         ):
             self._native_text(
-                label, x, y, color, size, width=310 if x == 622 else None
+                label, x, y, color, size, fit_width=310 if x == 622 else None
             ).draw()
         # Extensao e voltas centralizadas, logo acima da previa.
         info = (

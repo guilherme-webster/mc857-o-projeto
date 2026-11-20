@@ -58,7 +58,25 @@ ACTION_H = 36
 # Limite de caracteres das linhas de texto; o que passa disso e cortado.
 _NAME_LIMIT = 60
 _STAGES_LIMIT = 90
-_NEW_NAME_LIMIT = 120
+_NEW_NAME_LIMIT = 60
+# Campo de renomear: teclas de edicao, e a repeticao propria delas (o SO nao
+# repete de forma confiavel nas teclas que nao geram texto). A repeticao comeca
+# devagar e acelera enquanto a tecla segura; sem eventos por _RENAME_HOLD_TIMEOUT
+# segundos, a tecla e tratada como solta.
+_RENAME_EDIT_KEYS = (
+    arcade.key.BACKSPACE,
+    arcade.key.DELETE,
+    arcade.key.LEFT,
+    arcade.key.RIGHT,
+    arcade.key.HOME,
+    arcade.key.END,
+)
+_RENAME_NAME_PAD = 16
+_RENAME_REPEAT_DELAY = 0.4
+_RENAME_REPEAT_START = 0.12
+_RENAME_REPEAT_MIN = 0.03
+_RENAME_REPEAT_ACCEL = 0.9
+_RENAME_HOLD_TIMEOUT = 1.0
 _TITLE_X = 200
 _TOURNAMENT = "tournament"
 _RACE = "race"
@@ -130,6 +148,20 @@ class SavedTournamentsView(arcade.View):
         self._renaming: tuple[str, str] | None = None
         self._rename_buffer = ""
         self._edit_text = arcade.Text("", 0, 0, PRIMARY_TEXT_COLOR, 14, bold=True)
+        # Cursor do campo de renomear: posicao, rolagem em pixels, piscada, a tecla
+        # segurada e a area do nome desenhada no ultimo quadro (para o clique).
+        self._rename_caret = 0
+        self._rename_shift = 0.0
+        self._rename_blink = 0.0
+        self._rename_clock = 0.0
+        self._rename_hold: int | None = None
+        self._rename_hold_time = 0.0
+        self._rename_next_repeat = 0.0
+        self._rename_interval = _RENAME_REPEAT_START
+        self._rename_last_event = 0.0
+        self._rename_origin = 0.0
+        self._rename_area: tuple[float, float, float, float] | None = None
+        self._rename_measure = arcade.Text("", 0, 0, PRIMARY_TEXT_COLOR, 14, bold=True)
         # Excluir pede confirmacao: a primeira chave clicada fica pendente.
         self._pending_delete: str | None = None
         self._results: SimpleQueue[tuple[str, object]] = SimpleQueue()
@@ -224,6 +256,11 @@ class SavedTournamentsView(arcade.View):
             if row_kind == kind and item["id"] == item_id:
                 self._rename_buffer = str(item.get("name", ""))[:_NEW_NAME_LIMIT]
         self._renaming = (kind, item_id)
+        # Cursor no fim do nome atual; sem tecla segurada nem rolagem anterior.
+        self._rename_caret = len(self._rename_buffer)
+        self._rename_shift = 0.0
+        self._rename_blink = 0.0
+        self._rename_hold = None
         self._pending_delete = None
         self._set_status("Digite o novo nome e tecle Enter (Esc cancela).", SECONDARY_TEXT_COLOR)
 
@@ -310,6 +347,8 @@ class SavedTournamentsView(arcade.View):
 
     def on_update(self, delta_time: float) -> None:
         """Aplique, na thread do Arcade, o que a thread publicou."""
+
+        self._tick_rename(delta_time)
 
         while True:
             try:
@@ -536,6 +575,14 @@ class SavedTournamentsView(arcade.View):
         self._clamp_scroll()
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        # Clique no nome em edicao posiciona o cursor (sem acionar os botoes da linha).
+        if self._renaming is not None and self._rename_area is not None:
+            area_left, area_bottom, area_w, area_h = self._rename_area
+            if _inside(x, y, (area_left, area_bottom, area_w, area_h)):
+                self._rename_caret = self._rename_index_at(x)
+                self._rename_blink = 0.0
+                self._rename_hold = None
+                return
         for key, rect in self._button_rects().items():
             if not _inside(x, y, rect):
                 continue
@@ -574,13 +621,134 @@ class SavedTournamentsView(arcade.View):
         if self._renaming is None:
             return
         printable = "".join(char for char in text if char.isprintable())
-        room = _NEW_NAME_LIMIT - len(self._rename_buffer)
-        self._rename_buffer += printable[:room]
+        buffer = self._rename_buffer
+        caret = min(self._rename_caret, len(buffer))
+        chunk = printable[: max(0, _NEW_NAME_LIMIT - len(buffer))]
+        self._rename_buffer = buffer[:caret] + chunk + buffer[caret:]
+        self._rename_caret = caret + len(chunk)
+        self._rename_blink = 0.0
+
+    # -- renomear: cursor, clique, rolagem e repeticao de teclas ----------------
+
+    def _rename_px(self, text: str) -> float:
+        """Largura em pixels de ``text`` na fonte do campo de renomear."""
+
+        self._rename_measure.text = text
+        return self._rename_measure.content_width
+
+    def _rename_index_at(self, x: float) -> int:
+        """Indice do cursor mais proximo do clique em ``x`` (pixels da janela)."""
+
+        target = x - self._rename_origin + self._rename_shift
+        best, best_distance = 0, float("inf")
+        for index in range(len(self._rename_buffer) + 1):
+            distance = abs(self._rename_px(self._rename_buffer[:index]) - target)
+            if distance < best_distance:
+                best, best_distance = index, distance
+        return best
+
+    def _rename_edit(self, symbol: int) -> None:
+        """Aplica uma tecla de edicao no nome em renomeacao, na posicao do cursor."""
+
+        text = self._rename_buffer
+        caret = min(self._rename_caret, len(text))
+        if symbol == arcade.key.BACKSPACE and caret > 0:
+            text = text[: caret - 1] + text[caret:]
+            caret -= 1
+        elif symbol == arcade.key.DELETE and caret < len(text):
+            text = text[:caret] + text[caret + 1 :]
+        elif symbol == arcade.key.LEFT:
+            caret = max(0, caret - 1)
+        elif symbol == arcade.key.RIGHT:
+            caret = min(len(text), caret + 1)
+        elif symbol == arcade.key.HOME:
+            caret = 0
+        elif symbol == arcade.key.END:
+            caret = len(text)
+        self._rename_buffer = text
+        self._rename_caret = caret
+        self._rename_blink = 0.0
+
+    def _tick_rename(self, delta_time: float) -> None:
+        """Piscada do cursor e repeticao da tecla segurada no campo de renomear."""
+
+        self._rename_blink += delta_time
+        self._rename_clock += delta_time
+        if self._rename_hold is None or self._renaming is None:
+            return
+        if self._rename_clock - self._rename_last_event > _RENAME_HOLD_TIMEOUT:
+            self._rename_hold = None
+            return
+        self._rename_hold_time += delta_time
+        while self._rename_hold_time >= self._rename_next_repeat:
+            self._rename_edit(self._rename_hold)
+            self._rename_interval = max(
+                _RENAME_REPEAT_MIN, self._rename_interval * _RENAME_REPEAT_ACCEL
+            )
+            self._rename_next_repeat += self._rename_interval
+
+    def _draw_rename_text(
+        self, left: float, bottom: float, width: float, row_height: float, actions: int
+    ) -> None:
+        """Nome em edicao com cursor; o texto rola para o cursor e fica dentro da area.
+
+        A area vai do nome ate os botoes da linha, e o desenho e recortado a ela.
+        """
+
+        text = self._rename_buffer
+        self._rename_caret = min(self._rename_caret, len(text))
+        area_left = left + _RENAME_NAME_PAD
+        area_right = left + width - _RENAME_NAME_PAD - actions * (ACTION_W + ACTION_GAP) - 12
+        area_w = max(0.0, area_right - area_left)
+        caret_px = self._rename_px(text[: self._rename_caret])
+        full_px = self._rename_px(text)
+        shift = self._rename_shift
+        if caret_px - shift > area_w:
+            shift = caret_px - area_w
+        if caret_px - shift < 0:
+            shift = caret_px
+        shift = min(max(0.0, shift), max(0.0, full_px - area_w))
+        self._rename_shift = shift
+        self._rename_origin = area_left
+        self._rename_area = (area_left, bottom, area_w, row_height)
+        baseline = bottom + row_height - 24
+        label = self._edit_text
+        label.text = text
+        label.x, label.y = area_left - shift, baseline
+        ratio = self.window.get_pixel_ratio()
+        previous = self.window.ctx.scissor
+        self.window.ctx.scissor = (
+            int(area_left * ratio),
+            int(bottom * ratio),
+            int(area_w * ratio),
+            int(row_height * ratio),
+        )
+        try:
+            label.draw()
+            if (self._rename_blink % 1.0) < 0.55:
+                cx = area_left - shift + caret_px
+                arcade.draw_line(cx, baseline - 3, cx, baseline + 14, PRIMARY_TEXT_COLOR, 1.5)
+        finally:
+            self.window.ctx.scissor = previous
+
+    def on_key_release(self, symbol: int, modifiers: int) -> None:
+        if symbol == self._rename_hold:
+            self._rename_hold = None
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if self._renaming is not None:
-            if symbol == arcade.key.BACKSPACE:
-                self._rename_buffer = self._rename_buffer[:-1]
+            if symbol in _RENAME_EDIT_KEYS:
+                # Repeticoes do SO chegam como eventos da mesma tecla: so atualizam o
+                # instante do evento; a repeticao propria cuida do resto.
+                if symbol == self._rename_hold:
+                    self._rename_last_event = self._rename_clock
+                    return
+                self._rename_hold = symbol
+                self._rename_last_event = self._rename_clock
+                self._rename_hold_time = 0.0
+                self._rename_next_repeat = _RENAME_REPEAT_DELAY
+                self._rename_interval = _RENAME_REPEAT_START
+                self._rename_edit(symbol)
             elif symbol in (arcade.key.ENTER, arcade.key.RETURN):
                 kind, item_id = self._renaming
                 self.rename(kind, item_id, self._rename_buffer)
@@ -615,6 +783,7 @@ class SavedTournamentsView(arcade.View):
     def on_draw(self) -> None:
         self.clear()
         height = self.window.height
+        self._rename_area = None
         # Cabecalho: voltar e atualizar nas pontas, titulo e status ao centro.
         self._title.x, self._title.y = _TITLE_X, height - 64
         self._title.draw()
@@ -628,10 +797,12 @@ class SavedTournamentsView(arcade.View):
             left, bottom, width, row_height = self._row_rect(index)
             arcade.draw_lbwh_rectangle_filled(left, bottom, width, row_height, _ROW_BG)
             if self._renaming == (kind, item["id"]):
-                self._edit_text.text = self._rename_buffer + "|"
-                name = self._edit_text
-            name.x, name.y = left + 16, bottom + row_height - 24
-            name.draw()
+                self._draw_rename_text(
+                    left, bottom, width, row_height, len(self._action_keys(kind, item))
+                )
+            else:
+                name.x, name.y = left + 16, bottom + row_height - 24
+                name.draw()
             stages.x, stages.y = left + 16, bottom + row_height - 42
             stages.draw()
             details.x, details.y = left + 16, bottom + 8

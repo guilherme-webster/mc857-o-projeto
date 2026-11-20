@@ -6,6 +6,8 @@ reaproveitar um painel arredondado. Nao guardam estado: so desenham.
 
 from __future__ import annotations
 
+import time
+
 import arcade
 
 
@@ -53,3 +55,13 @@ def draw_rounded_panel(
         max(radius - inset, 0),
         fill_color,
     )
+
+
+def caret_visible(period: float = 1.0, on_fraction: float = 0.55) -> bool:
+    """Fase do cursor piscante: visivel na primeira parte de cada periodo.
+
+    Usa o relogio do sistema, entao todos os campos piscam no mesmo ritmo e a
+    fase nao depende de quadros nem de eventos de teclado.
+    """
+
+    return time.monotonic() % period < period * on_fraction
