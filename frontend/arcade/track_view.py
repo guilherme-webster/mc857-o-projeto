@@ -188,7 +188,7 @@ _BREAKDOWN_LABELS = {
 }
 # Painel flutuante da decomposicao: um por piloto, arrastavel e fechavel.
 _PANEL_W = 300.0
-_PANEL_H = 267.0
+_PANEL_H = 283.0
 _PANEL_TITLE_H = 20.0  # faixa de titulo (arrastar aqui)
 _PANEL_CLOSE = 16.0  # lado do botao de fechar
 # Tamanho do titulo do painel (pt): padrao e minimo antes de encurtar o nome.
@@ -570,7 +570,7 @@ class TrackView(arcade.View):
             "×", 0, 0, PRIMARY_TEXT_COLOR, 13, bold=True,
             anchor_x="center", anchor_y="center",
         )
-        # Secao de contexto do painel: velocidade base e atributos do piloto.
+        # Secao de contexto do painel: velocidade base, atributos e aderencia.
         # Cada linha e um par (rotulo a esquerda, valor a direita) para alinhar.
         self._breakdown_context = [
             (
@@ -580,7 +580,7 @@ class TrackView(arcade.View):
                     anchor_x="right", anchor_y="center",
                 ),
             )
-            for _ in range(7)
+            for _ in range(8)
         ]
         # Legenda das fatias: rotulo a esquerda, valor % alinhado a direita.
         self._breakdown_legend = {
@@ -1174,7 +1174,9 @@ class TrackView(arcade.View):
 
         rain = self._current_rain()
         label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
-        condition = track_condition_label(self._race, self._current_lap())
+        condition = track_condition_label(
+            self._race, self._current_lap(), self._elapsed
+        )
         self._weather_text.text = f"{label} · {condition}" if condition else label
         self._weather_text.color = color
         self._weather_text.x = width - 20
@@ -1352,7 +1354,7 @@ class TrackView(arcade.View):
         # Linhas ocupadas pela legenda em duas colunas (a ultima pode ter um so).
         legend_rows = (len(self._BREAKDOWN_ORDER) + 1) // 2
         self._draw_breakdown_context(
-            panel, did, left, gives_y - 16 - legend_rows * row_h
+            panel, did, left, gives_y - 16 - legend_rows * row_h, breakdown=breakdown
         )
 
     @staticmethod
@@ -1376,13 +1378,16 @@ class TrackView(arcade.View):
             size -= 1
             title.text = build(name[:size] + "…")
 
-    def _draw_breakdown_context(self, panel, did, bar_w_left, top_y) -> None:
-        """Seção de contexto: velocidade base (v_max) e atributos do piloto.
+    def _draw_breakdown_context(
+        self, panel, did, bar_w_left, top_y, breakdown=None
+    ) -> None:
+        """Seção de contexto: velocidade base (v_max), atributos do piloto e aderência.
 
         Os atributos moldam a velocidade BASE (ritmo, compostura, agressividade
         entram no envelope fisico; por isso aparecem aqui como contexto, nao
         como fatia das barras, que ja sao relativas a essa base). Consistencia
-        e gestao de pneu atuam no ruido e na degradacao, nao no pico.
+        e gestao de pneu atuam no ruido e na degradacao, nao no pico. Aderencia
+        efetiva e o produto da pista pelo composto no tick atual.
         """
 
         left = panel.x + 8
@@ -1404,6 +1409,8 @@ class TrackView(arcade.View):
             rows.append(("gestão de pneu", f"{attrs.get('tyre_management_factor', 1.0):.2f}"))
         else:
             rows.append(("sem atributos de piloto", ""))
+        if breakdown is not None and breakdown.grip_factor is not None:
+            rows.append(("aderência", f"{breakdown.grip_factor * 100:.1f}%"))
 
         for i, (lbl, val) in enumerate(rows):
             if i >= len(self._breakdown_context):

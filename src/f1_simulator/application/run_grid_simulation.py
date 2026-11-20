@@ -41,6 +41,7 @@ from f1_simulator.domain.strategy import (
 from f1_simulator.domain.track_condition import (
     ASSUMED_TRACK_CONDITION,
     GRIP_LAP_TIME_EXPONENT,
+    LiveTrackCondition,
     TrackState,
     simulate_track_conditions,
 )
@@ -220,6 +221,7 @@ def _run_2d(
     reference_lap_time_ms,
     race_control,
     track_states,
+    live_track,
     car_physics_by_driver,
     car_presets,
     car_preset_disclaimer,
@@ -238,6 +240,13 @@ def _run_2d(
         c.name: c for c in (*parameters.compounds, *ASSUMED_WET_COMPOUNDS)
     }
     starting_compound = _starting_compound(track_states)
+    # Estado vivo da pista (evolui por tick no motor 2D, nao por volta).
+    rain_by_lap = (
+        expand_segments(setup.weather, setup.total_laps)
+        if setup.weather
+        else (RainLevel.DRY,) * setup.total_laps
+    )
+    live_track = LiveTrackCondition(rain_by_lap)
     entrants = [
         {
             "driver_id": entry.driver_id,
@@ -268,6 +277,7 @@ def _run_2d(
         model_parameters=parameters,
         fuel=fuel_plan,
         track_states=track_states,
+        live_track=live_track,
         reliability_by_id=reliability_by_id,
         mechanical_hazard_per_lap=parameters.mechanical_hazard_per_lap(),
         race_control=race_control,
@@ -286,7 +296,13 @@ def _run_2d(
         geometry, grid, attributes, car_physics_by_driver
     )
     result["setup"] = _setup_echo(setup)
-    result["track_conditions"] = [state.as_dict() for state in track_states]
+    # Snapshots por volta: o motor 2D grava ao vivo quando live_track esta
+    # ativo; caso contrario, usa os pre-computados (backward compat).
+    live_snapshots = result.pop("_live_track_snapshots", None)
+    if live_snapshots:
+        result["track_conditions"] = [s.as_dict() for s in live_snapshots]
+    else:
+        result["track_conditions"] = [state.as_dict() for state in track_states]
     result.setdefault("assumptions", []).extend(
         [_physical_lap_assumption(), _track_condition_assumption(setup)]
     )
@@ -477,6 +493,12 @@ def run_grid_simulation(
     if geometry is None:
         raise ValueError("o motor 2D exige geometria da pista")
     track_states = _track_states(setup, reference_lap_time_ms)
+    rain_by_lap_outer = (
+        expand_segments(setup.weather, setup.total_laps)
+        if setup.weather
+        else (RainLevel.DRY,) * setup.total_laps
+    )
+    live_track = LiveTrackCondition(rain_by_lap_outer)
     car_physics_by_driver = _car_physics_by_driver(
         grid, car_presets, car_overrides_by_driver
     )
@@ -493,6 +515,7 @@ def run_grid_simulation(
         reference_lap_time_ms=reference_lap_time_ms,
         race_control=race_control,
         track_states=track_states,
+        live_track=live_track,
         car_physics_by_driver=car_physics_by_driver,
         car_presets=car_presets,
         car_preset_disclaimer=car_preset_disclaimer,
