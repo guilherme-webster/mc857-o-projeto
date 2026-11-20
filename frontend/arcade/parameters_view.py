@@ -61,29 +61,30 @@ from frontend.arcade.theme import (
 from frontend.arcade.track_client import fetch_track, fetch_tracks
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
-RULES_PANEL_BOUNDS = (28, 172, 544, 404)
+RULES_PANEL_BOUNDS = (28, 165, 544, 411)
 TRACK_CARD_BOUNDS = (586, 45, 666, 531)
 SCHEDULER_BOUNDS = (600, 60, 638, 449)
 TRACK_PREVIEW_BOUNDS = (614, 100, 320, 228)
 NAME_INPUT_BOUNDS = (230, 476, 322, 32)
-SEED_INPUT_BOUNDS = (232, 201, 320, 30)
+SEED_INPUT_BOUNDS = (232, 177, 320, 30)
 PREVIOUS_TRACK_BOUNDS = (614, 396, 34, 31)
 NEXT_TRACK_BOUNDS = (900, 396, 34, 31)
 TOGGLE_TRACK_BOUNDS = (956, 286, 268, 42)
 REMOVE_TRACK_BOUNDS = (956, 224, 268, 42)
 AUTOMATIC_BOUNDS = (956, 162, 268, 42)
-# Abaixo do painel de regras, que termina em y=172. A base do botao de baixo
+# Abaixo do painel de regras, que termina em y=165. A base do botao de baixo
 # alinha com a base do scheduler de pistas (y=60).
 DRIVERS_BOUNDS = (28, 110, 288, 42)
 SAVED_TOURNAMENTS_BOUNDS = (28, 60, 288, 42)
 CONFIGURE_TRACK_BOUNDS = TRACK_PREVIEW_BOUNDS
 CONFIRM_SERIES_BOUNDS = (956, 100, 268, 42)
 SCORING_BOUNDS = (232, 429, 320, 34)
-STAGES_DECREASE_BOUNDS = (232, 383, 28, 34)
-STAGES_INCREASE_BOUNDS = (326, 383, 28, 34)
-WEATHER_BOUNDS = (232, 337, 320, 34)
-REPEATS_BOUNDS = (232, 295, 44, 25)
-TIEBREAK_BOUNDS = (232, 245, 320, 34)
+STAGES_DECREASE_BOUNDS = (232, 387, 28, 34)
+STAGES_INCREASE_BOUNDS = (326, 387, 28, 34)
+LAPS_BOUNDS = (232, 345, 320, 34)
+WEATHER_BOUNDS = (232, 303, 320, 34)
+REPEATS_BOUNDS = (232, 261, 44, 25)
+TIEBREAK_BOUNDS = (232, 219, 320, 34)
 SEQUENCE_ROW_BOUNDS = tuple((956, 440 - 37 * index, 268, 37) for index in range(3))
 SEQUENCE_SCROLL_BOUNDS = (1228, 366, 4, 111)
 LOGO_PATH = Path(__file__).with_name("assets") / "f1-logo.png"
@@ -193,6 +194,10 @@ class ParametersView(UIView):
         self._dragged_sequence_index: int | None = None
         self._editing_name = False
         self._editing_seed = False
+        # Voltas padrao: None e o modo "Padrao"; um texto e o modo "Customizavel"
+        # com o numero digitado. Nao vai para as regras salvas no torneio.
+        self._custom_laps: str | None = None
+        self._editing_laps = False
         self._screen_camera: arcade.Camera2D | None = None
         self._native_labels: list[arcade.Text] = []
         name_style = deepcopy(UIInputText.DEFAULT_STYLE)
@@ -696,6 +701,8 @@ class ParametersView(UIView):
     def reset_configuration(self) -> None:
         """Restore the values that were supplied when the view was created."""
 
+        self._custom_laps = None
+        self._editing_laps = False
         self.configuration = (
             self.initial
             if self._initial_supplied or self.selected_track is None
@@ -802,6 +809,8 @@ class ParametersView(UIView):
         de início escolhido, com a volta inicial 1 e a final igual ao novo total.
         """
 
+        self._custom_laps = None
+        self._editing_laps = False
         catalog = {track["circuit_id"]: track for track in self._tracks}
         for circuit_id in self._selected_track_ids:
             default = self._fresh_configuration(catalog[circuit_id])
@@ -985,6 +994,7 @@ class ParametersView(UIView):
         if button == arcade.MOUSE_BUTTON_LEFT:
             self._editing_name = self._contains(NAME_INPUT_BOUNDS, x, y)
             self._editing_seed = self._contains(SEED_INPUT_BOUNDS, x, y)
+            self._editing_laps = self._contains(LAPS_BOUNDS, x, y)
         if button == arcade.MOUSE_BUTTON_LEFT and self.selected_track is not None:
             self._configure_pressed = self._contains(CONFIGURE_TRACK_BOUNDS, x, y)
         if button == arcade.MOUSE_BUTTON_LEFT:
@@ -1025,6 +1035,9 @@ class ParametersView(UIView):
         self._dragged_sequence_index = None
         if self._contains(SCORING_BOUNDS, x, y):
             self._cycle_rule("scoring", SCORING_OPTIONS)
+            return
+        if self._contains(LAPS_BOUNDS, x, y):
+            self._press_custom_laps(x)
             return
         if self._contains(WEATHER_BOUNDS, x, y):
             self._cycle_default_weather()
@@ -1097,9 +1110,12 @@ class ParametersView(UIView):
             self.tournament_name_input.text += text
         elif self._editing_seed and text.isprintable():
             self.tournament_seed_input.text += text
+        elif self._editing_laps and self._custom_laps is not None and text.isdigit():
+            if len(self._custom_laps) < 3:
+                self._type_custom_laps(self._custom_laps + text)
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
-        if not self._editing_name and not self._editing_seed:
+        if not (self._editing_name or self._editing_seed or self._editing_laps):
             return
         if self._editing_seed:
             pasted = handle_clipboard_shortcut(
@@ -1115,9 +1131,16 @@ class ParametersView(UIView):
             self.tournament_name_input.text = self.tournament_name_input.text[:-1]
         elif symbol == arcade.key.BACKSPACE and self._editing_seed:
             self.tournament_seed_input.text = self.tournament_seed_input.text[:-1]
+        elif (
+            symbol == arcade.key.BACKSPACE
+            and self._editing_laps
+            and self._custom_laps is not None
+        ):
+            self._type_custom_laps(self._custom_laps[:-1])
         elif symbol in (arcade.key.ENTER, arcade.key.ESCAPE):
             self._editing_name = False
             self._editing_seed = False
+            self._editing_laps = False
 
     def _sequence_index_at(self, x: int, y: int) -> int | None:
         for slot, bounds in enumerate(SEQUENCE_ROW_BOUNDS):
@@ -1154,11 +1177,108 @@ class ParametersView(UIView):
         """Configuração inicial de uma pista: padrão de voltas e clima padrão."""
 
         base = configuration_for_track(track)
+        # Etapas novas herdam as voltas customizadas enquanto o modo estiver ativo.
+        laps = self._custom_laps_value() or base.laps
         return ConfigurationFormData(
             preset=base.preset,
-            laps=base.laps,
-            weather_schedule=WeatherSchedule.uniform(base.laps, self._default_weather()),
+            laps=laps,
+            weather_schedule=WeatherSchedule.uniform(laps, self._default_weather()),
         )
+
+    # -- voltas padrao da sequencia -------------------------------------------
+
+    def _laps_display(self) -> str:
+        if self._custom_laps is None:
+            return "Padrão"
+        caret = "|" if self._editing_laps else ""
+        return f"Customizável: {self._custom_laps}{caret}"
+
+    def _custom_laps_value(self) -> int | None:
+        """Voltas digitadas, ou None fora do modo customizado ou se o valor for invalido."""
+
+        if self._custom_laps is None or not self._custom_laps.isdigit():
+            return None
+        laps = int(self._custom_laps)
+        try:
+            WeatherSchedule.dry(laps)
+        except ConfigurationFormError:
+            return None
+        return laps
+
+    def _press_custom_laps(self, x: float) -> None:
+        """Clique na caixa de voltas: liga o modo; a seta desliga; o texto edita."""
+
+        left, _, width, _ = LAPS_BOUNDS
+        if self._custom_laps is None:
+            self._enable_custom_laps()
+        elif x >= left + width - 36:
+            self._disable_custom_laps()
+        else:
+            self._editing_laps = True
+
+    def _enable_custom_laps(self) -> None:
+        self._custom_laps = str(self.configuration.laps)
+        self._editing_laps = True
+        self._apply_custom_laps()
+
+    def _disable_custom_laps(self) -> None:
+        self._custom_laps = None
+        self._editing_laps = False
+        self._resize_stages(lambda track: configuration_for_track(track).laps)
+        self._set_status("Voltas padrão de cada pista restauradas.", SECONDARY_TEXT_COLOR)
+
+    def _type_custom_laps(self, text: str) -> None:
+        self._custom_laps = text
+        if text:
+            self._apply_custom_laps()
+        else:
+            self._set_status("Digite o número de voltas.", SECONDARY_TEXT_COLOR)
+
+    def _apply_custom_laps(self) -> None:
+        laps = self._custom_laps_value()
+        if laps is None:
+            self._set_status("Voltas inválidas para uma corrida.", ERROR_COLOR)
+            return
+        self._resize_stages(lambda track: laps)
+        self._set_status(f"{laps} voltas em todas as etapas.", SUCCESS_COLOR)
+
+    def _resize_stages(self, laps_for) -> None:
+        """Ajusta as voltas de todas as etapas da sequencia, com o clima padrao em cada volta.
+
+        ``laps_for`` recebe o dicionario da pista e devolve as voltas dela. O clima
+        volta ao padrao porque o numero de voltas define o tamanho do clima por volta.
+        """
+
+        catalog = {track["circuit_id"]: track for track in self._tracks}
+        for circuit_id in self._selected_track_ids:
+            track = catalog[circuit_id]
+            current = self._track_configurations.get(circuit_id)
+            preset = (
+                current.preset
+                if current is not None
+                else configuration_for_track(track).preset
+            )
+            laps = laps_for(track)
+            self._track_configurations[circuit_id] = ConfigurationFormData(
+                preset=preset,
+                laps=laps,
+                weather_schedule=WeatherSchedule.uniform(laps, self._default_weather()),
+            )
+            session = self._session_configurations.get(circuit_id)
+            if session is not None:
+                self._session_configurations[circuit_id] = SessionConfiguration(
+                    1, laps, session.start_mode
+                )
+        if self.selected_track is not None:
+            circuit_id = self.selected_track["circuit_id"]
+            stored = self._track_configurations.get(circuit_id)
+            self.configuration = (
+                stored
+                if stored is not None
+                else self._fresh_configuration(self.selected_track)
+            )
+            self.laps_input.text = str(self.configuration.laps)
+            self._update_weather_summary()
 
     def _apply_default_weather(self) -> None:
         """Grava o clima padrão em todas as voltas de cada pista da sequência.
@@ -1402,11 +1522,12 @@ class ParametersView(UIView):
         labels = (
             ("Nome do torneio", 484),
             ("Sistema de pontuação", 438),
-            ("Total de etapas", 392),
-            ("Clima padrão", 346),
-            ("Permitir repetição de pista", 300),
-            ("Critério de desempate", 254),
-            ("Semente", 208),
+            ("Total de etapas", 396),
+            ("Voltas padrão", 354),
+            ("Clima padrão", 312),
+            ("Permitir repetição de pista", 270),
+            ("Critério de desempate", 228),
+            ("Semente", 184),
         )
         for label, y in labels:
             self._native_text(
@@ -1418,6 +1539,7 @@ class ParametersView(UIView):
             ).draw()
         for bounds, value in (
             (SCORING_BOUNDS, self.rules.scoring),
+            (LAPS_BOUNDS, self._laps_display()),
             (WEATHER_BOUNDS, self.rules.weather_mode),
             (TIEBREAK_BOUNDS, self.rules.tiebreak),
         ):
@@ -1462,7 +1584,7 @@ class ParametersView(UIView):
         self._native_text(
             str(self.rules.total_stages),
             293,
-            400,
+            404,
             PRIMARY_TEXT_COLOR,
             12,
             anchor_x="center",
