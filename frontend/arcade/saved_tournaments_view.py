@@ -337,9 +337,9 @@ class SavedTournamentsView(arcade.View):
             elif kind == "rerun":
                 self._start_rerun(payload)
             elif kind == "renamed":
+                # Sem nova listagem: o nome ja foi trocado na lista local.
                 self._apply_rename(payload)
                 self._set_status("Nome atualizado.", SECONDARY_TEXT_COLOR)
-                self.refresh()
             elif kind == "deleted":
                 self._apply_delete(payload)
                 self._set_status("Simulação excluída.", SECONDARY_TEXT_COLOR)
