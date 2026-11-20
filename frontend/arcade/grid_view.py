@@ -88,6 +88,10 @@ _PANEL_TOTAL_WIDTH = 440
 # Texto de cada atributo (nome e dica) comeca a 24 px da borda da caixa e
 # precisa parar antes do botao "−", com 10 px de folga.
 _PANEL_TEXT_X = 24
+# Espaco vertical entre as linhas do bloco de texto de cada atributo.
+_ATTR_BLOCK_GAP = 2
+# Lado dos botoes "−" e "+" de cada atributo (quadrados).
+_CONTROL_SIDE = 34
 _PANEL_TEXT_WIDTH = 240 - _PANEL_TEXT_X - 10
 # Setas de subir e descer na primeira linha da caixa, nas bordas internas; o
 # nome do piloto fica centralizado entre elas.
@@ -130,6 +134,8 @@ class GridView(arcade.View):
         # trocar de piloto a caixa volta ao topo.
         self._panel_scroll = 0
         self._panel_owner: str | None = None
+        # Faixa (base, altura) do bloco de texto de cada atributo; os botoes usam a mesma.
+        self._attr_control_bounds: dict[str, tuple[float, float]] = {}
         # Seletor de pilotos aberto (overlay modal); None quando fechado.
         self._picker: PairPicker | None = None
         # Janela de numero de pilotos do grid aleatorio; None quando fechada.
@@ -944,12 +950,24 @@ class GridView(arcade.View):
         rects["add"] = (remove_x + action_w + _ACTION_GAP, 20, action_w, 36)
         bottom, top = self._panel_region()
         for i, spec in enumerate(ATTRIBUTES):
-            y = self._attribute_y(i)
+            # Mesma faixa do bloco de texto medido no ultimo quadro. Antes do
+            # primeiro desenho, usa uma estimativa de 46 px (topo y+30).
+            bounds = self._attr_control_bounds.get(spec.name)
+            if bounds is None:
+                bounds = (self._attribute_y(i) - 16, 46)
+            block_bottom, block_h = bounds
             # Botoes fora da area rolavel nao sao desenhados nem clicaveis.
-            if y - 6 < bottom or y - 6 + 30 > top:
+            if block_bottom < bottom or block_bottom + block_h > top:
                 continue
-            rects[f"minus:{spec.name}"] = (left + _CONTROL_X["minus"], y - 6, 34, 30)
-            rects[f"plus:{spec.name}"] = (left + _CONTROL_X["plus"], y - 6, 34, 30)
+            # Quadrado de lado fixo, com o meio na altura do meio do bloco de texto.
+            side = _CONTROL_SIDE
+            square_y = block_bottom + block_h / 2 - side / 2
+            rects[f"minus:{spec.name}"] = (
+                left + _CONTROL_X["minus"], square_y, side, side
+            )
+            rects[f"plus:{spec.name}"] = (
+                left + _CONTROL_X["plus"], square_y, side, side
+            )
         return rects
 
     def _table_top(self) -> float:
@@ -1365,6 +1383,30 @@ class GridView(arcade.View):
         max_scroll = max(0, bottom + _PANEL_LAST_ROW_MARGIN - last_row_at_rest)
         self._panel_scroll = int(min(max(0, self._panel_scroll), max_scroll))
 
+    def _draw_clipped(self, text: arcade.Text, x: float, y: float, width: float, height: float) -> None:
+        """Desenha ``text`` recortado a caixa (x, y, width, height), em pixels da janela.
+
+        O recorte e restaurado depois: o da area rolavel da caixa continua valendo.
+        Assim, mesmo com fonte maior que a prevista (outro SO), o texto nao passa
+        da coluna e nao cobre os botoes ao lado.
+        """
+
+        ratio = self.window.get_pixel_ratio()
+        previous = self.window.ctx.scissor
+        left, bottom = int(x * ratio), int(y * ratio)
+        right, top = left + int(width * ratio), bottom + int(height * ratio)
+        if previous is not None:
+            # Interseccao com o recorte atual (area rolavel): o texto nao sai dela.
+            prev_x, prev_y, prev_w, prev_h = previous
+            left, bottom = max(left, prev_x), max(bottom, prev_y)
+            right = min(right, prev_x + prev_w)
+            top = min(top, prev_y + prev_h)
+        self.window.ctx.scissor = (left, bottom, max(0, right - left), max(0, top - bottom))
+        try:
+            text.draw()
+        finally:
+            self.window.ctx.scissor = previous
+
     def _clip_panel_region(self) -> None:
         """Recorta o desenho na area rolavel (coordenadas da janela em pixels)."""
 
@@ -1487,28 +1529,34 @@ class GridView(arcade.View):
         for i, spec in enumerate(ATTRIBUTES):
             y = self._attribute_y(i)
             source = self._draft.source(self._selected, spec.name)
+            # Os tres textos sao ancorados pelo topo e empilhados; a altura medida
+            # de cada um define o bloco. Os botoes e o valor usam essa mesma faixa.
+            top_edge = y + 30
             label_text = self._text(
-                f"a:{spec.name}:label",
-                spec.label,
-                x,
-                y + 10,
-                PRIMARY_TEXT_COLOR,
-                13,
-                bold=True,
+                f"a:{spec.name}:label", spec.label, x, top_edge,
+                PRIMARY_TEXT_COLOR, 13, bold=True, anchor_y="top",
             )
             # Nome e dica ficam antes do botao "−": a fonte diminui se preciso.
             fit_button_text(label_text, _PANEL_TEXT_WIDTH, 13)
-            label_text.draw()
+            label_text.y = top_edge
             hint_text = self._text(
-                f"a:{spec.name}:hint",
-                f"{spec.hint} · {SOURCE_LABELS.get(source, source)}",
-                x,
-                y - 8,
-                _HEADER_COLOR,
-                10,
+                f"a:{spec.name}:hint", spec.hint, x, top_edge,
+                _HEADER_COLOR, 10, anchor_y="top",
             )
             fit_button_text(hint_text, _PANEL_TEXT_WIDTH, 10)
-            hint_text.draw()
+            hint_text.y = top_edge - label_text.content_height - _ATTR_BLOCK_GAP
+            source_text = self._text(
+                f"a:{spec.name}:source", SOURCE_LABELS.get(source, source), x,
+                top_edge, _HEADER_COLOR, 9, anchor_y="top",
+            )
+            source_text.y = hint_text.y - hint_text.content_height - _ATTR_BLOCK_GAP
+            block_bottom = source_text.y - source_text.content_height
+            block_h = top_edge - block_bottom
+            self._attr_control_bounds[spec.name] = (block_bottom, block_h)
+            # Recorte por texto: nada sai do bloco, mesmo com fonte maior.
+            clip_bottom, clip_h = block_bottom - 4, block_h + 8
+            for text in (label_text, hint_text, source_text):
+                self._draw_clipped(text, x, clip_bottom, _PANEL_TEXT_WIDTH, clip_h)
             value = _display_value(
                 spec.name, self._draft.value(self._selected, spec.name)
             )
@@ -1516,7 +1564,7 @@ class GridView(arcade.View):
                 f"a:{spec.name}:value",
                 value,
                 left + _CONTROL_X["value"],
-                y + 9,
+                (top_edge + block_bottom) / 2,
                 SOURCE_COLORS.get(source, PRIMARY_TEXT_COLOR),
                 11,
                 bold=True,
@@ -1538,6 +1586,8 @@ class GridView(arcade.View):
         self._unclip_panel_region()
 
     def _draw_buttons(self) -> None:
+        # Botoes sao desenhados sem recorte: nada de recortes antigos cortando o "+".
+        self.window.ctx.scissor = None
         labels = {
             "prev-source": "‹",
             "next-source": "›",
@@ -1564,6 +1614,10 @@ class GridView(arcade.View):
             else:
                 color = _BUTTON_HOVER if hover else _BUTTON_BG
             arcade.draw_lbwh_rectangle_filled(left, bottom, w, h, color)
+            if key.startswith(("minus:", "plus:")):
+                # Sinais desenhados como linhas: nao dependem do glifo da fonte.
+                _draw_step_sign(left + w / 2, bottom + h / 2, key.startswith("plus:"))
+                continue
             label = labels.get(key) or ("−" if key.startswith("minus:") else "+")
             self._text(
                 f"b:{key}",
@@ -1576,6 +1630,16 @@ class GridView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
             ).draw()
+
+
+def _draw_step_sign(cx: float, cy: float, plus: bool) -> None:
+    """Desenha "+" ou "−" centrado em (cx, cy), com bracos de 7 px e traco de 2 px."""
+
+    arm = 7
+    color = PRIMARY_TEXT_COLOR
+    arcade.draw_line(cx - arm, cy, cx + arm, cy, color, 2)
+    if plus:
+        arcade.draw_line(cx, cy - arm, cx, cy + arm, color, 2)
 
 
 def _display_value(name: str, value: float | None) -> str:

@@ -1850,7 +1850,7 @@ class ParametersView(UIView):
             ),
         ):
             self._native_text(
-                label, x, y, color, size, width=310 if x == 622 else None
+                label, x, y, color, size, fit_width=310 if x == 622 else None
             ).draw()
         # Extensao e voltas centralizadas, logo acima da previa.
         info = (
