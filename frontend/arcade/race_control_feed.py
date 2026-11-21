@@ -102,6 +102,21 @@ class RaceControlFeed:
             drivers = " x ".join(self._names.get(did, did) for did in event["driver_ids"])
             self._entries.append(FeedEntry(int(event["lap"]), f"{label}: {drivers}", None,
                                            float(event["time_ms"])))
+        for event in _sequence(race.get("pit_stop_events")):
+            if event.get("type") == "entry":
+                did = str(event.get("driver_id", ""))
+                driver_name = self._names.get(did, did)
+                compound = str(event.get("compound", ""))
+                reason = str(event.get("reason", "Troca de pneus"))
+                target_str = f" -> {compound}" if compound else ""
+                text = f"Box: {driver_name}{target_str} ({reason})"
+                time_ms = (
+                    float(event["time_ms"])
+                    if event.get("time_ms") is not None
+                    else None
+                )
+                lap = int(event.get("lap") or 1)
+                self._entries.append(FeedEntry(lap, text, "PIT", time_ms))
         self._entries.sort(key=lambda e: (e.lap, e.time_ms if e.time_ms is not None else float("inf")))
 
     def status_on_lap(self, lap: int) -> TrackStatus | None:
