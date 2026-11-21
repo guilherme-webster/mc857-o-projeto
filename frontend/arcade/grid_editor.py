@@ -255,6 +255,20 @@ class GridDraft:
             or bool(self._added)
         )
 
+    def _original_value(self, driver_id: str, name: str) -> float | None:
+        attrs = self._index[driver_id].get("attributes", {})
+        if name in attrs and attrs[name] is not None:
+            return float(attrs[name])
+        if name == "v_max_kmh":
+            seed_val = (self.seed or 42) + sum(ord(c) for c in driver_id)
+            fraction = ((seed_val * 9301 + 49297) % 233280) / 233280.0
+            return round(334.0 + fraction * (342.0 - 334.0), 1)
+        if name == "a_max_ms2":
+            seed_val = (self.seed or 42) + sum(ord(c) * 7 for c in driver_id)
+            fraction = ((seed_val * 9301 + 49297) % 233280) / 233280.0
+            return round(13.7 + fraction * (14.5 - 13.7), 2)
+        return None
+
     def value(self, driver_id: str, name: str) -> float | None:
         """Valor atual do atributo; ``None`` para piloto ainda nao salvo."""
 
@@ -262,15 +276,9 @@ class GridDraft:
             return None
         pending = self.edits.get(driver_id, {})
         if name in pending:
-            return pending[name]
-        attrs = self._index[driver_id].get("attributes", {})
-        if name in attrs and attrs[name] is not None:
-            return float(attrs[name])
-        if name == "v_max_kmh":
-            return 338.0
-        if name == "a_max_ms2":
-            return 14.1
-        return None
+            val = pending[name]
+            return float(val) if val is not None else None
+        return self._original_value(driver_id, name)
 
     def source(self, driver_id: str, name: str) -> str:
         if driver_id in self._added:
@@ -300,14 +308,8 @@ class GridDraft:
         if spec.minimum is not None:
             value = max(spec.minimum, value)
         value = round(value, spec.decimals)
-        attrs = self._index[driver_id].get("attributes", {})
-        if name in attrs and attrs[name] is not None:
-            original = float(attrs[name])
-        elif name == "v_max_kmh":
-            original = 338.0
-        elif name == "a_max_ms2":
-            original = 14.1
-        else:
+        original = self._original_value(driver_id, name)
+        if original is None:
             original = value
         pending = self.edits.setdefault(driver_id, {})
         if round(original, spec.decimals) == value:

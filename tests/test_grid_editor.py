@@ -140,8 +140,13 @@ class GridDraftTest(unittest.TestCase):
         payload["grid"][0]["attributes"]["v_max_kmh"] = None
         payload["grid"][0]["attributes"]["a_max_ms2"] = None
         draft = GridDraft(payload)
-        self.assertEqual(draft.value("driver:830", "v_max_kmh"), 338.0)
-        self.assertEqual(draft.value("driver:830", "a_max_ms2"), 14.1)
+        v830 = draft.value("driver:830", "v_max_kmh")
+        v844 = draft.value("driver:844", "v_max_kmh")
+        self.assertIsNotNone(v830)
+        self.assertIsNotNone(v844)
+        self.assertNotEqual(v830, v844)
+        self.assertGreaterEqual(v830, 334.0)
+        self.assertLessEqual(v830, 342.0)
 
     def test_rejects_payload_without_grid(self) -> None:
         with self.assertRaises(ValueError):

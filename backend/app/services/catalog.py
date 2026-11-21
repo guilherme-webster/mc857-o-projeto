@@ -248,7 +248,10 @@ def read_current_grid():
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(error)
         ) from error
-    return _deserialize_grid(state)
+    pairs, attributes, seed = _deserialize_grid(state)
+    if any("v_max_kmh" not in row.get("attributes", {}) for row in state.get("grid", [])):
+        _write_current_grid(pairs, attributes, seed)
+    return pairs, attributes, seed
 
 
 def _remove_drivers(pairs, attributes, remove):
@@ -675,8 +678,32 @@ def _deserialize_grid(state: dict):
                     "POST /catalog/grid"
                 ),
             )
-        v_max = float(attribute["v_max_kmh"]) if attribute.get("v_max_kmh") is not None else 338.0
-        a_max = float(attribute["a_max_ms2"]) if attribute.get("a_max_ms2") is not None else 14.1
+        if attribute.get("v_max_kmh") is not None:
+            v_max = float(attribute["v_max_kmh"])
+            a_max = float(attribute["a_max_ms2"]) if attribute.get("a_max_ms2") is not None else 14.1
+        else:
+            from f1_simulator.domain.driver_attributes import (
+                A_MAX_RANGE_MS2,
+                V_MAX_RANGE_KMH,
+            )
+            from f1_simulator.domain.random_source import (
+                SeededRandomSource,
+                uniform_float,
+            )
+
+            perf_source = SeededRandomSource(state.get("seed", 42)).spawn(
+                f"attributes:car_perf:{row['driver_id']}"
+            )
+            v_max = round(
+                uniform_float(perf_source, "v_max_kmh", *V_MAX_RANGE_KMH), 1
+            )
+            a_max = round(
+                uniform_float(perf_source, "a_max_ms2", *A_MAX_RANGE_MS2), 2
+            )
+            sources = dict(attribute.get("sources", {}))
+            sources.setdefault("v_max_kmh", "generated")
+            sources.setdefault("a_max_ms2", "generated")
+            attribute["sources"] = sources
         attributes[row["driver_id"]] = DriverAttributes(
             driver_id=row["driver_id"],
             archetype=attribute["archetype"],
