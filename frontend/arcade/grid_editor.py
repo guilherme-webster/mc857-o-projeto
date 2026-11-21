@@ -264,7 +264,7 @@ class GridDraft:
         if name in pending:
             return pending[name]
         attrs = self._index[driver_id].get("attributes", {})
-        if name in attrs:
+        if name in attrs and attrs[name] is not None:
             return float(attrs[name])
         if name == "v_max_kmh":
             return 338.0
@@ -301,7 +301,7 @@ class GridDraft:
             value = max(spec.minimum, value)
         value = round(value, spec.decimals)
         attrs = self._index[driver_id].get("attributes", {})
-        if name in attrs:
+        if name in attrs and attrs[name] is not None:
             original = float(attrs[name])
         elif name == "v_max_kmh":
             original = 338.0

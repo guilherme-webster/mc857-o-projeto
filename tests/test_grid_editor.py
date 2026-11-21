@@ -135,6 +135,14 @@ class GridDraftTest(unittest.TestCase):
             },
         )
 
+    def test_handles_null_car_attributes_gracefully(self) -> None:
+        payload = grid_payload()
+        payload["grid"][0]["attributes"]["v_max_kmh"] = None
+        payload["grid"][0]["attributes"]["a_max_ms2"] = None
+        draft = GridDraft(payload)
+        self.assertEqual(draft.value("driver:830", "v_max_kmh"), 338.0)
+        self.assertEqual(draft.value("driver:830", "a_max_ms2"), 14.1)
+
     def test_rejects_payload_without_grid(self) -> None:
         with self.assertRaises(ValueError):
             GridDraft({"seed": 1})

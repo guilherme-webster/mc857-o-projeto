@@ -53,8 +53,8 @@ class DriverAttributesResponse(BaseModel):
     aggression: float
     composure: float
     sources: dict[str, Literal["generated", "preset", "manual"]]
-    v_max_kmh: float | None = None
-    a_max_ms2: float | None = None
+    v_max_kmh: float = 338.0
+    a_max_ms2: float = 14.1
 
 
 class DriverProfileResponse(BaseModel):
