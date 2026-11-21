@@ -87,6 +87,24 @@ ATTRIBUTES = (
         0.05,
         2,
     ),
+    AttributeSpec(
+        "v_max_kmh",
+        "Vel. Máx",
+        "VMAX",
+        "km/h velocidade máxima",
+        1.0,
+        300.0,
+        0,
+    ),
+    AttributeSpec(
+        "a_max_ms2",
+        "Aceleração",
+        "AMAX",
+        "m/s² aceleração base",
+        0.1,
+        5.0,
+        1,
+    ),
 )
 ATTRIBUTE_BY_NAME = {spec.name: spec for spec in ATTRIBUTES}
 
@@ -171,6 +189,8 @@ def format_value(name: str, value: float) -> str:
     spec = ATTRIBUTE_BY_NAME[name]
     if name == "pace_offset_pct":
         return f"{value:+.{spec.decimals}f}"
+    if spec.decimals == 0:
+        return f"{int(round(value))}"
     return f"{value:.{spec.decimals}f}"
 
 
@@ -243,14 +263,25 @@ class GridDraft:
         pending = self.edits.get(driver_id, {})
         if name in pending:
             return pending[name]
-        return float(self._index[driver_id]["attributes"][name])
+        attrs = self._index[driver_id].get("attributes", {})
+        if name in attrs:
+            return float(attrs[name])
+        if name == "v_max_kmh":
+            return 338.0
+        if name == "a_max_ms2":
+            return 14.1
+        return None
 
     def source(self, driver_id: str, name: str) -> str:
         if driver_id in self._added:
             return "pending"
         if name in self.edits.get(driver_id, {}):
             return "manual"
-        return str(self._index[driver_id]["attributes"]["sources"].get(name, ""))
+        attrs = self._index[driver_id].get("attributes", {})
+        sources = attrs.get("sources", {})
+        if name in sources:
+            return str(sources[name])
+        return "generated"
 
     def step(self, driver_id: str, name: str, direction: int) -> float | None:
         """Some ``direction`` passos ao atributo; devolve o novo valor.
@@ -262,11 +293,22 @@ class GridDraft:
         if driver_id in self._added:
             return None
         spec = ATTRIBUTE_BY_NAME[name]
-        value = round(self.value(driver_id, name) + direction * spec.step, 6)
+        cur = self.value(driver_id, name)
+        if cur is None:
+            return None
+        value = round(cur + direction * spec.step, 6)
         if spec.minimum is not None:
             value = max(spec.minimum, value)
         value = round(value, spec.decimals)
-        original = float(self._index[driver_id]["attributes"][name])
+        attrs = self._index[driver_id].get("attributes", {})
+        if name in attrs:
+            original = float(attrs[name])
+        elif name == "v_max_kmh":
+            original = 338.0
+        elif name == "a_max_ms2":
+            original = 14.1
+        else:
+            original = value
         pending = self.edits.setdefault(driver_id, {})
         if round(original, spec.decimals) == value:
             # Voltar ao valor original nao e uma edicao: preserva a origem.

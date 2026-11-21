@@ -106,7 +106,7 @@ _TRACK_TINT = {
     "SC": (235, 150, 40),
     "RED": (200, 30, 40),
 }
-_FEED_TINT = {**_TRACK_TINT, "GREEN": (70, 211, 142)}
+_FEED_TINT = {**_TRACK_TINT, "GREEN": (70, 211, 142), "PIT": (255, 180, 50)}
 _FEED_LINES = 6
 # Classificacao: ate 20 posicoes de uma vez, e a lista para acima do feed de
 # mensagens (texto de 52 px a 52 + 18*(N-1), com folga para a dica de rolagem).
@@ -199,7 +199,7 @@ _BREAKDOWN_LABELS = {
 }
 # Painel flutuante da decomposicao: um por piloto, arrastavel e fechavel.
 _PANEL_W = 300.0
-_PANEL_H = 283.0
+_PANEL_H = 360.0
 _PANEL_TITLE_H = 20.0  # faixa de titulo (arrastar aqui)
 _PANEL_CLOSE = 16.0  # lado do botao de fechar
 # Tamanho do titulo do painel (pt): padrao e minimo antes de encurtar o nome.
@@ -632,7 +632,14 @@ class TrackView(arcade.View):
             "×", 0, 0, PRIMARY_TEXT_COLOR, 13, bold=True,
             anchor_x="center", anchor_y="center",
         )
-        # Secao de contexto do painel: velocidade base, atributos e aderencia.
+        # Secao de contexto do painel: atributos do piloto e estado do carro.
+        # Cabecalhos das secoes de contexto (PILOTO e CARRO).
+        self._breakdown_section_headers = [
+            arcade.Text(
+                "", 0, 0, _HEADER_COLOR, 9, bold=True, anchor_y="center"
+            )
+            for _ in range(2)
+        ]
         # Cada linha e um par (rotulo a esquerda, valor a direita) para alinhar.
         self._breakdown_context = [
             (
@@ -642,7 +649,7 @@ class TrackView(arcade.View):
                     anchor_x="right", anchor_y="center",
                 ),
             )
-            for _ in range(8)
+            for _ in range(16)
         ]
         # Legenda das fatias: rotulo a esquerda, valor % alinhado a direita.
         self._breakdown_legend = {
@@ -1647,50 +1654,96 @@ class TrackView(arcade.View):
     def _draw_breakdown_context(
         self, panel, did, bar_w_left, top_y, breakdown=None
     ) -> None:
-        """Seção de contexto: velocidade base (v_max), atributos do piloto e aderência.
-
-        Os atributos moldam a velocidade BASE (ritmo, compostura, agressividade
-        entram no envelope fisico; por isso aparecem aqui como contexto, nao
-        como fatia das barras, que ja sao relativas a essa base). Consistencia
-        e gestao de pneu atuam no ruido e na degradacao, nao no pico. Aderencia
-        efetiva e o produto da pista pelo composto no tick atual.
-        """
+        """Seção de contexto: dividida em atributos do piloto e estado do carro."""
 
         left = panel.x + 8
         right = panel.x + _PANEL_W - 8
-        sep_y = top_y - 8
+        sep_y = top_y - 6
         arcade.draw_line(left, sep_y, right, sep_y, _PANEL_BORDER, 1)
 
         v_max = self._playback.driver_v_max_kmh(did)
+        a_max = self._playback.driver_a_max_ms2(did)
         attrs = self._playback.driver_attributes(did)
-        rows = []  # (rotulo, valor)
-        if v_max is not None:
-            rows.append(("velocidade base", f"{v_max:.0f} km/h"))
-        if attrs is not None:
-            rows.append(("arquétipo", str(attrs.get("archetype", "-"))))
-            rows.append(("ritmo", f"{attrs.get('pace_offset_pct', 0.0):+.2f}%"))
-            rows.append(("compostura", f"{attrs.get('composure', 1.0):.2f}"))
-            rows.append(("agressividade", f"{attrs.get('aggression', 1.0):.2f}"))
-            rows.append(("consistência", f"{attrs.get('consistency_factor', 1.0):.2f}"))
-            rows.append(("gestão de pneu", f"{attrs.get('tyre_management_factor', 1.0):.2f}"))
-        else:
-            rows.append(("sem atributos de piloto", ""))
-        if breakdown is not None and breakdown.grip_factor is not None:
-            rows.append(("aderência", f"{breakdown.grip_factor * 100:.1f}%"))
+        car = self._playback.car(did)
+        spatial = car.spatial_at(self._elapsed) if car else None
+        tyre_state = car.tyre_at(self._elapsed) if car else None
 
-        for i, (lbl, val) in enumerate(rows):
-            if i >= len(self._breakdown_context):
-                break
-            label, value = self._breakdown_context[i]
-            y = sep_y - 14 - i * 15
-            label.text = lbl
-            label.x = left
-            label.y = y
-            label.draw()
-            value.text = val
-            value.x = right
-            value.y = y
-            value.draw()
+        pilot_rows = []
+        if attrs is not None:
+            pilot_rows.append(("arquétipo", str(attrs.get("archetype", "-"))))
+            pilot_rows.append(("ritmo", f"{attrs.get('pace_offset_pct', 0.0):+.2f}%"))
+            pilot_rows.append(("compostura", f"{attrs.get('composure', 1.0):.2f}"))
+            pilot_rows.append(("agressividade", f"{attrs.get('aggression', 1.0):.2f}"))
+            pilot_rows.append(("consistência", f"{attrs.get('consistency_factor', 1.0):.2f}"))
+            pilot_rows.append(("gestão de pneu", f"{attrs.get('tyre_management_factor', 1.0):.2f}"))
+        else:
+            pilot_rows.append(("atributos de piloto", "indisponíveis"))
+
+        car_rows = []
+        if v_max is not None:
+            car_rows.append(("velocidade base", f"{v_max:.0f} km/h"))
+        if a_max is not None:
+            g_force = a_max / 9.80665
+            car_rows.append(("aceleração base", f"{a_max:.1f} m/s² (~{g_force:.2f}G)"))
+        if tyre_state is not None and tyre_state.compound:
+            age_str = f"{tyre_state.age_laps}v" if tyre_state.age_laps is not None else "-"
+            car_rows.append(("pneu atual", f"{tyre_state.compound} ({age_str})"))
+        if spatial is not None and spatial.tyre_wear_laps is not None:
+            car_rows.append(("desgaste do pneu", f"{spatial.tyre_wear_laps:.2f} v eq."))
+        if breakdown is not None and breakdown.grip_factor is not None:
+            car_rows.append(("aderência", f"{breakdown.grip_factor * 100:.1f}%"))
+        if spatial is not None and spatial.fuel_kg is not None:
+            car_rows.append(("combustível", f"{spatial.fuel_kg:.1f} kg"))
+
+        cur_y = sep_y - 10
+        if len(self._breakdown_section_headers) > 0:
+            h1 = self._breakdown_section_headers[0]
+            h1.text = "ATRIBUTOS DO PILOTO"
+            h1.x = left
+            h1.y = cur_y
+            h1.draw()
+
+        text_idx = 0
+        cur_y -= 12
+        for lbl, val in pilot_rows:
+            if text_idx < len(self._breakdown_context):
+                label, value = self._breakdown_context[text_idx]
+                label.text = lbl
+                label.x = left
+                label.y = cur_y
+                label.draw()
+                value.text = val
+                value.x = right
+                value.y = cur_y
+                value.draw()
+                text_idx += 1
+            cur_y -= 13
+
+        cur_y -= 2
+        arcade.draw_line(left, cur_y, right, cur_y, _PANEL_BORDER, 1)
+        cur_y -= 10
+
+        if len(self._breakdown_section_headers) > 1:
+            h2 = self._breakdown_section_headers[1]
+            h2.text = "ESTADO DO CARRO"
+            h2.x = left
+            h2.y = cur_y
+            h2.draw()
+
+        cur_y -= 12
+        for lbl, val in car_rows:
+            if text_idx < len(self._breakdown_context):
+                label, value = self._breakdown_context[text_idx]
+                label.text = lbl
+                label.x = left
+                label.y = cur_y
+                label.draw()
+                value.text = val
+                value.x = right
+                value.y = cur_y
+                value.draw()
+                text_idx += 1
+            cur_y -= 13
 
     @staticmethod
     def _breakdown_slice_color(key: str) -> tuple:

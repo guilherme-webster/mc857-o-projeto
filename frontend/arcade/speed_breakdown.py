@@ -65,6 +65,7 @@ class SpeedBreakdown:
     penalties: Mapping[str, float]
     ceiling_frac: float  # teto local / v_max; permite exibir penalidades como % do teto
     grip_factor: float | None = None
+    a_max_ms2: float | None = None
 
     @property
     def effective_pct(self) -> float:
@@ -112,6 +113,15 @@ class SpeedBreakdownReader:
         if not car:
             return None
         value = car.get("v_max_kmh")
+        return float(value) if value is not None else None
+
+    def a_max_ms2(self, driver_id: str) -> float | None:
+        """Aceleracao base (a_max) do carro; ``None`` sem dados."""
+
+        car = self._cars.get(driver_id)
+        if not car:
+            return None
+        value = car.get("a_max_ms2")
         return float(value) if value is not None else None
 
     def attributes(self, driver_id: str) -> Mapping[str, object] | None:
@@ -258,4 +268,5 @@ class SpeedBreakdownReader:
             penalties=penalties,
             ceiling_frac=ceiling_frac,
             grip_factor=grip_factor,
+            a_max_ms2=self.a_max_ms2(driver_id),
         )

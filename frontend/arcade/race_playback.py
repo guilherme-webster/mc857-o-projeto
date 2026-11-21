@@ -498,6 +498,11 @@ class RacePlayback:
 
         return self._speed_breakdown.v_max_kmh(driver_id)
 
+    def driver_a_max_ms2(self, driver_id: str) -> float | None:
+        """Aceleração base (a_max) do piloto/carro; ``None`` sem dados."""
+
+        return self._speed_breakdown.a_max_ms2(driver_id)
+
     def driver_attributes(self, driver_id: str) -> Mapping[str, object] | None:
         """Atributos do piloto para o painel; ``None`` se a corrida nao os traz."""
 
