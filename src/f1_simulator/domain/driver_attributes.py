@@ -32,6 +32,22 @@ ATTRIBUTE_FIELDS = (
     "composure",
 )
 
+CAR_ATTRIBUTE_FIELDS = (
+    "v_max_kmh",
+    "a_max_ms2",
+)
+
+#: Faixas de desempenho base de motor/carro (min, max)
+V_MAX_RANGE_KMH: tuple[float, float] = (334.0, 342.0)
+A_MAX_RANGE_MS2: tuple[float, float] = (13.7, 14.5)
+
+#: Tabela de referência de pacotes de desempenho base (v_max_kmh, a_max_ms2)
+BASE_CAR_PERFORMANCE_TABLE: tuple[tuple[float, float], ...] = (
+    (342.0, 14.5),  # Alto
+    (338.0, 14.1),  # Médio (-1.2% / -2.8%)
+    (334.0, 13.7),  # Base (-2.3% / -5.5%)
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ArchetypeProfile:
@@ -103,6 +119,8 @@ class DriverAttributes:
     source_kind: Literal["assumed"] = "assumed"
     parameter_version: str = PARAMETER_VERSION
     rationale: str = _RATIONALE
+    v_max_kmh: float | None = None
+    a_max_ms2: float | None = None
 
     def __post_init__(self) -> None:
         if not self.driver_id:
@@ -125,7 +143,16 @@ class DriverAttributes:
             )
         ):
             raise ValueError("factors must be strictly positive")
-        if set(self.sources) != set(ATTRIBUTE_FIELDS):
+        for field in ("v_max_kmh", "a_max_ms2"):
+            value = getattr(self, field)
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not isfinite(value)
+                or value <= 0
+            ):
+                raise ValueError(f"{field} must be a positive finite number")
+        if not set(ATTRIBUTE_FIELDS).issubset(self.sources):
             raise ValueError("sources must cover every attribute field")
         if any(
             origin not in ("generated", "preset", "manual")

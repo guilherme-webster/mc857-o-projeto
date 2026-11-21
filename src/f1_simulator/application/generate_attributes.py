@@ -9,8 +9,12 @@ from types import MappingProxyType
 from typing import Literal
 
 from f1_simulator.domain.driver_attributes import (
+    A_MAX_RANGE_MS2,
     ASSUMED_ARCHETYPES,
     ATTRIBUTE_FIELDS,
+    BASE_CAR_PERFORMANCE_TABLE,
+    CAR_ATTRIBUTE_FIELDS,
+    V_MAX_RANGE_KMH,
     Archetype,
     ArchetypeProfile,
     DriverAttributes,
@@ -123,6 +127,16 @@ def generate_attributes(
             field: uniform_float(field_source, field, *getattr(profile, field))
             for field in ATTRIBUTE_FIELDS
         }
+        perf_source = rng.spawn(f"attributes:car_perf:{driver_id}")
+        v_max = round(
+            uniform_float(perf_source, "v_max_kmh", *V_MAX_RANGE_KMH), 1
+        )
+        a_max = round(
+            uniform_float(perf_source, "a_max_ms2", *A_MAX_RANGE_MS2), 2
+        )
+        sources = {field: "generated" for field in ATTRIBUTE_FIELDS}
+        sources["v_max_kmh"] = "generated"
+        sources["a_max_ms2"] = "generated"
         result.append(
             DriverAttributes(
                 driver_id=driver_id,
@@ -132,7 +146,9 @@ def generate_attributes(
                 tyre_management_factor=values["tyre_management_factor"],
                 aggression=values["aggression"],
                 composure=values["composure"],
-                sources={field: "generated" for field in ATTRIBUTE_FIELDS},
+                sources=sources,
+                v_max_kmh=v_max,
+                a_max_ms2=a_max,
             )
         )
     return tuple(result)
@@ -175,7 +191,9 @@ def apply_presets(
             field: uniform_float(field_source, field, *getattr(profile, field))
             for field in ATTRIBUTE_FIELDS
         }
-        sources = {field: "generated" for field in ATTRIBUTE_FIELDS}
+        sources = dict(item.sources)
+        for field in ATTRIBUTE_FIELDS:
+            sources[field] = "generated"
         for field, value in preset.values.items():
             values[field] = value
             sources[field] = "preset"
@@ -207,8 +225,9 @@ def apply_overrides(
         raise ValueError(f"override for unknown driver: {unknown}")
 
     updated = dict(by_id)
+    allowed_fields = set(ATTRIBUTE_FIELDS).union(CAR_ATTRIBUTE_FIELDS)
     for driver_id, patch in overrides.items():
-        unknown_fields = [field for field in patch if field not in ATTRIBUTE_FIELDS]
+        unknown_fields = [field for field in patch if field not in allowed_fields]
         if unknown_fields:
             raise ValueError(f"unknown attribute fields: {unknown_fields}")
         current = updated[driver_id]

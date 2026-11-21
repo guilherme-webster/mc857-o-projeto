@@ -404,6 +404,7 @@ def simulate_2d_race(
     refuel_mode = pit_active and fuel is not None and fuel.parameters.refuelling_allowed
     pit_events: list[dict] = []
     pending_compounds: dict[str, str] = {}
+    pending_reasons: dict[str, str] = {}
 
     # A perda histórica orienta a estratégia; o relógio espacial não a soma.
     pending_refuel: dict[str, dict] = {}
@@ -510,6 +511,7 @@ def simulate_2d_race(
             strategy_by_id[did] = entry.get("strategy") or HeuristicPitStrategy(
                 model_parameters,
                 track_params,
+                tyre_management_factor=management[did],
                 offset_laps=offset_laps,
                 compulsory_wear_target_laps=target,
                 reference_lap_ms=entry.get("reference_lap_ms", 90_000.0),
@@ -712,19 +714,41 @@ def simulate_2d_race(
         grip_factor = 1.0
         if live_track is not None:
             water = live_track.surface_water
-            grip_factor = live_track.grip_factor * relative_grip(
-                tyre_by_id[did].compound, water
-            )
+            track_grip = live_track.grip_factor
+            rel_grip = relative_grip(tyre_by_id[did].compound, water)
+            grip_factor = track_grip * rel_grip
             if grip_factor != 1.0:
-                weather_ms = grip_laps[did].delta_ms(grip_factor)
+                if tyre_active:
+                    total_delta = grip_laps[did].delta_ms(grip_factor)
+                    track_delta = (
+                        grip_laps[did].delta_ms(track_grip)
+                        if track_grip != 1.0
+                        else 0.0
+                    )
+                    tyre_grip_delta = max(0.0, total_delta - track_delta)
+                    weather_ms = track_delta
+                    tyre_ms += tyre_grip_delta
+                else:
+                    weather_ms = grip_laps[did].delta_ms(grip_factor)
         elif track_states:
             idx = min(lap_number - 1, len(track_states) - 1)
             water = track_states[idx].surface_water
-            grip_factor = track_states[idx].grip_factor * relative_grip(
-                tyre_by_id[did].compound, water
-            )
+            track_grip = track_states[idx].grip_factor
+            rel_grip = relative_grip(tyre_by_id[did].compound, water)
+            grip_factor = track_grip * rel_grip
             if grip_factor != 1.0:
-                weather_ms = grip_laps[did].delta_ms(grip_factor)
+                if tyre_active:
+                    total_delta = grip_laps[did].delta_ms(grip_factor)
+                    track_delta = (
+                        grip_laps[did].delta_ms(track_grip)
+                        if track_grip != 1.0
+                        else 0.0
+                    )
+                    tyre_grip_delta = max(0.0, total_delta - track_delta)
+                    weather_ms = track_delta
+                    tyre_ms += tyre_grip_delta
+                else:
+                    weather_ms = grip_laps[did].delta_ms(grip_factor)
         # Sob SC/VSC/vermelha o pelotao segue um ritmo imposto: o desvio do
         # piloto nao se manifesta, e somar ruido ali o deixaria ultrapassar o
         # ritmo neutralizado.
@@ -968,6 +992,7 @@ def simulate_2d_race(
             if exit_d >= total_laps * lap_length_m:
                 return
             pending_compounds[did] = decision.compound
+            pending_reasons[did] = decision.reason or "Estratégia de box"
             if refuel_mode:
                 pending_refuel[did] = {"requested_kg": decision.refuel_kg}
             # Execucao de box da equipe (heuristico): escala o tempo de
@@ -984,6 +1009,8 @@ def simulate_2d_race(
 
         did = car.driver_id
         compound = pending_compounds[did]
+        reason = pending_reasons.get(did, "Estratégia de box")
+        lap = min(total_laps, int(car.distance_m // lap_length_m) + 1)
         if kind == "service_started" and did in pending_refuel:
             assert fuel is not None and car.fuel_kg is not None
             assert car.pit_request is not None and car.pit_state is not None
@@ -1010,7 +1037,7 @@ def simulate_2d_race(
                     refuels_made[did] += 1
                     refuel_events.append({
                         "driver_id": did,
-                        "lap": min(total_laps, int(car.distance_m // lap_length_m) + 1),
+                        "lap": lap,
                         "time_ms": round(time_s * 1000, 3),
                         "fuel_before_kg": service["before_kg"],
                         "added_kg": service["added_kg"],
@@ -1028,10 +1055,13 @@ def simulate_2d_race(
                 "time_ms": round(time_s * 1000, 3),
                 "compound": compound,
                 "stops_made": stops_made[did],
+                "reason": reason,
+                "lap": lap,
             }
         )
         if kind == "exit":
-            pending_compounds.pop(did)
+            pending_compounds.pop(did, None)
+            pending_reasons.pop(did, None)
             pending_refuel.pop(did, None)
 
     def _neutralization_name(lap_number: int) -> str | None:
@@ -1355,6 +1385,8 @@ def simulate_2d_race(
             "tyre_management_factor": attrs.tyre_management_factor,
             "aggression": attrs.aggression,
             "composure": attrs.composure,
+            "v_max_kmh": getattr(attrs, "v_max_kmh", 338.0) or 338.0,
+            "a_max_ms2": getattr(attrs, "a_max_ms2", 14.1) or 14.1,
         }
 
     if pit_active and pit_stop_variation is not None:
@@ -1405,6 +1437,7 @@ def simulate_2d_race(
         "cars": {
             did: {
                 "v_max_kmh": round(physics_by_id[did].v_max_straight_kmh, 2),
+                "a_max_ms2": round(physics_by_id[did].a_max_ms2, 2),
                 "reference_lap_ms": round(ref_ms[did], 3),
                 "attributes": _attributes_echo(did),
                 "laps": {

@@ -77,6 +77,7 @@ class CarPhysics:
     traction_share: float = 0.55
     corner_grip_use: float = 1.0
     brake_grip_use: float = 1.0
+    a_max_ms2: float = 14.1
 
     def __post_init__(self) -> None:
         for name in (
@@ -86,6 +87,7 @@ class CarPhysics:
             "power_kw",
             "corner_grip_use",
             "brake_grip_use",
+            "a_max_ms2",
         ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isfinite(value) or value <= 0:
@@ -144,19 +146,15 @@ class CarPhysics:
     def accel_limit_ms2(self, speed_ms: float) -> float:
         """Aceleracao maxima a ``speed_ms`` (m/s**2), zero acima do limite.
 
-        O menor entre a tracao das rodas traseiras e a potencia, menos o
-        arrasto. Abaixo de 1 m/s a potencia e avaliada a 1 m/s, para nao
-        dividir por zero numa largada parada.
+        O menor entre a aceleracao base do carro (a_max_ms2 escalada por aderencia)
+        e a potencia, menos o arrasto. Abaixo de 1 m/s a potencia e avaliada a 1 m/s,
+        para nao dividir por zero numa largada parada.
         """
 
         v2 = speed_ms * speed_ms
-        traction = (
-            self.traction_share
-            * self.grip_mu
-            * (GRAVITY_MS2 + self.aero_k_per_m * v2)
-        )
+        effective_a_max = self.a_max_ms2 * (self.grip_mu / 1.3)
         power = self.power_kw * 1000.0 / (self.mass_kg * max(speed_ms, 1.0))
-        return max(0.0, min(traction, power) - self.drag_k_per_m * v2)
+        return max(0.0, min(effective_a_max, power) - self.drag_k_per_m * v2)
 
 
 #: Carro de referencia: o piloto neutro com ele reproduz a volta de referencia
@@ -234,11 +232,22 @@ def physics_for(
     pace = 1.0 - attributes.pace_offset_pct / 100.0 * _PACE_GAIN
     corner = 1.0 + (attributes.composure - 1.0) * _COMPOSURE_CORNER_GAIN
     brake = 1.0 + (attributes.aggression - 1.0) * _AGGRESSION_BRAKE_GAIN
+    v_base = (
+        float(attributes.v_max_kmh)
+        if getattr(attributes, "v_max_kmh", None) is not None
+        else float(getattr(base, "v_max_straight_kmh", 330.0) or 330.0)
+    )
+    a_base = (
+        float(attributes.a_max_ms2)
+        if getattr(attributes, "a_max_ms2", None) is not None
+        else float(getattr(base, "a_max_ms2", 14.1) or 14.1)
+    )
     return replace(
         base,
-        v_max_straight_kmh=base.v_max_straight_kmh * pace,
+        v_max_straight_kmh=v_base * pace,
         corner_grip_use=base.corner_grip_use * (pace * corner) ** 2,
         brake_grip_use=base.brake_grip_use * brake,
+        a_max_ms2=a_base,
     )
 
 
