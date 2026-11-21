@@ -127,6 +127,35 @@ class FeedEntriesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "malformado"):
             RaceControlFeed({"race_control_events": [{"type": "x"}]}, NAMES)
 
+    def test_pit_stop_entry_is_formatted_with_driver_and_reason(self) -> None:
+        race = {
+            "pit_stop_events": [
+                {
+                    "driver_id": "driver:5",
+                    "type": "entry",
+                    "time_ms": 15000.0,
+                    "compound": "HARD",
+                    "reason": "Degradação do pneu: perda de ritmo",
+                    "lap": 12,
+                },
+                {
+                    "driver_id": "driver:5",
+                    "type": "service_completed",
+                    "time_ms": 18000.0,
+                    "compound": "HARD",
+                    "lap": 12,
+                },
+            ]
+        }
+        feed = RaceControlFeed(race, NAMES)
+        entries = feed.entries_through(12, 16000.0)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].lap, 12)
+        self.assertEqual(entries[0].status, "PIT")
+        self.assertEqual(
+            entries[0].text, "Box: Piloto 5 -> HARD (Degradação do pneu: perda de ritmo)"
+        )
+
 
 class FeedEngineContractTest(unittest.TestCase):
     """As transicoes do motor real viram mensagens conhecidas, nunca cruas."""

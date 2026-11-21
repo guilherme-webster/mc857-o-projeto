@@ -54,6 +54,8 @@ def _attributes_response(item) -> DriverAttributesResponse:
         aggression=item.aggression,
         composure=item.composure,
         sources=dict(item.sources),
+        v_max_kmh=getattr(item, "v_max_kmh", 338.0) or 338.0,
+        a_max_ms2=getattr(item, "a_max_ms2", 14.1) or 14.1,
     )
 
 

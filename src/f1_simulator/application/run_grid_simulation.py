@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from math import isfinite
 from typing import Literal
 
@@ -50,6 +50,7 @@ from f1_simulator.domain.weather import (
     ASSUMED_WEATHER_PARAMETERS,
     RainLevel,
     WeatherSegment,
+    WeatherState,
     expand_segments,
 )
 from f1_simulator.domain.wet_tyres import (
@@ -154,17 +155,21 @@ def _setup_echo(setup: RaceSetup) -> dict:
     return payload
 
 
-def _strategy_offset(rng: RandomSource, driver_id: str) -> int:
+def _strategy_offset(
+    rng: RandomSource, driver_id: str, archetype: str | None = None
+) -> int:
     """Preferência por piloto em fluxo isolado, para o offset da estrategia."""
 
     amplitude = DEFAULT_HEURISTIC_PIT_PARAMETERS.driver_variation_amplitude_laps
     stream = rng.spawn(f"strategy:offset:{driver_id}")  # type: ignore[attr-defined]
-    return (
+    base_offset = (
         uniform_index(
             stream, f"strategy:offset:{driver_id}:uniform-index", 2 * amplitude + 1
         )
         - amplitude
     )
+    archetype_bias = {"aggressive": -1, "conservative": 1}.get(archetype or "", 0)
+    return max(-amplitude, min(amplitude, base_offset + archetype_bias))
 
 
 def _track_states(setup: RaceSetup, reference_lap_time_ms: float) -> tuple[TrackState, ...]:
@@ -246,7 +251,20 @@ def _run_2d(
         if setup.weather
         else (RainLevel.DRY,) * setup.total_laps
     )
-    live_track = LiveTrackCondition(rain_by_lap)
+    if live_track is None:
+        initial_weather = (
+            WeatherState(
+                humidity_pct=track_states[0].humidity_pct,
+                surface_water=track_states[0].surface_water,
+            )
+            if track_states and rain_by_lap[0] != RainLevel.DRY
+            else WeatherState(50.0, 0.0)
+        )
+        live_track = LiveTrackCondition(
+            rain_by_lap,
+            initial_weather=initial_weather,
+            initial_track_temp_c=track_states[0].track_temp_c if track_states else None,
+        )
     entrants = [
         {
             "driver_id": entry.driver_id,
@@ -256,7 +274,9 @@ def _run_2d(
             "attributes": attributes[entry.driver_id],
             "aggression": attributes[entry.driver_id].aggression,
             "compound": starting_compound,
-            "strategy_offset_laps": _strategy_offset(rng, entry.driver_id),
+            "strategy_offset_laps": _strategy_offset(
+                rng, entry.driver_id, attributes[entry.driver_id].archetype
+            ),
             "reference_lap_ms": reference_lap_time_ms,
             "weather_switch_bias": _weather_switch_bias(
                 rng, entry.driver_id, attributes[entry.driver_id].aggression
@@ -306,7 +326,7 @@ def _run_2d(
     result.setdefault("assumptions", []).extend(
         [_physical_lap_assumption(), _track_condition_assumption(setup)]
     )
-    if car_physics_by_driver:
+    if car_presets or car_overrides_by_driver:
         result["assumptions"].append(
             _team_car_presets_assumption(
                 grid, car_presets, car_preset_disclaimer, car_overrides_by_driver
@@ -498,9 +518,21 @@ def run_grid_simulation(
         if setup.weather
         else (RainLevel.DRY,) * setup.total_laps
     )
-    live_track = LiveTrackCondition(rain_by_lap_outer)
+    initial_weather = (
+        WeatherState(
+            humidity_pct=track_states[0].humidity_pct,
+            surface_water=track_states[0].surface_water,
+        )
+        if track_states and rain_by_lap_outer[0] != RainLevel.DRY
+        else WeatherState(50.0, 0.0)
+    )
+    live_track = LiveTrackCondition(
+        rain_by_lap_outer,
+        initial_weather=initial_weather,
+        initial_track_temp_c=track_states[0].track_temp_c if track_states else None,
+    )
     car_physics_by_driver = _car_physics_by_driver(
-        grid, car_presets, car_overrides_by_driver
+        grid, car_presets, car_overrides_by_driver, attributes=attributes
     )
     pit_execution_by_driver = _pit_execution_by_driver(grid, team_presets)
     result = _run_2d(
@@ -557,24 +589,16 @@ def _car_physics_by_driver(
     grid: Sequence[GridEntry],
     car_presets: Mapping[str, CarPreset] | None,
     car_overrides_by_driver: Mapping[str, float] | None = None,
+    attributes: Mapping[str, DriverAttributes] | None = None,
 ) -> dict[str, CarPhysics]:
-    """Envelope fisico por piloto a partir dos presets de carro por equipe.
+    """Envelope fisico por piloto a partir dos presets de carro por equipe e atributos.
 
-    Sem presets nem overrides, devolve ``{}`` e os motores usam o carro de
-    referencia unico, preservando exatamente o comportamento (e os hashes) de
-    antes. Equipes do grid sem preset ficam de fora e caem no carro de
-    referencia: o mapa so traz quem tem caracterizacao propria.
-
-    ``car_overrides_by_driver`` e o ritmo especifico de **um piloto** da equipe
-    (upgrade que chega so a um carro, dano, especificacao), em pontos
-    percentuais somados ao ritmo da equipe antes da conversao fisica. Ausente,
-    os dois carros da equipe sao identicos. Um override para um piloto sem
-    preset de equipe usa o carro de referencia como base (equipe neutra).
+    Sem presets nem overrides, devolve o carro com os limites base do piloto
+    (ou de referencia unico). Equipes do grid sem preset ficam de fora e caem
+    no carro com os atributos base sorteados do piloto.
     """
 
     overrides = dict(car_overrides_by_driver or {})
-    if not car_presets and not overrides:
-        return {}
     by_team = (
         {team_id: preset.pace_offset_pct for team_id, preset in car_presets.items()}
         if car_presets
@@ -582,13 +606,27 @@ def _car_physics_by_driver(
     )
     result: dict[str, CarPhysics] = {}
     for entry in grid:
+        attrs = attributes.get(entry.driver_id) if attributes else None
+        v_max = (
+            float(attrs.v_max_kmh)
+            if attrs and attrs.v_max_kmh is not None
+            else DEFAULT_CAR_PHYSICS.v_max_straight_kmh
+        )
+        a_max = (
+            float(attrs.a_max_ms2)
+            if attrs and attrs.a_max_ms2 is not None
+            else DEFAULT_CAR_PHYSICS.a_max_ms2
+        )
+        base_car = replace(DEFAULT_CAR_PHYSICS, v_max_straight_kmh=v_max, a_max_ms2=a_max)
+
         has_team = entry.team_id in by_team
         has_override = entry.driver_id in overrides
-        if not has_team and not has_override:
-            continue
-        team_pace = by_team.get(entry.team_id, 0.0)
-        driver_pace = team_pace + overrides.get(entry.driver_id, 0.0)
-        result[entry.driver_id] = car_pace_to_physics(driver_pace)
+        if has_team or has_override:
+            team_pace = by_team.get(entry.team_id, 0.0)
+            driver_pace = team_pace + overrides.get(entry.driver_id, 0.0)
+            result[entry.driver_id] = car_pace_to_physics(driver_pace, base=base_car)
+        elif attrs is not None and (v_max != DEFAULT_CAR_PHYSICS.v_max_straight_kmh or a_max != DEFAULT_CAR_PHYSICS.a_max_ms2):
+            result[entry.driver_id] = base_car
     return result
 
 

@@ -87,6 +87,24 @@ ATTRIBUTES = (
         0.05,
         2,
     ),
+    AttributeSpec(
+        "v_max_kmh",
+        "Vel. Máx",
+        "VMAX",
+        "km/h velocidade máxima",
+        1.0,
+        300.0,
+        0,
+    ),
+    AttributeSpec(
+        "a_max_ms2",
+        "Aceleração",
+        "AMAX",
+        "m/s² aceleração base",
+        0.1,
+        5.0,
+        1,
+    ),
 )
 ATTRIBUTE_BY_NAME = {spec.name: spec for spec in ATTRIBUTES}
 
@@ -171,6 +189,8 @@ def format_value(name: str, value: float) -> str:
     spec = ATTRIBUTE_BY_NAME[name]
     if name == "pace_offset_pct":
         return f"{value:+.{spec.decimals}f}"
+    if spec.decimals == 0:
+        return f"{int(round(value))}"
     return f"{value:.{spec.decimals}f}"
 
 
@@ -235,6 +255,20 @@ class GridDraft:
             or bool(self._added)
         )
 
+    def _original_value(self, driver_id: str, name: str) -> float | None:
+        attrs = self._index[driver_id].get("attributes", {})
+        if name in attrs and attrs[name] is not None:
+            return float(attrs[name])
+        if name == "v_max_kmh":
+            seed_val = (self.seed or 42) + sum(ord(c) for c in driver_id)
+            fraction = ((seed_val * 9301 + 49297) % 233280) / 233280.0
+            return round(334.0 + fraction * (342.0 - 334.0), 1)
+        if name == "a_max_ms2":
+            seed_val = (self.seed or 42) + sum(ord(c) * 7 for c in driver_id)
+            fraction = ((seed_val * 9301 + 49297) % 233280) / 233280.0
+            return round(13.7 + fraction * (14.5 - 13.7), 2)
+        return None
+
     def value(self, driver_id: str, name: str) -> float | None:
         """Valor atual do atributo; ``None`` para piloto ainda nao salvo."""
 
@@ -242,15 +276,20 @@ class GridDraft:
             return None
         pending = self.edits.get(driver_id, {})
         if name in pending:
-            return pending[name]
-        return float(self._index[driver_id]["attributes"][name])
+            val = pending[name]
+            return float(val) if val is not None else None
+        return self._original_value(driver_id, name)
 
     def source(self, driver_id: str, name: str) -> str:
         if driver_id in self._added:
             return "pending"
         if name in self.edits.get(driver_id, {}):
             return "manual"
-        return str(self._index[driver_id]["attributes"]["sources"].get(name, ""))
+        attrs = self._index[driver_id].get("attributes", {})
+        sources = attrs.get("sources", {})
+        if name in sources:
+            return str(sources[name])
+        return "generated"
 
     def step(self, driver_id: str, name: str, direction: int) -> float | None:
         """Some ``direction`` passos ao atributo; devolve o novo valor.
@@ -262,11 +301,16 @@ class GridDraft:
         if driver_id in self._added:
             return None
         spec = ATTRIBUTE_BY_NAME[name]
-        value = round(self.value(driver_id, name) + direction * spec.step, 6)
+        cur = self.value(driver_id, name)
+        if cur is None:
+            return None
+        value = round(cur + direction * spec.step, 6)
         if spec.minimum is not None:
             value = max(spec.minimum, value)
         value = round(value, spec.decimals)
-        original = float(self._index[driver_id]["attributes"][name])
+        original = self._original_value(driver_id, name)
+        if original is None:
+            original = value
         pending = self.edits.setdefault(driver_id, {})
         if round(original, spec.decimals) == value:
             # Voltar ao valor original nao e uma edicao: preserva a origem.

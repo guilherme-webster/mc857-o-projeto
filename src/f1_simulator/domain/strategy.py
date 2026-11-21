@@ -54,11 +54,14 @@ class PitDecision:
     reabastecimento esta ligado. ``None`` deixa o motor encher para terminar
     a corrida (estrategias que nao olham o combustivel); ``0.0`` e uma parada
     so de pneus porque o tanque ja cobre o resto.
+
+    ``reason`` explica o motivo que levou a politica a decidir a parada.
     """
 
     pit: bool
     compound: str | None = None
     refuel_kg: float | None = None
+    reason: str | None = None
 
     def __post_init__(self) -> None:
         if self.pit and not self.compound:
@@ -73,6 +76,8 @@ class PitDecision:
                 or self.refuel_kg < 0
             ):
                 raise ValueError("refuel_kg deve ser nao negativo e finito")
+        if self.reason is not None and not isinstance(self.reason, str):
+            raise ValueError("reason deve ser texto ou None")
 
 
 @dataclass(frozen=True, slots=True)
@@ -490,7 +495,11 @@ class PlannedStopStrategy:
         target = round(window * (state.stops_made + 1)) + self._offset_laps
         target = max(2, min(target, state.total_laps - 1))
         if state.lap_number >= target:
-            return PitDecision(True, self._compounds[state.stops_made])
+            return PitDecision(
+                True,
+                self._compounds[state.stops_made],
+                reason="Estratégia planejada da equipe",
+            )
         return PitDecision(False)
 
 
@@ -522,7 +531,9 @@ class TyreLifeStrategy:
             return PitDecision(False)
         life = self._parameters.compound(state.tyre.compound).typical_stint_laps
         if state.effective_tyre_age >= life:
-            return PitDecision(True, self._next_compound)
+            return PitDecision(
+                True, self._next_compound, reason="Vida útil do composto atingida"
+            )
         return PitDecision(False)
 
 
@@ -719,7 +730,7 @@ class HeuristicPitStrategy:
         else:
             decision = self._decide_tyres(state)
         if decision.pit and wet_class is not None and decision.compound != wet_class:
-            decision = PitDecision(True, wet_class, decision.refuel_kg)
+            decision = PitDecision(True, wet_class, decision.refuel_kg, decision.reason)
         return decision
 
     def _needs_second_compound(self, state: StrategyState) -> bool:
@@ -752,10 +763,12 @@ class HeuristicPitStrategy:
             return None
         if best == SLICK:
             target = self._next_compound(remaining, state.tyre.compound, False)
+            reason = f"Pista secando: água caiu para {water * 100:.0f}%"
         else:
             target = best
+            reason = f"Chuva: água atingiu {water * 100:.0f}%"
         if state.free_tyre_change:
-            return PitDecision(True, target)
+            return PitDecision(True, target, reason=reason)
         grip = relative_grip(state.tyre.compound, water, self._wet_tyres)
         loss_per_lap_ms = self._reference_lap_ms * (grip ** -0.6 - 1.0)
         horizon = min(remaining, self._wet_tyres.switch_horizon_laps)
@@ -763,7 +776,7 @@ class HeuristicPitStrategy:
             self._track.pit_loss_ms * state.pit_loss_factor * self._weather_switch_bias
         )
         if loss_per_lap_ms * horizon > stop_cost_ms:
-            return PitDecision(True, target)
+            return PitDecision(True, target, reason=reason)
         return None
 
     def _decide_tyres(self, state: StrategyState) -> PitDecision:
@@ -782,14 +795,23 @@ class HeuristicPitStrategy:
             state.total_laps - self._heuristics.final_laps_without_pit,
         )
         if needs_second_compound and state.lap_number == last_regular_pit_lap:
-            return PitDecision(True, next_compound)
+            return PitDecision(
+                True,
+                next_compound,
+                reason=f"Regra obrigatória: volta limite para 2º composto ({state.lap_number}/{state.total_laps})",
+            )
 
         decision_age_laps = max(0, state.effective_tyre_age - self._offset_laps)
+        horizon_laps = self._stint_horizon_laps(state, next_compound)
         if state.free_tyre_change:
             if self._free_change_is_convenient(
-                state, decision_age_laps, next_compound
+                state, decision_age_laps, next_compound, horizon_laps
             ):
-                return PitDecision(True, next_compound)
+                return PitDecision(
+                    True,
+                    next_compound,
+                    reason=f"Bandeira vermelha: troca gratuita ({state.tyre.compound} com {decision_age_laps:.1f}v de uso)",
+                )
             return PitDecision(False)
 
         in_final_no_pit_window = (
@@ -809,18 +831,33 @@ class HeuristicPitStrategy:
             and self._compulsory_wear_target_laps is not None
             and decision_age_laps >= self._compulsory_wear_target_laps
         ):
-            return PitDecision(True, next_compound)
+            return PitDecision(
+                True,
+                next_compound,
+                reason=f"Estratégia: meta de {self._compulsory_wear_target_laps:.0f}v atingida ({state.tyre.compound} com {decision_age_laps:.1f}v de desgaste)",
+            )
 
         if state.neutralization in ("SC", "VSC") and self._is_opportunistic(
             state, decision_age_laps
         ):
-            return PitDecision(True, next_compound)
+            return PitDecision(
+                True,
+                next_compound,
+                reason=f"Oportunidade sob {state.neutralization}: box mais barato ({state.tyre.compound} a {decision_age_laps:.1f}v)",
+            )
 
-        if self._old_tyre_cost_ms(state, decision_age_laps) > (
-            self._normal_stop_cost_ms(state, decision_age_laps, next_compound)
+        if self._old_tyre_cost_ms(state, decision_age_laps, horizon_laps) > (
+            self._normal_stop_cost_ms(
+                state, decision_age_laps, next_compound, horizon_laps
+            )
             + self._heuristics.decision_margin_ms
         ):
-            return PitDecision(True, next_compound)
+            reason = (
+                f"Segurança: pneu {state.tyre.compound} no limite crítico ({decision_age_laps:.1f}v de desgaste)"
+                if in_final_no_pit_window
+                else f"Degradação: pneu {state.tyre.compound} atingiu {decision_age_laps:.1f}v de desgaste"
+            )
+            return PitDecision(True, next_compound, reason=reason)
         return PitDecision(False)
 
     def _next_compound(
@@ -862,15 +899,19 @@ class HeuristicPitStrategy:
             + degradation_ms * self._tyre_management_factor
         )
 
+    def _stint_horizon_laps(self, state: StrategyState, next_compound: str) -> int:
+        remaining = state.total_laps - state.lap_number
+        stint_limit = self._parameters.compound(next_compound).typical_stint_laps
+        return max(1, min(remaining, stint_limit))
+
     def _old_tyre_cost_ms(
-        self, state: StrategyState, decision_age_laps: float
+        self, state: StrategyState, decision_age_laps: float, horizon_laps: int
     ) -> float:
-        remaining_including_current = state.total_laps - state.lap_number + 1
         return sum(
             self._adjusted_tyre_penalty_ms(
                 state.tyre.compound, decision_age_laps + age_delta
             )
-            for age_delta in range(remaining_including_current)
+            for age_delta in range(horizon_laps + 1)
         )
 
     def _normal_stop_cost_ms(
@@ -878,6 +919,7 @@ class HeuristicPitStrategy:
         state: StrategyState,
         decision_age_laps: float,
         next_compound: str,
+        horizon_laps: int,
     ) -> float:
         """Some volta de entrada, perda de boxes e voltas do jogo novo."""
 
@@ -886,7 +928,7 @@ class HeuristicPitStrategy:
         )
         new_tyre_ms = sum(
             self._adjusted_tyre_penalty_ms(next_compound, age_laps)
-            for age_laps in range(state.total_laps - state.lap_number)
+            for age_laps in range(horizon_laps)
         )
         pit_loss_ms = self._track.pit_loss_ms * state.pit_loss_factor
         return current_lap_ms + new_tyre_ms + pit_loss_ms
@@ -896,15 +938,15 @@ class HeuristicPitStrategy:
         state: StrategyState,
         decision_age_laps: float,
         next_compound: str,
+        horizon_laps: int,
     ) -> bool:
         """Compare a troca de bandeira vermelha, efetiva antes da proxima volta."""
 
-        remaining_including_current = state.total_laps - state.lap_number + 1
         new_tyre_ms = sum(
             self._adjusted_tyre_penalty_ms(next_compound, age_laps)
-            for age_laps in range(remaining_including_current)
+            for age_laps in range(horizon_laps + 1)
         )
-        return self._old_tyre_cost_ms(state, decision_age_laps) > (
+        return self._old_tyre_cost_ms(state, decision_age_laps, horizon_laps) > (
             new_tyre_ms + self._heuristics.decision_margin_ms
         )
 
@@ -978,7 +1020,9 @@ class HeuristicPitStrategy:
         if end_kg - reserve_kg >= burn_kg * laps_after - _KG_TOLERANCE:
             tyres = self._decide_tyres(state)
             if tyres.pit:
-                return PitDecision(True, tyres.compound, refuel_kg=0.0)
+                return PitDecision(
+                    True, tyres.compound, refuel_kg=0.0, reason=tyres.reason
+                )
             return tyres
 
         # Vermelha (parada gratis) ou nao chegaria a proxima entrada dos boxes
@@ -986,7 +1030,12 @@ class HeuristicPitStrategy:
         if state.free_tyre_change or plan.must_pit(
             end_kg, state.lap_number, state.total_laps, margin_kg
         ):
-            return self._fuel_stop(state, fuel, needs_second)
+            reason = (
+                f"Bandeira vermelha: parada gratuita ({fuel.fuel_kg:.1f} kg no tanque)"
+                if state.free_tyre_change
+                else f"Combustível crítico: apenas {fuel.fuel_kg:.1f} kg restantes (risco de pane)"
+            )
+            return self._fuel_stop(state, fuel, needs_second, reason=reason)
 
         # Ultima volta em cujo fim ainda da para entrar nos boxes com a folga.
         latest = state.lap_number + 1 + floor(
@@ -994,7 +1043,12 @@ class HeuristicPitStrategy:
         )
         latest = min(latest, state.total_laps - 1)
         if latest <= state.lap_number:
-            return self._fuel_stop(state, fuel, needs_second)
+            return self._fuel_stop(
+                state,
+                fuel,
+                needs_second,
+                reason=f"Janela limite de combustível ({fuel.fuel_kg:.1f} kg restantes)",
+            )
         stop_now_ms = self._stop_scenario_cost_ms(
             state, fuel, state.lap_number, needs_second, state.pit_loss_factor
         )
@@ -1002,11 +1056,20 @@ class HeuristicPitStrategy:
             state, fuel, latest, needs_second, 1.0
         )
         if stop_now_ms + self._heuristics.decision_margin_ms < stop_late_ms:
-            return self._fuel_stop(state, fuel, needs_second)
+            return self._fuel_stop(
+                state,
+                fuel,
+                needs_second,
+                reason=f"Reabastecimento e parada planejada ({fuel.fuel_kg:.1f} kg no tanque)",
+            )
         return PitDecision(False)
 
     def _fuel_stop(
-        self, state: StrategyState, fuel: FuelStatus, needs_second: bool
+        self,
+        state: StrategyState,
+        fuel: FuelStatus,
+        needs_second: bool,
+        reason: str = "Reabastecimento e parada planejada",
     ) -> PitDecision:
         """Parada agora: composto e abastecimento do primeiro stint planejado."""
 
@@ -1017,7 +1080,7 @@ class HeuristicPitStrategy:
             state.tyre.compound,
             needs_second,
         )
-        return PitDecision(True, compound, refuel_kg=fill_kg)
+        return PitDecision(True, compound, refuel_kg=fill_kg, reason=reason)
 
     def _stop_scenario_cost_ms(
         self,

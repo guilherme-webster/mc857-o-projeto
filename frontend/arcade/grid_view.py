@@ -77,9 +77,9 @@ _TABLE_COLUMN_MARGIN = 40
 _TABLE_COLUMNS = (
     ("P", 30, "right"),
     ("PILOTO", 42, "left"),
-    ("EQUIPE", 230, "left"),
-    ("ARQUÉTIPO", 380, "left"),
-    *((spec.short, 540 + i * 60, "right") for i, spec in enumerate(ATTRIBUTES)),
+    ("EQUIPE", 215, "left"),
+    ("ARQUÉTIPO", 355, "left"),
+    *((spec.short, 490 + i * 48, "right") for i, spec in enumerate(ATTRIBUTES)),
 )
 # Rolagem vertical da caixa do piloto: altura de cada atributo e da linha
 # inicial em relacao ao topo da area rolavel, e passo de cada giro da roda.
