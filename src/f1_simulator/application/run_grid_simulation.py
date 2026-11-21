@@ -50,6 +50,7 @@ from f1_simulator.domain.weather import (
     ASSUMED_WEATHER_PARAMETERS,
     RainLevel,
     WeatherSegment,
+    WeatherState,
     expand_segments,
 )
 from f1_simulator.domain.wet_tyres import (
@@ -250,7 +251,20 @@ def _run_2d(
         if setup.weather
         else (RainLevel.DRY,) * setup.total_laps
     )
-    live_track = LiveTrackCondition(rain_by_lap)
+    if live_track is None:
+        initial_weather = (
+            WeatherState(
+                humidity_pct=track_states[0].humidity_pct,
+                surface_water=track_states[0].surface_water,
+            )
+            if track_states and rain_by_lap[0] != RainLevel.DRY
+            else WeatherState(50.0, 0.0)
+        )
+        live_track = LiveTrackCondition(
+            rain_by_lap,
+            initial_weather=initial_weather,
+            initial_track_temp_c=track_states[0].track_temp_c if track_states else None,
+        )
     entrants = [
         {
             "driver_id": entry.driver_id,
@@ -504,7 +518,19 @@ def run_grid_simulation(
         if setup.weather
         else (RainLevel.DRY,) * setup.total_laps
     )
-    live_track = LiveTrackCondition(rain_by_lap_outer)
+    initial_weather = (
+        WeatherState(
+            humidity_pct=track_states[0].humidity_pct,
+            surface_water=track_states[0].surface_water,
+        )
+        if track_states and rain_by_lap_outer[0] != RainLevel.DRY
+        else WeatherState(50.0, 0.0)
+    )
+    live_track = LiveTrackCondition(
+        rain_by_lap_outer,
+        initial_weather=initial_weather,
+        initial_track_temp_c=track_states[0].track_temp_c if track_states else None,
+    )
     car_physics_by_driver = _car_physics_by_driver(
         grid, car_presets, car_overrides_by_driver, attributes=attributes
     )

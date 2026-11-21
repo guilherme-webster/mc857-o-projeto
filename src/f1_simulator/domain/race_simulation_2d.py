@@ -583,7 +583,11 @@ def simulate_2d_race(
 
     def _water(lap_number: int) -> float:
         if live_track is not None:
-            return live_track.surface_water
+            live_water = live_track.surface_water
+            if track_states and 1 <= lap_number <= len(track_states):
+                forecast_water = track_states[lap_number - 1].surface_water
+                return max(live_water, forecast_water)
+            return live_water
         if not track_states:
             return 0.0
         index = min(max(1, lap_number) - 1, len(track_states) - 1)
