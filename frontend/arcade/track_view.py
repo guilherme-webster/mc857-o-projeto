@@ -34,6 +34,12 @@ CAR_RADIUS = 7
 _TRACK_LANE_MIN_PX = 14.0
 _TRACK_LANE_MAX_PX = 34.0
 # Balao de velocidade sobre o carro de um painel aberto.
+# Zoom da pista: faixa de 1x a 8x; cada giro da roda multiplica por _ZOOM_WHEEL,
+# cada tecla + ou - por _ZOOM_STEP.
+_ZOOM_MIN = 1.0
+_ZOOM_MAX = 8.0
+_ZOOM_WHEEL = 1.15
+_ZOOM_STEP = 1.25
 _BALLOON_BG = (20, 28, 38)
 _BALLOON_H = 20
 _BALLOON_RADIUS = 6
@@ -213,6 +219,29 @@ _PANEL_CASCADE = 24.0  # deslocamento entre paineis novos
 _PANEL_RIGHT_GAP = 10.0
 _PANEL_BOTTOM = 20.0
 _PANEL_STEP = 50.0
+
+
+def _clamp_axis(
+    pan: float,
+    center: float,
+    zoom: float,
+    low: float,
+    high: float,
+    area_low: float,
+    area_high: float,
+    margin: float = 0.0,
+) -> float:
+    """Limita o deslocamento de um eixo: a pista cobre a area, ou fica centrada se couber.
+
+    ``margin`` (px, ja com zoom) estende a pista para os dois lados: a faixa tem
+    largura, e as bordas dela tambem precisam poder ser trazidas para a tela.
+    """
+
+    new_low = center + (low - center) * zoom - margin
+    new_high = center + (high - center) * zoom + margin
+    if new_high - new_low >= area_high - area_low:
+        return min(max(pan, area_high - new_high), area_low - new_low)
+    return (area_low + area_high) / 2 - (new_low + new_high) / 2
 
 
 class _BreakdownPanel:
@@ -471,7 +500,7 @@ class TrackView(arcade.View):
         # vez por tamanho de janela, num ShapeElementList desenhado em batch.
         # Recalcular e re-triangular a faixa (centenas de vertices) a cada frame
         # travava a animacao; o batch resolve isso.
-        self._lane_cache_key: tuple[int, int, tuple] | None = None
+        self._lane_cache_key: tuple | None = None
         self._lane_shapes: arcade.shape_list.ShapeElementList | None = None
         self._lane_px = 1.0
         # Corridas sem o modelo de massa (salvas antes dele ou rodadas sem
@@ -502,6 +531,12 @@ class TrackView(arcade.View):
         # Posicao na tela de cada carro neste quadro, para o balao acompanhar.
         self._car_anchors: dict[str, tuple[float, float]] = {}
         self._balloon_texts: dict[str, arcade.Text] = {}
+        # Zoom e deslocamento da pista (so ela; classificacao e botoes ficam fixos).
+        # A caixa da pista sem zoom limita o arrasto; (0, 0, 0, 0) ate o primeiro quadro.
+        self._zoom = _ZOOM_MIN
+        self._pan = (0.0, 0.0)
+        self._base_bbox = (0.0, 0.0, 0.0, 0.0)
+        self._track_drag: tuple[float, float] | None = None
         self._direction = 1  # +1 para frente, -1 para tras
         self._paused = False
         # Decomposicao de velocidade: paineis flutuantes, um por piloto. A
@@ -549,7 +584,7 @@ class TrackView(arcade.View):
             "", 0, 0, PRIMARY_TEXT_COLOR, 15, bold=True, anchor_x="right"
         )
         self._help = arcade.Text(
-            "espaco pausa  |  <- -> inverte sentido  |  up/down velocidade  |  R reinicia",
+            "espaco pausa  |  <- -> inverte sentido  |  up/down velocidade  |  -/+ zoom  |  R reinicia",
             20,
             6,
             (130, 140, 150),
@@ -813,7 +848,8 @@ class TrackView(arcade.View):
         """Meia-largura da pista em pixels projetados."""
         lane_px = self._lane_scale_px(screen)
         total_px = self._space_2d.get("width_m", 12.0) * lane_px
-        visible_total = max(_TRACK_LANE_MIN_PX, min(_TRACK_LANE_MAX_PX, total_px))
+        lane_min, lane_max = self._lane_px_limits()
+        visible_total = max(lane_min, min(lane_max, total_px))
         return visible_total / 2.0
 
     def _build_pit_screen(
@@ -931,7 +967,104 @@ class TrackView(arcade.View):
             self._pit_screen = [
                 (off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._pit_unit
             ]
+        # Caixa sem zoom (limita o arrasto), depois o zoom e o deslocamento na pista
+        # e no pit lane. Carros e faixa usam esta mesma geometria, entao acompanham.
+        xs = [point[0] for point in screen]
+        ys = [point[1] for point in screen]
+        self._base_bbox = (min(xs), max(xs), min(ys), max(ys))
+        screen = self._apply_zoom(screen)
+        self._pit_screen = self._apply_zoom(self._pit_screen)
         return screen
+
+    # -- zoom e arrasto da pista ----------------------------------------------------
+
+    def _track_band(self) -> tuple[float, float]:
+        """(y minimo, y maximo) em px onde a pista pode aparecer.
+
+        A faixa comeca acima da barra de botoes e termina abaixo do cabecalho do
+        clima. Os avisos do topo descem 16 px por linha a partir de ``height - 64``
+        (ver ``on_draw``), entao com varios avisos a faixa encolhe para nao cobri-los.
+        """
+
+        height = self.window.height
+        top = height - MARGIN
+        notices = len(self._notice_texts)
+        if notices:
+            top = min(top, height - 64 - (notices - 1) * 16 - 8)
+        return float(MARGIN), top
+
+    def _zoom_center(self) -> tuple[float, float]:
+        """Centro da area da pista: o zoom por teclado cresce a partir dele."""
+
+        bottom, top = self._track_band()
+        return (self._standings_width + self.window.width) / 2, (bottom + top) / 2
+
+    def _apply_zoom(self, points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+        if self._zoom == _ZOOM_MIN and self._pan == (0.0, 0.0):
+            return points
+        cx, cy = self._zoom_center()
+        px, py = self._pan
+        zoom = self._zoom
+        return [
+            (cx + (x - cx) * zoom + px, cy + (y - cy) * zoom + py) for x, y in points
+        ]
+
+    def _clamp_pan(self, pan: tuple[float, float], zoom: float) -> tuple[float, float]:
+        cx, cy = self._zoom_center()
+        min_x, max_x, min_y, max_y = self._base_bbox
+        # Meia largura maxima da faixa, ja com zoom, mais uma folga para o carro.
+        margin = self._lane_px_limits()[1] / 2 + 8
+        band_bottom, band_top = self._track_band()
+        return (
+            _clamp_axis(
+                pan[0], cx, zoom, min_x, max_x,
+                self._standings_width, self.window.width, margin,
+            ),
+            _clamp_axis(
+                pan[1], cy, zoom, min_y, max_y, band_bottom, band_top, margin
+            ),
+        )
+
+    def _zoom_at(self, factor: float, anchor_x: float, anchor_y: float) -> None:
+        """Multiplica o zoom por ``factor`` mantendo sob o ponteiro o ponto da pista."""
+
+        new_zoom = min(_ZOOM_MAX, max(_ZOOM_MIN, self._zoom * factor))
+        if new_zoom == self._zoom:
+            return
+        cx, cy = self._zoom_center()
+        old = self._zoom
+        px, py = self._pan
+        # Ponto da pista (antes do zoom) que esta sob o ponteiro.
+        qx = cx + (anchor_x - cx - px) / old
+        qy = cy + (anchor_y - cy - py) / old
+        pan = (
+            anchor_x - cx - (qx - cx) * new_zoom,
+            anchor_y - cy - (qy - cy) * new_zoom,
+        )
+        self._zoom = new_zoom
+        self._pan = (0.0, 0.0) if new_zoom == _ZOOM_MIN else self._clamp_pan(pan, new_zoom)
+
+    def _lane_px_limits(self) -> tuple[float, float]:
+        """Largura minima e maxima da faixa em pixels, acompanhando o zoom."""
+
+        return _TRACK_LANE_MIN_PX * self._zoom, _TRACK_LANE_MAX_PX * self._zoom
+
+    def _clip_to_track_area(self, active: bool) -> None:
+        """Recorta a pista a sua area, para o zoom nao invadir a classificacao,
+        a barra de botoes nem os avisos do topo."""
+
+        if not active:
+            self.window.ctx.scissor = None
+            return
+        ratio = self.window.get_pixel_ratio()
+        left = self._standings_width
+        bottom, top = self._track_band()
+        self.window.ctx.scissor = (
+            int(left * ratio),
+            int(bottom * ratio),
+            int((self.window.width - left) * ratio),
+            int(max(0.0, top - bottom) * ratio),
+        )
 
     def _current_lap(self) -> int:
         return self._playback.current_lap(self._elapsed)
@@ -990,6 +1123,9 @@ class TrackView(arcade.View):
             return
         if self._show_breakdown and self._press_breakdown(x, y):
             return
+        # Clique na area da pista com zoom aplicado inicia o arrasto.
+        if self._zoom > _ZOOM_MIN and x > self._standings_width:
+            self._track_drag = (x, y)
 
     def _press_breakdown(self, x: float, y: float) -> bool:
         """Trate o clique nos paineis e na tabela; devolve se consumiu o clique.
@@ -1044,6 +1180,9 @@ class TrackView(arcade.View):
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
         panel = self._dragging_panel
         if panel is None:
+            if self._track_drag is not None and self._zoom > _ZOOM_MIN:
+                px, py = self._pan
+                self._pan = self._clamp_pan((px + dx, py + dy), self._zoom)
             return
         ox, oy = self._drag_offset
         # Mantem o painel dentro da janela, pela faixa de titulo.
@@ -1052,8 +1191,15 @@ class TrackView(arcade.View):
 
     def on_mouse_release(self, x, y, button, modifiers) -> None:
         self._dragging_panel = None
+        self._track_drag = None
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if symbol in (arcade.key.EQUAL, arcade.key.NUM_ADD):
+            self._zoom_at(_ZOOM_STEP, *self._zoom_center())
+            return
+        if symbol in (arcade.key.MINUS, arcade.key.NUM_SUBTRACT):
+            self._zoom_at(1 / _ZOOM_STEP, *self._zoom_center())
+            return
         if symbol == arcade.key.SPACE:
             self._paused = not self._paused
         elif symbol == arcade.key.LEFT:
@@ -1223,7 +1369,15 @@ class TrackView(arcade.View):
         cache nao muda, o batch ja na GPU e reaproveitado.
         """
 
-        key = (self.window.width, self.window.height, tuple(track_color))
+        # Zoom e deslocamento mudam a geometria da faixa; sem eles na chave, a pista
+        # e a escala dos carros (_lane_px) ficariam presas no tamanho do primeiro quadro.
+        key = (
+            self.window.width,
+            self.window.height,
+            tuple(track_color),
+            self._zoom,
+            self._pan,
+        )
         if self._lane_cache_key == key and self._lane_shapes is not None:
             return
         lane_px = self._lane_scale_px(screen)
@@ -1292,7 +1446,8 @@ class TrackView(arcade.View):
         nx, ny = -dy / length, dx / length
         if self._is_2d:
             lane_width = self._space_2d.get("width_m", 12.0) * self._lane_px
-            visible = max(_TRACK_LANE_MIN_PX, min(_TRACK_LANE_MAX_PX, lane_width))
+            lane_min, lane_max = self._lane_px_limits()
+            visible = max(lane_min, min(lane_max, lane_width))
             half = visible / 2.0 + 2.0
         else:
             half = 8.0
@@ -1424,6 +1579,7 @@ class TrackView(arcade.View):
             if status
             else TRACK_EDGE_COLOR
         )
+        self._clip_to_track_area(True)
         if self._is_2d:
             if self._pit_screen:
                 arcade.draw_line_strip(
@@ -1442,6 +1598,7 @@ class TrackView(arcade.View):
             arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
             self._draw_start_finish_line(screen)
             self._draw_cars(screen)
+        self._clip_to_track_area(False)
 
         rain = self._current_rain()
         label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
@@ -1814,6 +1971,9 @@ class TrackView(arcade.View):
         """Roda sobre a classificacao rola uma posicao por passo."""
 
         if x > self._standings_width:
+            # Roda sobre a pista aplica zoom no ponto sob o ponteiro.
+            if scroll_y:
+                self._zoom_at(_ZOOM_WHEEL ** scroll_y, x, y)
             return
         total = len(self._playback.standings(self._elapsed))
         visible = self._standings_visible(self.window.height - 96, 20)
