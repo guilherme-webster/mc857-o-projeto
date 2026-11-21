@@ -53,6 +53,8 @@ class DriverAttributesResponse(BaseModel):
     aggression: float
     composure: float
     sources: dict[str, Literal["generated", "preset", "manual"]]
+    v_max_kmh: float | None = None
+    a_max_ms2: float | None = None
 
 
 class DriverProfileResponse(BaseModel):
@@ -86,6 +88,8 @@ class AttributeOverride(BaseModel):
     tyre_management_factor: float | None = Field(default=None, gt=0)
     aggression: float | None = Field(default=None, gt=0)
     composure: float | None = Field(default=None, gt=0)
+    v_max_kmh: float | None = Field(default=None, gt=0)
+    a_max_ms2: float | None = Field(default=None, gt=0)
 
 
 class EditGridAttributesRequest(BaseModel):

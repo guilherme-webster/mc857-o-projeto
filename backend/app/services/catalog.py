@@ -371,6 +371,8 @@ def edit_current_grid(*, overrides=None, order=None, add=None, remove=None):
                 ("tyre_management_factor", item.tyre_management_factor),
                 ("aggression", item.aggression),
                 ("composure", item.composure),
+                ("v_max_kmh", item.v_max_kmh),
+                ("a_max_ms2", item.a_max_ms2),
             )
             if value is not None
         }
@@ -634,6 +636,8 @@ def _serialize_grid(pairs, attributes, seed) -> dict:
                     ].tyre_management_factor,
                     "aggression": attributes[entry.driver_id].aggression,
                     "composure": attributes[entry.driver_id].composure,
+                    "v_max_kmh": getattr(attributes[entry.driver_id], "v_max_kmh", 338.0) or 338.0,
+                    "a_max_ms2": getattr(attributes[entry.driver_id], "a_max_ms2", 14.1) or 14.1,
                     "sources": dict(attributes[entry.driver_id].sources),
                 },
             }
@@ -671,6 +675,8 @@ def _deserialize_grid(state: dict):
                     "POST /catalog/grid"
                 ),
             )
+        v_max = float(attribute["v_max_kmh"]) if attribute.get("v_max_kmh") is not None else 338.0
+        a_max = float(attribute["a_max_ms2"]) if attribute.get("a_max_ms2") is not None else 14.1
         attributes[row["driver_id"]] = DriverAttributes(
             driver_id=row["driver_id"],
             archetype=attribute["archetype"],
@@ -680,6 +686,8 @@ def _deserialize_grid(state: dict):
             aggression=attribute["aggression"],
             composure=attribute["composure"],
             sources=attribute["sources"],
+            v_max_kmh=v_max,
+            a_max_ms2=a_max,
         )
     return tuple(pairs), attributes, state["seed"]
 
