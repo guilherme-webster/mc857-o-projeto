@@ -9,6 +9,7 @@ from threading import Thread
 import arcade
 
 from frontend.arcade.button_text import fit_button_text
+from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
 from frontend.arcade.drawing import draw_rounded_panel
 from frontend.arcade.race_control_feed import RaceControlFeed
 from frontend.arcade.race_playback import RacePlayback, track_condition_label
@@ -25,9 +26,19 @@ from frontend.arcade.track_client import (
     save_race,
 )
 
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 800
+SCREEN_WIDTH = 1280
+SCREEN_HEIGHT = 720
+# Canvas de projeto da tela de corrida. Toda a geometria, os layouts e os
+# pontos de clique estao nestas unidades; a janela recebe o canvas por
+# CanvasFit (escala uniforme e centralizada), entao as proporcoes nao dependem
+# do tamanho da janela nem da escala de exibicao do Windows.
+DESIGN_WIDTH = 1280
+DESIGN_HEIGHT = 720
 MARGIN = 80
+# Folga vertical extra entre a pista e a faixa de recorte. A faixa desenhada se
+# estende alem da linha central (ate _TRACK_LANE_MAX_PX / 2 a 1x); sem essa folga
+# as bordas das extremidades ficavam fora da area visivel e eram cortadas.
+_TRACK_FIT_PAD = 40.0
 CAR_RADIUS = 7
 # Largura visivel da faixa 2D (px), quando a corrida traz trajetoria espacial.
 # E so apresentacao: a largura fisica real vem de ``track_space_2d.width_m``.
@@ -496,8 +507,8 @@ class TrackView(arcade.View):
         self._space_2d = race.get("track_space_2d") or {}
         self._is_2d = bool(self._trajectories and self._space_2d)
         self._normals = []
-        # Cache da faixa 2D: a geometria (bordas + asfalto) vai para a GPU uma
-        # vez por tamanho de janela, num ShapeElementList desenhado em batch.
+        # Cache da faixa 2D: a geometria (bordas + asfalto), em unidades de design,
+        # vai para a GPU uma vez por zoom, arrasto e cor, num ShapeElementList em batch.
         # Recalcular e re-triangular a faixa (centenas de vertices) a cada frame
         # travava a animacao; o batch resolve isso.
         self._lane_cache_key: tuple | None = None
@@ -531,6 +542,9 @@ class TrackView(arcade.View):
         # Posicao na tela de cada carro neste quadro, para o balao acompanhar.
         self._car_anchors: dict[str, tuple[float, float]] = {}
         self._balloon_texts: dict[str, arcade.Text] = {}
+        # Tamanho de design de cada texto (fonte em unidades do canvas). A fonte
+        # real do texto e esse valor vezes a escala da janela, aplicada em _draw_label.
+        self._label_sizes: dict[arcade.Text, float] = {}
         # Zoom e deslocamento da pista (so ela; classificacao e botoes ficam fixos).
         # A caixa da pista sem zoom limita o arrasto; (0, 0, 0, 0) ate o primeiro quadro.
         self._zoom = _ZOOM_MIN
@@ -726,6 +740,72 @@ class TrackView(arcade.View):
         super().on_show_view()
         arcade.set_background_color(BACKGROUND_COLOR)
 
+    def _canvas_fit(self) -> CanvasFit:
+        """Mapeamento atual entre o canvas de design e a janela.
+
+        Recalculado a cada chamada, e so aritmetica: assim um redimensionamento
+        nunca deixa uma escala antiga para o proximo evento de mouse.
+        """
+
+        return CanvasFit.fit((DESIGN_WIDTH, DESIGN_HEIGHT), self.window.get_size())
+
+    def _canvas_camera(self) -> arcade.Camera2D:
+        """Camera que desenha formas em unidades de design, escaladas e centralizadas."""
+
+        return make_canvas_camera(self._canvas_fit(), self.window)
+
+    def _logical_pointer(self, x: float, y: float) -> tuple[float, float]:
+        """Converte o ponteiro (unidades da janela) para unidades de design."""
+
+        return self._canvas_fit().to_logical(x, y)
+
+    def _apply_label_size(self, text: arcade.Text, size: float | None = None) -> None:
+        """Aplica ao texto o tamanho de design, convertido para a escala da janela.
+
+        ``size`` redefine o tamanho de design (ajustes de largura e botoes). Sem
+        ele, vale o ultimo tamanho registrado. Um texto novo usa o tamanho da sua
+        criacao, que ainda esta em unidades de design porque nunca foi desenhado.
+        A fonte so e trocada quando muda, pois cada troca refaz o layout do texto.
+        """
+
+        if size is not None:
+            self._label_sizes[text] = size
+        design = self._label_sizes.setdefault(text, text.font_size)
+        target = design * self._canvas_fit().scale
+        if abs(text.font_size - target) > 1e-6:
+            text.font_size = target
+
+    def _label_width(self, text: arcade.Text) -> float:
+        """Largura do texto em unidades de design, medida na escala da janela.
+
+        Medir na escala em que o texto e desenhado evita divergir do que aparece
+        na tela. Dividir pela escala devolve o valor ao espaco de design do layout.
+        """
+
+        self._apply_label_size(text)
+        return text.content_width / self._canvas_fit().scale
+
+    def _draw_label(
+        self,
+        text: arcade.Text,
+        x: float,
+        y: float,
+        *,
+        base_size: float | None = None,
+    ) -> None:
+        """Desenha ``text`` em (x, y) de design, rasterizado na escala da janela.
+
+        Um texto desenhado pela camera escalada sairia borrado, entao a posicao
+        e o tamanho viram unidades da janela e o desenho usa a camera padrao. Ao
+        sair dela, a camera de design e restaurada. As ancoragens do texto
+        (anchor_x/anchor_y) continuam valendo.
+        """
+
+        self._apply_label_size(text, base_size)
+        text.x, text.y = self._canvas_fit().to_window(x, y)
+        with self.window.default_camera.activate():
+            text.draw()
+
     def _bar_rect(self, key: str) -> tuple[int, int, int, int]:
         """(left, bottom, width, height) do botao ``key`` na barra inferior.
 
@@ -735,7 +815,7 @@ class TrackView(arcade.View):
         demais nao mudem de lugar ao trocar de etapa.
         """
 
-        left = self.window.width - _BAR_RIGHT_MARGIN
+        left = DESIGN_WIDTH - _BAR_RIGHT_MARGIN
         for name in reversed(_BAR_ORDER):
             width = self._bar_width(name)
             left -= width
@@ -942,18 +1022,24 @@ class TrackView(arcade.View):
     def _projected(self) -> list[tuple[float, float]]:
         """Projete a geometria normalizada no tamanho atual da janela."""
 
-        width, height = self.window.width, self.window.height
-        area_left = self._standings_width
-        usable_w = max(1.0, width - area_left - MARGIN)
-        usable_h = max(1.0, height - 2 * MARGIN)
+        # Caixa horizontal da pista: comeca a uma folga da classificacao (sem ela, as
+        # bordas da faixa na extremidade esquerda sao cortadas pelo recorte) e termina
+        # na margem direita.
+        box_left = self._standings_width + _TRACK_FIT_PAD
+        box_right = DESIGN_WIDTH - MARGIN
+        usable_w = max(1.0, box_right - box_left)
+        # A pista cabe na faixa de recorte (_track_band), que encolhe quando ha
+        # avisos no topo. Assim nada que for desenhado fica fora da area visivel.
+        band_bottom, band_top = self._track_band()
+        usable_h = max(1.0, band_top - band_bottom - 2 * _TRACK_FIT_PAD)
         if usable_w / usable_h > self._aspect:
             draw_h = usable_h
             draw_w = draw_h * self._aspect
         else:
             draw_w = usable_w
             draw_h = draw_w / self._aspect
-        off_x = area_left + (width - area_left - MARGIN - draw_w) / 2
-        off_y = (height - draw_h) / 2
+        off_x = box_left + (usable_w - draw_w) / 2
+        off_y = band_bottom + _TRACK_FIT_PAD + (usable_h - draw_h) / 2
         screen = [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._unit]
         if self._is_2d:
             # A geometria normalizada tem eixos escalados de modo independente.
@@ -986,7 +1072,7 @@ class TrackView(arcade.View):
         (ver ``on_draw``), entao com varios avisos a faixa encolhe para nao cobri-los.
         """
 
-        height = self.window.height
+        height = DESIGN_HEIGHT
         top = height - MARGIN
         notices = len(self._notice_texts)
         if notices:
@@ -997,7 +1083,7 @@ class TrackView(arcade.View):
         """Centro da area da pista: o zoom por teclado cresce a partir dele."""
 
         bottom, top = self._track_band()
-        return (self._standings_width + self.window.width) / 2, (bottom + top) / 2
+        return (self._standings_width + DESIGN_WIDTH) / 2, (bottom + top) / 2
 
     def _apply_zoom(self, points: list[tuple[float, float]]) -> list[tuple[float, float]]:
         if self._zoom == _ZOOM_MIN and self._pan == (0.0, 0.0):
@@ -1018,7 +1104,7 @@ class TrackView(arcade.View):
         return (
             _clamp_axis(
                 pan[0], cx, zoom, min_x, max_x,
-                self._standings_width, self.window.width, margin,
+                self._standings_width, DESIGN_WIDTH, margin,
             ),
             _clamp_axis(
                 pan[1], cy, zoom, min_y, max_y, band_bottom, band_top, margin
@@ -1056,15 +1142,18 @@ class TrackView(arcade.View):
         if not active:
             self.window.ctx.scissor = None
             return
+        # A tesoura e em pixels do framebuffer. O retangulo de design vira unidades
+        # da janela (fit.to_window) e depois pixels (fator do monitor).
+        fit = self._canvas_fit()
         ratio = self.window.get_pixel_ratio()
-        left = self._standings_width
         bottom, top = self._track_band()
-        self.window.ctx.scissor = (
-            int(left * ratio),
-            int(bottom * ratio),
-            int((self.window.width - left) * ratio),
-            int(max(0.0, top - bottom) * ratio),
-        )
+        left_win, bottom_win = fit.to_window(self._standings_width, bottom)
+        right_win, top_win = fit.to_window(DESIGN_WIDTH, top)
+        x0 = max(0, int(left_win * ratio))
+        y0 = max(0, int(bottom_win * ratio))
+        x1 = max(0, int(right_win * ratio))
+        y1 = max(0, int(top_win * ratio))
+        self.window.ctx.scissor = (x0, y0, max(0, x1 - x0), max(0, y1 - y0))
 
     def _current_lap(self) -> int:
         return self._playback.current_lap(self._elapsed)
@@ -1089,6 +1178,7 @@ class TrackView(arcade.View):
         return left <= x <= left + width and bottom <= y <= bottom + height
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
+        x, y = self._logical_pointer(x, y)
         self._switch_hover = self._saveable and self._in_rect(x, y, self._switch_rect())
         self._end_hover = self._in_rect(x, y, self._end_rect())
         self._results_hover = self._in_rect(x, y, self._results_rect())
@@ -1101,6 +1191,7 @@ class TrackView(arcade.View):
         self._prev_hover = self._has_previous() and self._in_rect(x, y, self._prev_rect())
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        x, y = self._logical_pointer(x, y)
         if self._has_previous() and self._in_rect(x, y, self._prev_rect()):
             self._open_previous()
             return
@@ -1166,8 +1257,8 @@ class TrackView(arcade.View):
                 self._breakdown_panels.remove(panel)
                 return
         # Cascata a partir do canto inferior direito, sempre dentro da janela.
-        max_x = max(0.0, self.window.width - _PANEL_W)
-        max_y = max(0.0, self.window.height - _PANEL_H)
+        max_x = max(0.0, DESIGN_WIDTH - _PANEL_W)
+        max_y = max(0.0, DESIGN_HEIGHT - _PANEL_H)
         # Coluna esquerda, onde ficam a classificacao e as mensagens: o primeiro
         # painel nasce embaixo e os seguintes sobem a cada abertura, sem sair da
         # janela. Cobrir a classificacao e a pista de fundo e aceito.
@@ -1178,6 +1269,10 @@ class TrackView(arcade.View):
         self._breakdown_panels.append(_BreakdownPanel(driver_id, x, y))
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
+        x, y = self._logical_pointer(x, y)
+        # dx e dy chegam em unidades da janela; o arrasto da pista usa design.
+        scale = self._canvas_fit().scale
+        dx, dy = dx / scale, dy / scale
         panel = self._dragging_panel
         if panel is None:
             if self._track_drag is not None and self._zoom > _ZOOM_MIN:
@@ -1185,9 +1280,9 @@ class TrackView(arcade.View):
                 self._pan = self._clamp_pan((px + dx, py + dy), self._zoom)
             return
         ox, oy = self._drag_offset
-        # Mantem o painel dentro da janela, pela faixa de titulo.
-        panel.x = max(0.0, min(x - ox, self.window.width - _PANEL_W))
-        panel.y = max(0.0, min(y - oy, self.window.height - _PANEL_H))
+        # Mantem o painel dentro do canvas, pela faixa de titulo.
+        panel.x = max(0.0, min(x - ox, DESIGN_WIDTH - _PANEL_W))
+        panel.y = max(0.0, min(y - oy, DESIGN_HEIGHT - _PANEL_H))
 
     def on_mouse_release(self, x, y, button, modifiers) -> None:
         self._dragging_panel = None
@@ -1364,16 +1459,17 @@ class TrackView(arcade.View):
     def _ensure_lane_geometry(self, screen, track_color) -> None:
         """Monte a faixa num ShapeElementList, recriando so quando preciso.
 
-        A faixa (asfalto como triangle strip + duas bordas) so muda quando a
-        janela redimensiona ou a cor da bandeira troca. Enquanto a chave de
-        cache nao muda, o batch ja na GPU e reaproveitado.
+        A faixa (asfalto como triangle strip + duas bordas) so muda com zoom,
+        arrasto ou cor da bandeira. Ela e montada em unidades de design, entao o
+        redimensionamento da janela nao a invalida. Enquanto a chave de cache nao
+        muda, o batch ja na GPU e reaproveitado.
         """
 
         # Zoom e deslocamento mudam a geometria da faixa; sem eles na chave, a pista
         # e a escala dos carros (_lane_px) ficariam presas no tamanho do primeiro quadro.
         key = (
-            self.window.width,
-            self.window.height,
+            DESIGN_WIDTH,
+            DESIGN_HEIGHT,
             tuple(track_color),
             self._zoom,
             self._pan,
@@ -1540,14 +1636,14 @@ class TrackView(arcade.View):
 
         if not self._show_breakdown:
             return
-        width = self.window.width
+        width = DESIGN_WIDTH
         for panel in self._breakdown_panels:
             anchor = self._car_anchors.get(panel.driver_id)
             if anchor is None:
                 continue
             x, y = anchor
             text = self._balloon_text(panel.driver_id)
-            box_w = text.content_width + 14
+            box_w = self._label_width(text) + 14
             # O balao fica sempre dentro da janela; a ponta continua no carro.
             left = min(max(x - box_w / 2, 4.0), width - box_w - 4.0)
             bottom = y + 16
@@ -1559,95 +1655,105 @@ class TrackView(arcade.View):
             draw_rounded_panel(
                 left, bottom, box_w, _BALLOON_H, _BALLOON_RADIUS, _BALLOON_BG, color
             )
-            text.x = left + 7
-            text.y = bottom + _BALLOON_H / 2
-            text.draw()
+            self._draw_label(text, left + 7, bottom + _BALLOON_H / 2)
 
     def on_draw(self) -> None:
+        """Desenha o quadro no canvas de design.
+
+        Formas e pista ficam na camera de design, que escala tudo uniformemente.
+        Textos passam por _draw_label, que os desenha na camera padrao, para
+        continuarem nitidos.
+        """
+
         self.clear()
         self._car_anchors = {}
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         screen = self._projected()
 
-        self._title.text = self._circuit
-        self._title.y = height - 40
-        self._title.draw()
+        with self._canvas_camera().activate():
+            self._title.text = self._circuit
+            self._draw_label(self._title, 20, height - 40)
 
-        status = self._feed.status_on_lap(self._current_lap())
-        track_color = (
-            _TRACK_TINT.get(status.status, TRACK_EDGE_COLOR)
-            if status
-            else TRACK_EDGE_COLOR
-        )
-        self._clip_to_track_area(True)
-        if self._is_2d:
-            if self._pit_screen:
-                arcade.draw_line_strip(
-                    self._pit_screen, (190, 146, 52), max(5.0, 4.0 * self._lane_px)
+            status = self._feed.status_on_lap(self._current_lap())
+            track_color = (
+                _TRACK_TINT.get(status.status, TRACK_EDGE_COLOR)
+                if status
+                else TRACK_EDGE_COLOR
+            )
+            self._clip_to_track_area(True)
+            if self._is_2d:
+                self._draw_track_2d(screen, track_color)
+                # A pit lane corre ao lado da pista: desenhada depois da faixa, ela
+                # nao e coberta pelo asfalto onde os dois se aproximam.
+                if self._pit_screen:
+                    arcade.draw_line_strip(
+                        self._pit_screen, (190, 146, 52), max(5.0, 4.0 * self._lane_px)
+                    )
+                    arcade.draw_line_strip(
+                        self._pit_screen, (64, 68, 74), max(3.0, 3.0 * self._lane_px)
+                    )
+                    if self._pit_service_m is not None:
+                        sx, sy, _, _ = self._pit_pos_at(self._pit_service_m)
+                        arcade.draw_circle_filled(sx, sy, 3, (245, 197, 66))
+                self._draw_start_finish_line(screen)
+                self._draw_cars_2d(screen)
+            else:
+                arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
+                self._draw_start_finish_line(screen)
+                self._draw_cars(screen)
+            self._clip_to_track_area(False)
+
+            rain = self._current_rain()
+            label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
+            condition = track_condition_label(
+                self._race, self._current_lap(), self._elapsed
+            )
+            self._weather_text.text = f"{label} · {condition}" if condition else label
+            self._weather_text.color = color
+            self._draw_label(self._weather_text, width - 20, height - 40)
+            for i, notice in enumerate(self._notice_texts):
+                self._draw_label(notice, width - 20, height - 64 - i * 16)
+
+            if self._paused:
+                state = "PAUSADO"
+            else:
+                state = "<< voltando" if self._direction < 0 else "rodando"
+            self._hud.text = (
+                f"volta {self._current_lap()}/{self._total_laps}   "
+                f"{self._speed:g}x   {state}"
+            )
+            self._draw_label(self._hud, 20, 24)
+            self._draw_label(self._help, 20, 6)
+            self._draw_balloons()
+            self._draw_standings(height)
+            if self._show_breakdown:
+                for panel in self._breakdown_panels:
+                    self._draw_breakdown_panel(panel)
+            self._draw_race_control(status, width, height)
+            if self._saveable:
+                self._draw_button(
+                    self._switch_rect(), self._switch_text, self._switch_hover
                 )
-                arcade.draw_line_strip(
-                    self._pit_screen, (64, 68, 74), max(3.0, 3.0 * self._lane_px)
-                )
-                if self._pit_service_m is not None:
-                    sx, sy, _, _ = self._pit_pos_at(self._pit_service_m)
-                    arcade.draw_circle_filled(sx, sy, 3, (245, 197, 66))
-            self._draw_track_2d(screen, track_color)
-            self._draw_start_finish_line(screen)
-            self._draw_cars_2d(screen)
-        else:
-            arcade.draw_line_strip([*screen, screen[0]], track_color, 2)
-            self._draw_start_finish_line(screen)
-            self._draw_cars(screen)
-        self._clip_to_track_area(False)
-
-        rain = self._current_rain()
-        label, color = _RAIN_LABEL.get(rain, (rain, PRIMARY_TEXT_COLOR))
-        condition = track_condition_label(
-            self._race, self._current_lap(), self._elapsed
-        )
-        self._weather_text.text = f"{label} · {condition}" if condition else label
-        self._weather_text.color = color
-        self._weather_text.x = width - 20
-        self._weather_text.y = height - 40
-        self._weather_text.draw()
-        for i, notice in enumerate(self._notice_texts):
-            notice.x = width - 20
-            notice.y = height - 64 - i * 16
-            notice.draw()
-
-        if self._paused:
-            state = "PAUSADO"
-        else:
-            state = "<< voltando" if self._direction < 0 else "rodando"
-        self._hud.text = (
-            f"volta {self._current_lap()}/{self._total_laps}   "
-            f"{self._speed:g}x   {state}"
-        )
-        self._hud.draw()
-        self._help.draw()
-        self._draw_balloons()
-        self._draw_standings(height)
-        if self._show_breakdown:
-            for panel in self._breakdown_panels:
-                self._draw_breakdown_panel(panel)
-        self._draw_race_control(status, width, height)
-        if self._saveable:
-            self._draw_button(self._switch_rect(), self._switch_text, self._switch_hover)
-            if self._save_message.text:
-                left, bottom, width, height = self._switch_rect()
-                self._save_message.x = left + width
-                self._save_message.y = bottom + height + 6
-                self._save_message.draw()
-        if self._has_previous():
-            self._draw_button(self._prev_rect(), self._prev_text, self._prev_hover)
-        if self._next_text is not None:
-            self._draw_button(self._next_rect(), self._next_text, self._next_hover)
-        elif self._list_view is not None:
-            self._draw_button(self._next_rect(), self._back_text, self._back_hover)
-        self._draw_button(self._end_rect(), self._end_text, self._end_hover)
-        self._draw_button(
-            self._results_rect(), self._results_text, self._results_hover, primary=True
-        )
+                if self._save_message.text:
+                    save_left, save_bottom, save_w, save_h = self._switch_rect()
+                    self._draw_label(
+                        self._save_message,
+                        save_left + save_w,
+                        save_bottom + save_h + 6,
+                    )
+            if self._has_previous():
+                self._draw_button(self._prev_rect(), self._prev_text, self._prev_hover)
+            if self._next_text is not None:
+                self._draw_button(self._next_rect(), self._next_text, self._next_hover)
+            elif self._list_view is not None:
+                self._draw_button(self._next_rect(), self._back_text, self._back_hover)
+            self._draw_button(self._end_rect(), self._end_text, self._end_hover)
+            self._draw_button(
+                self._results_rect(),
+                self._results_text,
+                self._results_hover,
+                primary=True,
+            )
 
     def _draw_button(self, rect, text, hover, primary: bool = False) -> None:
         left, bottom, width, height = rect
@@ -1656,10 +1762,12 @@ class TrackView(arcade.View):
         else:
             color = _ROW_HOVER if hover else _SWITCH_BG
         arcade.draw_lbwh_rectangle_filled(left, bottom, width, height, color)
+        # Ajuste em unidades de design (minimo e tamanho base sao do canvas). O
+        # tamanho resultante vai para _draw_label como o tamanho de design do rotulo.
         fit_button_text(text, width - 16, 13)
-        text.x = left + width / 2
-        text.y = bottom + height / 2
-        text.draw()
+        self._draw_label(
+            text, left + width / 2, bottom + height / 2, base_size=text.font_size
+        )
 
     #: Ordem fixa dos fatores no painel: cada um ocupa sempre o mesmo slot, para
     #: a leitura em tempo real nao "dancar" quando um valor muda.
@@ -1723,21 +1831,19 @@ class TrackView(arcade.View):
         arcade.draw_lbwh_rectangle_filled(tl, tb, tw, th, _PANEL_BORDER)
         cl, cb, cw, ch = self._panel_close_rect(panel)
         arcade.draw_lbwh_rectangle_outline(cl, cb, cw, ch, PRIMARY_TEXT_COLOR, 1)
-        self._breakdown_close_x.x = cl + cw / 2
-        self._breakdown_close_x.y = cb + ch / 2
-        self._breakdown_close_x.draw()
+        self._draw_label(self._breakdown_close_x, cl + cw / 2, cb + ch / 2)
 
         breakdown = self._playback.speed_breakdown_at(did, self._elapsed)
         title = self._breakdown_title
-        title.x = panel.x + 8
-        title.y = tb + th / 2
+        title_x = panel.x + 8
+        title_y = tb + th / 2
         # O titulo termina antes do botao de fechar (com uma folga).
-        avail = cl - 6 - title.x
+        avail = cl - 6 - title_x
         if breakdown is None or breakdown.speed_kmh < 1.0:
             self._fit_breakdown_title(
                 title, name[:20], avail, lambda n: f"{n} · parado"
             )
-            title.draw()
+            self._draw_label(title, title_x, title_y)
             return
         pct = breakdown.effective * 100.0
         self._fit_breakdown_title(
@@ -1746,7 +1852,7 @@ class TrackView(arcade.View):
             avail,
             lambda n: f"{n}  {breakdown.speed_kmh:.0f} km/h · {pct:.0f}%",
         )
-        title.draw()
+        self._draw_label(title, title_x, title_y)
 
         bar_w = _PANEL_W - 16
         bar_h = 16.0
@@ -1772,14 +1878,10 @@ class TrackView(arcade.View):
             y = gives_y - 16 - rown * row_h
             label.text = _BREAKDOWN_LABELS[key]
             label.color = color
-            label.x = x0
-            label.y = y
-            label.draw()
+            self._draw_label(label, x0, y)
             value.text = f"{-fraction * 100:+.1f}%"
             value.color = color
-            value.x = x0 + col_w - 10
-            value.y = y
-            value.draw()
+            self._draw_label(value, x0 + col_w - 10, y)
 
         # Linhas ocupadas pela legenda em duas colunas (a ultima pode ter um so).
         legend_rows = (len(self._BREAKDOWN_ORDER) + 1) // 2
@@ -1787,24 +1889,24 @@ class TrackView(arcade.View):
             panel, did, left, gives_y - 16 - legend_rows * row_h, breakdown=breakdown
         )
 
-    @staticmethod
-    def _fit_breakdown_title(title, name: str, avail: float, build) -> None:
-        """Escreve o titulo do painel dentro de ``avail`` px.
+    def _fit_breakdown_title(self, title, name: str, avail: float, build) -> None:
+        """Escreve o titulo do painel dentro de ``avail`` unidades de design.
 
         Primeiro reduz a fonte (ate 8 pt). Se ainda nao couber, encurta o nome
         com reticencias. Medimos a largura real, porque a fonte varia entre
         maquinas.
         """
 
-        title.font_size = _BREAKDOWN_TITLE_PT
+        self._apply_label_size(title, _BREAKDOWN_TITLE_PT)
         title.text = build(name)
-        if title.content_width > avail:
-            title.font_size = max(
-                _BREAKDOWN_TITLE_MIN_PT,
-                _BREAKDOWN_TITLE_PT * avail / title.content_width,
+        width = self._label_width(title)
+        if width > avail:
+            self._apply_label_size(
+                title,
+                max(_BREAKDOWN_TITLE_MIN_PT, _BREAKDOWN_TITLE_PT * avail / width),
             )
         size = len(name)
-        while title.content_width > avail and size > 1:
+        while self._label_width(title) > avail and size > 1:
             size -= 1
             title.text = build(name[:size] + "…")
 
@@ -1856,9 +1958,7 @@ class TrackView(arcade.View):
         if len(self._breakdown_section_headers) > 0:
             h1 = self._breakdown_section_headers[0]
             h1.text = "ATRIBUTOS DO PILOTO"
-            h1.x = left
-            h1.y = cur_y
-            h1.draw()
+            self._draw_label(h1, left, cur_y)
 
         text_idx = 0
         cur_y -= 12
@@ -1866,13 +1966,9 @@ class TrackView(arcade.View):
             if text_idx < len(self._breakdown_context):
                 label, value = self._breakdown_context[text_idx]
                 label.text = lbl
-                label.x = left
-                label.y = cur_y
-                label.draw()
+                self._draw_label(label, left, cur_y)
                 value.text = val
-                value.x = right
-                value.y = cur_y
-                value.draw()
+                self._draw_label(value, right, cur_y)
                 text_idx += 1
             cur_y -= 13
 
@@ -1883,22 +1979,16 @@ class TrackView(arcade.View):
         if len(self._breakdown_section_headers) > 1:
             h2 = self._breakdown_section_headers[1]
             h2.text = "ESTADO DO CARRO"
-            h2.x = left
-            h2.y = cur_y
-            h2.draw()
+            self._draw_label(h2, left, cur_y)
 
         cur_y -= 12
         for lbl, val in car_rows:
             if text_idx < len(self._breakdown_context):
                 label, value = self._breakdown_context[text_idx]
                 label.text = lbl
-                label.x = left
-                label.y = cur_y
-                label.draw()
+                self._draw_label(label, left, cur_y)
                 value.text = val
-                value.x = right
-                value.y = cur_y
-                value.draw()
+                self._draw_label(value, right, cur_y)
                 text_idx += 1
             cur_y -= 13
 
@@ -1970,13 +2060,14 @@ class TrackView(arcade.View):
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
         """Roda sobre a classificacao rola uma posicao por passo."""
 
+        x, y = self._logical_pointer(x, y)
         if x > self._standings_width:
             # Roda sobre a pista aplica zoom no ponto sob o ponteiro.
             if scroll_y:
                 self._zoom_at(_ZOOM_WHEEL ** scroll_y, x, y)
             return
         total = len(self._playback.standings(self._elapsed))
-        visible = self._standings_visible(self.window.height - 96, 20)
+        visible = self._standings_visible(DESIGN_HEIGHT - 96, 20)
         self._standing_scroll = min(
             max(self._standing_scroll - int(scroll_y), 0), max(0, total - visible)
         )
@@ -2008,9 +2099,7 @@ class TrackView(arcade.View):
         for key, text in self._header_texts.items():
             if key in _FUEL_COLUMNS and not self._show_fuel:
                 continue
-            text.x = left + self._column_x(key)
-            text.y = header_y
-            text.draw()
+            self._draw_label(text, left + self._column_x(key), header_y)
 
         standings = self._playback.standings(self._elapsed)
         while len(self._row_texts) < len(standings):
@@ -2054,48 +2143,51 @@ class TrackView(arcade.View):
             for key, (value, color) in cells.items():
                 if key in _FUEL_COLUMNS and not self._show_fuel:
                     continue
-                text = texts[key]
-                text.text = value
-                text.color = color
-                text.x = left + self._column_x(key)
-                text.y = y
-            self._fit_name_and_time(texts)
+                texts[key].text = value
+                texts[key].color = color
+            # Posicoes de design das colunas. Um Text guarda x/y em unidades da
+            # janela depois de desenhado, entao o layout le os valores daqui.
+            name_x = left + self._column_x("name")
+            time_x = left + self._column_x("time")
+            self._fit_name_and_time(texts, name_x, time_x)
             for key, (value, color) in cells.items():
                 if key in _FUEL_COLUMNS and not self._show_fuel:
                     continue
-                text = texts[key]
+                x = left + self._column_x(key)
                 if key == "tyre" and value:
-                    arcade.draw_circle_outline(text.x, y, _TYRE_RADIUS, color, 2)
-                text.draw()
+                    arcade.draw_circle_outline(x, y, _TYRE_RADIUS, color, 2)
+                self._draw_label(texts[key], x, y)
         self._draw_standings_scrollbar(top, line_h, visible, len(standings), start)
 
-    @staticmethod
-    def _fit_name_and_time(texts: dict) -> None:
+    def _fit_name_and_time(self, texts: dict, name_x: float, time_x: float) -> None:
         """Impede que o intervalo (ou "CONTATO", "BATIDA"...) cubra o nome.
 
-        O nome e alinhado a esquerda e o intervalo, a direita. Medimos a largura
-        real dos textos, porque a fonte muda de uma maquina para outra: primeiro
-        reduzimos o intervalo ate caber entre o fim do nome e a sua coluna; se o
-        nome ainda invadir essa folga, reduzimos o nome. Os tamanhos sao
-        restaurados a cada quadro, entao linhas normais continuam em 12 pt.
+        O nome e alinhado a esquerda, em ``name_x``, e o intervalo, a direita,
+        com a borda direita em ``time_x``. Ambos em unidades de design. Medimos a
+        largura real dos textos, porque a fonte muda de uma maquina para outra:
+        primeiro reduzimos o intervalo ate caber entre o fim do nome e a sua
+        coluna; se o nome ainda invadir essa folga, reduzimos o nome. Os tamanhos
+        sao restaurados a cada quadro, entao linhas normais continuam em 12 pt.
         """
 
         name, time = texts["name"], texts["time"]
-        name.font_size = 12
-        time.font_size = 12
-        # O intervalo e alinhado a direita: ``time.x`` e a borda direita dele.
-        name_right = name.x + name.content_width
-        room_for_time = time.x - (name_right + _ROW_TEXT_GAP)
-        if time.content_width > room_for_time > 0:
-            time.font_size = max(
-                _ROW_MIN_FONT_PT, 12 * room_for_time / time.content_width
+        self._apply_label_size(name, 12)
+        self._apply_label_size(time, 12)
+        name_right = name_x + self._label_width(name)
+        room_for_time = time_x - (name_right + _ROW_TEXT_GAP)
+        time_width = self._label_width(time)
+        if time_width > room_for_time > 0:
+            self._apply_label_size(
+                time, max(_ROW_MIN_FONT_PT, 12 * room_for_time / time_width)
             )
-        time_left = time.x - time.content_width
-        if name_right > time_left - _ROW_TEXT_GAP and name.content_width > 0:
-            room_for_name = time_left - _ROW_TEXT_GAP - name.x
+            time_width = self._label_width(time)
+        time_left = time_x - time_width
+        name_width = self._label_width(name)
+        if name_right > time_left - _ROW_TEXT_GAP and name_width > 0:
+            room_for_name = time_left - _ROW_TEXT_GAP - name_x
             if room_for_name > 0:
-                name.font_size = max(
-                    _ROW_MIN_FONT_PT, 12 * room_for_name / name.content_width
+                self._apply_label_size(
+                    name, max(_ROW_MIN_FONT_PT, 12 * room_for_name / name_width)
                 )
 
     def _draw_fuel_gauge(
@@ -2194,9 +2286,7 @@ class TrackView(arcade.View):
             arcade.draw_lbwh_rectangle_filled(left, bottom, band_w, band_h, background)
             self._status_text.text = status.label
             self._status_text.color = foreground
-            self._status_text.x = width / 2
-            self._status_text.y = bottom + band_h / 2
-            self._status_text.draw()
+            self._draw_label(self._status_text, width / 2, bottom + band_h / 2)
 
         entries = self._feed.entries_through(self._playback.leader_laps(self._elapsed), self._elapsed)
         recent = entries[-_FEED_LINES:]
@@ -2205,8 +2295,7 @@ class TrackView(arcade.View):
             text = self._feed_texts[i]
             text.text = f"V{entry.lap:<3} {entry.text}"
             text.color = _FEED_TINT.get(entry.status, _FEED_COLOR)
-            text.y = 52 + i * 18
-            text.draw()
+            self._draw_label(text, 20, 52 + i * 18)
 
 
 def _format_clock(ms: float) -> str:
