@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -154,8 +155,22 @@ class EditCurrentGridServiceTest(unittest.TestCase):
                 ["driver:3", "driver:1", "driver:2"],
             )
             self.assertEqual(persisted, reordered)
-            self.assertEqual(restored, items)
-            self.assertEqual(persisted_attributes, items)
+            # v_max e a_max vazios são preenchidos pela semente ao salvar (catalog.py);
+            # o restante dos atributos deve voltar exatamente como foi escrito.
+            for attributes_by_id in (restored, persisted_attributes):
+                self.assertEqual(set(attributes_by_id), set(items))
+                for driver_id, value in attributes_by_id.items():
+                    self.assertIsNotNone(value.v_max_kmh)
+                    self.assertIsNotNone(value.a_max_ms2)
+                    self.assertEqual(
+                        replace(
+                            items[driver_id],
+                            v_max_kmh=value.v_max_kmh,
+                            a_max_ms2=value.a_max_ms2,
+                            sources=value.sources,
+                        ),
+                        value,
+                    )
             self.assertEqual(seed, 8_675_309)
             self.assertEqual(persisted_seed, 8_675_309)
             self.assertEqual(
