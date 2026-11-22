@@ -36,15 +36,18 @@ if TYPE_CHECKING:
     from frontend.arcade.parameters_view import ParametersView
 
 
-# Design canvas of this screen. Every *_BOUNDS constant and draw call uses
-# these units. Sem a barra lateral, a tela comeca em x=CANVAS_ORIGIN_X: o canvas
-# visivel vai dali ate o fim do desenho (1672), e o conteudo ocupa a janela.
-CANVAS_ORIGIN_X = 416
-DESIGN_SIZE = (1672 - CANVAS_ORIGIN_X, 900)
-TRACK_MAP_BOUNDS = (474, 130, 492, 400)
+# Design canvas of this screen: 1280x720, o padrao das telas de configuracao.
+# Every *_BOUNDS constant and draw call uses absolute x and these units. O canvas
+# visivel vai de x=CANVAS_ORIGIN_X ate CANVAS_ORIGIN_X + DESIGN_SIZE[0]. O
+# conteudo (x de 450 a 1640) fica centrado nele, com 45 unidades de margem em
+# cada lado. Os y cabem em 0..720: cabecalho 672..720, faixa da etapa 542..612,
+# colunas 16..532.
+CANVAS_ORIGIN_X = 405
+DESIGN_SIZE = (1280, 720)
+TRACK_MAP_BOUNDS = (474, 66, 492, 374)
 SESSION_FIELD_BOUNDS = {
-    "first_lap": (1030, 538, 290, 38),
-    "last_lap": (1340, 538, 290, 38),
+    "first_lap": (1030, 444, 290, 38),
+    "last_lap": (1340, 444, 290, 38),
 }
 SESSION_STEPPER_BOUNDS = {
     field: (
@@ -54,19 +57,19 @@ SESSION_STEPPER_BOUNDS = {
     for field, (left, bottom, width, height) in SESSION_FIELD_BOUNDS.items()
 }
 # Botoes de acao ficam no canto inferior direito da caixa de clima.
-RESET_BOUNDS = (1160, 56, 150, 40)
-CANCEL_BOUNDS = (1320, 56, 150, 40)
-SAVE_BOUNDS = (1480, 56, 150, 40)
+RESET_BOUNDS = (1160, 32, 150, 40)
+CANCEL_BOUNDS = (1320, 32, 150, 40)
+SAVE_BOUNDS = (1480, 32, 150, 40)
 # Caixa de clima: x 1010..1640 (centro 1325). Paleta (150+10+150+10+160 = 480 px)
 # e campos de volta (120+10+120 = 250 px) sao centralizados nesse eixo.
 WEATHER_PALETTE_BOUNDS = {
-    "Seco": (1085, 375, 150, 40),
-    "Chuva leve": (1245, 375, 150, 40),
-    "Chuva intensa": (1405, 375, 160, 40),
+    "Seco": (1085, 314, 150, 40),
+    "Chuva leve": (1245, 314, 150, 40),
+    "Chuva intensa": (1405, 314, 160, 40),
 }
-WEATHER_START_BOUNDS = (1200, 305, 120, 40)
-WEATHER_END_BOUNDS = (1330, 305, 120, 40)
-WEATHER_TIMELINE_BOUNDS = (1030, 220, 580, 24)
+WEATHER_START_BOUNDS = (1200, 244, 120, 40)
+WEATHER_END_BOUNDS = (1330, 244, 120, 40)
+WEATHER_TIMELINE_BOUNDS = (1030, 172, 580, 24)
 
 
 def weather_breakdown(schedule: WeatherSchedule) -> list[str]:
@@ -114,6 +117,10 @@ class RaceConfigurationView(arcade.View):
         track_loader: Callable[[str], dict] = fetch_track,
     ) -> None:
         super().__init__()
+        # Tamanho e largura de design de cada rotulo desenhado neste quadro. Criados
+        # antes de qualquer chamada que os use, e reiniciados em on_draw.
+        self._label_sizes: dict[arcade.Text, float] = {}
+        self._label_widths: dict[arcade.Text, float] = {}
         self.parent = parent
         self.schedule = schedule
         self.circuit_id = circuit_id
@@ -217,11 +224,15 @@ class RaceConfigurationView(arcade.View):
     def on_draw(self) -> None:
         """Draw the design canvas scaled to the window.
 
-        Shapes go through a camera; labels are rasterized at window resolution
-        by :meth:`_text`, so they stay sharp at any scale.
+        Shapes go through the canvas camera. Labels go through :meth:`_draw_label`,
+        which rasterizes them at window resolution so they stay sharp at any scale.
+        The label registries hold only this frame's labels, so they are rebuilt
+        here and never grow.
         """
 
         self.clear()
+        self._label_sizes = {}
+        self._label_widths = {}
         # Built per frame: it is cheap and always matches the current size,
         # including resizes that happened while another view was shown.
         with self._canvas_camera().activate():
@@ -236,18 +247,28 @@ class RaceConfigurationView(arcade.View):
         self._draw_weather_actions()
 
     def _draw_header(self) -> None:
-        arcade.draw_lbwh_rectangle_filled(0, 844, 1672, 56, (12, 17, 24))
-        arcade.draw_line(0, 844, 1672, 844, (49, 62, 78), 1)
-        arcade.draw_texture_rect(self._logo, arcade.LBWH(450, 860, 50, 25))
-        self._text("SIMULADOR DE CORRIDA", 524, 866, 15, SECONDARY_TEXT_COLOR)
-        self._text("Configuração da corrida", 450, 795, 38)
+        # Faixa do canvas inteiro: comeca na origem e tem a largura do design.
+        arcade.draw_lbwh_rectangle_filled(
+            CANVAS_ORIGIN_X, 672, DESIGN_SIZE[0], 48, (12, 17, 24)
+        )
+        arcade.draw_line(
+            CANVAS_ORIGIN_X,
+            672,
+            CANVAS_ORIGIN_X + DESIGN_SIZE[0],
+            672,
+            (49, 62, 78),
+            1,
+        )
+        arcade.draw_texture_rect(self._logo, arcade.LBWH(450, 683, 50, 25))
+        self._text("SIMULADOR DE CORRIDA", 524, 690, 15, SECONDARY_TEXT_COLOR)
+        self._text("Configuração da corrida", 450, 630, 32)
 
     def _draw_stage_header(self) -> None:
         """Faixa da etapa: so as setas de navegacao e o nome do circuito, centralizados."""
 
-        self._panel((450, 645, 1190, 103))
+        self._panel((450, 542, 1190, 70))
         center_x = 450 + 1190 / 2
-        name_y = 712
+        name_y = 586
         self._text(
             self.track_name,
             center_x,
@@ -260,7 +281,7 @@ class RaceConfigurationView(arcade.View):
         stage_text = (
             "Etapa Única" if total <= 1 else f"Etapa {self.stage_index} de {total}"
         )
-        self._text(stage_text, center_x, 668, 14, SECONDARY_TEXT_COLOR, anchor_x="center", anchor_y="center")
+        self._text(stage_text, center_x, 556, 12, SECONDARY_TEXT_COLOR, anchor_x="center", anchor_y="center")
         # Setas em posicao fixa, nas bordas de uma faixa central: o tamanho do nome
         # nao as desloca. Nomes longos ficam entre elas.
         arrow_size = 34
@@ -278,12 +299,12 @@ class RaceConfigurationView(arcade.View):
             self._button(bounds, "‹" if key == "previous" else "›")
 
     def _draw_session(self) -> None:
-        self._panel((1010, 520, 630, 115))
+        self._panel((1010, 430, 630, 102))
         self._text(
             "Altere o número de voltas do circuito.",
             1030,
-            612,
-            14,
+            512,
+            13,
             SECONDARY_TEXT_COLOR,
         )
         labels = (
@@ -291,7 +312,7 @@ class RaceConfigurationView(arcade.View):
             ("Volta final", 1340),
         )
         for label, x in labels:
-            self._text(label, x, 582, 14, SECONDARY_TEXT_COLOR)
+            self._text(label, x, 488, 13, SECONDARY_TEXT_COLOR)
         for key, value in (
             ("first_lap", str(self.session.first_lap)),
             ("last_lap", str(self.session.last_lap)),
@@ -303,10 +324,12 @@ class RaceConfigurationView(arcade.View):
             self._panel(bounds)
             if focused:
                 arcade.draw_lbwh_rectangle_outline(*bounds, ACCENT_COLOR, 2)
+            value_x = bounds[0] + (bounds[2] - 74) / 2
+            value_y = bounds[1] + 19
             label = self._text(
                 value,
-                bounds[0] + (bounds[2] - 74) / 2,
-                bounds[1] + 19,
+                value_x,
+                value_y,
                 15,
                 anchor_x="center",
                 anchor_y="center",
@@ -314,7 +337,7 @@ class RaceConfigurationView(arcade.View):
             # Cursor como linha logo apos o numero: o texto nao muda de largura, entao
             # ele nao treme quando o cursor aparece e some.
             if focused and caret_visible():
-                self._draw_caret_after(label)
+                self._draw_caret_after(label, value_x, value_y)
             for button_bounds, symbol in zip(
                 SESSION_STEPPER_BOUNDS[key], ("−", "+"), strict=True
             ):
@@ -328,34 +351,37 @@ class RaceConfigurationView(arcade.View):
                     anchor_y="center",
                 )
 
-    def _draw_caret_after(self, label: arcade.Text) -> None:
-        """Linha de cursor logo depois do texto centralizado ``label`` (pixels da janela)."""
+    def _draw_caret_after(self, label: arcade.Text, x: float, y: float) -> None:
+        """Linha de cursor logo depois do texto ``label``, centralizado em (x, y) de design.
 
-        x = label.x + label.content_width / 2 + 2
-        half = label.content_height * 0.4
-        with self.window.default_camera.activate():
-            arcade.draw_line(x, label.y - half, x, label.y + half, PRIMARY_TEXT_COLOR, 2)
+        Desenhada dentro da camera do canvas, em unidades de design: forma nunca
+        passa pela camera padrao, so o texto passa.
+        """
+
+        caret_x = x + self._label_width(label) / 2 + 2
+        half = self._label_height(label) * 0.4
+        arcade.draw_line(caret_x, y - half, caret_x, y + half, PRIMARY_TEXT_COLOR, 2)
 
     def _draw_track_summary(self) -> None:
-        self._panel((450, 40, 540, 595))
+        self._panel((450, 16, 540, 516))
         # Centro horizontal da caixa da pista (x de 450 a 990).
         # Sem o titulo "Resumo da pista", o nome ocupa o topo da caixa. O nome
         # encolhe ate caber em 500 unidades de design (a caixa tem 540).
         self._text(
-            self.track_name, 720, 600, 26, anchor_x="center", fit_width=500
+            self.track_name, 720, 484, 22, anchor_x="center", fit_width=500
         )
         laps_text = f"{self.schedule.total_laps} voltas"
         if self._preview is not None:
             length = f"{self._preview.lap_length_m / 1000:.3f}".replace(".", ",")
             laps_text += f"   ·   {length} km"
-        self._text(laps_text, 720, 556, 15, SECONDARY_TEXT_COLOR, anchor_x="center")
+        self._text(laps_text, 720, 452, 15, SECONDARY_TEXT_COLOR, anchor_x="center")
         self._panel(TRACK_MAP_BOUNDS, (8, 19, 16))
         if self._preview is None:
             message = self._track_error or "Carregando geometria..."
             self._text(
                 message,
                 720,
-                330,
+                253,
                 13,
                 ERROR_COLOR if self._track_error else SECONDARY_TEXT_COLOR,
                 anchor_x="center",
@@ -381,8 +407,8 @@ class RaceConfigurationView(arcade.View):
         ):
             # Legenda numa linha so, abaixo do mapa.
             x = 474 + 110 * index
-            arcade.draw_circle_filled(x + 5, 101, 5, color)
-            self._text(label, x + 17, 98, 13, SECONDARY_TEXT_COLOR)
+            arcade.draw_circle_filled(x + 5, 45, 5, color)
+            self._text(label, x + 17, 42, 13, SECONDARY_TEXT_COLOR)
 
     def _draw_weather_editor(self) -> None:
         """Clima por volta no painel de baixo, na mesma tela da sessao.
@@ -391,12 +417,12 @@ class RaceConfigurationView(arcade.View):
         antigo; a linha do tempo mostra os intervalos ja definidos.
         """
 
-        self._panel((1010, 40, 630, 470))
-        self._text("Clima por volta", 1030, 475, 22)
+        self._panel((1010, 16, 630, 404))
+        self._text("Clima por volta", 1030, 388, 20)
         self._text(
             "Escolha uma condição e arraste sobre a barra para pintar as voltas.",
             1030,
-            443,
+            364,
             13,
             SECONDARY_TEXT_COLOR,
         )
@@ -439,11 +465,11 @@ class RaceConfigurationView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
             )
-        self._text(self._status, 1030, 268, 12, SECONDARY_TEXT_COLOR, width=580)
+        self._text(self._status, 1030, 220, 12, SECONDARY_TEXT_COLOR, width=580)
         # Resumo por condicao, abaixo da barra de pintura e a esquerda dos botoes
-        # Cancelar/Salvar (que comecam em x=1320).
+        # Cancelar/Salvar (que comecam em x=1320). As linhas descem de 20 em 20.
         for index, line in enumerate(weather_breakdown(self.schedule)):
-            self._text(line, 1030, 166 - 22 * index, 13, SECONDARY_TEXT_COLOR, width=280)
+            self._text(line, 1030, 130 - 20 * index, 13, SECONDARY_TEXT_COLOR, width=280)
         left, bottom, width, height = WEATHER_TIMELINE_BOUNDS
         self._text("1", left, bottom - 20, 12, SECONDARY_TEXT_COLOR)
         self._text(
@@ -772,6 +798,11 @@ class RaceConfigurationView(arcade.View):
         left, bottom, width, height = bounds
         return left <= x <= left + width and bottom <= y <= bottom + height
 
+    # Formas usam a camera de design. Textos sao rasterizados pela camera padrao
+    # da janela (escalar glifos pela camera de design os deixaria borrados). Por
+    # isso a posicao e o tamanho dos textos ficam em unidades de design, e
+    # _draw_label os converte na hora de desenhar. Mesmo padrao de grid_view.py.
+
     def _text(
         self,
         value: str,
@@ -779,33 +810,94 @@ class RaceConfigurationView(arcade.View):
         y: float,
         size: float,
         color: tuple[int, ...] = PRIMARY_TEXT_COLOR,
-        **kwargs: object,
+        *,
+        width: float | None = None,
+        fit_width: float | None = None,
+        **style: object,
     ) -> arcade.Text:
-        """Draw a label placed in design units but rasterized natively.
+        """Cria e desenha um rotulo em (x, y) de design; devolve o objeto.
 
-        Scaling glyph textures through the canvas camera blurs them, so the
-        position and font size are converted to window units and the label is
-        drawn with the window's default camera, then the canvas camera returns.
+        ``size`` e o tamanho de design. ``width`` e a largura de quebra de linha em
+        unidades de design; sem ela o texto nao quebra. ``fit_width`` reduz a fonte
+        ate o texto caber nessa largura de design.
+        """
+
+        if width is not None:
+            # pyglet exige largura nao nula para texto multilinha, mesmo na criacao.
+            # Usa-se a largura de design; _apply_label_size a converte em cada quadro.
+            style["width"] = int(width)
+        label = arcade.Text(value, 0, 0, color, size, **style)
+        self._label_sizes[label] = size
+        if width is not None:
+            self._label_widths[label] = width
+        if fit_width is not None:
+            self._fit_label(label, fit_width, size)
+        self._draw_label(label, x, y)
+        return label
+
+    def _apply_label_size(self, text: arcade.Text, size: float | None = None) -> None:
+        """Aplica ao texto o tamanho de design na escala atual da janela.
+
+        ``size`` redefine o tamanho de design (ajustes de fonte). Sem ele, vale o
+        registrado. A largura de quebra, guardada em design, tambem e convertida,
+        pois pyglet a mede em pixels. Fonte e largura so sao trocadas quando mudam,
+        porque cada troca refaz o layout.
         """
 
         fit = self._canvas_fit()
-        # fit_width (unidades de design): reduz a fonte ate caber nessa largura.
-        fit_width = kwargs.pop("fit_width", None)
-        width = kwargs.get("width")
-        if width is not None:
-            kwargs["width"] = int(width * fit.scale)
-        label = arcade.Text(
-            value,
-            *fit.to_window(x - CANVAS_ORIGIN_X, y),
-            color,
-            size * fit.scale,
-            **kwargs,
-        )
-        if fit_width is not None:
-            fit_button_text(label, fit_width * fit.scale, size * fit.scale)
+        if size is not None:
+            self._label_sizes[text] = size
+        design = self._label_sizes.setdefault(text, text.font_size)
+        target = design * fit.scale
+        if abs(text.font_size - target) > 1e-6:
+            text.font_size = target
+        wrap = self._label_widths.get(text)
+        if wrap is not None:
+            target_width = int(wrap * fit.scale)
+            if text.width is None or abs(text.width - target_width) > 1e-6:
+                text.width = target_width
+
+    def _label_width(self, text: arcade.Text) -> float:
+        """Largura do texto em unidades de design, medida na escala da janela."""
+
+        self._apply_label_size(text)
+        return text.content_width / self._canvas_fit().scale
+
+    def _label_height(self, text: arcade.Text) -> float:
+        """Altura do texto em unidades de design, medida na escala da janela."""
+
+        self._apply_label_size(text)
+        return text.content_height / self._canvas_fit().scale
+
+    def _fit_label(self, text: arcade.Text, max_width: float, base_size: float) -> None:
+        """Reduz a fonte de ``text`` para caber em ``max_width`` (design).
+
+        A medida e feita com a fonte em tamanho de design, entao o resultado ja esta
+        em unidades de design. O tamanho final vira o tamanho registrado do texto.
+        """
+
+        fit_button_text(text, max_width, base_size)
+        self._apply_label_size(text, text.font_size)
+
+    def _draw_label(self, text: arcade.Text, x: float, y: float) -> None:
+        """Desenha ``text`` em (x, y) de design, rasterizado na escala da janela.
+
+        Um texto desenhado pela camera escalada sairia borrado, entao a posicao
+        e o tamanho viram unidades da janela e o desenho usa a camera padrao. As
+        ancoragens do texto (anchor_x/anchor_y) continuam valendo.
+        """
+
+        self._apply_label_size(text)
+        text.x, text.y = self._canvas_fit().to_window(x - CANVAS_ORIGIN_X, y)
+        # Ativar uma camera zera a tesoura (scissor) do Arcade. O recorte de quem
+        # chama e salvo antes e reaplicado dentro da camera; depois do bloco, a
+        # tesoura volta ao valor original, para o proximo texto recortado nao
+        # perder o seu recorte.
+        clip = self.window.ctx.scissor
         with self.window.default_camera.activate():
-            label.draw()
-        return label
+            self.window.ctx.scissor = clip
+            text.draw()
+        self.window.ctx.scissor = clip
 
     @staticmethod
     def _panel(
