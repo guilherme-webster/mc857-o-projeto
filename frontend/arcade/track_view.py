@@ -927,10 +927,12 @@ class TrackView(arcade.View):
     def _track_half_px(self, screen: list[tuple[float, float]]) -> float:
         """Meia-largura da pista em pixels projetados."""
         lane_px = self._lane_scale_px(screen)
+        # Largura fisica da pista na escala da tela: a mesma escala dos boxes e dos
+        # carros, para que a pit lane (desenhada em metros) nunca caia dentro do
+        # asfalto. So um piso de 1 px impede a faixa de sumir.
         total_px = self._space_2d.get("width_m", 12.0) * lane_px
-        lane_min, lane_max = self._lane_px_limits()
-        visible_total = max(lane_min, min(lane_max, total_px))
-        return visible_total / 2.0
+        lane_min, _ = self._lane_px_limits()
+        return max(lane_min, total_px) / 2.0
 
     def _build_pit_screen(
         self,
@@ -940,84 +942,13 @@ class TrackView(arcade.View):
         draw_w: float,
         draw_h: float,
     ) -> list[tuple[float, float]]:
-        """Gera o traçado da pit lane na tela com conexões tangenciais suaves na borda da pista."""
-        raw = [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._pit_unit]
-        n_pit = len(raw)
-        if n_pit < 4:
-            return raw
+        """Traçado dos boxes na tela, tal como o motor o exporta (sem ajuste visual).
 
-        lane_px = self._lane_scale_px(screen)
-
-        # Identifica em qual lado da pista fica a pit lane na entrada dos boxes:
-        cx_c, cy_c, nx_c, ny_c = self._space_pos_at(screen, lane_px, self._pit_entry_m, 0.0)
-        p_first = raw[1]
-        dx_in = p_first[0] - cx_c
-        dy_in = p_first[1] - cy_c
-        side = 1.0 if (dx_in * nx_c + dy_in * ny_c) >= 0.0 else -1.0
-
-        # Rampa de acesso tangencial suave na borda da pista:
-        usable_m = self._space_2d.get("usable_m", 5.0)
-
-        # Entrada na borda da pista na coordenada exata de início da pit lane, apontando para a frente:
-        edge_in_pos = self._space_pos_at(screen, lane_px, self._pit_entry_m, side * usable_m * 0.75)
-        edge_in = edge_in_pos[:2]
-        tx_in, ty_in = edge_in_pos[3], -edge_in_pos[2]
-
-        # Saída na borda da pista na coordenada exata de término da pit lane, apontando para a frente:
-        edge_out_pos = self._space_pos_at(screen, lane_px, self._pit_exit_m, side * usable_m * 0.75)
-        edge_out = edge_out_pos[:2]
-        tx_out, ty_out = edge_out_pos[3], -edge_out_pos[2]
-
-        # Vetor tangente da pit lane nos extremos do percurso interno:
-        p_second = raw[2]
-        d1x = p_second[0] - p_first[0]
-        d1y = p_second[1] - p_first[1]
-        l1 = (d1x * d1x + d1y * d1y) ** 0.5 or 1.0
-        t_first = (d1x / l1, d1y / l1)
-
-        p_last = raw[-2]
-        p_ante = raw[-3]
-        dex = p_last[0] - p_ante[0]
-        dey = p_last[1] - p_ante[1]
-        le = (dex * dex + dey * dey) ** 0.5 or 1.0
-        t_last = (dex / le, dey / le)
-
-        # Rampa de entrada tangencial (Bézier cúbica contínua C1):
-        dist_in = ((p_first[0] - edge_in[0]) ** 2 + (p_first[1] - edge_in[1]) ** 2) ** 0.5
-        c0_in = (edge_in[0] + tx_in * (dist_in * 0.4), edge_in[1] + ty_in * (dist_in * 0.4))
-        c1_in = (p_first[0] - t_first[0] * (dist_in * 0.4), p_first[1] - t_first[1] * (dist_in * 0.4))
-        entry_curve = []
-        for k in range(1, 8):
-            t = k / 8.0
-            u = 1.0 - t
-            bx = u**3 * edge_in[0] + 3 * u**2 * t * c0_in[0] + 3 * u * t**2 * c1_in[0] + t**3 * p_first[0]
-            by = u**3 * edge_in[1] + 3 * u**2 * t * c0_in[1] + 3 * u * t**2 * c1_in[1] + t**3 * p_first[1]
-            entry_curve.append((bx, by))
-
-        # Rampa de saída tangencial (Bézier cúbica contínua C1 alinhando na borda da pista):
-        dist_out = ((edge_out[0] - p_last[0]) ** 2 + (edge_out[1] - p_last[1]) ** 2) ** 0.5
-        c0_out = (p_last[0] + t_last[0] * (dist_out * 0.4), p_last[1] + t_last[1] * (dist_out * 0.4))
-        c1_out = (edge_out[0] - tx_out * (dist_out * 0.4), edge_out[1] - ty_out * (dist_out * 0.4))
-        exit_curve = []
-        for k in range(1, 8):
-            t = k / 8.0
-            u = 1.0 - t
-            bx = u**3 * p_last[0] + 3 * u**2 * t * c0_out[0] + 3 * u * t**2 * c1_out[0] + t**3 * edge_out[0]
-            by = u**3 * p_last[1] + 3 * u**2 * t * c0_out[1] + 3 * u * t**2 * c1_out[1] + t**3 * edge_out[1]
-            exit_curve.append((bx, by))
-
-        pts = [edge_in, *entry_curve, *raw[1:-1], *exit_curve, edge_out]
-
-        # Recalcula as distâncias paramétricas da pit lane acompanhando o traçado contínuo:
-        arc_lengths = [0.0]
-        for i in range(1, len(pts)):
-            seg_len = ((pts[i][0] - pts[i - 1][0]) ** 2 + (pts[i][1] - pts[i - 1][1]) ** 2) ** 0.5
-            arc_lengths.append(arc_lengths[-1] + seg_len)
-        total_arc = arc_lengths[-1] or 1.0
-        sim_max = self._pit_path[-1][0] if self._pit_path else total_arc
-        self._pit_distances = [s / total_arc * sim_max for s in arc_lengths]
-
-        return pts
+        Limitação conhecida: em algumas pistas (por exemplo Mônaco) o traçado da
+        fixture fica sobre outro trecho da pista. Os índices seguem os de
+        ``_pit_path``, então ``_pit_distances`` continua válido.
+        """
+        return [(off_x + ux * draw_w, off_y + uy * draw_h) for ux, uy in self._pit_unit]
 
     def _projected(self) -> list[tuple[float, float]]:
         """Projete a geometria normalizada no tamanho atual da janela."""
@@ -1391,7 +1322,8 @@ class TrackView(arcade.View):
         d0, d1 = self._pit_distances[i - 1], self._pit_distances[i]
         x0, y0 = self._pit_screen[i - 1]
         x1, y1 = self._pit_screen[i]
-        f = max(0.0, min(1.0, (distance_m - d0) / (d1 - d0)))
+        # Pontas repetidas (mesma distância) não têm trecho: usa o próprio ponto.
+        f = max(0.0, min(1.0, (distance_m - d0) / (d1 - d0))) if d1 > d0 else 0.0
         length = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5 or 1.0
         return x0 + f * (x1 - x0), y0 + f * (y1 - y0), -(y1 - y0) / length, (x1 - x0) / length
 
@@ -1541,9 +1473,10 @@ class TrackView(arcade.View):
             return
         nx, ny = -dy / length, dx / length
         if self._is_2d:
+            # Largura fisica, com piso de legibilidade (ver _track_half_px).
             lane_width = self._space_2d.get("width_m", 12.0) * self._lane_px
-            lane_min, lane_max = self._lane_px_limits()
-            visible = max(lane_min, min(lane_max, lane_width))
+            lane_min, _ = self._lane_px_limits()
+            visible = max(lane_min, lane_width)
             half = visible / 2.0 + 2.0
         else:
             half = 8.0

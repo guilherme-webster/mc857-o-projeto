@@ -17,7 +17,7 @@ from f1_simulator.domain.race_simulation_2d import simulate_2d_race
 from f1_simulator.domain.random_source import SeededRandomSource
 from f1_simulator.domain.speed_dynamics import CarPhysics
 from f1_simulator.domain.strategy import NoStopStrategy, PlannedStopStrategy
-from f1_simulator.domain.track_geometry import PitLanePoint
+from f1_simulator.domain.track_geometry import PitLanePoint, TrackPoint
 from f1_simulator.domain.track_space import (
     CarSpaceState,
     build_track_space,
@@ -419,3 +419,46 @@ class PitStopVariationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PitLaneLateralOffsetTest(unittest.TestCase):
+    """Deslocamento dos boxes: metros fora do eixo, entrada e saída sobre a pista."""
+
+    def straight_geometry(self):
+        # Pista reta de 100 m (uma unidade normalizada) e boxes sobre o eixo.
+        track = (TrackPoint(0, 0.0, 0.0, 0.0), TrackPoint(1, 1.0, 0.0, 100.0))
+        pit = (
+            PitLanePoint(0, 0.2, 0.0, 0.0, False),
+            PitLanePoint(1, 0.3, 0.0, 0.33, False),
+            PitLanePoint(2, 0.4, 0.0, 0.66, True),
+            PitLanePoint(3, 0.5, 0.0, 0.83, False),
+            PitLanePoint(4, 0.6, 0.0, 1.0, False),
+        )
+        return replace(_square(), track_points=track, pit_lane_points=pit)
+
+    def test_default_offset_keeps_the_fixture_centreline(self):
+        base = build_pit_lane(self.straight_geometry())
+        self.assertTrue(all(abs(y) < 1e-9 for _, _, y in base.points))
+
+    def test_offset_moves_interior_boxes_to_the_chosen_side_in_metres(self):
+        geo = self.straight_geometry()
+        base = build_pit_lane(geo)
+        left = build_pit_lane(geo, lateral_offset_m=3.0, lateral_side=1)
+        right = build_pit_lane(geo, lateral_offset_m=3.0, lateral_side=-1)
+        # 3 m numa pista de 100 m equivalem a 0,03 unidade normalizada.
+        self.assertEqual(sum(round(y, 6) == 0.03 for _, _, y in left.points), 3)
+        self.assertEqual(sum(round(y, 6) == -0.03 for _, _, y in right.points), 3)
+        # Entrada e saída continuam sobre a pista: mesmas projeções e distâncias.
+        self.assertAlmostEqual(left.entry_distance_m, base.entry_distance_m)
+        self.assertAlmostEqual(left.exit_distance_m, base.exit_distance_m)
+        # Os boxes deslocados são um pouco mais longos que o traçado sobre o eixo.
+        self.assertAlmostEqual(left.length_m, 40.8806, places=3)
+        self.assertGreater(left.length_m, base.length_m)
+
+    def test_rejects_invalid_side_and_clearance(self):
+        with self.assertRaises(ValueError):
+            PitLaneParameters(lateral_side=0)
+        with self.assertRaises(ValueError):
+            PitLaneParameters(lateral_clearance_m=-1.0)
+        with self.assertRaises(ValueError):
+            build_pit_lane(self.straight_geometry(), lateral_offset_m=-2.0)
