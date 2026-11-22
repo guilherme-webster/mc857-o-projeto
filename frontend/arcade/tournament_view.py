@@ -20,6 +20,7 @@ from threading import Thread
 import arcade
 
 from frontend.arcade.button_text import fit_button_text
+from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
 from frontend.arcade.saved_tournaments import save_request
 from frontend.arcade.theme import (
     BACKGROUND_COLOR,
@@ -35,6 +36,10 @@ from frontend.arcade.tournament_session import (
 )
 from frontend.arcade.track_client import fetch_championship_standings, save_tournament
 
+# Canvas de design: todo o layout usa estas medidas fixas, e a janela so recebe
+# a escala uniforme de CanvasFit. Mesma referencia da pista e da grade.
+DESIGN_WIDTH = 1280
+DESIGN_HEIGHT = 720
 _HEADER_COLOR = (130, 140, 150)
 _GOLD = (245, 197, 66)
 _SILVER = (200, 205, 215)
@@ -104,6 +109,13 @@ class TournamentResultView(arcade.View):
         reexecutado a partir das simulacoes salvas ja esta salvo."""
 
         super().__init__()
+        # Registros dos textos vem antes de qualquer criacao de texto, porque o
+        # tamanho de design e registrado no primeiro desenho de cada um.
+        # Tamanho de design de cada texto (fonte em unidades do canvas). A fonte
+        # real do texto e esse valor vezes a escala da janela, aplicada em _draw_label.
+        self._label_sizes: dict[arcade.Text, float] = {}
+        # Textos da barra de navegacao e dos botoes, reaproveitados entre quadros.
+        self._texts: dict[str, arcade.Text] = {}
         self._tournament = tournament
         self._tournament_saver = tournament_saver
         self._saveable = saveable
@@ -119,11 +131,12 @@ class TournamentResultView(arcade.View):
         self._scroll = 0
         self._hover: str | None = None
         self._results: SimpleQueue[tuple[str, object]] = SimpleQueue()
-        self._save_status = arcade.Text("", 40, 88, SECONDARY_TEXT_COLOR, 12)
-        self._scroll_hint = arcade.Text("", 40, 64, SECONDARY_TEXT_COLOR, 10)
+        # A posicao dos textos e dada em _draw_label; a criacao usa 0, 0.
+        self._save_status = arcade.Text("", 0, 0, SECONDARY_TEXT_COLOR, 12)
+        self._scroll_hint = arcade.Text("", 0, 0, SECONDARY_TEXT_COLOR, 10)
         self._message = arcade.Text(
             "Calculando a classificação do campeonato…",
-            40,
+            0,
             0,
             SECONDARY_TEXT_COLOR,
             14,
@@ -144,8 +157,6 @@ class TournamentResultView(arcade.View):
             )
             for key, label in _ACTION_LABELS.items()
         }
-        # Textos da barra de navegacao, reaproveitados entre quadros.
-        self._texts: dict[str, arcade.Text] = {}
         request = tournament.standings_request()
 
         def load() -> None:
@@ -282,6 +293,10 @@ class TournamentResultView(arcade.View):
         return cells
 
     def _rebuild(self) -> None:
+        # So os textos de celula sao recriados; solta o registro deles, sem tocar
+        # nos textos fixos (nav, botoes), cujo tamanho de design precisa ficar.
+        for text, _row, _dx in self._cells:
+            self._label_sizes.pop(text, None)
         self._cells = self._build_cells()
 
     # -- selecao e navegacao ------------------------------------------------
@@ -372,8 +387,27 @@ class TournamentResultView(arcade.View):
 
     # -- geometria --------------------------------------------------------------
 
+    def _canvas_fit(self) -> CanvasFit:
+        """Mapeamento atual entre o canvas de design e a janela.
+
+        Recalculado a cada chamada, e so aritmetica: assim um redimensionamento
+        nunca deixa uma escala antiga para o proximo evento de mouse ou quadro.
+        """
+
+        return CanvasFit.fit((DESIGN_WIDTH, DESIGN_HEIGHT), self.window.get_size())
+
+    def _canvas_camera(self) -> arcade.Camera2D:
+        """Camera que desenha formas em unidades de design, escaladas e centralizadas."""
+
+        return make_canvas_camera(self._canvas_fit(), self.window)
+
+    def _logical_pointer(self, x: float, y: float) -> tuple[float, float]:
+        """Converte o ponteiro (unidades da janela) para unidades de design."""
+
+        return self._canvas_fit().to_logical(x, y)
+
     def _table_left(self) -> float:
-        return (self.window.width - _TABLE_W) / 2
+        return (DESIGN_WIDTH - _TABLE_W) / 2
 
     def _visible_rows(self, height: float) -> int:
         """Linhas de piloto entre o cabecalho e a margem inferior, ate 20."""
@@ -386,7 +420,7 @@ class TournamentResultView(arcade.View):
         return max(0, len(self._entries()) - visible)
 
     def _nav_rects(self) -> dict[str, tuple[float, float, float, float]]:
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         bar_y, bar_h = height - 76, 36
         return {
             "prev": (40, bar_y, 40, bar_h),
@@ -414,7 +448,7 @@ class TournamentResultView(arcade.View):
         """Voltar na borda esquerda, Tela inicial na borda direita; o meio espaçado."""
 
         keys = self._action_keys()
-        width = self.window.width
+        width = DESIGN_WIDTH
         first = _ACTION_MARGIN
         last = width - _ACTION_MARGIN - _ACTION_W
         if len(keys) == 1:
@@ -435,6 +469,7 @@ class TournamentResultView(arcade.View):
     # -- mouse e teclado ----------------------------------------------------------
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
+        x, y = self._logical_pointer(x, y)
         rects = {**self._nav_rects(), **self._action_rects()}
         self._hover = next(
             (key for key, rect in rects.items() if _inside(x, y, rect)), None
@@ -443,13 +478,15 @@ class TournamentResultView(arcade.View):
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
         """A roda do mouse rola a tabela uma linha por passo."""
 
-        height = self.window.height
+        _, y = self._logical_pointer(x, y)
+        height = DESIGN_HEIGHT
         if not (_TABLE_BOTTOM <= y <= height - _HEADER_FROM_TOP):
             return
         visible = self._visible_rows(height)
         self._scroll = min(max(self._scroll - int(scroll_y), 0), self._max_scroll(visible))
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        x, y = self._logical_pointer(x, y)
         for key, rect in self._nav_rects().items():
             if not _inside(x, y, rect):
                 continue
@@ -482,44 +519,114 @@ class TournamentResultView(arcade.View):
                 )
             return
 
+    # -- textos em unidades de design -----------------------------------------------
+    #
+    # Formas usam a camera de design. Textos sao rasterizados pela camera padrao
+    # da janela (escalar glifos pela camera de design os deixaria borrados). Por
+    # isso a posicao e o tamanho dos textos ficam em unidades de design, e
+    # _draw_label os converte na hora de desenhar. Este bloco repete a ideia de
+    # grid_view.py, sem a quebra de linha: nenhum texto desta tela quebra.
+
+    def _text(self, key: str, value: str, color, size: float = 12, **style) -> arcade.Text:
+        """Texto reutilizado entre quadros, sem posicao: ela vem em _draw_label.
+
+        ``size`` e o tamanho de design, usado so na criacao.
+        """
+
+        text = self._texts.get(key)
+        if text is None:
+            text = arcade.Text(value, 0, 0, color, size, **style)
+            self._texts[key] = text
+        if text.text != value:
+            text.text = value
+        if text.color != color:
+            text.color = color
+        return text
+
+    def _apply_label_size(self, text: arcade.Text, size: float | None = None) -> None:
+        """Aplica ao texto o tamanho de design na escala atual da janela.
+
+        ``size`` redefine o tamanho de design (ajustes de fonte). Sem ele, vale o
+        ultimo tamanho registrado; um texto novo usa o tamanho da criacao. A fonte
+        so e trocada quando muda, porque cada troca refaz o layout do texto.
+        """
+
+        fit = self._canvas_fit()
+        if size is not None:
+            self._label_sizes[text] = size
+        design = self._label_sizes.setdefault(text, text.font_size)
+        target = design * fit.scale
+        if abs(text.font_size - target) > 1e-6:
+            text.font_size = target
+
+    def _fit_label(self, text: arcade.Text, max_width: float, base_size: float) -> None:
+        """Reduz a fonte de ``text`` para caber em ``max_width`` (design).
+
+        ``fit_button_text`` mede o texto com a fonte em tamanho de design. Essa
+        medida e igual a medida na escala da janela dividida pela escala, porque a
+        largura cresce linearmente com a fonte. O tamanho final vira o tamanho de
+        design do texto, para que _draw_label continue a escala-lo.
+        """
+
+        fit_button_text(text, max_width, base_size)
+        self._apply_label_size(text, text.font_size)
+
+    def _draw_label(self, text: arcade.Text, x: float, y: float) -> None:
+        """Desenha ``text`` em (x, y) de design, rasterizado na escala da janela.
+
+        A posicao e o tamanho viram unidades da janela e o desenho usa a camera
+        padrao. Ao sair dela, a camera de design e restaurada. As ancoragens do
+        texto (anchor_x/anchor_y) continuam valendo.
+        """
+
+        self._apply_label_size(text)
+        text.x, text.y = self._canvas_fit().to_window(x, y)
+        # Ativar uma camera zera a tesoura (scissor) do Arcade. Por isso a tesoura
+        # atual e guardada antes e reaplicada dentro da ativacao, e depois restaurada.
+        clip = self.window.ctx.scissor
+        with self.window.default_camera.activate():
+            self.window.ctx.scissor = clip
+            text.draw()
+        # Sair do bloco restaura a camera do canvas, que tambem zera a tesoura.
+        self.window.ctx.scissor = clip
+
     # -- desenho ------------------------------------------------------------------
 
     def on_draw(self) -> None:
         self.clear()
-        width, height = self.window.width, self.window.height
-        self._draw_navigation(width, height)
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
+        # Formas ficam na camera de design; os textos saem por _draw_label, que
+        # volta para a camera padrao da janela e depois restaura a de design.
+        with self._canvas_camera().activate():
+            self._draw_navigation(width, height)
 
-        header_y = height - _HEADER_FROM_TOP
-        if not self._rows:
-            self._message.x = self._table_left()
-            self._message.y = header_y - 30
-            self._message.draw()
-        visible = self._visible_rows(height)
-        self._scroll = min(self._scroll, self._max_scroll(visible))
-        table_left = self._table_left()
-        for text, row, dx in self._cells:
-            if row < 0:
-                y = header_y
-            elif self._scroll <= row < self._scroll + visible:
-                y = header_y - (30 + (row - self._scroll) * ROW_HEIGHT)
-            else:
-                continue
-            text.x = table_left + dx
-            text.y = y
-            text.draw()
-        total = len(self._entries())
-        if total > visible:
-            first = self._scroll + 1
-            last = min(total, self._scroll + visible)
-            self._scroll_hint.text = (
-                f"Pilotos {first}–{last} de {total} · role a tabela para ver os demais"
-            )
-            self._scroll_hint.draw()
-            self._draw_scrollbar(header_y, visible, total)
+            header_y = height - _HEADER_FROM_TOP
+            if not self._rows:
+                self._draw_label(self._message, self._table_left(), header_y - 30)
+            visible = self._visible_rows(height)
+            self._scroll = min(self._scroll, self._max_scroll(visible))
+            table_left = self._table_left()
+            for text, row, dx in self._cells:
+                if row < 0:
+                    y = header_y
+                elif self._scroll <= row < self._scroll + visible:
+                    y = header_y - (30 + (row - self._scroll) * ROW_HEIGHT)
+                else:
+                    continue
+                self._draw_label(text, table_left + dx, y)
+            total = len(self._entries())
+            if total > visible:
+                first = self._scroll + 1
+                last = min(total, self._scroll + visible)
+                self._scroll_hint.text = (
+                    f"Pilotos {first}–{last} de {total} · role a tabela para ver os demais"
+                )
+                self._draw_label(self._scroll_hint, 40, 64)
+                self._draw_scrollbar(header_y, visible, total)
 
-        if self._save_status.text:
-            self._save_status.draw()
-        self._draw_actions()
+            if self._save_status.text:
+                self._draw_label(self._save_status, 40, 88)
+            self._draw_actions()
 
     def _draw_navigation(self, width: int, height: int) -> None:
         rects = self._nav_rects()
@@ -536,28 +643,21 @@ class TournamentResultView(arcade.View):
         label = self._nav_text
         label.text = self._selection_label()
         label.color = PRIMARY_TEXT_COLOR
-        label.font_size = 14
-        fit_button_text(label, name_w - 16, 14)
-        label.x = name_left + name_w / 2
-        label.y = rects["prev"][1] + rects["prev"][3] / 2
-        label.draw()
+        self._fit_label(label, name_w - 16, 14)
+        self._draw_label(
+            label,
+            name_left + name_w / 2,
+            rects["prev"][1] + rects["prev"][3] / 2,
+        )
 
     def _text_in(self, key, value, left, bottom, w, h, color, size, bold=False) -> None:
         """Texto centralizado num botao; reaproveitado entre quadros por ``key``."""
 
-        text = self._texts.get(key)
-        if text is None:
-            text = arcade.Text(
-                value, 0, 0, color, size, bold=bold, anchor_x="center", anchor_y="center"
-            )
-            self._texts[key] = text
-        text.text = value
-        text.color = color
-        text.bold = bold
-        text.font_size = size
-        text.x, text.y = left + w / 2, bottom + h / 2
-        fit_button_text(text, w - 12, size)
-        text.draw()
+        text = self._text(
+            key, value, color, size, bold=bold, anchor_x="center", anchor_y="center"
+        )
+        self._fit_label(text, w - 12, size)
+        self._draw_label(text, left + w / 2, bottom + h / 2)
 
     def _draw_actions(self) -> None:
         for key, rect in self._action_rects().items():
@@ -570,15 +670,13 @@ class TournamentResultView(arcade.View):
             arcade.draw_lbwh_rectangle_filled(left, bottom, w, h, background)
             text = self._button_texts[key]
             text.text = _ACTION_LABELS[key]
-            text.font_size = 13
-            fit_button_text(text, w - 12, 13)
-            text.x, text.y = left + w / 2, bottom + h / 2
-            text.draw()
+            self._fit_label(text, w - 12, 13)
+            self._draw_label(text, left + w / 2, bottom + h / 2)
 
     def _draw_scrollbar(self, header_y: float, visible: int, total: int) -> None:
         """Trilho e cursor a direita da tabela; o cursor acompanha ``self._scroll``."""
 
-        track_x = self.window.width - 26
+        track_x = DESIGN_WIDTH - 26
         track_top = header_y - 30 + 12
         track_bottom = _TABLE_BOTTOM
         track_h = track_top - track_bottom

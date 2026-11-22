@@ -22,8 +22,14 @@ class PitLaneParameters:
     speed_limit_kmh: float = 80.0
     service_time_s: float = 2.5
     merge_gap_m: float = 2.0
+    #: Folga (m) entre a borda da pista e o eixo dos boxes, medida a partir da meia
+    #: largura. A pit lane fica a ``meia-largura + folga`` do eixo da pista. Escolha
+    #: heurística, não medida (v2: antes o traçado ficava sobre a linha de centro).
+    lateral_clearance_m: float = 6.0
+    #: Lado dos boxes em relação ao sentido da volta: +1 esquerda, -1 direita.
+    lateral_side: int = 1
     origin: str = "assumed"
-    parameter_version: str = "spatial-pit-lane-v1"
+    parameter_version: str = "spatial-pit-lane-v2"
 
     def __post_init__(self) -> None:
         for name in ("speed_limit_kmh", "service_time_s", "merge_gap_m"):
@@ -35,6 +41,16 @@ class PitLaneParameters:
                 or value <= 0
             ):
                 raise ValueError(f"{name} deve ser positivo e finito")
+        clearance = self.lateral_clearance_m
+        if (
+            isinstance(clearance, bool)
+            or not isinstance(clearance, (int, float))
+            or not isfinite(clearance)
+            or clearance < 0
+        ):
+            raise ValueError("lateral_clearance_m deve ser não negativo e finito")
+        if self.lateral_side not in (1, -1) or isinstance(self.lateral_side, bool):
+            raise ValueError("lateral_side deve ser 1 (esquerda) ou -1 (direita)")
         if (
             self.origin != "assumed"
             or not isinstance(self.parameter_version, str)
@@ -122,13 +138,59 @@ class PitLanePath:
         return a[1] + f * (b[1] - a[1]), a[2] + f * (b[2] - a[2])
 
 
-def build_pit_lane(geometry: TrackGeometry) -> PitLanePath:
+def _track_tangent(tp, x: float, y: float) -> tuple[float, float]:
+    """Tangente unitária do segmento da pista mais próximo de (x, y).
+
+    Usa a mesma projeção em segmentos de ``build_pit_lane``: o deslocamento lateral
+    segue o traçado real da pista, não o vértice mais próximo.
+    """
+
+    best: tuple[float, float, float] | None = None
+    for a, b in zip(tp, tp[1:]):
+        dx, dy = b.x_normalized - a.x_normalized, b.y_normalized - a.y_normalized
+        length = hypot(dx, dy)
+        if length == 0:
+            continue
+        f = max(
+            0.0,
+            min(1.0, ((x - a.x_normalized) * dx + (y - a.y_normalized) * dy) / length**2),
+        )
+        px, py = a.x_normalized + f * dx, a.y_normalized + f * dy
+        dist2 = (x - px) ** 2 + (y - py) ** 2
+        if best is None or dist2 < best[0]:
+            best = (dist2, dx / length, dy / length)
+    if best is None:
+        raise ValueError("pista sem segmentos para ancorar a pit lane")
+    return best[1], best[2]
+
+
+def build_pit_lane(
+    geometry: TrackGeometry,
+    *,
+    lateral_offset_m: float = 0.0,
+    lateral_side: int = 1,
+) -> PitLanePath:
     """Conecte a polilinha à pista e estime metros pela escala compartilhada.
 
     As conexões usam projeção em segmentos (não o vértice mais próximo), para
     evitar saltos de progresso. O ponto de serviço deve ser único e interno.
     As fixtures permanecem imutáveis; as conexões existem só nesta projeção.
+
+    ``lateral_offset_m`` afasta os pontos internos dos boxes do eixo da pista, em
+    metros, para o lado ``lateral_side`` (+1 esquerda, -1 direita, no sentido da
+    volta). Entrada e saída ficam sobre a pista, para que a ligação com a pista
+    continue no mesmo ponto. Com 0 (padrão), o traçado é o da fixture. Esse
+    deslocamento é escolha do motor, não medida: o chamador o declara.
     """
+
+    if lateral_side not in (1, -1) or isinstance(lateral_side, bool):
+        raise ValueError("lateral_side deve ser 1 (esquerda) ou -1 (direita)")
+    if (
+        isinstance(lateral_offset_m, bool)
+        or not isfinite(lateral_offset_m)
+        or lateral_offset_m < 0
+    ):
+        raise ValueError("lateral_offset_m deve ser não negativo e finito")
 
     rows = sorted(geometry.pit_lane_points, key=lambda p: p.sequence)
     services = [i for i, p in enumerate(rows) if p.is_service_point]
@@ -172,9 +234,22 @@ def build_pit_lane(geometry: TrackGeometry) -> PitLanePath:
         exit_d += lap_length
     if not 0 < exit_d - entry < lap_length:
         raise ValueError("entrada e saída precisam delimitar um trecho da volta")
+    # 1 unidade normalizada vale lap_length/perimeter metros (a mesma escala da
+    # distância abaixo), então metros viram unidades multiplicando por perimeter/lap.
+    shift = lateral_offset_m * perimeter / lap_length
+    last = len(rows) - 1
+    rows_xy: list[tuple[float, float]] = []
+    for index, p in enumerate(rows):
+        x, y = p.x_normalized, p.y_normalized
+        if shift and 0 < index < last:
+            tx, ty = _track_tangent(tp, x, y)
+            # Normal à esquerda do sentido da volta: (-ty, tx).
+            x += -ty * lateral_side * shift
+            y += tx * lateral_side * shift
+        rows_xy.append((x, y))
     coordinates = [
         (ex, ey),
-        *((p.x_normalized, p.y_normalized) for p in rows),
+        *rows_xy,
         (xx, xy),
     ]
     points = [(0.0, ex, ey)]

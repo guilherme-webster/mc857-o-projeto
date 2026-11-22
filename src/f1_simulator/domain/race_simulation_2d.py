@@ -391,7 +391,16 @@ def simulate_2d_race(
     curvature = curvature_profile(geometry) if usage_active else None
     reference_usage = usage_reference(geometry, curvature, base_physics, usage_parameters) if usage_active else None
     pit_active = tyre_active and model_parameters is not None
-    pit_lane = build_pit_lane(geometry) if pit_active else None
+    # Boxes a meia-largura da pista mais a folga declarada em PitLaneParameters.
+    pit_lane = (
+        build_pit_lane(
+            geometry,
+            lateral_offset_m=track.width_m / 2 + pit_parameters.lateral_clearance_m,
+            lateral_side=pit_parameters.lateral_side,
+        )
+        if pit_active
+        else None
+    )
     if pit_lane is not None and lap_length_m > 1000.0:
         # Em circuitos reais, a rampa tangencial de acesso inicia 60m antes da speed limiter line
         # e termina 60m depois na pista principal, garantindo alinhamento físico e visual contínuo:

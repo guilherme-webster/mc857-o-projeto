@@ -4,6 +4,12 @@ A esquerda mostra o grid de largada, a direita a etapa em foco (voltas, sessao,
 motor e clima por volta) com setas para as demais etapas, e embaixo o
 status da simulacao com o botao de abortar. A simulacao roda numa thread; a
 tela so le a fila de resultados em ``on_update``, na thread do Arcade.
+
+Todo o layout usa o canvas de design de 1280x720 (o mesmo de ``grid_view.py``).
+Formas saem pela camera do canvas, que escala e centraliza na janela; textos
+saem por ``_draw_label``, que os rasteriza na escala da janela para ficarem
+nitidos. Os ponteiros chegam em unidades da janela e sao convertidos antes de
+qualquer teste de area.
 """
 
 from __future__ import annotations
@@ -16,6 +22,7 @@ from typing import Any
 import arcade
 
 from frontend.arcade import track_client
+from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
 from frontend.arcade.configuration_state import SimulationPlan
 from frontend.arcade.drawing import draw_rounded_panel
 from frontend.arcade.race_launcher import LaunchCancelled, LaunchOutcome, LaunchProgress
@@ -30,6 +37,10 @@ from frontend.arcade.theme import (
 )
 from frontend.arcade.track_preview import TrackPreviewGeometry, fit_track_preview
 
+# Canvas de design: todo o layout usa estas medidas fixas, e a janela so recebe
+# a escala uniforme de CanvasFit. E a mesma referencia das outras telas.
+DESIGN_WIDTH = 1280
+DESIGN_HEIGHT = 720
 _WEATHER_FALLBACK_COLOR = (90, 90, 90)
 _BUTTON_BG = (46, 62, 80)
 _BUTTON_HOVER = (70, 90, 115)
@@ -103,7 +114,8 @@ class SimulationLoadingView(arcade.View):
         self._grid_loader = grid_loader
         self._track_loader = track_loader
         # Geometria bruta por circuito (buscada uma vez) e prévias ajustadas
-        # a area atual, refeitas quando a janela muda de tamanho.
+        # a area do canvas de design. A area nunca muda com a janela, entao a
+        # previa so e refeita quando o circuito ou a area mudam.
         self._track_payloads: dict[str, dict] = {}
         self._track_errors: dict[str, str] = {}
         self._previews: dict[tuple, TrackPreviewGeometry] = {}
@@ -118,6 +130,11 @@ class SimulationLoadingView(arcade.View):
         self._race_index = 0
         self._hover: str | None = None
         self._texts: dict[str, arcade.Text] = {}
+        # Tamanho de design de cada texto (fonte em unidades do canvas). A fonte
+        # real do texto e esse valor vezes a escala da janela, aplicada em _draw_label.
+        self._label_sizes: dict[arcade.Text, float] = {}
+        # Largura de quebra de linha de design dos textos que quebram (multilinha).
+        self._label_widths: dict[arcade.Text, float] = {}
 
     # -- trabalho em segundo plano ---------------------------------------------
 
@@ -212,10 +229,31 @@ class SimulationLoadingView(arcade.View):
             self._return_view.show_message(message, color)
             self.window.show_view(self._return_view)
 
+    # -- canvas de design ----------------------------------------------------------
+
+    def _canvas_fit(self) -> CanvasFit:
+        """Mapeamento atual entre o canvas de design e a janela.
+
+        Recalculado a cada chamada, e so aritmetica: assim um redimensionamento
+        nunca deixa uma escala antiga para o proximo evento de mouse ou quadro.
+        """
+
+        return CanvasFit.fit((DESIGN_WIDTH, DESIGN_HEIGHT), self.window.get_size())
+
+    def _canvas_camera(self) -> arcade.Camera2D:
+        """Camera que desenha formas em unidades de design, escaladas e centralizadas."""
+
+        return make_canvas_camera(self._canvas_fit(), self.window)
+
+    def _logical_pointer(self, x: float, y: float) -> tuple[float, float]:
+        """Converte o ponteiro (unidades da janela) para unidades de design."""
+
+        return self._canvas_fit().to_logical(x, y)
+
     # -- geometria ---------------------------------------------------------------
 
     def _rects(self) -> dict[str, tuple[float, float, float, float]]:
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         top, bottom = height - 110, 130
         middle = width / 2
         right_x = middle + 20
@@ -231,7 +269,7 @@ class SimulationLoadingView(arcade.View):
     def _visible_rows(self) -> int:
         """Linhas de piloto que cabem da primeira linha ate a margem inferior da caixa."""
 
-        panel_top, panel_bottom = self.window.height - 110, 130
+        panel_top, panel_bottom = DESIGN_HEIGHT - 110, 130
         first_row_y = panel_top - 60
         fits = int((first_row_y - panel_bottom - 20) // _ROW_HEIGHT) + 1
         return max(1, min(_MAX_VISIBLE_ROWS, fits))
@@ -242,6 +280,7 @@ class SimulationLoadingView(arcade.View):
     # -- eventos -----------------------------------------------------------------
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int) -> None:
+        x, y = self._logical_pointer(x, y)
         self._hover = next(
             (key for key in ("abort", "prev", "next")
              if _inside(x, y, self._rects()[key])),
@@ -251,12 +290,14 @@ class SimulationLoadingView(arcade.View):
     def on_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float) -> None:
         """Roda do mouse sobre a caixa do grid rola uma linha por passo."""
 
+        x, y = self._logical_pointer(x, y)
         if not self._grid or not _inside(x, y, self._rects()["grid"]):
             return
         step = -1 if scroll_y > 0 else 1 if scroll_y < 0 else 0
         self._grid_scroll = min(max(self._grid_scroll + step, 0), self._max_grid_scroll())
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int) -> None:
+        x, y = self._logical_pointer(x, y)
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
         rects = self._rects()
@@ -278,35 +319,123 @@ class SimulationLoadingView(arcade.View):
     def _step_race(self, step: int) -> None:
         self._race_index = next_index(self._race_index, step, len(self._plan.races))
 
-    # -- desenho -----------------------------------------------------------------
+    # -- textos ------------------------------------------------------------------
+    #
+    # Formas usam a camera de design. Textos sao rasterizados pela camera padrao
+    # da janela (escalar glifos pela camera de design os deixaria borrados). Por
+    # isso a posicao e o tamanho dos textos ficam em unidades de design, e
+    # _draw_label os converte na hora de desenhar. Mesmo padrao de grid_view.py.
 
-    def _text(self, key: str, value: str, x, y, color, size=12, **style) -> arcade.Text:
+    def _text(
+        self,
+        key: str,
+        value: str,
+        color,
+        size: float = 12,
+        *,
+        width: float | None = None,
+        **style,
+    ) -> arcade.Text:
+        """Texto reutilizado entre quadros, sem posicao: ela vem em _draw_label.
+
+        ``size`` e o tamanho de design. ``width`` e a largura de quebra de linha
+        em unidades de design; sem ela o texto nao quebra.
+        """
+
         text = self._texts.get(key)
         if text is None:
-            text = arcade.Text(value, x, y, color, size, **style)
+            # pyglet exige largura para texto multilinha, mesmo na criacao. A largura
+            # de design vale aqui; _apply_label_size a converte para a janela depois.
+            if width is not None:
+                style.setdefault("width", int(width))
+            text = arcade.Text(value, 0, 0, color, size, **style)
             self._texts[key] = text
         if text.text != value:
             text.text = value
-        text.x, text.y = x, y
         if text.color != color:
             text.color = color
+        self._label_sizes[text] = size
+        if width is not None:
+            self._label_widths[text] = width
         return text
+
+    def _draw_text(
+        self,
+        key: str,
+        value: str,
+        x: float,
+        y: float,
+        color,
+        size: float = 12,
+        *,
+        width: float | None = None,
+        **style,
+    ) -> None:
+        """Desenha um texto em (x, y) de design, sem precisar guardar o objeto."""
+
+        text = self._text(key, value, color, size, width=width, **style)
+        self._draw_label(text, x, y)
+
+    def _apply_label_size(self, text: arcade.Text) -> None:
+        """Aplica ao texto o tamanho de design na escala atual da janela.
+
+        A largura de quebra tambem e convertida, pois pyglet a mede em pixels.
+        Fonte e largura so sao trocadas quando mudam, porque cada troca refaz o
+        layout do texto.
+        """
+
+        fit = self._canvas_fit()
+        target = self._label_sizes[text] * fit.scale
+        if abs(text.font_size - target) > 1e-6:
+            text.font_size = target
+        wrap = self._label_widths.get(text)
+        if wrap is not None:
+            target_width = int(wrap * fit.scale)
+            if text.width is None or abs(text.width - target_width) > 1e-6:
+                text.width = target_width
+
+    def _draw_label(self, text: arcade.Text, x: float, y: float) -> None:
+        """Desenha ``text`` em (x, y) de design, rasterizado na escala da janela.
+
+        Um texto desenhado pela camera escalada sairia borrado, entao a posicao
+        e o tamanho viram unidades da janela e o desenho usa a camera padrao. Ao
+        sair dela, a camera de design e restaurada. As ancoragens do texto
+        (anchor_x/anchor_y) continuam valendo.
+        """
+
+        self._apply_label_size(text)
+        text.x, text.y = self._canvas_fit().to_window(x, y)
+        # Ativar uma camera zera a tesoura (scissor) do Arcade. Por isso a tesoura
+        # atual e guardada antes e reaplicada dentro da ativacao, e depois restaurada.
+        clip = self.window.ctx.scissor
+        with self.window.default_camera.activate():
+            self.window.ctx.scissor = clip
+            text.draw()
+        # Sair do bloco restaura a camera do canvas, que tambem zera a tesoura.
+        self.window.ctx.scissor = clip
+
+    # -- desenho -----------------------------------------------------------------
 
     def on_draw(self) -> None:
         self.clear()
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         rects = self._rects()
         title = (
             "Simulando o torneio" if len(self._plan.races) > 1 else "Simulando a corrida"
         )
-        self._text("title", title, 40, height - 60, PRIMARY_TEXT_COLOR, 26, bold=True).draw()
-        self._text(
-            "subtitle", self._plan.rules.name, 40, height - 90, SECONDARY_TEXT_COLOR, 12
-        ).draw()
-        self._draw_grid(rects["grid"])
-        self._draw_race(rects["race"])
-        self._draw_status(width, rects)
-        self._draw_loading_bar(width)
+        # Formas ficam na camera de design; os textos saem por _draw_label, que
+        # volta para a camera padrao da janela e depois restaura a de design.
+        with self._canvas_camera().activate():
+            self._draw_text(
+                "title", title, 40, height - 60, PRIMARY_TEXT_COLOR, 26, bold=True
+            )
+            self._draw_text(
+                "subtitle", self._plan.rules.name, 40, height - 90, SECONDARY_TEXT_COLOR, 12
+            )
+            self._draw_grid(rects["grid"])
+            self._draw_race(rects["race"])
+            self._draw_status(width, rects)
+            self._draw_loading_bar(width)
 
     def _draw_loading_bar(self, width: float) -> None:
         """Barra fina logo abaixo do status, com o progresso do plano."""
@@ -347,7 +476,7 @@ class SimulationLoadingView(arcade.View):
         _rounded(x, bottom, w, h, (9, 20, 17), PANEL_BORDER_COLOR, radius=7)
         if geometry is None:
             message = error or "Carregando geometria…"
-            self._text(
+            self._draw_text(
                 "preview-message",
                 message,
                 x + w / 2,
@@ -358,7 +487,7 @@ class SimulationLoadingView(arcade.View):
                 anchor_y="center",
                 width=w - 20,
                 multiline=True,
-            ).draw()
+            )
             return
         arcade.draw_line_strip(geometry.track_points, (29, 33, 39), 12)
         arcade.draw_line_strip(geometry.track_points, (223, 226, 231), 9)
@@ -366,21 +495,21 @@ class SimulationLoadingView(arcade.View):
         arcade.draw_line_strip(geometry.pit_lane_points, (249, 184, 66), 3)
         arcade.draw_circle_filled(*geometry.service_point, 5, (255, 176, 0))
         length = f"{geometry.lap_length_m / 1000:.3f}".replace(".", ",")
-        self._text(
+        self._draw_text(
             "preview-length",
             f"Comprimento da volta: {length} km",
             x,
             bottom + h + 6,
             PRIMARY_TEXT_COLOR,
             11,
-        ).draw()
+        )
 
     def _panel(self, rect, title: str, key: str, fill=None) -> None:
         left, bottom, w, h = rect
         _rounded(left, bottom, w, h, PANEL_COLOR if fill is None else fill, PANEL_BORDER_COLOR, radius=8)
-        self._text(
+        self._draw_text(
             key, title, left + 20, bottom + h - 30, _HEADER_COLOR, 11, bold=True
-        ).draw()
+        )
 
     def _draw_grid(self, rect) -> None:
         left, bottom, _w, _h = rect
@@ -394,7 +523,7 @@ class SimulationLoadingView(arcade.View):
         else:
             message = None
         if message is not None:
-            self._text("grid-message", message, left + 20, top, SECONDARY_TEXT_COLOR, 12).draw()
+            self._draw_text("grid-message", message, left + 20, top, SECONDARY_TEXT_COLOR, 12)
             return
         visible = self._visible_rows()
         self._grid_scroll = min(self._grid_scroll, self._max_grid_scroll())
@@ -402,23 +531,23 @@ class SimulationLoadingView(arcade.View):
         for offset, entry in enumerate(self._grid[start : start + visible]):
             index = start + offset
             y = top - offset * _ROW_HEIGHT
-            self._text(f"grid-p:{index}", str(index + 1), left + 20, y, PRIMARY_TEXT_COLOR, 10).draw()
-            self._text(
+            self._draw_text(f"grid-p:{index}", str(index + 1), left + 20, y, PRIMARY_TEXT_COLOR, 10)
+            self._draw_text(
                 f"grid-n:{index}",
                 str(entry.get("driver_name", ""))[:24],
                 left + 60,
                 y,
                 (255, 255, 255),
                 12,
-            ).draw()
-            self._text(
+            )
+            self._draw_text(
                 f"grid-t:{index}",
                 str(entry.get("team_name", ""))[:22],
                 left + 300,
                 y,
                 (255, 255, 255),
                 10,
-            ).draw()
+            )
         self._draw_grid_scrollbar(rect, top, visible)
 
     def _draw_grid_scrollbar(self, rect, top: float, visible: int) -> None:
@@ -454,7 +583,7 @@ class SimulationLoadingView(arcade.View):
             (f"Voltas {first}–{last}", 12, False),
         )
         for index, (text, size, bold) in enumerate(lines):
-            self._text(
+            self._draw_text(
                 f"race-line:{index}",
                 text,
                 left + 20,
@@ -462,7 +591,7 @@ class SimulationLoadingView(arcade.View):
                 PRIMARY_TEXT_COLOR,
                 size,
                 bold=bold,
-            ).draw()
+            )
         # Abaixo do resumo (3 linhas, a ultima na base top-56): prévia da pista a
         # esquerda e clima a direita. Sem a linha "Largada", a prévia sobe.
         body_top = top - 96
@@ -481,7 +610,7 @@ class SimulationLoadingView(arcade.View):
     def _draw_weather(self, x: float, top: float, column_w: float, height: float, config) -> None:
         """Barra vertical do clima (volta 1 no topo) com o resumo ao lado."""
 
-        self._text("weather-title", "Clima por volta", x, top, SECONDARY_TEXT_COLOR, 11).draw()
+        self._draw_text("weather-title", "Clima por volta", x, top, SECONDARY_TEXT_COLOR, 11)
         schedule = config.weather_schedule
         total = schedule.total_laps
         bar_w = 26
@@ -493,7 +622,7 @@ class SimulationLoadingView(arcade.View):
             segment_top = bar_top - (weather_range.start_lap - 1) / total * bar_h
             color = WEATHER_TIMELINE_COLORS.get(weather_range.weather, _WEATHER_FALLBACK_COLOR)
             arcade.draw_lbwh_rectangle_filled(x, segment_top - span, bar_w, span, color)
-        self._text(
+        self._draw_text(
             "weather-summary",
             schedule.compact_summary(),
             x + bar_w + 14,
@@ -502,12 +631,12 @@ class SimulationLoadingView(arcade.View):
             10,
             width=column_w - bar_w - 14,
             multiline=True,
-        ).draw()
+        )
 
     def _draw_stepper(self, rect) -> None:
         rects = self._rects()
         count = len(self._plan.races)
-        self._text(
+        self._draw_text(
             "stepper-count",
             f"{self._race_index + 1} / {count}",
             rect[0] + rect[2] - 170,
@@ -515,14 +644,14 @@ class SimulationLoadingView(arcade.View):
             SECONDARY_TEXT_COLOR,
             11,
             anchor_y="center",
-        ).draw()
+        )
         for key, symbol in (("prev", "‹"), ("next", "›")):
             left, bottom, w, h = rects[key]
             hover = self._hover == key
             _rounded(
                 left, bottom, w, h, _BUTTON_HOVER if hover else _BUTTON_BG, radius=6
             )
-            self._text(
+            self._draw_text(
                 f"stepper-{key}",
                 symbol,
                 left + w / 2,
@@ -531,11 +660,11 @@ class SimulationLoadingView(arcade.View):
                 16,
                 anchor_x="center",
                 anchor_y="center",
-            ).draw()
+            )
 
     def _draw_status(self, width: float, rects) -> None:
         status_color = ERROR_COLOR if self._error is not None else PRIMARY_TEXT_COLOR
-        self._text(
+        self._draw_text(
             "status",
             progress_text(self._progress),
             40,
@@ -544,7 +673,7 @@ class SimulationLoadingView(arcade.View):
             14,
             width=width - 340,
             multiline=True,
-        ).draw()
+        )
         left, bottom, w, h = rects["abort"]
         hover = self._hover == "abort"
         background = (
@@ -554,7 +683,7 @@ class SimulationLoadingView(arcade.View):
         label = (
             "Abortar simulação" if self._error is None else "Voltar à configuração"
         )
-        self._text(
+        self._draw_text(
             "abort-label",
             label,
             left + w / 2,
@@ -564,7 +693,7 @@ class SimulationLoadingView(arcade.View):
             bold=True,
             anchor_x="center",
             anchor_y="center",
-        ).draw()
+        )
 
 
 def _rounded(

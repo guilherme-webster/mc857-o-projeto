@@ -258,9 +258,8 @@ class ParametersViewTest(unittest.TestCase):
         grid_view = GridView(client=IdleGridClient())
         self.window.show_view(grid_view)
         left, bottom, width, height = grid_view._seed_bounds()
-        grid_view.on_mouse_press(
-            left + width / 2, bottom + height / 2, arcade.MOUSE_BUTTON_LEFT, 0
-        )
+        x, y = self.to_window(grid_view, left + width / 2, bottom + height / 2)
+        grid_view.on_mouse_press(x, y, arcade.MOUSE_BUTTON_LEFT, 0)
         with patch.object(self.window, "get_clipboard_text", return_value="77"):
             grid_view.on_key_press(arcade.key.V, accel)
         self.assertEqual(grid_view._grid_seed_text, "77")

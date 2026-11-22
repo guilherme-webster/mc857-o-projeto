@@ -957,9 +957,14 @@ class ParametersView(UIView):
         else:
             with self._screen_camera.activate():
                 self.on_draw_before_ui()
+        # Ativar a camera padrao zera a tesoura (scissor) do Arcade. A tesoura atual
+        # e guardada antes, reaplicada dentro da ativacao e restaurada depois.
+        clip = self.window.ctx.scissor
         with self.window.default_camera.activate():
+            self.window.ctx.scissor = clip
             for label in self._native_labels:
                 label.draw()
+        self.window.ctx.scissor = clip
 
     def _native_text(
         self,
@@ -997,6 +1002,35 @@ class ParametersView(UIView):
 
         logical_x, logical_y = self._canvas_fit().to_logical(x, y)
         return int(logical_x), int(logical_y)
+
+    def _scissor_rect(
+        self,
+        left: float,
+        bottom: float,
+        width: float,
+        height: float,
+        previous: tuple[int, int, int, int] | None,
+    ) -> tuple[int, int, int, int]:
+        """Retangulo de design, em pixels do framebuffer, dentro do recorte ``previous``.
+
+        A tesoura do OpenGL usa pixels do framebuffer: o retangulo de design vira
+        unidades da janela (``fit.to_window``) e depois pixels (fator do monitor).
+        Com um recorte ja ativo, o resultado e a interseccao dos dois, para o texto
+        nao sair de uma area ja recortada. Os cantos sao limitados a zero.
+        """
+
+        fit = self._canvas_fit()
+        ratio = self.window.get_pixel_ratio()
+        x0, y0 = fit.to_window(left, bottom)
+        x1, y1 = fit.to_window(left + width, bottom + height)
+        x0, y0 = int(x0 * ratio), int(y0 * ratio)
+        x1, y1 = int(x1 * ratio), int(y1 * ratio)
+        if previous is not None:
+            prev_x, prev_y, prev_w, prev_h = previous
+            x0, y0 = max(x0, prev_x), max(y0, prev_y)
+            x1, y1 = min(x1, prev_x + prev_w), min(y1, prev_y + prev_h)
+        x0, y0 = max(0, x0), max(0, y0)
+        return (x0, y0, max(0, x1 - x0), max(0, y1 - y0))
 
     def on_draw_before_ui(self) -> None:
         """Draw the track-selection screen before hidden controller widgets."""
@@ -1259,10 +1293,7 @@ class ParametersView(UIView):
         shift = min(max(0.0, shift), max(0.0, full_px - field_px))
         self._name_shift = shift
         px, py = fit.to_window(left + _NAME_TEXT_PAD, bottom + height / 2)
-        x0, y0 = fit.to_window(left, bottom)
-        x1, y1 = fit.to_window(left + width, bottom + height)
         blink_on = self._editing_name and (self._name_blink % 1.0) < 0.55
-        ratio = self.window.get_pixel_ratio()
         span = 8 * fit.scale
 
         def draw() -> None:
@@ -1270,12 +1301,10 @@ class ParametersView(UIView):
             label.font_size = _NAME_FONT_SIZE * fit.scale
             label.text = text
             label.x, label.y = px - shift, py
+            # O recorte da caixa se soma ao recorte ativo, sem sair dele.
             previous = self.window.ctx.scissor
-            self.window.ctx.scissor = (
-                int(min(x0, x1) * ratio),
-                int(min(y0, y1) * ratio),
-                int(abs(x1 - x0) * ratio),
-                int(abs(y1 - y0) * ratio),
+            self.window.ctx.scissor = self._scissor_rect(
+                left, bottom, width, height, previous
             )
             try:
                 label.draw()
@@ -1513,8 +1542,13 @@ class ParametersView(UIView):
             if self._screen_camera is None:
                 self._draw_rounded_panel(left, bottom, width, height, 6, fill, border)
                 return
+            # Ativar a camera de design zera a tesoura: o recorte de quem desenha a
+            # lista e reaplicado dentro da ativacao e restaurado para os rotulos seguintes.
+            clip = self.window.ctx.scissor
             with self._screen_camera.activate():
+                self.window.ctx.scissor = clip
                 self._draw_rounded_panel(left, bottom, width, height, 6, fill, border)
+            self.window.ctx.scissor = clip
 
         self._native_labels.append(SimpleNamespace(text="", draw=draw))
 

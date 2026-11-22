@@ -26,6 +26,12 @@ class CarRenderScaleTest(unittest.TestCase):
             _unit=[(0, 0), (1, 0), (1, 1), (0, 1), (0, 0)],
             _is_2d=True,
         )
+        # _projected aplica o zoom ao final: o objeto de teste precisa do estado dele.
+        view._zoom = 1.0
+        view._pan = (0.0, 0.0)
+        view._base_bbox = (0.0, 0.0, 0.0, 0.0)
+        view._track_band = lambda: (80.0, 640.0)
+        view._apply_zoom = lambda points: TrackView._apply_zoom(view, points)
         screen = TrackView._projected(view)
         dx = screen[2][0] - screen[0][0]
         dy = screen[2][1] - screen[0][1]

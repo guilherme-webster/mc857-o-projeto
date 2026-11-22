@@ -1,8 +1,8 @@
 """Rolagem da tabela de pilotos da tela de grid, sem janela.
 
-A janela e substituida por um objeto com largura e altura: a logica de quantas
-linhas cabem, de manter o piloto selecionado visivel e de mapear o clique para
-a linha certa depende so dessas medidas.
+A janela e substituida por um objeto com largura, altura e tamanho consultavel:
+o layout usa o canvas de design (DESIGN_HEIGHT), e o mapeamento do clique usa
+o tamanho da janela. Quantas linhas cabem depende so da altura de design.
 """
 
 from __future__ import annotations
@@ -35,6 +35,9 @@ class _FakeWindow:
         self.width = width
         self.height = height
 
+    def get_size(self) -> tuple[int, int]:
+        return self.width, self.height
+
 
 def _view(height: int, drivers: int) -> GridView:
     window = _FakeWindow(1280, height)
@@ -50,12 +53,19 @@ def _view(height: int, drivers: int) -> GridView:
 
 @unittest.skipIf(GridView is None, "requires arcade")
 class GridScrollTest(unittest.TestCase):
-    def test_visible_rows_follow_the_window_height(self) -> None:
-        self.assertEqual(_view(900, 0)._visible_count(), 23)
-        self.assertEqual(_view(600, 0)._visible_count(), 12)
+    def test_visible_rows_follow_the_design_height(self) -> None:
+        with patch("frontend.arcade.grid_view.DESIGN_HEIGHT", 900):
+            self.assertEqual(_view(720, 0)._visible_count(), 23)
+        with patch("frontend.arcade.grid_view.DESIGN_HEIGHT", 600):
+            self.assertEqual(_view(720, 0)._visible_count(), 12)
+
+    def test_window_size_does_not_change_the_rows(self) -> None:
+        # O layout e do canvas de design; a janela so recebe a escala uniforme.
+        self.assertEqual(_view(900, 0)._visible_count(), _view(600, 0)._visible_count())
 
     def test_small_window_still_shows_one_row(self) -> None:
-        self.assertEqual(_view(200, 5)._visible_count(), 1)
+        with patch("frontend.arcade.grid_view.DESIGN_HEIGHT", 200):
+            self.assertEqual(_view(720, 5)._visible_count(), 1)
 
     def test_scroll_is_clamped_to_the_last_page(self) -> None:
         view = _view(720, 30)

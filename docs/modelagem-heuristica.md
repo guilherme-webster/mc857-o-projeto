@@ -274,6 +274,36 @@ inicial, massa adicionada e instante de conclusão. Uma troca gratuita sob
 bandeira vermelha não abastece. Sem o modelo de pneus e parâmetros de boxes,
 não há paradas no 2D.
 
+### 6.1 Afastamento dos boxes da linha de centro (`spatial-pit-lane-v2`)
+
+A fixture de pit lane (mock de 2025) põe o traçado dos boxes sobre a linha de
+centro da pista. Na v2, os pontos internos dos boxes são afastados do eixo para
+um lado (`PitLaneParameters.lateral_side`, +1 esquerda e -1 direita, no sentido
+da volta). A distância do afastamento é a meia-largura da pista
+(`track_space_2d.width_m / 2`, 12 m por padrão) mais `lateral_clearance_m` (6 m).
+Entrada e saída ficam sobre a pista, nas mesmas projeções da v1, então a ligação
+com a pista não muda. O afastamento é aplicado em `build_pit_lane` e declarado
+como `assumed` no resultado (`pit_lane_2d` e `assumptions`).
+
+- **Valores escolhidos, não medidos:** a folga de 6 m e o lado de referência
+  são ponto de partida. Não há medição dos boxes reais.
+- **Ligação com a pista:** a entrada e a saída continuam no eixo, então o trecho
+  entre a pista e o primeiro ponto afastado é uma reta diagonal no motor. O
+  frontend desenha a curva de ligação por cima dessa geometria.
+- **Corridas salvas:** o `pit_lane_2d` é gravado no arquivo. Corridas salvas
+  antes da v2 mantêm o traçado sobre a linha de centro e não são recalculadas.
+- **Apresentação:** a tela da corrida desenha o traçado dos boxes exatamente como
+  o motor o exporta, sem ajuste visual. A faixa da pista tem largura física com
+  piso de 14 px.
+- **Limitação conhecida:** em algumas pistas o traçado dos boxes fica sobre outro
+  trecho da pista ou cruza o asfalto (Mônaco é o caso mais visível). A causa está
+  na geometria de origem (fixture mock) e no afastamento pela tangente local, que
+  não resolve retas próximas. Corrigir exige geometria real por pista ou um
+  método que escolha o lado livre da pista. Fica para depois.
+- **Escala:** o deslocamento usa a mesma escala da pista (`perimeter/lap_length`),
+  então os metros que o motor cobra na pit lane mudam um pouco, junto com o tempo
+  de percurso dos boxes.
+
 `HeuristicPitStrategy` decide no início de cada volta:
 
 1. **Regra econômica:** para se o custo de continuar no jogo atual até o fim

@@ -15,6 +15,7 @@ import arcade
 
 from frontend.arcade import track_client
 from frontend.arcade.button_text import fit_button_text
+from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
 from frontend.arcade.clipboard import handle_clipboard_shortcut
 from frontend.arcade.configuration_state import (
     ConfigurationFormError,
@@ -45,6 +46,10 @@ from frontend.arcade.theme import (
     SUCCESS_COLOR,
 )
 
+# Canvas de design: todo o layout usa estas medidas fixas, e a janela so recebe
+# a escala uniforme de CanvasFit. E a mesma referencia da tela da pista.
+DESIGN_WIDTH = 1280
+DESIGN_HEIGHT = 720
 ROW_HEIGHT = 26
 # Linha de origem do grid: altura do display e do botao "Montar grid", largura
 # do botao e espaco entre os dois.
@@ -69,8 +74,10 @@ SOURCE_COLORS = {
 }
 # Colunas que nao rolam na horizontal (ficam para dar nome aos pilotos).
 _TABLE_FROZEN = ("P", "PILOTO")
-# Onde comeca a area que rola na horizontal, e quanto cada giro desloca.
-_TABLE_SCROLL_LEFT = 266
+# Onde comeca a area que rola na horizontal, e quanto cada giro desloca. A area
+# comeca antes da primeira coluna que rola (EQUIPE, x=215 + 40 de margem) com uma
+# folga, senao o inicio do texto dessa coluna fica fora do recorte.
+_TABLE_SCROLL_LEFT = 40 + 215 - 8
 _TABLE_SCROLL_STEP = 40
 # Folga apos a ultima coluna, para o valor alinhado a direita nao encostar na borda.
 _TABLE_COLUMN_MARGIN = 40
@@ -136,10 +143,20 @@ class GridView(arcade.View):
         self._status_color = SECONDARY_TEXT_COLOR
         self._row_texts: list[dict[str, arcade.Text]] = []
         self._texts: dict[str, arcade.Text] = {}
+        # Tamanho de design de cada texto (fonte em unidades do canvas). A fonte
+        # real do texto e esse valor vezes a escala da janela, aplicada em _draw_label.
+        self._label_sizes: dict[arcade.Text, float] = {}
+        # Largura de quebra de linha de design dos textos que quebram (multilinha).
+        self._label_widths: dict[arcade.Text, float] = {}
         # Indice do primeiro piloto visivel na tabela (rolagem).
         self._scroll = 0
         # Deslocamento horizontal das colunas que rolam (pixels).
         self._hscroll = 0
+        # Shift pressionado: a roda comum rola a tabela na horizontal.
+        self._shift_down = False
+        # Arrasto das barras de rolagem: "h" ou "v", e (ponteiro, rolagem) no inicio.
+        self._bar_drag: str | None = None
+        self._bar_drag_origin: tuple[float, float] = (0.0, 0.0)
         # Rolagem da caixa de atributos e o piloto a que ela pertence; ao
         # trocar de piloto a caixa volta ao topo.
         self._panel_scroll = 0
@@ -293,7 +310,7 @@ class GridView(arcade.View):
         self._set_status("Montagem cancelada.", SECONDARY_TEXT_COLOR)
 
     def _size_layout(self) -> dict:
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         panel_w, panel_h = 460, 250
         left, bottom = (width - panel_w) / 2, (height - panel_h) / 2
         return {
@@ -335,7 +352,7 @@ class GridView(arcade.View):
         arcade.draw_lbwh_rectangle_outline(
             left, bottom, panel_w, panel_h, PANEL_BORDER_COLOR, 1
         )
-        self._text(
+        self._draw_text(
             "sz:title",
             "Número de pilotos",
             left + 30,
@@ -343,22 +360,22 @@ class GridView(arcade.View):
             PRIMARY_TEXT_COLOR,
             16,
             bold=True,
-        ).draw()
-        self._text(
+        )
+        self._draw_text(
             "sz:hint",
             self._size_error or f"Digite de {MIN_GRID_SIZE} a {MAX_GRID_SIZE} pilotos.",
             left + 30,
             bottom + panel_h - 72,
             ERROR_COLOR if self._size_error else SECONDARY_TEXT_COLOR,
             11,
-        ).draw()
+        )
         f_left, f_bottom, f_w, f_h = layout["field"]
         arcade.draw_lbwh_rectangle_filled(f_left, f_bottom, f_w, f_h, _BUTTON_BG)
         arcade.draw_lbwh_rectangle_outline(
             f_left, f_bottom, f_w, f_h, _PRIMARY_BG, 2
         )
         shown = self._size_text or ""
-        self._text(
+        self._draw_text(
             "sz:value",
             shown + "|",
             f_left + f_w / 2,
@@ -368,7 +385,7 @@ class GridView(arcade.View):
             bold=True,
             anchor_x="center",
             anchor_y="center",
-        ).draw()
+        )
         for key, text, primary in (
             ("cancel", "Cancelar", False),
             ("confirm", "Montar grid", True),
@@ -377,7 +394,7 @@ class GridView(arcade.View):
             arcade.draw_lbwh_rectangle_filled(
                 b_left, b_bottom, b_w, b_h, _PRIMARY_BG if primary else _BUTTON_BG
             )
-            self._text(
+            self._draw_text(
                 f"sz:btn:{key}",
                 text,
                 b_left + b_w / 2,
@@ -387,7 +404,7 @@ class GridView(arcade.View):
                 bold=primary,
                 anchor_x="center",
                 anchor_y="center",
-            ).draw()
+            )
 
     def save_changes(self) -> None:
         if self._draft is None or not self._draft.has_changes:
@@ -448,7 +465,7 @@ class GridView(arcade.View):
         self._popup_open = True
 
     def _popup_layout(self) -> dict:
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         panel_w, panel_h = 640, 560
         left, bottom = (width - panel_w) / 2, (height - panel_h) / 2
         return {
@@ -587,7 +604,7 @@ class GridView(arcade.View):
         arcade.draw_lbwh_rectangle_outline(
             left, bottom, panel_w, panel_h, PANEL_BORDER_COLOR, 1
         )
-        self._text(
+        self._draw_text(
             "pop:title",
             "Escolher corrida",
             left + 30,
@@ -595,7 +612,7 @@ class GridView(arcade.View):
             PRIMARY_TEXT_COLOR,
             16,
             bold=True,
-        ).draw()
+        )
         seasons = self._popup_seasons()
         position = seasons.index(self._popup_season)
         for key, symbol, enabled in (
@@ -606,7 +623,7 @@ class GridView(arcade.View):
             arcade.draw_lbwh_rectangle_filled(
                 b_left, b_bottom, b_w, b_h, _BUTTON_BG if enabled else (30, 36, 46)
             )
-            self._text(
+            self._draw_text(
                 f"pop:{key}",
                 symbol,
                 b_left + b_w / 2,
@@ -615,7 +632,7 @@ class GridView(arcade.View):
                 15,
                 anchor_x="center",
                 anchor_y="center",
-            ).draw()
+            )
         y_left, y_bottom, y_w, y_h = layout["year"]
         typing = self._popup_year_text is not None
         arcade.draw_lbwh_rectangle_filled(y_left, y_bottom, y_w, y_h, _BUTTON_BG)
@@ -634,20 +651,18 @@ class GridView(arcade.View):
         season_label = self._text(
             "pop:season",
             year_label,
-            y_left + y_w / 2,
-            y_bottom + y_h / 2,
             PRIMARY_TEXT_COLOR,
             14,
             bold=True,
             anchor_x="center",
             anchor_y="center",
         )
-        season_label.draw()
+        center_x, center_y = y_left + y_w / 2, y_bottom + y_h / 2
+        self._draw_label(season_label, center_x, center_y)
         # Cursor como linha logo depois do ano digitado (o texto centralizado nao treme).
         if typing and caret_visible():
-            x = season_label.x + season_label.content_width / 2 + 2
-            y = season_label.y
-            arcade.draw_line(x, y - 8, x, y + 8, PRIMARY_TEXT_COLOR, 2)
+            x = center_x + self._label_width(season_label) / 2 + 2
+            arcade.draw_line(x, center_y - 8, x, center_y + 8, PRIMARY_TEXT_COLOR, 2)
         hint, hint_color = (
             (self._popup_year_error, ERROR_COLOR)
             if self._popup_year_error
@@ -656,7 +671,7 @@ class GridView(arcade.View):
                 _HEADER_COLOR,
             )
         )
-        self._text(
+        self._draw_text(
             "pop:hint",
             hint,
             left + 30,
@@ -664,18 +679,18 @@ class GridView(arcade.View):
             hint_color,
             10,
             width=panel_w - 60,
-        ).draw()
+        )
         rows = self._popup_rows()
         self._draw_list_scrollbar(layout, len(self._popup_races()), self._popup_scroll)
         if not rows:
-            self._text(
+            self._draw_text(
                 "pop:empty",
                 "Nenhuma corrida nesta temporada.",
                 left + 20,
                 layout["list_top"] - 20,
                 SECONDARY_TEXT_COLOR,
                 11,
-            ).draw()
+            )
         for index, source, (r_left, r_bottom, r_w, r_h) in rows:
             current = index == self._source_index
             arcade.draw_lbwh_rectangle_filled(
@@ -684,17 +699,15 @@ class GridView(arcade.View):
             label_text = self._text(
                 f"pop:row:{index}",
                 source.label,
-                r_left + 10,
-                r_bottom + r_h / 2,
                 PRIMARY_TEXT_COLOR,
                 11,
                 anchor_y="center",
             )
-            fit_button_text(label_text, r_w - 20, 11)
-            label_text.draw()
+            self._fit_label(label_text, r_w - 20, 11)
+            self._draw_label(label_text, r_left + 10, r_bottom + r_h / 2)
         c_left, c_bottom, c_w, c_h = layout["close"]
         arcade.draw_lbwh_rectangle_filled(c_left, c_bottom, c_w, c_h, _BUTTON_BG)
-        self._text(
+        self._draw_text(
             "pop:close",
             "Fechar",
             c_left + c_w / 2,
@@ -703,7 +716,7 @@ class GridView(arcade.View):
             13,
             anchor_x="center",
             anchor_y="center",
-        ).draw()
+        )
 
     # -- elenco: adicionar e remover pilotos ----------------------------------
 
@@ -780,7 +793,7 @@ class GridView(arcade.View):
             )
 
     def _picker_layout(self) -> dict:
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         left, bottom, panel_w, panel_h = 340, 120, width - 680, height - 240
         return {
             "panel": (left, bottom, panel_w, panel_h),
@@ -835,7 +848,7 @@ class GridView(arcade.View):
 
     def _draw_picker(self, width: int, height: int) -> None:
         layout = self._picker_layout()
-        # Cobre a janela inteira, para que nada por baixo receba clique ou desenho.
+        # Cobre o canvas inteiro, para que nada por baixo receba clique ou desenho.
         arcade.draw_lbwh_rectangle_filled(0, 0, width, height, (0, 0, 0, 170))
         left, bottom, panel_w, panel_h = layout["panel"]
         arcade.draw_lbwh_rectangle_filled(left, bottom, panel_w, panel_h, PANEL_COLOR)
@@ -843,7 +856,7 @@ class GridView(arcade.View):
             left, bottom, panel_w, panel_h, PANEL_BORDER_COLOR, 1
         )
         picker = self._picker
-        self._text(
+        self._draw_text(
             "pk:title",
             "Adicionar pilotos ao grid",
             left + 20,
@@ -851,8 +864,8 @@ class GridView(arcade.View):
             PRIMARY_TEXT_COLOR,
             16,
             bold=True,
-        ).draw()
-        self._text(
+        )
+        self._draw_text(
             "pk:count",
             f"Escolhidos: {len(picker.selected)} · vagas: {picker.room}",
             left + panel_w - 20,
@@ -860,35 +873,33 @@ class GridView(arcade.View):
             SECONDARY_TEXT_COLOR,
             11,
             anchor_x="right",
-        ).draw()
+        )
         s_left, s_bottom, s_w, s_h = layout["search"]
         arcade.draw_lbwh_rectangle_filled(s_left, s_bottom, s_w, s_h, _BUTTON_BG)
+        query_x, query_y = s_left + 10, s_bottom + s_h / 2
         query_label = self._text(
             "pk:query",
             picker.query or "Buscar piloto ou equipe",
-            s_left + 10,
-            s_bottom + s_h / 2,
             PRIMARY_TEXT_COLOR if picker.query else SECONDARY_TEXT_COLOR,
             12,
             anchor_y="center",
         )
-        query_label.draw()
+        self._draw_label(query_label, query_x, query_y)
         # Cursor como linha: no fim do texto digitado, ou no inicio se o campo esta vazio.
         if caret_visible():
-            x = s_left + 10 + (query_label.content_width if picker.query else 0)
-            y = s_bottom + s_h / 2
-            arcade.draw_line(x, y - 8, x, y + 8, PRIMARY_TEXT_COLOR, 2)
+            x = query_x + (self._label_width(query_label) if picker.query else 0)
+            arcade.draw_line(x, query_y - 8, x, query_y + 8, PRIMARY_TEXT_COLOR, 2)
         rows = self._picker_rows()
         self._draw_list_scrollbar(layout, len(self._picker.visible()), self._picker.scroll)
         if not rows:
-            self._text(
+            self._draw_text(
                 "pk:empty",
                 "Nenhum piloto encontrado.",
                 left + 20,
                 layout["list_top"] - 20,
                 SECONDARY_TEXT_COLOR,
                 11,
-            ).draw()
+            )
         for index, (entry, rect) in enumerate(rows):
             r_left, r_bottom, r_w, r_h = rect
             chosen = pair_id(entry) in picker.selected
@@ -899,7 +910,7 @@ class GridView(arcade.View):
             label = f"{'✓ ' if chosen else ''}{entry['driver_name']} · {entry['team_name']}"
             if blocked is not None and not chosen:
                 label += f"  ({blocked})"
-            self._text(
+            self._draw_text(
                 f"pk:row:{index}",
                 label[:72],
                 r_left + 10,
@@ -907,7 +918,7 @@ class GridView(arcade.View):
                 SECONDARY_TEXT_COLOR if blocked is not None and not chosen else PRIMARY_TEXT_COLOR,
                 11,
                 anchor_y="center",
-            ).draw()
+            )
         for key, text, primary in (
             ("cancel", "Cancelar", False),
             ("confirm", f"Adicionar ({len(picker.selected)})", True),
@@ -916,7 +927,7 @@ class GridView(arcade.View):
             arcade.draw_lbwh_rectangle_filled(
                 b_left, b_bottom, b_w, b_h, _PRIMARY_BG if primary else _BUTTON_BG
             )
-            self._text(
+            self._draw_text(
                 f"pk:btn:{key}",
                 text,
                 b_left + b_w / 2,
@@ -926,7 +937,7 @@ class GridView(arcade.View):
                 bold=primary,
                 anchor_x="center",
                 anchor_y="center",
-            ).draw()
+            )
 
     def _set_status(self, message: str, color) -> None:
         self._status = message
@@ -934,11 +945,30 @@ class GridView(arcade.View):
 
     # -- geometria ---------------------------------------------------------------
 
+    def _canvas_fit(self) -> CanvasFit:
+        """Mapeamento atual entre o canvas de design e a janela.
+
+        Recalculado a cada chamada, e so aritmetica: assim um redimensionamento
+        nunca deixa uma escala antiga para o proximo evento de mouse ou quadro.
+        """
+
+        return CanvasFit.fit((DESIGN_WIDTH, DESIGN_HEIGHT), self.window.get_size())
+
+    def _canvas_camera(self) -> arcade.Camera2D:
+        """Camera que desenha formas em unidades de design, escaladas e centralizadas."""
+
+        return make_canvas_camera(self._canvas_fit(), self.window)
+
+    def _logical_pointer(self, x: float, y: float) -> tuple[float, float]:
+        """Converte o ponteiro (unidades da janela) para unidades de design."""
+
+        return self._canvas_fit().to_logical(x, y)
+
     def _panel_left(self) -> int:
-        return self.window.width - _PANEL_TOTAL_WIDTH
+        return DESIGN_WIDTH - _PANEL_TOTAL_WIDTH
 
     def _buttons(self) -> dict[str, tuple[float, float, float, float]]:
-        width, height = self.window.width, self.window.height
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
         top = height - 150
         display_left, display_w = self._source_display_bounds()
         build_left = self._grid_right() - _BUILD_BUTTON_W
@@ -978,8 +1008,9 @@ class GridView(arcade.View):
             if bounds is None:
                 bounds = (self._attribute_y(i) - 16, 46)
             block_bottom, block_h = bounds
-            # Botoes fora da area rolavel nao sao desenhados nem clicaveis.
-            if block_bottom < bottom or block_bottom + block_h > top:
+            # Botoes so somem quando o bloco inteiro sai da area rolavel. Um bloco
+            # parcialmente visivel mostra o botao recortado na caixa (_draw_panel).
+            if block_bottom + block_h < bottom or block_bottom > top:
                 continue
             # Quadrado de lado fixo, com o meio na altura do meio do bloco de texto.
             side = _CONTROL_SIDE
@@ -995,7 +1026,7 @@ class GridView(arcade.View):
     def _table_top(self) -> float:
         """Y da primeira linha de pilotos; as demais descem ROW_HEIGHT cada."""
 
-        return self.window.height - 230
+        return DESIGN_HEIGHT - 230
 
     def _visible_count(self) -> int:
         """Quantas linhas cabem entre o topo da tabela e a area de rodape (y=80)."""
@@ -1027,6 +1058,8 @@ class GridView(arcade.View):
         self._clamp_scroll()
 
     def _row_at(self, x: float, y: float) -> str | None:
+        """Piloto da linha sob (x, y) em design; ``None`` fora da tabela."""
+
         if self._draft is None or x > self._panel_left() - 20:
             return None
         top = self._table_top()
@@ -1045,6 +1078,7 @@ class GridView(arcade.View):
         arcade.set_background_color(BACKGROUND_COLOR)
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
+        x, y = self._logical_pointer(x, y)
         self._hover = next(
             (key for key, rect in self._buttons().items() if _inside(x, y, rect)),
             None,
@@ -1053,6 +1087,7 @@ class GridView(arcade.View):
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
         """Role a caixa do piloto ou a tabela, conforme o ponteiro esteja sobre."""
 
+        x, y = self._logical_pointer(x, y)
         if self._picker is not None:
             layout = self._picker_layout()
             if _inside(x, y, layout["panel"]):
@@ -1064,9 +1099,11 @@ class GridView(arcade.View):
             return
         if self._draft is None:
             return
-        # Scroll horizontal (roda lateral ou trackpad) sobre a tabela e sua barra.
-        if scroll_x and _TABLE_SCROLL_LEFT <= x <= self._table_right() and 56 <= y <= self.window.height - 190:
-            self._hscroll -= scroll_x * _TABLE_SCROLL_STEP
+        # Scroll horizontal sobre a tabela: roda lateral ou trackpad (scroll_x), ou a
+        # roda comum com Shift (scroll_y), que o pyglet nao converte sozinho.
+        horizontal = scroll_x or (scroll_y if self._shift_down else 0)
+        if horizontal and _TABLE_SCROLL_LEFT <= x <= self._table_right() and 56 <= y <= DESIGN_HEIGHT - 190:
+            self._hscroll -= horizontal * _TABLE_SCROLL_STEP
             self._clamp_hscroll()
             return
         bottom, top = self._panel_region()
@@ -1080,6 +1117,7 @@ class GridView(arcade.View):
         self._clamp_scroll()
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        x, y = self._logical_pointer(x, y)
         if self._picker is not None:
             # Com o seletor aberto, so ele recebe cliques.
             if button == arcade.MOUSE_BUTTON_LEFT:
@@ -1093,18 +1131,101 @@ class GridView(arcade.View):
             if button == arcade.MOUSE_BUTTON_LEFT:
                 self._popup_click(x, y)
             return
+        if button == arcade.MOUSE_BUTTON_LEFT and self._start_bar_drag(x, y):
+            return
         self._editing_grid_seed = (
             button == arcade.MOUSE_BUTTON_LEFT
             and self._sources[self._source_index].mode == "random"
             and _inside(x, y, self._seed_bounds())
         )
         for key, rect in self._buttons().items():
+            # Botao de atributo parcialmente fora da caixa so responde na parte visivel.
+            if key.startswith(("minus:", "plus:")):
+                bottom, top = self._panel_region()
+                if not bottom <= y <= top:
+                    continue
             if _inside(x, y, rect):
                 self._click(key)
                 return
         driver_id = self._row_at(x, y)
         if driver_id is not None:
             self._selected = driver_id
+
+    # -- arrasto das barras de rolagem -----------------------------------------
+
+    def _hbar_metrics(self) -> tuple[float, float, float, float, float] | None:
+        """Barra horizontal da tabela: (esquerda, largura do trilho, espessura do
+        polegar, curso do polegar, rolagem maxima). None quando as colunas cabem."""
+
+        max_scroll = self._hscroll_max()
+        if max_scroll <= 0:
+            return None
+        left, right = _TABLE_SCROLL_LEFT, self._table_right()
+        rail_w = right - left
+        thumb_w = max(24.0, rail_w * rail_w / (rail_w + max_scroll))
+        travel = rail_w - thumb_w
+        return left, rail_w, thumb_w, travel, max_scroll
+
+    def _vbar_metrics(self) -> tuple[float, float, float, float, float, float] | None:
+        """Barra vertical da lista: (base, topo, altura do trilho, altura do polegar,
+        curso do polegar, linhas de rolagem maximas). None quando a lista cabe."""
+
+        if self._draft is None:
+            return None
+        total = len(self._draft.entries)
+        visible = self._visible_count()
+        if total <= visible:
+            return None
+        rail_top = self._table_top() + ROW_HEIGHT / 2
+        rail_bottom = 80.0
+        rail_h = rail_top - rail_bottom
+        thumb_h = max(24.0, rail_h * visible / total)
+        max_scroll = total - visible
+        travel = rail_h - thumb_h
+        return rail_bottom, rail_top, rail_h, thumb_h, travel, max_scroll
+
+    def _start_bar_drag(self, x: float, y: float) -> bool:
+        """Inicia o arrasto se o clique cair num trilho de rolagem da tabela."""
+
+        if self._draft is None:
+            return False
+        horizontal = self._hbar_metrics()
+        # A barra horizontal fica em y=62 com 6 px de altura; a faixa de clique e maior.
+        if horizontal is not None and 54 <= y <= 70 and _TABLE_SCROLL_LEFT <= x <= self._table_right():
+            self._bar_drag = "h"
+            self._bar_drag_origin = (x, self._hscroll)
+            return True
+        vertical = self._vbar_metrics()
+        if vertical is not None and 0 <= x <= 20 and vertical[0] <= y <= vertical[1]:
+            self._bar_drag = "v"
+            self._bar_drag_origin = (y, self._scroll)
+            return True
+        return False
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
+        if self._bar_drag is None:
+            return
+        x, y = self._logical_pointer(x, y)
+        start, start_scroll = self._bar_drag_origin
+        if self._bar_drag == "h":
+            metrics = self._hbar_metrics()
+            if metrics is None or metrics[3] <= 0:
+                return
+            _, _, _, travel, max_scroll = metrics
+            # Arrastar o polegar para a direita (x crescendo) rola a tabela para a direita.
+            self._hscroll = start_scroll + (x - start) * max_scroll / travel
+            self._clamp_hscroll()
+            return
+        metrics = self._vbar_metrics()
+        if metrics is None or metrics[4] <= 0:
+            return
+        travel, max_scroll = metrics[4], metrics[5]
+        # Arrastar o polegar para baixo (y decrescendo) rola a lista para baixo.
+        self._scroll = round(start_scroll - (y - start) * max_scroll / travel)
+        self._clamp_scroll()
+
+    def on_mouse_release(self, x, y, button, modifiers) -> None:
+        self._bar_drag = None
 
     def _click(self, key: str) -> None:
         if key in ("prev-source", "next-source"):
@@ -1138,7 +1259,14 @@ class GridView(arcade.View):
             action, name = key.split(":", 1)
             self.step_attribute(name, -1 if action == "minus" else 1)
 
+    def on_key_release(self, symbol: int, modifiers: int) -> None:
+        if symbol in (arcade.key.LSHIFT, arcade.key.RSHIFT):
+            self._shift_down = False
+
     def on_key_press(self, symbol: int, modifiers: int) -> None:
+        if symbol in (arcade.key.LSHIFT, arcade.key.RSHIFT):
+            self._shift_down = True
+            return
         if self._picker is not None:
             self._picker_key(symbol)
             return
@@ -1188,56 +1316,226 @@ class GridView(arcade.View):
         if self._editing_grid_seed and text.isprintable():
             self._grid_seed_text += text
 
-    # -- desenho -----------------------------------------------------------------
+    # -- textos e recortes do canvas ---------------------------------------------
+    #
+    # Formas usam a camera de design. Textos sao rasterizados pela camera padrao
+    # da janela (escalar glifos pela camera de design os deixaria borrados). Por
+    # isso a posicao e o tamanho dos textos ficam em unidades de design, e
+    # _draw_label os converte na hora de desenhar. Este bloco repete a mesma
+    # ideia de track_view.py, com a largura de quebra de linha tambem convertida.
 
-    def _text(self, key: str, value: str, x, y, color, size=12, **style) -> arcade.Text:
-        """Texto reutilizado entre quadros; so muda o que mudou."""
+    def _text(
+        self,
+        key: str,
+        value: str,
+        color,
+        size: float = 12,
+        *,
+        width: float | None = None,
+        **style,
+    ) -> arcade.Text:
+        """Texto reutilizado entre quadros, sem posicao: ela vem em _draw_label.
+
+        ``size`` e o tamanho de design, usado so na criacao. ``width`` e a largura
+        de quebra de linha em unidades de design; sem ela o texto nao quebra.
+        """
 
         text = self._texts.get(key)
         if text is None:
-            text = arcade.Text(value, x, y, color, size, **style)
+            # pyglet exige largura para texto multilinha, mesmo na criacao. A largura
+            # de design vale aqui; _apply_label_size a converte para a janela depois.
+            if width is not None:
+                style.setdefault("width", int(width))
+            text = arcade.Text(value, 0, 0, color, size, **style)
             self._texts[key] = text
         if text.text != value:
             text.text = value
-        text.x, text.y = x, y
         if text.color != color:
             text.color = color
+        if width is not None:
+            self._label_widths[text] = width
         return text
+
+    def _draw_text(
+        self,
+        key: str,
+        value: str,
+        x: float,
+        y: float,
+        color,
+        size: float = 12,
+        *,
+        width: float | None = None,
+        **style,
+    ) -> None:
+        """Desenha um texto em (x, y) de design, sem precisar guardar o objeto."""
+
+        text = self._text(key, value, color, size, width=width, **style)
+        self._draw_label(text, x, y)
+
+    def _apply_label_size(self, text: arcade.Text, size: float | None = None) -> None:
+        """Aplica ao texto o tamanho de design na escala atual da janela.
+
+        ``size`` redefine o tamanho de design (ajustes de fonte). Sem ele, vale o
+        ultimo tamanho registrado; um texto novo usa o tamanho da criacao. A
+        largura de quebra tambem e convertida, pois pyglet a mede em pixels. Fonte
+        e largura so sao trocadas quando mudam, porque cada troca refaz o layout.
+        """
+
+        fit = self._canvas_fit()
+        if size is not None:
+            self._label_sizes[text] = size
+        design = self._label_sizes.setdefault(text, text.font_size)
+        target = design * fit.scale
+        if abs(text.font_size - target) > 1e-6:
+            text.font_size = target
+        wrap = self._label_widths.get(text)
+        if wrap is not None:
+            target_width = int(wrap * fit.scale)
+            if text.width is None or abs(text.width - target_width) > 1e-6:
+                text.width = target_width
+
+    def _label_width(self, text: arcade.Text) -> float:
+        """Largura do texto em unidades de design, medida na escala da janela.
+
+        Medir na escala em que o texto e desenhado evita divergir do que aparece
+        na tela. Dividir pela escala devolve o valor ao espaco de design do layout.
+        """
+
+        self._apply_label_size(text)
+        return text.content_width / self._canvas_fit().scale
+
+    def _label_height(self, text: arcade.Text) -> float:
+        """Altura do texto em unidades de design, medida na escala da janela."""
+
+        self._apply_label_size(text)
+        return text.content_height / self._canvas_fit().scale
+
+    def _fit_label(self, text: arcade.Text, max_width: float, base_size: float) -> None:
+        """Reduz a fonte de ``text`` para caber em ``max_width`` (design).
+
+        ``fit_button_text`` mede o texto com a fonte em tamanho de design. Essa
+        medida e igual a medida na escala da janela dividida pela escala, porque a
+        largura cresce linearmente com a fonte. O tamanho final vira o tamanho de
+        design do texto, para que _draw_label continue a escala-lo.
+        """
+
+        fit_button_text(text, max_width, base_size)
+        self._apply_label_size(text, text.font_size)
+
+    def _draw_label(self, text: arcade.Text, x: float, y: float) -> None:
+        """Desenha ``text`` em (x, y) de design, rasterizado na escala da janela.
+
+        Um texto desenhado pela camera escalada sairia borrado, entao a posicao
+        e o tamanho viram unidades da janela e o desenho usa a camera padrao. Ao
+        sair dela, a camera de design e restaurada. As ancoragens do texto
+        (anchor_x/anchor_y) continuam valendo.
+        """
+
+        self._apply_label_size(text)
+        text.x, text.y = self._canvas_fit().to_window(x, y)
+        # Ativar uma camera zera a tesoura (scissor) do Arcade. O recorte pedido por
+        # quem chama (caixa, celula da tabela) e reaplicado depois da ativacao, senao
+        # o texto sairia da area recortada.
+        clip = self.window.ctx.scissor
+        with self.window.default_camera.activate():
+            self.window.ctx.scissor = clip
+            text.draw()
+        # Sair do bloco restaura a camera do canvas, que tambem zera a tesoura. Sem
+        # esta volta, o proximo texto recortado nao acharia o recorte do painel e
+        # sairia da caixa (o valor dos atributos chama _draw_label sem recorte proprio).
+        self.window.ctx.scissor = clip
+
+    def _scissor_rect(
+        self,
+        left: float,
+        bottom: float,
+        width: float,
+        height: float,
+        previous: tuple[int, int, int, int] | None,
+    ) -> tuple[int, int, int, int]:
+        """Retangulo de design em pixels do framebuffer, dentro de ``previous``.
+
+        A tesoura do OpenGL usa pixels do framebuffer. O retangulo de design vira
+        unidades da janela (fit.to_window) e depois pixels (fator do monitor). Ao
+        aninhar recortes, intersecta com o anterior para o texto nao sair de uma
+        area ja recortada. Os cantos sao limitados a zero.
+        """
+
+        fit = self._canvas_fit()
+        ratio = self.window.get_pixel_ratio()
+        x0, y0 = fit.to_window(left, bottom)
+        x1, y1 = fit.to_window(left + width, bottom + height)
+        x0, y0 = int(x0 * ratio), int(y0 * ratio)
+        x1, y1 = int(x1 * ratio), int(y1 * ratio)
+        if previous is not None:
+            prev_x, prev_y, prev_w, prev_h = previous
+            x0, y0 = max(x0, prev_x), max(y0, prev_y)
+            x1, y1 = min(x1, prev_x + prev_w), min(y1, prev_y + prev_h)
+        x0, y0 = max(0, x0), max(0, y0)
+        return (x0, y0, max(0, x1 - x0), max(0, y1 - y0))
+
+    def _draw_clipped(
+        self,
+        text: arcade.Text,
+        x: float,
+        y: float,
+        box: tuple[float, float, float, float],
+    ) -> None:
+        """Desenha ``text`` em (x, y) de design, recortado a ``box`` de design.
+
+        ``box`` e (esquerda, base, largura, altura) em unidades de design. O
+        recorte anterior e restaurado depois, assim o da area rolavel da caixa
+        continua valendo. Mesmo com fonte maior que a prevista (outro SO), o texto
+        nao passa da coluna e nao cobre os botoes ao lado.
+        """
+
+        previous = self.window.ctx.scissor
+        self.window.ctx.scissor = self._scissor_rect(*box, previous)
+        try:
+            self._draw_label(text, x, y)
+        finally:
+            self.window.ctx.scissor = previous
+
+    # -- desenho -----------------------------------------------------------------
 
     def on_draw(self) -> None:
         self.clear()
-        width, height = self.window.width, self.window.height
-        self._text(
-            "title",
-            "Pilotos e grid",
-            40,
-            height - 60,
-            PRIMARY_TEXT_COLOR,
-            26,
-            bold=True,
-        ).draw()
-        self._draw_source_selector(height)
-        self._draw_table(height)
-        self._draw_table_scrollbar()
-        self._draw_panel(width, height)
-        self._draw_buttons()
-        # Status logo abaixo do titulo, fora da barra inferior dos botoes.
-        self._text(
-            "status",
-            self._status,
-            40,
-            height - 100,
-            self._status_color,
-            12,
-            width=width - 80,
-            multiline=True,
-        ).draw()
-        if self._picker is not None:
-            self._draw_picker(width, height)
-        if self._size_text is not None:
-            self._draw_size_dialog(width, height)
-        if self._popup_open:
-            self._draw_race_popup(width, height)
+        width, height = DESIGN_WIDTH, DESIGN_HEIGHT
+        # Formas e tabelas ficam na camera de design; os textos saem por
+        # _draw_label, que volta para a camera padrao da janela.
+        with self._canvas_camera().activate():
+            self._draw_text(
+                "title",
+                "Pilotos e grid",
+                40,
+                height - 60,
+                PRIMARY_TEXT_COLOR,
+                26,
+                bold=True,
+            )
+            self._draw_source_selector(height)
+            self._draw_table(height)
+            self._draw_table_scrollbar()
+            self._draw_panel(width, height)
+            self._draw_buttons()
+            # Status logo abaixo do titulo, fora da barra inferior dos botoes.
+            self._draw_text(
+                "status",
+                self._status,
+                40,
+                height - 100,
+                self._status_color,
+                12,
+                width=width - 80,
+                multiline=True,
+            )
+            if self._picker is not None:
+                self._draw_picker(width, height)
+            if self._size_text is not None:
+                self._draw_size_dialog(width, height)
+            if self._popup_open:
+                self._draw_race_popup(width, height)
 
     def _draw_source_selector(self, height: int) -> None:
         top = height - 150
@@ -1252,17 +1550,17 @@ class GridView(arcade.View):
         label_text = self._text(
             "source",
             label,
-            display_left + display_w / 2,
-            top + _SOURCE_ROW_H / 2,
             PRIMARY_TEXT_COLOR,
             12,
             anchor_x="center",
             anchor_y="center",
         )
         # Espaco reservado para as setas e o contador nas extremidades.
-        fit_button_text(label_text, display_w - 200, 12)
-        label_text.draw()
-        self._text(
+        self._fit_label(label_text, display_w - 200, 12)
+        self._draw_label(
+            label_text, display_left + display_w / 2, top + _SOURCE_ROW_H / 2
+        )
+        self._draw_text(
             "source-count",
             f"{self._source_index + 1}/{len(self._sources)}",
             display_left + display_w - 46,
@@ -1271,7 +1569,7 @@ class GridView(arcade.View):
             9,
             anchor_x="right",
             anchor_y="center",
-        ).draw()
+        )
         if self._sources[self._source_index].mode == "random":
             left, bottom, width, field_height = self._seed_bounds()
             arcade.draw_lbwh_rectangle_filled(
@@ -1285,15 +1583,15 @@ class GridView(arcade.View):
                 (111, 127, 148) if self._editing_grid_seed else PANEL_BORDER_COLOR,
                 1,
             )
-            self._text(
+            self._draw_text(
                 "grid-seed-label",
                 "Semente de grid aleatório",
                 left,
                 bottom + field_height + 5,
                 _HEADER_COLOR,
                 9,
-            ).draw()
-            self._text(
+            )
+            self._draw_text(
                 "grid-seed",
                 self._grid_seed_text or "Vazio: backend gera",
                 left + 10,
@@ -1301,7 +1599,7 @@ class GridView(arcade.View):
                 PRIMARY_TEXT_COLOR if self._grid_seed_text else SECONDARY_TEXT_COLOR,
                 11,
                 anchor_y="center",
-            ).draw()
+            )
 
     def _grid_right(self) -> int:
         """Borda direita do grid: a da linha selecionada (ver ``_row_at``)."""
@@ -1320,7 +1618,7 @@ class GridView(arcade.View):
 
     def _seed_bounds(self) -> tuple[float, float, float, float]:
         # Mesma margem esquerda e largura da caixa de atributos (400 px).
-        return (self._panel_left(), self.window.height - 150, 400, 34)
+        return (self._panel_left(), DESIGN_HEIGHT - 150, 400, 34)
 
     def _draw_table(self, height: int) -> None:
         if self._draft is None:
@@ -1413,26 +1711,26 @@ class GridView(arcade.View):
         """Desenha uma celula da tabela; as colunas que rolam ficam recortadas na area."""
 
         text = self._text(
-            key, value, self._column_x(label, x), y, color, size,
+            key, value, color, size,
             bold=bold, anchor_x=anchor, anchor_y=anchor_y,
         )
+        cell_x = self._column_x(label, x)
         if label in _TABLE_FROZEN:
-            text.draw()
+            self._draw_label(text, cell_x, y)
         else:
             left, right = _TABLE_SCROLL_LEFT, self._table_right()
-            # Area de linhas: do cabecalho (height-190) ate o rodape (y=80).
-            self._draw_clipped(text, left, 80, right - left, self.window.height - 190 - 80)
+            # Area de linhas: do cabecalho (DESIGN_HEIGHT-190) ate o rodape (y=80).
+            self._draw_clipped(
+                text, cell_x, y, (left, 80, right - left, DESIGN_HEIGHT - 190 - 80)
+            )
 
     def _draw_table_hscrollbar(self) -> None:
         """Barra horizontal sob a tabela; so aparece quando as colunas nao cabem."""
 
-        max_scroll = self._hscroll_max()
-        if max_scroll <= 0:
+        metrics = self._hbar_metrics()
+        if metrics is None:
             return
-        left, right = _TABLE_SCROLL_LEFT, self._table_right()
-        rail_w = right - left
-        thumb_w = max(24.0, rail_w * rail_w / (rail_w + max_scroll))
-        travel = rail_w - thumb_w
+        left, rail_w, thumb_w, travel, max_scroll = metrics
         thumb_x = left + travel * self._hscroll / max_scroll
         y, h = 62, 6
         arcade.draw_lbwh_rectangle_filled(left, y, rail_w, h, (33, 42, 53))
@@ -1441,7 +1739,7 @@ class GridView(arcade.View):
     def _panel_region(self) -> tuple[float, float]:
         """(base, topo) da area rolavel da caixa, abaixo da linha de posicao."""
 
-        return 88.0, self.window.height - 332.0
+        return 88.0, DESIGN_HEIGHT - 332.0
 
     def _attribute_y(self, index: int) -> float:
         """Y do atributo ``index`` com a rolagem da caixa aplicada."""
@@ -1463,42 +1761,14 @@ class GridView(arcade.View):
         max_scroll = max(0, bottom + _PANEL_LAST_ROW_MARGIN - last_row_at_rest)
         self._panel_scroll = int(min(max(0, self._panel_scroll), max_scroll))
 
-    def _draw_clipped(self, text: arcade.Text, x: float, y: float, width: float, height: float) -> None:
-        """Desenha ``text`` recortado a caixa (x, y, width, height), em pixels da janela.
-
-        O recorte e restaurado depois: o da area rolavel da caixa continua valendo.
-        Assim, mesmo com fonte maior que a prevista (outro SO), o texto nao passa
-        da coluna e nao cobre os botoes ao lado.
-        """
-
-        ratio = self.window.get_pixel_ratio()
-        previous = self.window.ctx.scissor
-        left, bottom = int(x * ratio), int(y * ratio)
-        right, top = left + int(width * ratio), bottom + int(height * ratio)
-        if previous is not None:
-            # Interseccao com o recorte atual (area rolavel): o texto nao sai dela.
-            prev_x, prev_y, prev_w, prev_h = previous
-            left, bottom = max(left, prev_x), max(bottom, prev_y)
-            right = min(right, prev_x + prev_w)
-            top = min(top, prev_y + prev_h)
-        self.window.ctx.scissor = (left, bottom, max(0, right - left), max(0, top - bottom))
-        try:
-            text.draw()
-        finally:
-            self.window.ctx.scissor = previous
-
     def _clip_panel_region(self) -> None:
-        """Recorta o desenho na area rolavel (coordenadas da janela em pixels)."""
+        """Recorta o desenho na area rolavel, em pixels do framebuffer."""
 
         bottom, top = self._panel_region()
         left = self._panel_left()
-        right = self.window.width - 40
-        ratio = self.window.get_pixel_ratio()
-        self.window.ctx.scissor = (
-            int(left * ratio),
-            int(bottom * ratio),
-            int((right - left) * ratio),
-            int((top - bottom) * ratio),
+        right = DESIGN_WIDTH - 40
+        self.window.ctx.scissor = self._scissor_rect(
+            left, bottom, right - left, top - bottom, self.window.ctx.scissor
         )
 
     def _unclip_panel_region(self) -> None:
@@ -1511,18 +1781,10 @@ class GridView(arcade.View):
         ``self._scroll``. So aparece quando a lista nao cabe inteira.
         """
 
-        if self._draft is None:
+        metrics = self._vbar_metrics()
+        if metrics is None:
             return
-        total = len(self._draft.entries)
-        visible = self._visible_count()
-        if total <= visible:
-            return
-        rail_top = self._table_top() + ROW_HEIGHT / 2
-        rail_bottom = 80
-        rail_h = rail_top - rail_bottom
-        thumb_h = max(24.0, rail_h * visible / total)
-        max_scroll = total - visible
-        travel = rail_h - thumb_h
+        rail_bottom, rail_top, rail_h, thumb_h, travel, max_scroll = metrics
         thumb_top = rail_top - travel * min(self._scroll, max_scroll) / max_scroll
         left, width = 6, 6
         arcade.draw_lbwh_rectangle_filled(left, rail_bottom, width, rail_h, (33, 42, 53))
@@ -1555,25 +1817,23 @@ class GridView(arcade.View):
         name_text = self._text(
             "p:name",
             entry["driver_name"],
-            name_center,
-            height - 213,
             PRIMARY_TEXT_COLOR,
             18,
             bold=True,
             anchor_x="center",
             anchor_y="center",
         )
-        fit_button_text(name_text, _ARROW_DOWN_X - _ARROW_UP_X - 34 - 16, 18)
-        name_text.draw()
+        self._fit_label(name_text, _ARROW_DOWN_X - _ARROW_UP_X - 34 - 16, 18)
+        self._draw_label(name_text, name_center, height - 213)
         archetype = ARCHETYPE_LABELS.get(entry["attributes"]["archetype"], "")
-        self._text(
+        self._draw_text(
             "p:team",
             f"{entry['team_name']} · {archetype}",
             x,
             top - 54,
             SECONDARY_TEXT_COLOR,
             12,
-        ).draw()
+        )
         profile = entry.get("profile")
         characterization = (
             profile["characterization"]
@@ -1583,8 +1843,6 @@ class GridView(arcade.View):
         profile_text = self._text(
             "p:profile",
             characterization,
-            x,
-            top - 68,
             (225, 215, 180) if profile else _HEADER_COLOR,
             11,
             width=width - left - 90,
@@ -1593,14 +1851,14 @@ class GridView(arcade.View):
         )
         # Perfil com no maximo 40 px de altura: a linha "Posicao de largada" vem logo
         # abaixo. Se o texto for longo, a fonte diminui em vez de sobrepor.
-        _shrink_to_height(profile_text, 40, 11, 8)
-        profile_text.draw()
+        self._shrink_to_height(profile_text, 40, 11, 8)
+        self._draw_label(profile_text, x, top - 68)
         position = next(
             index
             for index, item in enumerate(self._draft.entries, start=1)
             if item["driver_id"] == self._selected
         )
-        self._text(
+        self._draw_text(
             "p:position",
             f"Posição de largada: P{position}",
             x,
@@ -1608,7 +1866,7 @@ class GridView(arcade.View):
             PRIMARY_TEXT_COLOR,
             11,
             bold=True,
-        ).draw()
+        )
         self._clip_panel_region()
         for i, spec in enumerate(ATTRIBUTES):
             y = self._attribute_y(i)
@@ -1617,34 +1875,36 @@ class GridView(arcade.View):
             # de cada um define o bloco. Os botoes e o valor usam essa mesma faixa.
             top_edge = y + 30
             label_text = self._text(
-                f"a:{spec.name}:label", spec.label, x, top_edge,
+                f"a:{spec.name}:label", spec.label,
                 PRIMARY_TEXT_COLOR, 13, bold=True, anchor_y="top",
             )
             # Nome e dica ficam antes do botao "−": a fonte diminui se preciso.
-            fit_button_text(label_text, _PANEL_TEXT_WIDTH, 13)
-            label_text.y = top_edge
+            self._fit_label(label_text, _PANEL_TEXT_WIDTH, 13)
             hint_text = self._text(
-                f"a:{spec.name}:hint", spec.hint, x, top_edge,
+                f"a:{spec.name}:hint", spec.hint,
                 _HEADER_COLOR, 10, anchor_y="top",
             )
-            fit_button_text(hint_text, _PANEL_TEXT_WIDTH, 10)
-            hint_text.y = top_edge - label_text.content_height - _ATTR_BLOCK_GAP
+            self._fit_label(hint_text, _PANEL_TEXT_WIDTH, 10)
             source_text = self._text(
-                f"a:{spec.name}:source", SOURCE_LABELS.get(source, source), x,
-                top_edge, _HEADER_COLOR, 9, anchor_y="top",
+                f"a:{spec.name}:source", SOURCE_LABELS.get(source, source),
+                _HEADER_COLOR, 9, anchor_y="top",
             )
-            source_text.y = hint_text.y - hint_text.content_height - _ATTR_BLOCK_GAP
-            block_bottom = source_text.y - source_text.content_height
+            # Posicoes em design: cada bloco comeca logo abaixo do anterior.
+            hint_y = top_edge - self._label_height(label_text) - _ATTR_BLOCK_GAP
+            source_y = hint_y - self._label_height(hint_text) - _ATTR_BLOCK_GAP
+            block_bottom = source_y - self._label_height(source_text)
             block_h = top_edge - block_bottom
             self._attr_control_bounds[spec.name] = (block_bottom, block_h)
             # Recorte por texto: nada sai do bloco, mesmo com fonte maior.
             clip_bottom, clip_h = block_bottom - 4, block_h + 8
-            for text in (label_text, hint_text, source_text):
-                self._draw_clipped(text, x, clip_bottom, _PANEL_TEXT_WIDTH, clip_h)
+            box = (x, clip_bottom, _PANEL_TEXT_WIDTH, clip_h)
+            self._draw_clipped(label_text, x, top_edge, box)
+            self._draw_clipped(hint_text, x, hint_y, box)
+            self._draw_clipped(source_text, x, source_y, box)
             value = _display_value(
                 spec.name, self._draft.value(self._selected, spec.name)
             )
-            self._text(
+            self._draw_text(
                 f"a:{spec.name}:value",
                 value,
                 left + _CONTROL_X["value"],
@@ -1654,9 +1914,9 @@ class GridView(arcade.View):
                 bold=True,
                 anchor_x="center",
                 anchor_y="center",
-            ).draw()
+            )
         if self._draft.disclaimer:
-            self._text(
+            self._draw_text(
                 "p:disclaimer",
                 self._draft.disclaimer,
                 x,
@@ -1666,8 +1926,32 @@ class GridView(arcade.View):
                 width=width - left - 90,
                 multiline=True,
                 anchor_y="top",
-            ).draw()
+            )
+        # Botoes "−" e "+" dos atributos: desenhados ainda dentro do recorte, assim
+        # um botao parcialmente visivel aparece so na parte que cabe na caixa.
+        for key, rect in self._buttons().items():
+            if not key.startswith(("minus:", "plus:")):
+                continue
+            b_left, b_bottom, b_w, b_h = rect
+            color = _BUTTON_HOVER if self._hover == key else _BUTTON_BG
+            arcade.draw_lbwh_rectangle_filled(b_left, b_bottom, b_w, b_h, color)
+            _draw_step_sign(b_left + b_w / 2, b_bottom + b_h / 2, key.startswith("plus:"))
         self._unclip_panel_region()
+
+    def _shrink_to_height(
+        self, text: arcade.Text, max_height: float, base: float, floor: float
+    ) -> None:
+        """Reduz a fonte de ``text`` ate que a altura dele caiba em ``max_height`` (design).
+
+        Mede na escala da janela, onde a quebra de linha tambem e a real. Por isso
+        cada passo reaplica o tamanho antes de medir.
+        """
+
+        size = base
+        self._apply_label_size(text, size)
+        while self._label_height(text) > max_height and size > floor:
+            size -= 1
+            self._apply_label_size(text, size)
 
     def _draw_buttons(self) -> None:
         # Botoes sao desenhados sem recorte: nada de recortes antigos cortando o "+".
@@ -1690,6 +1974,9 @@ class GridView(arcade.View):
                 ("minus:", "plus:", "save", "discard", "move-", "add", "remove")
             ):
                 continue
+            # Botoes de atributo sao desenhados dentro do recorte da caixa (_draw_panel).
+            if key.startswith(("minus:", "plus:")):
+                continue
             left, bottom, w, h = rect
             primary = key in ("build", "save")
             hover = self._hover == key
@@ -1703,7 +1990,7 @@ class GridView(arcade.View):
                 _draw_step_sign(left + w / 2, bottom + h / 2, key.startswith("plus:"))
                 continue
             label = labels.get(key) or ("−" if key.startswith("minus:") else "+")
-            self._text(
+            self._draw_text(
                 f"b:{key}",
                 label,
                 left + w / 2,
@@ -1713,17 +2000,7 @@ class GridView(arcade.View):
                 bold=primary,
                 anchor_x="center",
                 anchor_y="center",
-            ).draw()
-
-
-def _shrink_to_height(text: arcade.Text, max_height: float, base: float, floor: float) -> None:
-    """Reduz a fonte de ``text`` ate que a altura dele caiba em ``max_height`` px."""
-
-    size = base
-    text.font_size = size
-    while text.content_height > max_height and size > floor:
-        size -= 1
-        text.font_size = size
+            )
 
 
 def _draw_step_sign(cx: float, cy: float, plus: bool) -> None:

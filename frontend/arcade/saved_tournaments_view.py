@@ -25,6 +25,7 @@ import arcade
 
 from frontend.arcade import track_client
 from frontend.arcade.button_text import fit_button_text
+from frontend.arcade.canvas_fit import CanvasFit, make_canvas_camera
 from frontend.arcade.race_launcher import LaunchOutcome
 from frontend.arcade.saved_tournaments import (
     HttpTournamentClient,
@@ -47,6 +48,11 @@ _PRIMARY_BG = (190, 30, 45)
 _PRIMARY_HOVER = (225, 45, 60)
 _DANGER_BG = (120, 40, 50)
 _DANGER_HOVER = (160, 55, 65)
+# Canvas de design: toda a geometria da tela usa estas medidas fixas, e a janela
+# so recebe a escala uniforme de CanvasFit. E a mesma referencia das telas da
+# pista e da grade, para que o layout nao dependa do tamanho da janela.
+DESIGN_WIDTH = 1280
+DESIGN_HEIGHT = 720
 # Cada linha ocupa ROW_H, com ROW_GAP de espaco entre uma e outra.
 ROW_H = 74
 ROW_GAP = 8
@@ -114,6 +120,9 @@ class SavedTournamentsView(arcade.View):
         tournament_deleter: Callable[[str], dict] = track_client.delete_saved_tournament,
     ) -> None:
         super().__init__()
+        # Tamanho de design de cada texto (ver _apply_label_size). Precisa existir antes
+        # de _set_rows, que preenche o registro ao criar as linhas.
+        self._label_sizes: dict[arcade.Text, float] = {}
         self._return_view = return_view
         self._lister = lister
         self._loader = loader
@@ -187,7 +196,7 @@ class SavedTournamentsView(arcade.View):
         # Zera a lista: as paginas recebidas durante o carregamento so acrescentam.
         self._tournaments = []
         self._races = []
-        self._rows = _build_rows([], [])
+        self._set_rows()
         self._run("list", self._load_listing)
 
     def open_saved(self, tournament_id: str) -> None:
@@ -392,7 +401,7 @@ class SavedTournamentsView(arcade.View):
             self._races = renamed_items(self._races, change["id"], change["name"])
         else:
             self._tournaments = renamed_items(self._tournaments, change["id"], change["name"])
-        self._rows = _build_rows(self._tournaments, self._races)
+        self._set_rows()
 
     def _apply_delete(self, change: dict) -> None:
         """Tira a linha excluida da lista local, sem esperar a nova listagem."""
@@ -401,7 +410,7 @@ class SavedTournamentsView(arcade.View):
             self._races = without_item(self._races, change["id"])
         else:
             self._tournaments = without_item(self._tournaments, change["id"])
-        self._rows = _build_rows(self._tournaments, self._races)
+        self._set_rows()
         if self._renaming is not None and self._renaming[1] == change["id"]:
             self._renaming = None
         self._clamp_scroll()
@@ -413,12 +422,12 @@ class SavedTournamentsView(arcade.View):
             self._races.extend(page["items"])
         else:
             self._tournaments.extend(page["items"])
-        self._rows = _build_rows(self._tournaments, self._races)
+        self._set_rows()
 
     def _apply_listing(self, payload: dict) -> None:
         self._tournaments = list(payload["tournaments"])
         self._races = list(payload["races"])
-        self._rows = _build_rows(self._tournaments, self._races)
+        self._set_rows()
         message = (
             f"{len(self._tournaments)} torneio(s) · {len(self._races)} corrida(s) · "
             "Reexecutar simula de novo com o grid salvo"
@@ -463,12 +472,163 @@ class SavedTournamentsView(arcade.View):
         self._status = message
         self._status_color = color
 
+    def _set_rows(self) -> None:
+        """Recria as linhas a partir das listas locais.
+
+        Cada recriacao gera textos novos. Os antigos saem do registro de tamanhos
+        de design antes, para o registro nao guardar textos que ja nao aparecem.
+        """
+
+        for _kind, _item, texts in self._rows:
+            for text in texts:
+                self._label_sizes.pop(text, None)
+        self._rows = _build_rows(self._tournaments, self._races)
+        for _kind, _item, texts in self._rows:
+            for text in texts:
+                # Texto recem-criado ainda nao foi escalado: o tamanho atual e o de design.
+                self._label_sizes[text] = text.font_size
+
+    # Geometria e texto -------------------------------------------------------
+    # Formas usam a camera de design. Textos sao rasterizados pela camera padrao
+    # da janela (escalar glifos pela camera de design os deixaria borrados). Por
+    # isso a posicao e o tamanho dos textos ficam em unidades de design, e
+    # _draw_label os converte na hora de desenhar. Este bloco repete a mesma
+    # ideia de grid_view.py e track_view.py.
+
+    def _canvas_fit(self) -> CanvasFit:
+        """Mapeamento atual entre o canvas de design e a janela.
+
+        Recalculado a cada chamada, e so aritmetica: assim um redimensionamento
+        nunca deixa uma escala antiga para o proximo evento de mouse ou quadro.
+        """
+
+        return CanvasFit.fit((DESIGN_WIDTH, DESIGN_HEIGHT), self.window.get_size())
+
+    def _canvas_camera(self) -> arcade.Camera2D:
+        """Camera que desenha formas em unidades de design, escaladas e centralizadas."""
+
+        return make_canvas_camera(self._canvas_fit(), self.window)
+
+    def _logical_pointer(self, x: float, y: float) -> tuple[float, float]:
+        """Converte o ponteiro (unidades da janela) para unidades de design."""
+
+        return self._canvas_fit().to_logical(x, y)
+
+    def _apply_label_size(self, text: arcade.Text, size: float | None = None) -> None:
+        """Aplica ao texto o tamanho de design na escala atual da janela.
+
+        ``size`` redefine o tamanho de design (ajustes de fonte). Sem ele, vale o
+        ultimo tamanho registrado; um texto novo usa o tamanho da criacao. A fonte
+        so e trocada quando muda, porque cada troca refaz o layout do texto.
+        """
+
+        fit = self._canvas_fit()
+        if size is not None:
+            self._label_sizes[text] = size
+        design = self._label_sizes.setdefault(text, text.font_size)
+        target = design * fit.scale
+        if abs(text.font_size - target) > 1e-6:
+            text.font_size = target
+
+    def _label_width(self, text: arcade.Text) -> float:
+        """Largura do texto em unidades de design, medida na escala da janela.
+
+        Medir na escala em que o texto e desenhado evita divergir do que aparece
+        na tela. Dividir pela escala devolve o valor ao espaco de design do layout.
+        """
+
+        self._apply_label_size(text)
+        return text.content_width / self._canvas_fit().scale
+
+    def _fit_label(self, text: arcade.Text, max_width: float, base_size: float) -> None:
+        """Reduz a fonte de ``text`` para caber em ``max_width`` (design).
+
+        ``fit_button_text`` define a fonte em tamanho de design antes de medir, e
+        por isso a medida ja esta em design. O tamanho final vira o tamanho de
+        design do texto, para que _draw_label continue a escala-lo.
+        """
+
+        fit_button_text(text, max_width, base_size)
+        self._apply_label_size(text, text.font_size)
+
+    def _draw_label(self, text: arcade.Text, x: float, y: float) -> None:
+        """Desenha ``text`` em (x, y) de design, rasterizado na escala da janela.
+
+        Um texto desenhado pela camera escalada sairia borrado, entao a posicao
+        e o tamanho viram unidades da janela e o desenho usa a camera padrao. Ao
+        sair dela, a camera de design e restaurada. As ancoragens do texto
+        (anchor_x/anchor_y) continuam valendo.
+        """
+
+        self._apply_label_size(text)
+        text.x, text.y = self._canvas_fit().to_window(x, y)
+        # Ativar uma camera zera a tesoura (scissor) do Arcade. O recorte pedido por
+        # quem chama (area do nome em renomeacao) e reaplicado depois da ativacao,
+        # senao o texto sairia da area recortada.
+        clip = self.window.ctx.scissor
+        with self.window.default_camera.activate():
+            self.window.ctx.scissor = clip
+            text.draw()
+        # Sair do bloco restaura a camera do canvas, que tambem zera a tesoura. Sem
+        # esta volta, o proximo texto recortado nao acharia o recorte anterior.
+        self.window.ctx.scissor = clip
+
+    def _scissor_rect(
+        self,
+        left: float,
+        bottom: float,
+        width: float,
+        height: float,
+        previous: tuple[int, int, int, int] | None,
+    ) -> tuple[int, int, int, int]:
+        """Retangulo de design em pixels do framebuffer, dentro de ``previous``.
+
+        A tesoura do OpenGL usa pixels do framebuffer. O retangulo de design vira
+        unidades da janela (fit.to_window) e depois pixels (fator do monitor). Ao
+        aninhar recortes, intersecta com o anterior para o texto nao sair de uma
+        area ja recortada. Os cantos sao limitados a zero.
+        """
+
+        fit = self._canvas_fit()
+        ratio = self.window.get_pixel_ratio()
+        x0, y0 = fit.to_window(left, bottom)
+        x1, y1 = fit.to_window(left + width, bottom + height)
+        x0, y0 = int(x0 * ratio), int(y0 * ratio)
+        x1, y1 = int(x1 * ratio), int(y1 * ratio)
+        if previous is not None:
+            prev_x, prev_y, prev_w, prev_h = previous
+            x0, y0 = max(x0, prev_x), max(y0, prev_y)
+            x1, y1 = min(x1, prev_x + prev_w), min(y1, prev_y + prev_h)
+        x0, y0 = max(0, x0), max(0, y0)
+        return (x0, y0, max(0, x1 - x0), max(0, y1 - y0))
+
+    def _draw_clipped(
+        self,
+        text: arcade.Text,
+        x: float,
+        y: float,
+        box: tuple[float, float, float, float],
+    ) -> None:
+        """Desenha ``text`` em (x, y) de design, recortado a ``box`` de design.
+
+        ``box`` e (esquerda, base, largura, altura) em unidades de design. O
+        recorte anterior e restaurado depois, assim o recorte de quem chamou
+        continua valendo.
+        """
+
+        previous = self.window.ctx.scissor
+        self.window.ctx.scissor = self._scissor_rect(*box, previous)
+        try:
+            self._draw_label(text, x, y)
+        finally:
+            self.window.ctx.scissor = previous
+
     # Layout e rolagem --------------------------------------------------------
 
     def _visible_slots(self) -> int:
         """Linhas inteiras que cabem entre o topo da lista e a margem inferior."""
 
-        room = self.window.height - LIST_TOP - (ROW_H - ROW_GAP) - 24
+        room = DESIGN_HEIGHT - LIST_TOP - (ROW_H - ROW_GAP) - 24
         return max(1, int(room // ROW_H) + 1)
 
     def _clamp_scroll(self) -> None:
@@ -477,9 +637,9 @@ class SavedTournamentsView(arcade.View):
     def _row_rect(self, index: int) -> tuple[int, int, int, int]:
         """Retangulo da linha ``index``; a primeira visivel e a de ``self._scroll``."""
 
-        top = self.window.height - LIST_TOP - (index - self._scroll) * ROW_H
+        top = DESIGN_HEIGHT - LIST_TOP - (index - self._scroll) * ROW_H
         height = ROW_H - ROW_GAP
-        return 40, top - height, self.window.width - 80, height
+        return 40, top - height, DESIGN_WIDTH - 80, height
 
     def _visible_indices(self) -> list[int]:
         self._clamp_scroll()
@@ -498,8 +658,8 @@ class SavedTournamentsView(arcade.View):
         visible = len(self._visible_indices())
         if total <= visible:
             return
-        top, bottom = self.window.height - LIST_TOP, 24
-        track_x = self.window.width - 30
+        top, bottom = DESIGN_HEIGHT - LIST_TOP, 24
+        track_x = DESIGN_WIDTH - 30
         track_h = top - bottom
         arcade.draw_lbwh_rectangle_filled(track_x, bottom, 4, track_h, _BUTTON_BG)
         thumb_h = max(track_h * visible / total, 24)
@@ -520,8 +680,8 @@ class SavedTournamentsView(arcade.View):
         return keys
 
     def _button_rects(self) -> dict[str, tuple[int, int, int, int]]:
-        height = self.window.height
-        width = self.window.width
+        height = DESIGN_HEIGHT
+        width = DESIGN_WIDTH
         rects = {
             "back": (40, height - 84, 140, 40),
             "refresh": (width - 40 - 140, height - 84, 140, 40),
@@ -563,6 +723,7 @@ class SavedTournamentsView(arcade.View):
         arcade.set_background_color(_MENU_BG)
 
     def on_mouse_motion(self, x, y, dx, dy) -> None:
+        x, y = self._logical_pointer(x, y)
         self._hover = next(
             (key for key, rect in self._button_rects().items() if _inside(x, y, rect)),
             None,
@@ -575,6 +736,7 @@ class SavedTournamentsView(arcade.View):
         self._clamp_scroll()
 
     def on_mouse_press(self, x, y, button, modifiers) -> None:
+        x, y = self._logical_pointer(x, y)
         # Clique no nome em edicao posiciona o cursor (sem acionar os botoes da linha).
         if self._renaming is not None and self._rename_area is not None:
             area_left, area_bottom, area_w, area_h = self._rename_area
@@ -631,13 +793,13 @@ class SavedTournamentsView(arcade.View):
     # -- renomear: cursor, clique, rolagem e repeticao de teclas ----------------
 
     def _rename_px(self, text: str) -> float:
-        """Largura em pixels de ``text`` na fonte do campo de renomear."""
+        """Largura em unidades de design de ``text`` na fonte do campo de renomear."""
 
         self._rename_measure.text = text
-        return self._rename_measure.content_width
+        return self._label_width(self._rename_measure)
 
     def _rename_index_at(self, x: float) -> int:
-        """Indice do cursor mais proximo do clique em ``x`` (pixels da janela)."""
+        """Indice do cursor mais proximo do clique em ``x`` (unidades de design)."""
 
         target = x - self._rename_origin + self._rename_shift
         best, best_distance = 0, float("inf")
@@ -714,22 +876,14 @@ class SavedTournamentsView(arcade.View):
         baseline = bottom + row_height - 24
         label = self._edit_text
         label.text = text
-        label.x, label.y = area_left - shift, baseline
-        ratio = self.window.get_pixel_ratio()
-        previous = self.window.ctx.scissor
-        self.window.ctx.scissor = (
-            int(area_left * ratio),
-            int(bottom * ratio),
-            int(area_w * ratio),
-            int(row_height * ratio),
+        # O texto e recortado a area do nome. O cursor fica sempre dentro dela
+        # (shift o mantem entre 0 e area_w), por isso nao precisa de recorte.
+        self._draw_clipped(
+            label, area_left - shift, baseline, (area_left, bottom, area_w, row_height)
         )
-        try:
-            label.draw()
-            if (self._rename_blink % 1.0) < 0.55:
-                cx = area_left - shift + caret_px
-                arcade.draw_line(cx, baseline - 3, cx, baseline + 14, PRIMARY_TEXT_COLOR, 1.5)
-        finally:
-            self.window.ctx.scissor = previous
+        if (self._rename_blink % 1.0) < 0.55:
+            cx = area_left - shift + caret_px
+            arcade.draw_line(cx, baseline - 3, cx, baseline + 14, PRIMARY_TEXT_COLOR, 1.5)
 
     def on_key_release(self, symbol: int, modifiers: int) -> None:
         if symbol == self._rename_hold:
@@ -781,48 +935,50 @@ class SavedTournamentsView(arcade.View):
         )
 
     def on_draw(self) -> None:
+        """Desenha o quadro no canvas de design.
+
+        Formas (fundos, trilhos, botoes) ficam na camera de design. Textos passam
+        por ``_draw_label``, que os desenha na camera padrao para continuarem nitidos.
+        """
+
         self.clear()
-        height = self.window.height
         self._rename_area = None
-        # Cabecalho: voltar e atualizar nas pontas, titulo e status ao centro.
-        self._title.x, self._title.y = _TITLE_X, height - 64
-        self._title.draw()
-        self._subtitle.text = self._status
-        self._subtitle.color = self._status_color
-        self._subtitle.x, self._subtitle.y = _TITLE_X, height - 102
-        self._subtitle.draw()
+        with self._canvas_camera().activate():
+            # Cabecalho: titulo e status, em unidades de design.
+            self._draw_label(self._title, _TITLE_X, DESIGN_HEIGHT - 64)
+            self._subtitle.text = self._status
+            self._subtitle.color = self._status_color
+            self._draw_label(self._subtitle, _TITLE_X, DESIGN_HEIGHT - 102)
 
-        for index in self._visible_indices():
-            kind, item, (name, stages, details) = self._rows[index]
-            left, bottom, width, row_height = self._row_rect(index)
-            arcade.draw_lbwh_rectangle_filled(left, bottom, width, row_height, _ROW_BG)
-            if self._renaming == (kind, item["id"]):
-                self._draw_rename_text(
-                    left, bottom, width, row_height, len(self._action_keys(kind, item))
+            for index in self._visible_indices():
+                kind, item, (name, stages, details) = self._rows[index]
+                left, bottom, width, row_height = self._row_rect(index)
+                arcade.draw_lbwh_rectangle_filled(left, bottom, width, row_height, _ROW_BG)
+                if self._renaming == (kind, item["id"]):
+                    self._draw_rename_text(
+                        left, bottom, width, row_height, len(self._action_keys(kind, item))
+                    )
+                else:
+                    self._draw_label(name, left + 16, bottom + row_height - 24)
+                self._draw_label(stages, left + 16, bottom + row_height - 42)
+                self._draw_label(details, left + 16, bottom + 8)
+
+            self._draw_scrollbar()
+            for key, (left, bottom, width, button_height) in self._button_rects().items():
+                label, style = self._button_style(key)
+                hover = self._hover == key
+                if style == "primary":
+                    background = _PRIMARY_HOVER if hover else _PRIMARY_BG
+                elif style == "danger":
+                    background = _DANGER_HOVER if hover else _DANGER_BG
+                else:
+                    background = _BUTTON_HOVER if hover else _BUTTON_BG
+                arcade.draw_lbwh_rectangle_filled(
+                    left, bottom, width, button_height, background
                 )
-            else:
-                name.x, name.y = left + 16, bottom + row_height - 24
-                name.draw()
-            stages.x, stages.y = left + 16, bottom + row_height - 42
-            stages.draw()
-            details.x, details.y = left + 16, bottom + 8
-            details.draw()
-
-        self._draw_scrollbar()
-        for key, (left, bottom, width, button_height) in self._button_rects().items():
-            label, style = self._button_style(key)
-            hover = self._hover == key
-            if style == "primary":
-                background = _PRIMARY_HOVER if hover else _PRIMARY_BG
-            elif style == "danger":
-                background = _DANGER_HOVER if hover else _DANGER_BG
-            else:
-                background = _BUTTON_HOVER if hover else _BUTTON_BG
-            arcade.draw_lbwh_rectangle_filled(left, bottom, width, button_height, background)
-            text = self._label_texts[label]
-            fit_button_text(text, width - 12, 12)
-            text.x, text.y = left + width / 2, bottom + button_height / 2
-            text.draw()
+                text = self._label_texts[label]
+                self._fit_label(text, width - 12, 12)
+                self._draw_label(text, left + width / 2, bottom + button_height / 2)
 
 
 def row_lines(kind: str, item: dict) -> tuple[str, str, str]:
