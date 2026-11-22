@@ -561,7 +561,6 @@ def _advance_pit_lane(
                     min_ahead_gap = gap_to_car
                     nearest_ahead = other
 
-        v_limit = parameters.speed_limit_kmh / 3.6
         # Variacao individual deterministica de velocidade no pit lane (entre ~66 e ~76 km/h):
         did_seed = (abs(hash(car.driver_id)) % 1000) / 1000.0
         driver_base_speed = (66.0 + 10.0 * did_seed) / 3.6

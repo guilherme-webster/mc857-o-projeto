@@ -12,7 +12,6 @@ from f1_simulator.domain.driver_attributes import (
     A_MAX_RANGE_MS2,
     ASSUMED_ARCHETYPES,
     ATTRIBUTE_FIELDS,
-    BASE_CAR_PERFORMANCE_TABLE,
     CAR_ATTRIBUTE_FIELDS,
     V_MAX_RANGE_KMH,
     Archetype,
