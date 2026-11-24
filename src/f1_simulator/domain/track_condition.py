@@ -35,7 +35,7 @@ registrada no repositorio.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import exp, isfinite
 from typing import Literal
 
@@ -76,9 +76,13 @@ class TrackConditionParameters:
 
     Borracha: indice de 0 (pista verde) a 1 (trajetoria emborrachada). A
     corrida comeca em ``initial_rubber`` (o fim de semana ja emborrachou a
-    pista); a cada volta o pelotao recupera ``rubber_gain_per_lap`` do que
+    pista); a cada volta do pelotao (``traffic_reference_cars`` carros
+    completando uma volta na pista) recupera-se ``rubber_gain_per_lap`` do que
     falta, e uma volta saturada remove ``rubber_wash_per_lap_saturated`` da
-    camada. A pista verde tem ``green_track_grip_loss`` menos aderencia.
+    camada. No motor 2D a borracha e depositada pela distancia que os carros
+    efetivamente percorrem na pista (sem pit lane e sem nada depois da
+    bandeirada), entao um grid menor ou um pelotao que abandona emborracha
+    menos. A pista verde tem ``green_track_grip_loss`` menos aderencia.
 
     Temperatura: o asfalto tende a ``dry_track_temp_c`` sem agua e esfria ate
     ``wet_cooling_c`` graus abaixo disso com a pista saturada, aproximando-se do
@@ -97,13 +101,18 @@ class TrackConditionParameters:
     wet_cooling_c: float = 12.0
     temp_response_per_min: float = 0.1
     evaporation_per_degree: float = 0.03
+    #: Carros que, completando uma volta cada, formam a "volta do pelotao" que
+    #: deposita ``rubber_gain_per_lap``. 20 e o grid de 2024: com o grid cheio a
+    #: taxa por volta do lider continua a mesma da v1.
+    traffic_reference_cars: int = 20
     source_kind: Literal["assumed", "estimated"] = "assumed"
-    parameter_version: str = "assumed-track-condition-v1"
+    parameter_version: str = "assumed-track-condition-v2"
     rationale: str = (
         "Hipoteses de ordem de grandeza. Agua: aderencia com o pneu adequado "
         "ancorada em voltas de intermediario ~11-16% e de chuva ~25% mais "
         "lentas que slick (corridas molhadas de 2023-2024, fonte sem "
-        "proveniencia registrada). Borracha e temperatura nao foram medidas."
+        "proveniencia registrada). Borracha e temperatura nao foram medidas; "
+        "a borracha cresce com o trafego na pista (v2, issue #119)."
     )
 
     def __post_init__(self) -> None:
@@ -127,6 +136,12 @@ class TrackConditionParameters:
                 raise ValueError(f"{name} nao pode ser negativo")
         if not isfinite(self.dry_track_temp_c):
             raise ValueError("dry_track_temp_c deve ser finito")
+        if (
+            isinstance(self.traffic_reference_cars, bool)
+            or not isinstance(self.traffic_reference_cars, int)
+            or self.traffic_reference_cars < 1
+        ):
+            raise ValueError("traffic_reference_cars deve ser inteiro positivo")
         if self.source_kind not in ("assumed", "estimated"):
             raise ValueError("source_kind deve ser 'assumed' ou 'estimated'")
         if not self.parameter_version.strip() or not self.rationale.strip():
@@ -134,6 +149,43 @@ class TrackConditionParameters:
 
 
 ASSUMED_TRACK_CONDITION = TrackConditionParameters()
+
+#: Temperatura do asfalto seco (graus C) por circuito, trazida do PR #185.
+#: Ordem de grandeza tipica de corrida, escolhida e nao medida: o projeto nao
+#: tem serie de temperatura de pista com proveniencia. Circuitos fora da
+#: tabela usam ``ASSUMED_TRACK_CONDITION.dry_track_temp_c`` (35 C). As chaves
+#: sao os ``circuit_id`` canonicos dos circuitos com fixture de geometria.
+ASSUMED_CIRCUIT_TEMPERATURES_C: dict[str, float] = {
+    "circuit:1": 32.0,
+    "circuit:3": 28.0,
+    "circuit:6": 35.0,
+    "circuit:13": 27.0,
+    "circuit:14": 36.0,
+    "circuit:69": 42.0,
+}
+CIRCUIT_TEMPERATURE_VERSION = "assumed-circuit-track-temperature-v1"
+
+
+def circuit_dry_temperature_c(circuit_id: str | None) -> float:
+    """Temperatura do asfalto seco do circuito, ou a padrao fora da tabela."""
+
+    return ASSUMED_CIRCUIT_TEMPERATURES_C.get(
+        circuit_id or "", ASSUMED_TRACK_CONDITION.dry_track_temp_c
+    )
+
+
+def circuit_track_condition(
+    circuit_id: str | None,
+    parameters: TrackConditionParameters = ASSUMED_TRACK_CONDITION,
+) -> TrackConditionParameters:
+    """``parameters`` com o asfalto seco tendendo a temperatura do circuito.
+
+    So ``dry_track_temp_c`` muda: agua, borracha e aderencia continuam as
+    mesmas hipoteses. A temperatura altera a secagem (evaporacao) e o
+    resfriamento sob chuva, nao o ritmo em pista seca.
+    """
+
+    return replace(parameters, dry_track_temp_c=circuit_dry_temperature_c(circuit_id))
 
 
 def water_grip_factor(
@@ -246,12 +298,24 @@ class LiveTrackCondition:
         idx = min(max(1, lap) - 1, self._total_laps - 1)
         return self._rain_by_lap[idx]
 
-    def advance(self, dt_s: float, lap: int) -> None:
+    def advance(
+        self, dt_s: float, lap: int, *, traffic_laps: float | None = None
+    ) -> None:
         """Avance o estado da pista por ``dt_s`` segundos sob o clima da ``lap``.
 
         Reutiliza ``step_weather`` com ``lap_minutes = dt_s / 60``, de modo que
         os fluxos de agua e umidade escalam pelo mesmo mecanismo da evolucao
         por volta, so que em passos de fracao de segundo.
+
+        ``traffic_laps`` e a soma, em voltas, da distancia que os carros
+        percorreram na pista desde o ultimo avanco (sem pit lane). Quando
+        informado, a borracha cresce por trafego: ``traffic_reference_cars``
+        voltas de carro equivalem a uma volta do pelotao e recuperam
+        ``rubber_gain_per_lap`` do que falta, em forma composta para que
+        fatiar a mesma distancia em mais passos nao mude o total. ``None``
+        mantem o ganho pelo tempo (uma volta de referencia do clima = uma
+        volta do pelotao), para quem chama sem conhecer os carros. A lavagem
+        pela agua continua pelo tempo nos dois casos.
         """
         rain = self.rain_for_lap(lap)
         minutes = dt_s / 60.0
@@ -270,7 +334,15 @@ class LiveTrackCondition:
         target = p.dry_track_temp_c - p.wet_cooling_c * water
         relax = 1.0 - exp(-p.temp_response_per_min * minutes)
         self._temp += relax * (target - self._temp)
-        self._rubber += p.rubber_gain_per_lap * (1.0 - self._rubber) * (minutes / self._weather_parameters.reference_lap_minutes)
+        if traffic_laps is None:
+            self._rubber += p.rubber_gain_per_lap * (1.0 - self._rubber) * (minutes / self._weather_parameters.reference_lap_minutes)
+        else:
+            if isinstance(traffic_laps, bool) or not isfinite(traffic_laps) or traffic_laps < 0:
+                raise ValueError("traffic_laps nao pode ser negativo")
+            gain = 1.0 - (1.0 - p.rubber_gain_per_lap) ** (
+                traffic_laps / p.traffic_reference_cars
+            )
+            self._rubber += gain * (1.0 - self._rubber)
         self._rubber *= 1.0 - p.rubber_wash_per_lap_saturated * water * (minutes / self._weather_parameters.reference_lap_minutes)
         self._rubber = max(0.0, min(1.0, self._rubber))
         # Atualiza estado publico.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from f1_simulator.adapters.datasets.mock_track_geometry import MockTrackDatasetAdapter
@@ -11,6 +12,8 @@ from f1_simulator.application.run_grid_simulation import (
     RaceSetup,
     run_grid_simulation,
 )
+from f1_simulator.domain.fuel import FuelPlan
+from f1_simulator.domain.race_simulation_2d import GRID_ROW_SPACING_M, simulate_2d_race
 from f1_simulator.domain.random_source import SeededRandomSource
 from f1_simulator.domain.speed_dynamics import (
     DEFAULT_CAR_PHYSICS,
@@ -18,10 +21,15 @@ from f1_simulator.domain.speed_dynamics import (
     lap_time_ms,
     steady_lap,
 )
+from f1_simulator.domain.strategy import NoStopStrategy, PlannedStopStrategy
 from f1_simulator.domain.track_condition import (
+    ASSUMED_CIRCUIT_TEMPERATURES_C,
     ASSUMED_TRACK_CONDITION,
+    LiveTrackCondition,
     TrackConditionParameters,
     approximate_lap_time_ratio,
+    circuit_dry_temperature_c,
+    circuit_track_condition,
     rubber_grip_factor,
     simulate_track_conditions,
     water_grip_factor,
@@ -34,8 +42,10 @@ from f1_simulator.domain.weather import (
     step_weather,
 )
 from f1_simulator.factories.track_geometry_factory import TrackGeometryFactory
+from tests.fuel_support import fuel_parameters
 from tests.geometry_support import attribute, small_geometry
-from tests.model_support import parameters
+from tests.model_support import parameters, track
+from tests.test_pit_lane import pit_geometry
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "trotman_v128_tracks_2025"
@@ -192,6 +202,152 @@ class EngineIntegrationTest(unittest.TestCase):
         self.assertGreater(wet_time, dry_time * 1.03)
         kinds = {a["kind"] for a in wet["assumptions"]}
         self.assertIn("track_condition", kinds)
+
+
+class _RecordingTrack(LiveTrackCondition):
+    """Pista que registra o que o motor 2D passa a cada avanco."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.traffic: list[float | None] = []
+        self.laps: list[int] = []
+
+    def advance(self, dt_s, lap, *, traffic_laps=None):
+        self.traffic.append(traffic_laps)
+        self.laps.append(lap)
+        super().advance(dt_s, lap, traffic_laps=traffic_laps)
+
+
+class TrafficRubberTest(unittest.TestCase):
+    """Borracha depositada pela distancia percorrida na pista (issue #119)."""
+
+    def test_a_full_field_lap_lays_one_peloton_lap_of_rubber(self):
+        p = ASSUMED_TRACK_CONDITION
+        live = LiveTrackCondition([DRY] * 3)
+        live.advance(0.2, 1, traffic_laps=float(p.traffic_reference_cars))
+        expected = p.initial_rubber + p.rubber_gain_per_lap * (1 - p.initial_rubber)
+        self.assertAlmostEqual(live.rubber, expected, places=12)
+
+    def test_slicing_the_same_traffic_into_ticks_lays_the_same_rubber(self):
+        one, many = LiveTrackCondition([DRY] * 3), LiveTrackCondition([DRY] * 3)
+        one.advance(60.0, 1, traffic_laps=10.0)
+        for _ in range(300):
+            many.advance(0.2, 1, traffic_laps=10.0 / 300)
+        self.assertAlmostEqual(one.rubber, many.rubber, places=12)
+
+    def test_no_traffic_lays_no_rubber_and_negative_is_rejected(self):
+        live = LiveTrackCondition([DRY] * 3)
+        live.advance(30.0, 1, traffic_laps=0.0)
+        self.assertEqual(live.rubber, ASSUMED_TRACK_CONDITION.initial_rubber)
+        with self.assertRaises(ValueError):
+            live.advance(0.2, 1, traffic_laps=-0.1)
+
+    def test_engine_counts_track_distance_until_the_flag(self):
+        # Um carro, largando ``GRID_ROW_SPACING_M`` atras da linha: o trafego
+        # somado e a corrida inteira mais o trecho do grid. O ultimo tick nao
+        # chega a ser depositado (o clima avanca no tick seguinte), dai a folga.
+        geometry = small_geometry()
+        laps = 3
+        live = _RecordingTrack([DRY] * laps)
+        simulate_2d_race(
+            [{"driver_id": "a", "name": "A", "grid_position": 1}],
+            geometry,
+            total_laps=laps,
+            rng=SeededRandomSource(1),
+            live_track=live,
+            race_control=None,
+        )
+        expected = laps + GRID_ROW_SPACING_M / geometry.lap_length_m
+        self.assertAlmostEqual(sum(live.traffic), expected, delta=0.05)
+        self.assertEqual(live.laps, sorted(live.laps))
+        self.assertEqual((min(live.laps), max(live.laps)), (1, laps))
+
+    def test_pit_lane_lays_no_rubber(self):
+        # Boxes de 360 m a 440 m numa volta de 400 m: com uma parada, a pista
+        # recebe 80 m (0,2 volta) a menos que na mesma corrida sem parada.
+        geometry = pit_geometry()
+        model = parameters()
+
+        def traffic(strategy):
+            live = _RecordingTrack([DRY] * 4)
+            simulate_2d_race(
+                [
+                    {
+                        "driver_id": "a",
+                        "name": "A",
+                        "grid_position": 1,
+                        "start_fuel_kg": 5.0,
+                        "strategy": strategy,
+                    }
+                ],
+                geometry,
+                total_laps=4,
+                rng=SeededRandomSource(1),
+                compounds={c.name: c for c in model.compounds},
+                track_params=track(),
+                model_parameters=model,
+                fuel=FuelPlan(
+                    fuel_parameters(),
+                    30_000,
+                    geometry.lap_length_m / 1000,
+                    "track_geometry",
+                ),
+                live_track=live,
+                race_control=None,
+            )
+            return sum(live.traffic)
+
+        missing = traffic(NoStopStrategy()) - traffic(PlannedStopStrategy(1, ("HARD",)))
+        self.assertAlmostEqual(missing, 80.0 / geometry.lap_length_m, delta=0.05)
+
+
+class CircuitTemperatureTest(unittest.TestCase):
+    """Temperatura do asfalto seco por circuito, trazida do PR #185."""
+
+    def test_known_circuits_use_the_table_and_others_the_default(self):
+        self.assertEqual(circuit_dry_temperature_c("circuit:3"), 28.0)
+        self.assertEqual(circuit_dry_temperature_c("circuit:69"), 42.0)
+        default = ASSUMED_TRACK_CONDITION.dry_track_temp_c
+        self.assertEqual(circuit_dry_temperature_c("circuit:999"), default)
+        self.assertEqual(circuit_dry_temperature_c(None), default)
+
+    def test_only_the_dry_temperature_changes(self):
+        condition = circuit_track_condition("circuit:69")
+        self.assertEqual(condition.dry_track_temp_c, 42.0)
+        self.assertEqual(
+            replace(condition, dry_track_temp_c=ASSUMED_TRACK_CONDITION.dry_track_temp_c),
+            ASSUMED_TRACK_CONDITION,
+        )
+
+    def test_engine_uses_and_reports_the_circuit_temperature(self):
+        grid = tuple(GridEntry(f"driver:{i}", f"P{i}", "team:1", "Team") for i in range(2))
+        attributes = {g.driver_id: attribute(g.driver_id) for g in grid}
+        geometry = small_geometry()
+
+        def run(track_id):
+            return run_grid_simulation(
+                grid,
+                attributes,
+                RaceSetup(total_laps=3, track_id=track_id),
+                parameters=parameters(),
+                lap_length_m=geometry.lap_length_m,
+                rng=SeededRandomSource(7),
+                geometry=geometry,
+                race_control=None,
+            )
+
+        for track_id, fallback in (("circuit:69", False), ("circuit:999", True)):
+            with self.subTest(track_id=track_id):
+                result = run(track_id)
+                expected = circuit_dry_temperature_c(track_id)
+                self.assertEqual(result["track_conditions"][0]["track_temp_c"], expected)
+                grip = next(
+                    a["grip"] for a in result["assumptions"] if a["kind"] == "track_condition"
+                )
+                self.assertEqual(grip["dry_track_temp_c"], expected)
+                self.assertEqual(grip["temperature_fallback"], fallback)
+                self.assertEqual(grip["temperature_source_kind"], "assumed")
+        self.assertIn("circuit:69", ASSUMED_CIRCUIT_TEMPERATURES_C)
 
 
 if __name__ == "__main__":

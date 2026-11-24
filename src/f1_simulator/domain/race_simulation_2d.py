@@ -85,8 +85,17 @@ from f1_simulator.domain.track_space import (
     build_track_space,
     integrate_field,
 )
+from f1_simulator.domain.tyre_temperature import (
+    ASSUMED_TYRE_TEMPERATURE,
+    TyreTemperatureParameters,
+    hot_wear_factor,
+    warmup_grip_factor,
+    window_grip_factor,
+)
 from f1_simulator.domain.tyres import TyreSet, tyre_penalty_ms
 from f1_simulator.domain.wet_tyres import (
+    ASSUMED_WET_TYRES,
+    contact_multiplier,
     crash_multiplier,
     relative_grip,
     wear_factor,
@@ -323,6 +332,7 @@ def simulate_2d_race(
     fuel: FuelPlan | None = None,
     track_states: Sequence[TrackState] | None = None,
     live_track: LiveTrackCondition | None = None,
+    tyre_temperature: TyreTemperatureParameters | None = ASSUMED_TYRE_TEMPERATURE,
     reliability_by_id: dict[str, float] | None = None,
     mechanical_hazard_per_lap: float = 0.0,
     race_control: RaceControlParameters | None = HEURISTIC_RACE_CONTROL,
@@ -352,6 +362,12 @@ def simulate_2d_race(
     - ``track_states``: agua, temperatura e borracha da volta viram um fator de
       aderencia (``track_condition.py``), e a fisica do proprio carro diz quanto
       tempo ele perde com esse fator -- o mesmo calculo do motor por volta.
+    - ``tyre_temperature`` (com pneus ativos e temperatura do asfalto conhecida,
+      por ``live_track`` ou ``track_states``): janela de temperatura dos slicks
+      e aquecimento do jogo novo montado nos boxes (``tyre_temperature.py``,
+      issue #120). O tempo entra na fatia do pneu e sai tambem em separado,
+      ``tyre_temperature_ms``/``tyre_temperature_lost_ms`` em
+      ``speed_breakdown``. ``None`` desliga.
 
     Com ``model_parameters`` + ``track_params`` + ``compounds``, cada piloto ganha
     uma ``HeuristicPitStrategy``. Uma estratégia explícita no entrante pode
@@ -444,6 +460,12 @@ def simulate_2d_race(
     # clima e controle de prova tiram do ritmo fisico de referencia. Registrado
     # em ``_apply_scale`` sem alterar a fisica; alimenta a ferramenta de analise.
     speed_breakdown: dict[str, dict[int, dict]] = {}
+    # Temperatura dos pneus (issue #120): distancia (m) em que o jogo atual foi
+    # montado nos boxes, para o aquecimento (``None``: jogo da largada, que a
+    # volta de apresentacao ja aqueceu), e o tempo (ms) que a temperatura tirou
+    # de cada volta, acumulado por passo para ``speed_breakdown``.
+    fitted_at_m: dict[str, float | None] = {}
+    temperature_lost_ms: dict[str, dict[int, float]] = {}
     # Atributos (DriverAttributes) por carro, para o painel mostra-los como
     # contexto ao lado da decomposicao; ``None`` quando o carro nao os traz.
     attributes_by_id: dict[str, object] = {}
@@ -506,6 +528,8 @@ def simulate_2d_race(
         grip_laps[did] = GripLapTimes(geometry, physics)
         ref_ms[did] = grip_laps[did].lap_ms(1.0)
         speed_breakdown[did] = {}
+        fitted_at_m[did] = None
+        temperature_lost_ms[did] = {}
         if fuel is not None:
             load = entry.get("start_fuel_kg")
             start_load = (
@@ -617,6 +641,45 @@ def simulate_2d_race(
             wear_laps=cars_by_id[did].tyre_wear_laps,
         ) * wear_factor(tyre.compound, _water(lap_number))
 
+    def _track_temp_c(lap_number: int) -> float | None:
+        """Temperatura do asfalto agora (ao vivo) ou da volta (previsao)."""
+
+        if live_track is not None:
+            return live_track.track_temp_c
+        if track_states:
+            index = min(max(1, lap_number) - 1, len(track_states) - 1)
+            return track_states[index].track_temp_c
+        return None
+
+    def _tyre_temperature_grip(car: CarSpaceState, lap_number: int) -> float:
+        """Aderencia relativa pela janela do composto e pelo aquecimento (#120).
+
+        1,0 quando o efeito esta desligado, sem pneus ativos ou sem temperatura
+        do asfalto conhecida: nesses casos o motor se comporta como antes.
+        """
+
+        if tyre_temperature is None or not tyre_active:
+            return 1.0
+        temp_c = _track_temp_c(lap_number)
+        if temp_c is None:
+            return 1.0
+        did = car.driver_id
+        factor = window_grip_factor(tyre_by_id[did].compound, temp_c, tyre_temperature)
+        fitted = fitted_at_m[did]
+        if fitted is not None:
+            factor *= warmup_grip_factor(car.distance_m - fitted, temp_c, tyre_temperature)
+        return factor
+
+    def _hot_wear_factor(did: str, lap_number: int) -> float:
+        """Desgaste extra do slick acima da janela (1,0 sem efeito)."""
+
+        if tyre_temperature is None or not tyre_active:
+            return 1.0
+        temp_c = _track_temp_c(lap_number)
+        if temp_c is None:
+            return 1.0
+        return hot_wear_factor(tyre_by_id[did].compound, temp_c, tyre_temperature)
+
     def _lap_noise_ms(did: str, lap_number: int) -> float:
         """Desvio de ritmo do piloto nesta volta, em ms (positivo = mais lento).
 
@@ -649,6 +712,7 @@ def simulate_2d_race(
         eff: LapEffects,
         speed_scale: float,
         grip_factor: float = 1.0,
+        tyre_temperature_ms: float = 0.0,
     ) -> None:
         """Guarde a decomposicao da velocidade da volta, em ms e em fracao perdida.
 
@@ -657,6 +721,12 @@ def simulate_2d_race(
         modo que as fracoes somam a perda total e espelham o que o motor cobrou.
         O controle de prova nao e um ms somado a ``base``: e o invluctro
         multiplicativo/aditivo da volta, entao a sua fatia e o que sobra.
+
+        ``tyre_temperature_ms`` ja esta contido em ``tyre_ms`` (e a fatia
+        ``tyre`` o inclui); sai repetido em campo proprio, com a fracao
+        correspondente em ``tyre_temperature_fraction`` (fora de
+        ``delta_shares``, para nao contar duas vezes) e o tempo acumulado na
+        volta em ``tyre_temperature_lost_ms``, para avaliar o efeito (#120).
         """
 
         penalty = tyre_ms + fuel_ms + weather_ms + noise_ms
@@ -669,6 +739,7 @@ def simulate_2d_race(
         # total de velocidade, seja ela perda (positiva) ou ganho (negativa).
         delta_ms = penalty + control_ms
         speed_delta = 1.0 - speed_scale
+        unit = 0.0
         if delta_ms != 0.0:
             unit = speed_delta / delta_ms
             shares = {
@@ -694,6 +765,11 @@ def simulate_2d_race(
             "speed_delta_fraction": round(speed_delta, 6),
             "delta_shares": {k: round(v, 6) for k, v in shares.items()},
             "grip_factor": round(grip_factor, 4),
+            "tyre_temperature_ms": round(tyre_temperature_ms, 3),
+            "tyre_temperature_fraction": round(tyre_temperature_ms * unit, 6),
+            "tyre_temperature_lost_ms": round(
+                temperature_lost_ms[did].get(lap_number, 0.0), 3
+            ),
         }
         speed_breakdown[did][lap_number] = record
         return record
@@ -762,6 +838,17 @@ def simulate_2d_race(
                     tyre_ms += tyre_grip_delta
                 else:
                     weather_ms = grip_laps[did].delta_ms(grip_factor)
+        # Temperatura dos pneus (#120): a janela do composto e o aquecimento do
+        # jogo novo reduzem a aderencia sobre o que pista e chuva ja deixaram.
+        # O custo e a diferenca de tempo entre os dois fatores, cobrado na
+        # fatia do pneu e registrado tambem a parte.
+        tyre_temperature_ms = 0.0
+        temperature_grip = _tyre_temperature_grip(car, lap_number)
+        if temperature_grip != 1.0:
+            before = grip_laps[did].delta_ms(grip_factor) if grip_factor != 1.0 else 0.0
+            grip_factor *= temperature_grip
+            tyre_temperature_ms = max(0.0, grip_laps[did].delta_ms(grip_factor) - before)
+            tyre_ms += tyre_temperature_ms
         # Sob SC/VSC/vermelha o pelotao segue um ritmo imposto: o desvio do
         # piloto nao se manifesta, e somar ruido ali o deixaria ultrapassar o
         # ritmo neutralizado.
@@ -780,6 +867,7 @@ def simulate_2d_race(
             eff,
             car.speed_scale,
             grip_factor,
+            tyre_temperature_ms,
         )
         # Snapshot enxuto do instante, emitido por amostra na trajetoria: os
         # valores que variam por tick (speed_scale, fatias e aderencia).
@@ -799,6 +887,10 @@ def simulate_2d_race(
     # pista avanca uma unica vez por tick, independente de quantos carros
     # disparam _on_motion no mesmo passo.
     _last_weather_time_s = -1.0
+    # Distancia (m) percorrida na pista por todos os carros desde o ultimo
+    # avanco do clima: deposita a borracha no proximo avanco (issue #119). O
+    # atraso de um tick (dt_s) e desprezivel diante da escala da borracha.
+    _pending_traffic_m = 0.0
     # Snapshots do estado da pista por volta, para o resultado exportado.
     _live_track_snapshots: list[TrackState] = []
     # Serie temporal do estado da pista (agua, temperatura, borracha, umidade)
@@ -832,12 +924,22 @@ def simulate_2d_race(
     def _on_motion(car: CarSpaceState, motion: MotionIncrement) -> None:
         """Integre recursos e atualize o ritmo, antes dos eventos de serviço/volta."""
 
-        nonlocal _last_weather_time_s
+        nonlocal _last_weather_time_s, _pending_traffic_m
         # Avanca o clima uma unica vez por tick (todos os carros no mesmo passo
-        # compartilham o mesmo time_s).
+        # compartilham o mesmo time_s). O cronograma de chuva segue a volta do
+        # lider, nao a do carro que por acaso disparou o tick (um retardatario
+        # ou um carro nos boxes atrasaria a chuva para o pelotao inteiro).
         if live_track is not None and motion.time_s > _last_weather_time_s:
-            car_lap = max(1, int(car.distance_m // lap_length_m) + 1)
-            live_track.advance(motion.dt_s, car_lap)
+            leader_lap = min(
+                total_laps,
+                max(1, max(int(c.distance_m // lap_length_m) for c in cars) + 1),
+            )
+            live_track.advance(
+                motion.dt_s,
+                leader_lap,
+                traffic_laps=_pending_traffic_m / lap_length_m,
+            )
+            _pending_traffic_m = 0.0
             _last_weather_time_s = motion.time_s
             t_ms = motion.time_s * 1000.0
             if not _live_track_series or (
@@ -852,6 +954,13 @@ def simulate_2d_race(
                         round(live_track.humidity_pct, 1),
                     ]
                 )
+        if live_track is not None and not motion.in_pit:
+            # So a pista emborracha: a pit lane nao conta, e o que um carro anda
+            # depois da bandeirada tambem nao (a distancia e cortada na linha).
+            _pending_traffic_m += min(
+                motion.distance_m,
+                max(0.0, total_laps * lap_length_m - motion.start_distance_m),
+            )
 
         if not usage_active:
             return
@@ -920,17 +1029,37 @@ def simulate_2d_race(
         totals["fuel_burned_kg"] += burned
         if tyre_active:
             assert car.tyre_wear_laps is not None
-            car.tyre_wear_laps += delta.wear_laps * fraction
+            # Slick acima da janela de temperatura desgasta mais (#120); 1,0
+            # dentro dela, e as tres parcelas escalam juntas para seguirem
+            # somando o desgaste total.
+            hot = _hot_wear_factor(did, max(1, int(car.distance_m // lap_length_m) + 1))
+            car.tyre_wear_laps += delta.wear_laps * fraction * hot
             for name in (
                 "distance_wear_laps",
                 "lateral_wear_laps",
                 "longitudinal_wear_laps",
             ):
-                totals[name] += getattr(delta, name) * fraction
+                totals[name] += getattr(delta, name) * fraction * hot
         totals["max_lateral_acceleration_ms2"] = max(
             totals["max_lateral_acceleration_ms2"], delta.lateral_acceleration_ms2
         )
-        _apply_scale(car, int(car.distance_m // lap_length_m) + 1)
+        lap_now = int(car.distance_m // lap_length_m) + 1
+        _apply_scale(car, lap_now)
+        if not motion.in_pit:
+            # Tempo que a temperatura tirou neste passo: a fracao da volta
+            # percorrida (dt sobre a volta no ritmo atual) vezes o custo por
+            # volta. Na pit lane o limitador manda e nada e cobrado.
+            record = speed_breakdown[did].get(max(1, lap_now))
+            if record is not None and record["tyre_temperature_ms"] > 0:
+                lap_on_track_ms = record["base_ms"] / record["speed_scale"]
+                lost = temperature_lost_ms[did]
+                key = max(1, lap_now)
+                lost[key] = lost.get(key, 0.0) + (
+                    motion.dt_s * 1000.0
+                    * record["tyre_temperature_ms"] * record["control_factor"]
+                    / lap_on_track_ms
+                )
+                record["tyre_temperature_lost_ms"] = round(lost[key], 3)
 
     def _service_time_s(did: str, execution: float) -> float:
         """Tempo parado desta parada (s): sorteado entre 2.2 e 2.8 s x execucao da equipe.
@@ -995,6 +1124,7 @@ def simulate_2d_race(
         if eff.free_tyre_change:
             tyre_by_id[did] = TyreSet(decision.compound, 0)
             car.tyre_wear_laps = 0.0
+            fitted_at_m[did] = car.distance_m
             if decision.compound not in compounds_used[did]:
                 compounds_used[did] = (*compounds_used[did], decision.compound)
         else:
@@ -1057,6 +1187,7 @@ def simulate_2d_race(
                     })
             tyre_by_id[did] = TyreSet(compound, 0)
             car.tyre_wear_laps = 0.0
+            fitted_at_m[did] = car.distance_m
             stops_made[did] += 1
             if compound not in compounds_used[did]:
                 compounds_used[did] = (*compounds_used[did], compound)
@@ -1191,6 +1322,13 @@ def simulate_2d_race(
         on_motion=_on_motion,
         check_cancelled=check_cancelled,
         contact_events=contact_events,
+        # Agua na pista: um impacto real tem mais chance de virar abandono
+        # (contato x (1 + agua), o mesmo multiplicador do #120).
+        contact_risk=(
+            (lambda: contact_multiplier(live_track.surface_water))
+            if live_track is not None
+            else None
+        ),
     )
 
     per_car: dict[str, list[float]] = {}
@@ -1350,6 +1488,15 @@ def simulate_2d_race(
                         "assumed, nao calibrada."
                     ),
                 },
+                "tyre_temperature": (
+                    {
+                        **tyre_temperature.as_dict(),
+                        "active": tyre_active
+                        and (live_track is not None or bool(track_states)),
+                    }
+                    if tyre_temperature is not None
+                    else {"active": False}
+                ),
                 "race_control_active": race_control is not None,
                 "mechanical_hazard_per_lap": mechanical_hazard_per_lap,
                 "side_contact": {
@@ -1357,11 +1504,16 @@ def simulate_2d_race(
                     "parameter_version": ASSUMED_CONTACT.version,
                     "detection": "projected_bodies",
                     "risk_basis": "one_consequence_per_physical_episode",
+                    "water_risk_active": live_track is not None,
+                    "contact_water_gain": ASSUMED_WET_TYRES.contact_water_gain,
                     "rationale": (
                         "Proximidade nao causa abandono. Contato geometrico e "
                         "avaliado uma vez por episodio; toque leve, dano e "
-                        "abandono dependem da aproximacao relativa. Limiares "
-                        "assumidos, nao calibrados com acidentes reais."
+                        "abandono dependem da aproximacao relativa. Com agua na "
+                        "pista, a chance de abandono de um impacto real e "
+                        "multiplicada por 1 + contact_water_gain * agua "
+                        "(issue #120). Limiares assumidos, nao calibrados com "
+                        "acidentes reais."
                     ),
                 },
                 "passing_opportunity": {
