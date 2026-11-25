@@ -14,6 +14,7 @@ from frontend.arcade.button_text import fit_button_text
 from frontend.arcade.canvas_fit import CanvasFit
 from frontend.arcade.configuration_state import (
     MAX_LAPS,
+    WEATHER_MODE_RANDOM,
     WEATHER_OPTIONS,
     ConfigurationFormError,
     SessionConfiguration,
@@ -738,8 +739,21 @@ class RaceConfigurationView(arcade.View):
         """Mantem o numero de voltas da corrida e o clima por volta sincronizados."""
 
         if laps != self.schedule.total_laps:
-            self.schedule = self.schedule.resize(laps)
+            self.schedule = self.schedule.resize(laps, self._default_lap_weather())
             self._weather_end_text = str(laps)
+
+    def _default_lap_weather(self) -> str:
+        """Clima das voltas acrescentadas a esta etapa.
+
+        Com sorteio, a etapa já tem um clima sorteado: as voltas novas seguem o das
+        voltas existentes. Caso contrário, valem o clima padrão atribuído pela tela
+        inicial. ``stage_index`` começa em 1, e ``_default_weather_for`` recebe a
+        posição 0-based da sequência.
+        """
+
+        if self.parent._default_weather() == WEATHER_MODE_RANDOM:
+            return self.schedule.by_lap[-1]
+        return self.parent._default_weather_for(self.circuit_id, self.stage_index - 1)
 
     def accept_weather_schedule(self, schedule: WeatherSchedule) -> None:
         """Accept a replacement schedule while keeping lap fields in sync."""

@@ -695,6 +695,7 @@ class ParametersView(UIView):
                 preset=self.preset_dropdown.value or "",
                 laps=self.laps_input.text,
                 weather_schedule=self.configuration.weather_schedule,
+                new_lap_weather=self._new_lap_weather(),
             )
         except ConfigurationFormError as error:
             self._set_status(str(error), ERROR_COLOR)
@@ -801,6 +802,7 @@ class ParametersView(UIView):
                 preset=self.preset_dropdown.value or "",
                 laps=self.laps_input.text,
                 weather_schedule=self.configuration.weather_schedule,
+                new_lap_weather=self._new_lap_weather(),
             )
         except ConfigurationFormError as error:
             self._set_status(str(error), ERROR_COLOR)
@@ -834,6 +836,7 @@ class ParametersView(UIView):
                 preset=self.preset_dropdown.value or "",
                 laps=self.laps_input.text,
                 weather_schedule=self.configuration.weather_schedule,
+                new_lap_weather=self._new_lap_weather(),
             )
         except ConfigurationFormError as error:
             self._set_status(str(error), ERROR_COLOR)
@@ -1409,6 +1412,23 @@ class ParametersView(UIView):
 
         current = self.rules.weather_mode
         return current if current in WEATHER_MODE_OPTIONS else WEATHER_OPTIONS[0]
+
+    def _new_lap_weather(self) -> str:
+        """Clima das voltas acrescentadas à pista destacada.
+
+        Com sorteio, a pista já tem um clima sorteado: as voltas novas seguem o das
+        voltas existentes. Caso contrário, valem o clima padrão da pista.
+        """
+
+        track = self.selected_track
+        circuit_id = track["circuit_id"] if track is not None else ""
+        if self._default_weather() == WEATHER_MODE_RANDOM:
+            return self.configuration.weather_schedule.by_lap[-1]
+        if circuit_id in self._selected_track_ids:
+            index = self._selected_track_ids.index(circuit_id)
+        else:
+            index = len(self._selected_track_ids)
+        return self._default_weather_for(circuit_id, index)
 
     def _default_weather_for(self, circuit_id: str, index: int) -> str:
         """Clima da etapa ``index`` pela regra do padrão: o escolhido ou um sorteio.
