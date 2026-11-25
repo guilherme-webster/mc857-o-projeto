@@ -529,6 +529,8 @@ class ParametersView(UIView):
                 "Não há pistas únicas suficientes para as etapas.", ERROR_COLOR
             )
             return
+        if not self._store_current_form_configuration():
+            return
         try:
             seed = self._tournament_seed()
             self._selected_track_ids = list(
@@ -548,6 +550,19 @@ class ParametersView(UIView):
                 circuit_id, self._fresh_configuration(catalog[circuit_id])
             )
         self._sequence_scroll_index = 0
+        # A prévia passa a mostrar a primeira pista da sequência gerada.
+        first = self._selected_track_ids[0]
+        first_index = next(
+            index
+            for index, track in enumerate(self._tracks)
+            if track["circuit_id"] == first
+        )
+        if first_index != self._selected_track_index:
+            self._selected_track_index = first_index
+            self.configuration = self._track_configurations[first]
+            self.laps_input.text = str(self.configuration.laps)
+            self._update_weather_summary()
+            self._load_track_preview()
         self._set_status("Sequência automática gerada.", SUCCESS_COLOR)
 
     def _tournament_seed(self) -> int:
