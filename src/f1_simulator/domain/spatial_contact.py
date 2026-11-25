@@ -72,23 +72,33 @@ def contact_consequence(
     rng: RandomSource | None,
     label: str,
     parameters: ContactParameters = ASSUMED_CONTACT,
+    *,
+    risk_multiplier: float = 1.0,
 ) -> ContactConsequence:
     """Uma avaliação por episódio; toque leve nunca retira um carro.
 
     A agressividade modula a gravidade probabilística dentro de limites, sem
     transformar proximidade ou contato estacionário em abandono inevitável.
     A ausência de RNG permite executar a geometria sem acidentes sorteados.
+
+    ``risk_multiplier`` escala a chance de um impacto real virar abandono
+    (limitada a 1): o motor 2D passa ``wet_tyres.contact_multiplier(agua)``,
+    o mesmo "contato x (1 + agua)" do #120. O toque leve e o dano por
+    aproximacao nao mudam; com 1,0 (padrao) a regra e a de sempre.
     """
     if not isfinite(closing_speed_ms) or closing_speed_ms < 0:
         raise ValueError("velocidade de aproximacao invalida")
     if not isfinite(aggression) or aggression < 0:
         raise ValueError("agressividade invalida")
+    if isinstance(risk_multiplier, bool) or not isfinite(risk_multiplier) or risk_multiplier < 0:
+        raise ValueError("multiplicador de risco invalido")
     excess = max(0.0, closing_speed_ms - parameters.harmless_closing_ms)
     if excess == 0:
         return ContactConsequence("touch", 0.0, 0.0, False)
     severity = min(1.0, excess / (parameters.severe_closing_ms - parameters.harmless_closing_ms))
     probability = min(parameters.max_retirement_probability,
                       parameters.max_retirement_probability * severity**2 * min(2.0, aggression))
+    probability = min(1.0, probability * risk_multiplier)
     damage = min(1.0, excess * parameters.damage_per_closing_ms)
     retires = rng is not None and rng.uniform01(label) < probability
     return ContactConsequence("retirement" if retires else "damage", damage, probability, retires)

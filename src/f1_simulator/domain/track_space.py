@@ -658,6 +658,7 @@ def integrate_field(
     on_motion=None,
     check_cancelled=None,
     contact_events: list[dict] | None = None,
+    contact_risk: Callable[[], float] | None = None,
     max_steps: int = 10_000_000,
 ) -> tuple[FieldSample, ...]:
     """Avance varios carros por passos de tempo, com ultrapassagem e colisao (fatia 5).
@@ -676,6 +677,8 @@ def integrate_field(
     uma vez pela velocidade relativa: toque leve nao causa abandono. A margem
     lateral pertence ao planejamento, nao ao sorteio de acidentes. ``rng``
     controla a consequencia de impactos, nunca a existencia geometrica deles.
+    ``contact_risk()``, avaliado a cada passo, multiplica a chance de um
+    impacto virar abandono (o motor passa o efeito da agua na pista).
 
     ``neutralized_lap(lap)`` (ADR 0011, controle de prova) informa se a volta em
     curso esta sob neutralizacao (SC/VSC/vermelha). Em volta neutralizada nao ha
@@ -947,6 +950,7 @@ def integrate_field(
                 cars, race_distance, aggression_by_id, rng, dt_s, start_zone_m,
                 lap_length, track=track, previous=previous, tracker=contact_tracker,
                 events=contact_events, time_s=time_s,
+                risk_multiplier=1.0 if contact_risk is None else contact_risk(),
             )
         else:
             contact_tracker.active.clear()
@@ -1249,6 +1253,7 @@ def _resolve_collisions(
     tracker: ContactTracker | None = None,
     events: list[dict] | None = None,
     time_s: float = 0.0,
+    risk_multiplier: float = 1.0,
 ) -> None:
     """Detecte corpos, registre o episodio e avalie sua consequencia uma vez.
 
@@ -1256,6 +1261,7 @@ def _resolve_collisions(
     testes unitarios da regra, inclusive de pares separados por uma volta.
     A zona de largada preserva a supressao de acidentes preexistente.
     Tocar lentamente nao e o mesmo que sofrer um impacto de alta energia.
+    ``risk_multiplier`` vai para ``contact_consequence`` (agua na pista).
     """
     tracker = tracker if tracker is not None else ContactTracker()
     active = sorted(
@@ -1331,7 +1337,9 @@ def _resolve_collisions(
             agg_a = aggression_by_id.get(a.driver_id, 1.0)
             agg_b = aggression_by_id.get(b.driver_id, 1.0)
             label = f"collision:{a.driver_id}:{b.driver_id}:episode:{episode}"
-            consequence = contact_consequence(closing, (agg_a + agg_b)/2, rng, label)
+            consequence = contact_consequence(
+                closing, (agg_a + agg_b)/2, rng, label, risk_multiplier=risk_multiplier
+            )
             a.contact_damage = min(1.0, a.contact_damage + consequence.damage_fraction / 2)
             b.contact_damage = min(1.0, b.contact_damage + consequence.damage_fraction / 2)
             retired_ids = []

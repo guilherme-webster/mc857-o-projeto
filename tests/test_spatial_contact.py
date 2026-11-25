@@ -31,6 +31,23 @@ class ContactConsequencesTest(unittest.TestCase):
         self.assertEqual(outcomes, [contact_consequence(15.0, 1.0, SeededRandomSource(s), "impact")
                                    for s in range(40)])
 
+    def test_water_raises_only_the_retirement_chance_of_real_impacts(self):
+        # Issue #120: contato x (1 + agua) no 2D. O toque leve continua sem
+        # consequencia; o dano nao muda; a chance de abandono sobe e satura em 1.
+        touch = contact_consequence(1.0, 3.0, SeededRandomSource(1), "t", risk_multiplier=2.0)
+        self.assertEqual(touch.kind, "touch")
+        dry = contact_consequence(6.0, 1.0, None, "i")
+        wet = contact_consequence(6.0, 1.0, None, "i", risk_multiplier=1.5)
+        self.assertAlmostEqual(wet.retirement_probability, 1.5 * dry.retirement_probability)
+        self.assertEqual(wet.damage_fraction, dry.damage_fraction)
+        severe = contact_consequence(15.0, 2.0, None, "s", risk_multiplier=2.0)
+        self.assertEqual(severe.retirement_probability, 1.0)
+        self.assertEqual(
+            contact_consequence(6.0, 1.0, None, "i", risk_multiplier=1.0), dry
+        )
+        with self.assertRaises(ValueError):
+            contact_consequence(6.0, 1.0, None, "i", risk_multiplier=-1.0)
+
     def test_proximity_and_long_exposure_are_not_impacts(self):
         cars = [CarSpaceState("a", distance_m=100, speed_ms=80),
                 CarSpaceState("b", distance_m=100, lateral_m=2.2, speed_ms=80)]
