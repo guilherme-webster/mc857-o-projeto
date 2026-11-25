@@ -140,6 +140,8 @@ class SavedTournamentsView(arcade.View):
         self._rows: list[tuple[str, dict, tuple[arcade.Text, arcade.Text, arcade.Text]]] = []
         # Primeira linha visivel da lista (rolagem).
         self._scroll = 0
+        # Arrasto do cursor da rolagem: (y do ponteiro, linha visivel) no inicio.
+        self._scroll_drag: tuple[float, float] | None = None
         self._label_texts = {
             label: arcade.Text(
                 label,
@@ -651,19 +653,43 @@ class SavedTournamentsView(arcade.View):
             indices.append(index)
         return indices
 
-    def _draw_scrollbar(self) -> None:
-        """Trilho a direita da lista; so aparece quando ha linhas ocultas."""
+    def _scrollbar_geometry(self) -> tuple[float, float, float, float, int] | None:
+        """Geometria do trilho: (topo, base, altura do cursor, curso do cursor, rolagem
+        maxima). None quando todas as linhas cabem. Desenho e arrasto usam esta conta."""
 
         total = len(self._rows)
         visible = len(self._visible_indices())
         if total <= visible:
-            return
+            return None
         top, bottom = DESIGN_HEIGHT - LIST_TOP, 24
-        track_x = DESIGN_WIDTH - 30
         track_h = top - bottom
-        arcade.draw_lbwh_rectangle_filled(track_x, bottom, 4, track_h, _BUTTON_BG)
         thumb_h = max(track_h * visible / total, 24)
-        thumb_top = top - (track_h - thumb_h) * self._scroll / (total - visible)
+        return top, bottom, thumb_h, track_h - thumb_h, total - visible
+
+    def _start_scroll_drag(self, x: float, y: float) -> bool:
+        """Inicia o arrasto se o clique cair no trilho da lista (ponteiro em design)."""
+
+        geometry = self._scrollbar_geometry()
+        if geometry is None:
+            return False
+        top, bottom = geometry[0], geometry[1]
+        # Trilho de 4 px em DESIGN_WIDTH - 30; a faixa de clique aceita 4 px de folga.
+        track_x = DESIGN_WIDTH - 30
+        if not (track_x - 4 <= x <= track_x + 8 and bottom <= y <= top):
+            return False
+        self._scroll_drag = (y, self._scroll)
+        return True
+
+    def _draw_scrollbar(self) -> None:
+        """Trilho a direita da lista; so aparece quando ha linhas ocultas."""
+
+        geometry = self._scrollbar_geometry()
+        if geometry is None:
+            return
+        top, bottom, thumb_h, travel, max_scroll = geometry
+        track_x = DESIGN_WIDTH - 30
+        arcade.draw_lbwh_rectangle_filled(track_x, bottom, 4, top - bottom, _BUTTON_BG)
+        thumb_top = top - travel * self._scroll / max_scroll
         arcade.draw_lbwh_rectangle_filled(
             track_x, thumb_top - thumb_h, 4, thumb_h, SECONDARY_TEXT_COLOR
         )
@@ -735,6 +761,22 @@ class SavedTournamentsView(arcade.View):
         self._scroll += -1 if scroll_y > 0 else 1 if scroll_y < 0 else 0
         self._clamp_scroll()
 
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
+        if self._scroll_drag is None:
+            return
+        _x, y = self._logical_pointer(x, y)
+        geometry = self._scrollbar_geometry()
+        if geometry is None or geometry[3] <= 0:
+            return
+        travel, max_scroll = geometry[3], geometry[4]
+        start, start_scroll = self._scroll_drag
+        # Arrastar o cursor para baixo (y decrescendo) rola a lista para baixo.
+        self._scroll = round(start_scroll - (y - start) * max_scroll / travel)
+        self._clamp_scroll()
+
+    def on_mouse_release(self, x, y, button, modifiers) -> None:
+        self._scroll_drag = None
+
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         x, y = self._logical_pointer(x, y)
         # Clique no nome em edicao posiciona o cursor (sem acionar os botoes da linha).
@@ -745,6 +787,8 @@ class SavedTournamentsView(arcade.View):
                 self._rename_blink = 0.0
                 self._rename_hold = None
                 return
+        if button == arcade.MOUSE_BUTTON_LEFT and self._start_scroll_drag(x, y):
+            return
         for key, rect in self._button_rects().items():
             if not _inside(x, y, rect):
                 continue

@@ -129,6 +129,8 @@ class TournamentResultView(arcade.View):
         # Carrossel: 0 e o resultado geral; s (1..N) e a etapa s.
         self._selection = 0
         self._scroll = 0
+        # Arrasto do cursor da tabela: (y do ponteiro, primeira linha) no inicio.
+        self._scroll_drag: tuple[float, float] | None = None
         self._hover: str | None = None
         self._results: SimpleQueue[tuple[str, object]] = SimpleQueue()
         # A posicao dos textos e dada em _draw_label; a criacao usa 0, 0.
@@ -485,6 +487,23 @@ class TournamentResultView(arcade.View):
         visible = self._visible_rows(height)
         self._scroll = min(max(self._scroll - int(scroll_y), 0), self._max_scroll(visible))
 
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
+        if self._scroll_drag is None:
+            return
+        _, y = self._logical_pointer(x, y)
+        metrics = self._current_scrollbar()
+        if metrics is None or metrics[3] <= 0:
+            return
+        travel = metrics[3]
+        start, start_scroll = self._scroll_drag
+        # Arrastar o cursor para baixo (y decrescendo) rola a tabela para baixo.
+        position = round(start_scroll - (y - start) * metrics[4] / travel)
+        visible = self._visible_rows(DESIGN_HEIGHT)
+        self._scroll = min(max(0, position), self._max_scroll(visible))
+
+    def on_mouse_release(self, x, y, button, modifiers) -> None:
+        self._scroll_drag = None
+
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         x, y = self._logical_pointer(x, y)
         for key, rect in self._nav_rects().items():
@@ -494,6 +513,8 @@ class TournamentResultView(arcade.View):
                 self._previous()
             else:
                 self._next()
+            return
+        if button == arcade.MOUSE_BUTTON_LEFT and self._start_scroll_drag(x, y):
             return
         for key, rect in self._action_rects().items():
             if not _inside(x, y, rect):
@@ -673,19 +694,56 @@ class TournamentResultView(arcade.View):
             self._fit_label(text, w - 12, 13)
             self._draw_label(text, left + w / 2, bottom + h / 2)
 
-    def _draw_scrollbar(self, header_y: float, visible: int, total: int) -> None:
-        """Trilho e cursor a direita da tabela; o cursor acompanha ``self._scroll``."""
+    @staticmethod
+    def _scrollbar_metrics(
+        header_y: float, visible: int, total: int
+    ) -> tuple[float, float, float, float, int] | None:
+        """Trilho da tabela: (topo, base, altura do cursor, curso do cursor, rolagem
+        maxima). None quando todas as linhas cabem. Desenho e arrasto usam esta conta."""
 
-        track_x = DESIGN_WIDTH - 26
+        if total <= visible:
+            return None
         track_top = header_y - 30 + 12
         track_bottom = _TABLE_BOTTOM
         track_h = track_top - track_bottom
-        arcade.draw_lbwh_rectangle_filled(track_x, track_bottom, 4, track_h, _SCROLL_TRACK)
         thumb_h = max(track_h * visible / total, 24)
-        thumb_top = track_top - (track_h - thumb_h) * self._scroll / (total - visible)
+        return track_top, track_bottom, thumb_h, track_h - thumb_h, total - visible
+
+    def _current_scrollbar(self) -> tuple[float, float, float, float, int] | None:
+        """Trilho da tabela no estado atual, com a mesma altura de cabecalho do desenho."""
+
+        height = DESIGN_HEIGHT
+        visible = self._visible_rows(height)
+        return self._scrollbar_metrics(height - _HEADER_FROM_TOP, visible, len(self._entries()))
+
+    def _draw_scrollbar(self, header_y: float, visible: int, total: int) -> None:
+        """Trilho e cursor a direita da tabela; o cursor acompanha ``self._scroll``."""
+
+        metrics = self._scrollbar_metrics(header_y, visible, total)
+        if metrics is None:
+            return
+        track_top, track_bottom, thumb_h, travel, max_scroll = metrics
+        track_x = DESIGN_WIDTH - 26
+        track_h = track_top - track_bottom
+        arcade.draw_lbwh_rectangle_filled(track_x, track_bottom, 4, track_h, _SCROLL_TRACK)
+        thumb_top = track_top - travel * self._scroll / max_scroll
         arcade.draw_lbwh_rectangle_filled(
             track_x, thumb_top - thumb_h, 4, thumb_h, _HEADER_COLOR
         )
+
+    def _start_scroll_drag(self, x: float, y: float) -> bool:
+        """Inicia o arrasto se o clique cair no trilho da tabela (ponteiro em design)."""
+
+        metrics = self._current_scrollbar()
+        if metrics is None:
+            return False
+        track_top, track_bottom = metrics[0], metrics[1]
+        # Trilho de 4 px em DESIGN_WIDTH - 26; a faixa de clique aceita 4 px de folga.
+        track_x = DESIGN_WIDTH - 26
+        if not (track_x - 4 <= x <= track_x + 8 and track_bottom <= y <= track_top):
+            return False
+        self._scroll_drag = (y, min(self._scroll, metrics[4]))
+        return True
 
 
 def _gain_text(start: int | None, finish: int, retired: bool) -> str:
