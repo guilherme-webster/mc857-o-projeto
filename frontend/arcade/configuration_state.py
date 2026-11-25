@@ -114,13 +114,18 @@ class WeatherSchedule:
 
         return len(self.by_lap)
 
-    def resize(self, laps: int) -> WeatherSchedule:
-        """Preserve existing laps, truncate excess and add new laps as dry."""
+    def resize(self, laps: int, weather: str = WEATHER_OPTIONS[0]) -> WeatherSchedule:
+        """Preserve existing laps, truncate excess and add new laps as ``weather``.
+
+        Sem ``weather``, as voltas novas são secas (comportamento antigo).
+        """
 
         _validate_laps(laps)
+        if weather not in WEATHER_OPTIONS:
+            raise ConfigurationFormError("condição climática desconhecida")
         if laps <= self.total_laps:
             return WeatherSchedule(self.by_lap[:laps])
-        missing = (WEATHER_OPTIONS[0],) * (laps - self.total_laps)
+        missing = (weather,) * (laps - self.total_laps)
         return WeatherSchedule(self.by_lap + missing)
 
     def apply(self, start_lap: int, end_lap: int, weather: str) -> WeatherSchedule:
@@ -313,8 +318,12 @@ class ConfigurationFormData:
         preset: str,
         laps: str,
         weather_schedule: WeatherSchedule | None = None,
+        new_lap_weather: str = WEATHER_OPTIONS[0],
     ) -> ConfigurationFormData:
-        """Parse widget text and preserve the configured weather where possible."""
+        """Parse widget text and preserve the configured weather where possible.
+
+        ``new_lap_weather`` é o clima das voltas que forem acrescentadas.
+        """
 
         try:
             parsed_laps = int(laps.strip())
@@ -327,7 +336,7 @@ class ConfigurationFormData:
         return cls(
             preset=preset,
             laps=parsed_laps,
-            weather_schedule=schedule.resize(parsed_laps),
+            weather_schedule=schedule.resize(parsed_laps, new_lap_weather),
         )
 
 

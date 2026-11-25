@@ -154,7 +154,8 @@ class GridView(arcade.View):
         self._hscroll = 0
         # Shift pressionado: a roda comum rola a tabela na horizontal.
         self._shift_down = False
-        # Arrasto das barras de rolagem: "h" ou "v", e (ponteiro, rolagem) no inicio.
+        # Arrasto das barras de rolagem: "h", "v" (tabela), "picker" ou "popup"
+        # (listas dos modais), e (ponteiro, rolagem) no inicio.
         self._bar_drag: str | None = None
         self._bar_drag_origin: tuple[float, float] = (0.0, 0.0)
         # Rolagem da caixa de atributos e o piloto a que ela pertence; ao
@@ -579,15 +580,12 @@ class GridView(arcade.View):
         quando a lista nao cabe inteira.
         """
 
-        list_top, list_bottom = layout["list_top"], layout["list_bottom"]
-        count = max(1, int((list_top - list_bottom) // layout["row_h"]))
-        if total <= count:
+        metrics = _list_bar_metrics(layout, total)
+        if metrics is None:
             return
+        rail_h, thumb_h, travel, max_offset = metrics
+        list_top, list_bottom = layout["list_top"], layout["list_bottom"]
         left, _bottom, panel_w, _panel_h = layout["panel"]
-        rail_h = list_top - list_bottom
-        thumb_h = max(20.0, rail_h * count / total)
-        max_offset = total - count
-        travel = rail_h - thumb_h
         thumb_top = list_top - travel * min(offset, max_offset) / max_offset
         # Dentro do painel, a direita das linhas (que terminam 20 px antes da borda).
         x = left + panel_w - 14
@@ -1119,8 +1117,8 @@ class GridView(arcade.View):
     def on_mouse_press(self, x, y, button, modifiers) -> None:
         x, y = self._logical_pointer(x, y)
         if self._picker is not None:
-            # Com o seletor aberto, so ele recebe cliques.
-            if button == arcade.MOUSE_BUTTON_LEFT:
+            # Com o seletor aberto, so ele recebe cliques (a barra dele arrasta).
+            if button == arcade.MOUSE_BUTTON_LEFT and not self._start_list_drag(x, y):
                 self._picker_click(x, y)
             return
         if self._size_text is not None:
@@ -1128,7 +1126,7 @@ class GridView(arcade.View):
                 self._size_click(x, y)
             return
         if self._popup_open:
-            if button == arcade.MOUSE_BUTTON_LEFT:
+            if button == arcade.MOUSE_BUTTON_LEFT and not self._start_list_drag(x, y):
                 self._popup_click(x, y)
             return
         if button == arcade.MOUSE_BUTTON_LEFT and self._start_bar_drag(x, y):
@@ -1202,10 +1200,70 @@ class GridView(arcade.View):
             return True
         return False
 
+    def _start_list_drag(self, x: float, y: float) -> bool:
+        """Inicia o arrasto do cursor do seletor ou do popup de corridas, se o clique
+        cair no trilho de uma lista que transborda. Chamado so com o modal aberto,
+        entao um clique atras de um modal nao chega aqui."""
+
+        if self._picker is not None:
+            which = "picker"
+            layout = self._picker_layout()
+            total = len(self._picker.visible())
+            scroll = self._picker.scroll
+        elif self._popup_open:
+            which = "popup"
+            layout = self._popup_layout()
+            total = len(self._popup_races())
+            scroll = self._popup_scroll
+        else:
+            return False
+        metrics = _list_bar_metrics(layout, total)
+        if metrics is None:
+            return False
+        left, _bottom, panel_w, _panel_h = layout["panel"]
+        # Trilho desenhado em left + panel_w - 14 com 6 px de largura; a faixa de
+        # clique aceita 4 px de folga em cada lado.
+        rail_x = left + panel_w - 14
+        if not (
+            rail_x - 4 <= x <= rail_x + 10
+            and layout["list_bottom"] <= y <= layout["list_top"]
+        ):
+            return False
+        self._bar_drag = which
+        self._bar_drag_origin = (y, min(scroll, metrics[3]))
+        return True
+
+    def _drag_list_bar(self, y: float) -> None:
+        """Move o cursor do seletor ou do popup conforme o ponteiro (y em design).
+        Arrastar para baixo (y decrescendo) rola a lista para baixo."""
+
+        start, start_offset = self._bar_drag_origin
+        if self._bar_drag == "picker":
+            if self._picker is None:
+                return
+            layout, total = self._picker_layout(), len(self._picker.visible())
+        elif self._popup_open:
+            layout, total = self._popup_layout(), len(self._popup_races())
+        else:
+            return
+        metrics = _list_bar_metrics(layout, total)
+        if metrics is None or metrics[2] <= 0:
+            return
+        travel, max_offset = metrics[2], metrics[3]
+        offset = round(start_offset - (y - start) * max_offset / travel)
+        offset = min(max(0, offset), max_offset)
+        if self._bar_drag == "picker":
+            self._picker.scroll = offset
+        else:
+            self._popup_scroll = offset
+
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
         if self._bar_drag is None:
             return
         x, y = self._logical_pointer(x, y)
+        if self._bar_drag in ("picker", "popup"):
+            self._drag_list_bar(y)
+            return
         start, start_scroll = self._bar_drag_origin
         if self._bar_drag == "h":
             metrics = self._hbar_metrics()
@@ -2022,3 +2080,20 @@ def _display_value(name: str, value: float | None) -> str:
 def _inside(x: float, y: float, rect) -> bool:
     left, bottom, width, height = rect
     return left <= x <= left + width and bottom <= y <= bottom + height
+
+
+def _list_bar_metrics(layout: dict, total: int) -> tuple[float, float, float, int] | None:
+    """Metricas da barra de uma lista de painel: (altura do trilho, altura do polegar,
+    curso do polegar, rolagem maxima em linhas). None quando a lista cabe inteira.
+
+    O desenho e o arrasto usam esta mesma conta, para o polegar seguir o ponteiro.
+    Nao limita a rolagem: quem chama restringe o valor a [0, rolagem maxima].
+    """
+
+    list_top, list_bottom = layout["list_top"], layout["list_bottom"]
+    count = max(1, int((list_top - list_bottom) // layout["row_h"]))
+    if total <= count:
+        return None
+    rail_h = list_top - list_bottom
+    thumb_h = max(20.0, rail_h * count / total)
+    return rail_h, thumb_h, rail_h - thumb_h, total - count

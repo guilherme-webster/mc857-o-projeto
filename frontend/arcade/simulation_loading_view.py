@@ -125,6 +125,8 @@ class SimulationLoadingView(arcade.View):
         self._grid: list[dict] = []
         self._grid_loaded = False
         self._grid_scroll = 0  # indice do primeiro piloto visivel
+        # Arrasto do cursor do grid: (y do ponteiro, piloto visivel) no inicio.
+        self._grid_drag: tuple[float, float] | None = None
         self._progress = LaunchProgress("Preparando a simulação…")
         self._error: str | None = None
         self._race_index = 0
@@ -277,6 +279,44 @@ class SimulationLoadingView(arcade.View):
     def _max_grid_scroll(self) -> int:
         return max(0, len(self._grid) - self._visible_rows())
 
+    @staticmethod
+    def _grid_top(rect) -> float:
+        """Y da primeira linha de pilotos dentro da caixa do grid."""
+
+        left, bottom, _w, h = rect
+        return bottom + h - 60
+
+    def _grid_bar_layout(
+        self, rect, top: float, visible: int
+    ) -> tuple[float, float, float, float, int] | None:
+        """Trilho do grid: (topo, base, altura do cursor, curso do cursor, rolagem
+        maxima). None quando todos os pilotos cabem. Desenho e arrasto usam esta conta."""
+
+        total = len(self._grid)
+        if total <= visible:
+            return None
+        _left, bottom, _width, _height = rect
+        track_top, track_bottom = top + 4, bottom + 20
+        track_h = track_top - track_bottom
+        thumb_h = max(track_h * visible / total, 24)
+        return track_top, track_bottom, thumb_h, track_h - thumb_h, total - visible
+
+    def _start_grid_drag(self, x: float, y: float) -> bool:
+        """Inicia o arrasto se o clique cair no trilho do grid (ponteiro em design)."""
+
+        rect = self._rects()["grid"]
+        layout = self._grid_bar_layout(rect, self._grid_top(rect), self._visible_rows())
+        if layout is None:
+            return False
+        track_top, track_bottom = layout[0], layout[1]
+        left, _bottom, width, _height = rect
+        # Trilho de 4 px em left + width - 12; a faixa de clique aceita 4 px de folga.
+        track_x = left + width - 12
+        if not (track_x - 4 <= x <= track_x + 8 and track_bottom <= y <= track_top):
+            return False
+        self._grid_drag = (y, self._grid_scroll)
+        return True
+
     # -- eventos -----------------------------------------------------------------
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int) -> None:
@@ -300,6 +340,8 @@ class SimulationLoadingView(arcade.View):
         x, y = self._logical_pointer(x, y)
         if button != arcade.MOUSE_BUTTON_LEFT:
             return
+        if self._start_grid_drag(x, y):
+            return
         rects = self._rects()
         if _inside(x, y, rects["abort"]):
             self.abort()
@@ -309,6 +351,23 @@ class SimulationLoadingView(arcade.View):
                 self._step_race(-1)
             elif _inside(x, y, rects["next"]):
                 self._step_race(1)
+
+    def on_mouse_drag(self, x: int, y: int, dx: int, dy: int, buttons: int, modifiers: int) -> None:
+        if self._grid_drag is None:
+            return
+        _x, y = self._logical_pointer(x, y)
+        rect = self._rects()["grid"]
+        layout = self._grid_bar_layout(rect, self._grid_top(rect), self._visible_rows())
+        if layout is None or layout[3] <= 0:
+            return
+        travel, max_scroll = layout[3], layout[4]
+        start, start_scroll = self._grid_drag
+        # Arrastar o cursor para baixo (y decrescendo) rola o grid para baixo.
+        self._grid_scroll = round(start_scroll - (y - start) * max_scroll / travel)
+        self._grid_scroll = min(max(0, self._grid_scroll), self._max_grid_scroll())
+
+    def on_mouse_release(self, x: int, y: int, button: int, modifiers: int) -> None:
+        self._grid_drag = None
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if symbol == arcade.key.LEFT:
@@ -512,10 +571,10 @@ class SimulationLoadingView(arcade.View):
         )
 
     def _draw_grid(self, rect) -> None:
-        left, bottom, _w, _h = rect
+        left, _bottom, _w, _h = rect
         # Teste visual: fundo preto na caixa do grid, para ver se o contraste melhora.
         self._panel(rect, "GRID DE LARGADA", "grid-title", fill=(0, 0, 0))
-        top = bottom + rect[3] - 60
+        top = self._grid_top(rect)
         if not self._grid_loaded:
             message = "Carregando o grid…"
         elif not self._grid:
@@ -553,16 +612,16 @@ class SimulationLoadingView(arcade.View):
     def _draw_grid_scrollbar(self, rect, top: float, visible: int) -> None:
         """Trilho e cursor a direita da caixa; so aparece se houver pilotos ocultos."""
 
-        total = len(self._grid)
-        if total <= visible:
+        layout = self._grid_bar_layout(rect, top, visible)
+        if layout is None:
             return
-        left, bottom, width, _height = rect
+        track_top, track_bottom, thumb_h, travel, max_scroll = layout
+        left, _bottom, width, _height = rect
         track_x = left + width - 12
-        track_top, track_bottom = top + 4, bottom + 20
-        track_h = track_top - track_bottom
-        arcade.draw_lbwh_rectangle_filled(track_x, track_bottom, 4, track_h, _SCROLLBAR_COLOR)
-        thumb_h = max(track_h * visible / total, 24)
-        thumb_top = track_top - (track_h - thumb_h) * self._grid_scroll / (total - visible)
+        arcade.draw_lbwh_rectangle_filled(
+            track_x, track_bottom, 4, track_top - track_bottom, _SCROLLBAR_COLOR
+        )
+        thumb_top = track_top - travel * self._grid_scroll / max_scroll
         arcade.draw_lbwh_rectangle_filled(
             track_x, thumb_top - thumb_h, 4, thumb_h, SECONDARY_TEXT_COLOR
         )

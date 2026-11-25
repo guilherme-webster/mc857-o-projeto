@@ -529,6 +529,8 @@ class ParametersView(UIView):
                 "Não há pistas únicas suficientes para as etapas.", ERROR_COLOR
             )
             return
+        if not self._store_current_form_configuration():
+            return
         try:
             seed = self._tournament_seed()
             self._selected_track_ids = list(
@@ -548,6 +550,19 @@ class ParametersView(UIView):
                 circuit_id, self._fresh_configuration(catalog[circuit_id])
             )
         self._sequence_scroll_index = 0
+        # A prévia passa a mostrar a primeira pista da sequência gerada.
+        first = self._selected_track_ids[0]
+        first_index = next(
+            index
+            for index, track in enumerate(self._tracks)
+            if track["circuit_id"] == first
+        )
+        if first_index != self._selected_track_index:
+            self._selected_track_index = first_index
+            self.configuration = self._track_configurations[first]
+            self.laps_input.text = str(self.configuration.laps)
+            self._update_weather_summary()
+            self._load_track_preview()
         self._set_status("Sequência automática gerada.", SUCCESS_COLOR)
 
     def _tournament_seed(self) -> int:
@@ -680,6 +695,7 @@ class ParametersView(UIView):
                 preset=self.preset_dropdown.value or "",
                 laps=self.laps_input.text,
                 weather_schedule=self.configuration.weather_schedule,
+                new_lap_weather=self._new_lap_weather(),
             )
         except ConfigurationFormError as error:
             self._set_status(str(error), ERROR_COLOR)
@@ -786,6 +802,7 @@ class ParametersView(UIView):
                 preset=self.preset_dropdown.value or "",
                 laps=self.laps_input.text,
                 weather_schedule=self.configuration.weather_schedule,
+                new_lap_weather=self._new_lap_weather(),
             )
         except ConfigurationFormError as error:
             self._set_status(str(error), ERROR_COLOR)
@@ -819,6 +836,7 @@ class ParametersView(UIView):
                 preset=self.preset_dropdown.value or "",
                 laps=self.laps_input.text,
                 weather_schedule=self.configuration.weather_schedule,
+                new_lap_weather=self._new_lap_weather(),
             )
         except ConfigurationFormError as error:
             self._set_status(str(error), ERROR_COLOR)
@@ -1394,6 +1412,23 @@ class ParametersView(UIView):
 
         current = self.rules.weather_mode
         return current if current in WEATHER_MODE_OPTIONS else WEATHER_OPTIONS[0]
+
+    def _new_lap_weather(self) -> str:
+        """Clima das voltas acrescentadas à pista destacada.
+
+        Com sorteio, a pista já tem um clima sorteado: as voltas novas seguem o das
+        voltas existentes. Caso contrário, valem o clima padrão da pista.
+        """
+
+        track = self.selected_track
+        circuit_id = track["circuit_id"] if track is not None else ""
+        if self._default_weather() == WEATHER_MODE_RANDOM:
+            return self.configuration.weather_schedule.by_lap[-1]
+        if circuit_id in self._selected_track_ids:
+            index = self._selected_track_ids.index(circuit_id)
+        else:
+            index = len(self._selected_track_ids)
+        return self._default_weather_for(circuit_id, index)
 
     def _default_weather_for(self, circuit_id: str, index: int) -> str:
         """Clima da etapa ``index`` pela regra do padrão: o escolhido ou um sorteio.

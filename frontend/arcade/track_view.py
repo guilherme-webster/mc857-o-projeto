@@ -129,6 +129,9 @@ _FEED_LINES = 6
 # mensagens (texto de 52 px a 52 + 18*(N-1), com folga para a dica de rolagem).
 _STANDINGS_MAX_VISIBLE = 20
 _STANDINGS_BOTTOM = 52 + 18 * (_FEED_LINES - 1) + 14 + 30
+# Trilho da rolagem da classificacao: x inicial e largura, em unidades de design.
+_STANDINGS_RAIL_X = 6
+_STANDINGS_RAIL_W = 6
 _FEED_COLOR = (190, 198, 210)
 
 # Composto -> (letra, cor). Composto desconhecido aparece como "?".
@@ -561,6 +564,8 @@ class TrackView(arcade.View):
         self._standing_row_rects: list[tuple[str, tuple[float, float, float, float]]] = []
         # Primeira posicao visivel da classificacao.
         self._standing_scroll = 0
+        # Arrasto do cursor da classificacao: (y do ponteiro, posicao) no inicio.
+        self._standing_drag: tuple[float, float] | None = None
         # Painel em arraste e offset do cursor ate o canto, e contador de
         # cascata para paineis novos nao nascerem exatamente sobrepostos.
         self._dragging_panel: _BreakdownPanel | None = None
@@ -1145,6 +1150,8 @@ class TrackView(arcade.View):
             return
         if self._show_breakdown and self._press_breakdown(x, y):
             return
+        if button == arcade.MOUSE_BUTTON_LEFT and self._start_standings_drag(x, y):
+            return
         # Clique na area da pista com zoom aplicado inicia o arrasto.
         if self._zoom > _ZOOM_MIN and x > self._standings_width:
             self._track_drag = (x, y)
@@ -1201,6 +1208,9 @@ class TrackView(arcade.View):
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers) -> None:
         x, y = self._logical_pointer(x, y)
+        if self._standing_drag is not None:
+            self._drag_standings(y)
+            return
         # dx e dy chegam em unidades da janela; o arrasto da pista usa design.
         scale = self._canvas_fit().scale
         dx, dy = dx / scale, dy / scale
@@ -1218,6 +1228,7 @@ class TrackView(arcade.View):
     def on_mouse_release(self, x, y, button, modifiers) -> None:
         self._dragging_panel = None
         self._track_drag = None
+        self._standing_drag = None
 
     def on_key_press(self, symbol: int, modifiers: int) -> None:
         if symbol in (arcade.key.EQUAL, arcade.key.NUM_ADD):
@@ -1969,19 +1980,17 @@ class TrackView(arcade.View):
         ``start``, a primeira posicao mostrada.
         """
 
-        if total <= visible:
+        metrics = self._standings_bar_metrics(top, line_h, visible, total)
+        if metrics is None:
             return
-        rail_top = top + line_h / 2
-        rail_h = visible * line_h
+        rail_top, rail_h, thumb_h, travel, max_start = metrics
         rail_bottom = rail_top - rail_h
-        thumb_h = max(20.0, rail_h * visible / total)
-        max_start = total - visible
-        travel = rail_h - thumb_h
         thumb_top = rail_top - travel * min(start, max_start) / max_start
-        left, width = 6, 6
-        arcade.draw_lbwh_rectangle_filled(left, rail_bottom, width, rail_h, (33, 42, 53))
         arcade.draw_lbwh_rectangle_filled(
-            left, thumb_top - thumb_h, width, thumb_h, (111, 127, 148)
+            _STANDINGS_RAIL_X, rail_bottom, _STANDINGS_RAIL_W, rail_h, (33, 42, 53)
+        )
+        arcade.draw_lbwh_rectangle_filled(
+            _STANDINGS_RAIL_X, thumb_top - thumb_h, _STANDINGS_RAIL_W, thumb_h, (111, 127, 148)
         )
 
     def _standings_visible(self, top: float, line_h: float) -> int:
@@ -1989,6 +1998,63 @@ class TrackView(arcade.View):
 
         fits = int((top - _STANDINGS_BOTTOM) // line_h) + 1
         return max(1, min(_STANDINGS_MAX_VISIBLE, fits))
+
+    @staticmethod
+    def _standings_bar_metrics(
+        top: float, line_h: float, visible: int, total: int
+    ) -> tuple[float, float, float, float, int] | None:
+        """Barra da classificacao: (topo do trilho, altura do trilho, altura do cursor,
+        curso do cursor, primeira posicao maxima). None quando todas as posicoes cabem.
+
+        O desenho e o arrasto usam esta conta, para o cursor seguir o ponteiro.
+        """
+
+        if total <= visible:
+            return None
+        rail_top = top + line_h / 2
+        rail_h = visible * line_h
+        thumb_h = max(20.0, rail_h * visible / total)
+        return rail_top, rail_h, thumb_h, rail_h - thumb_h, total - visible
+
+    def _standings_bar_now(self) -> tuple[float, float, float, float, int] | None:
+        """Barra da classificacao no estado atual, com os mesmos argumentos de
+        ``_draw_standings`` (topo DESIGN_HEIGHT - 96, linhas de 20 px)."""
+
+        top, line_h = DESIGN_HEIGHT - 96, 20
+        total = len(self._playback.standings(self._elapsed))
+        visible = self._standings_visible(top, line_h)
+        return self._standings_bar_metrics(top, line_h, visible, total)
+
+    def _start_standings_drag(self, x: float, y: float) -> bool:
+        """Inicia o arrasto se o clique cair no trilho da classificacao (design)."""
+
+        metrics = self._standings_bar_now()
+        if metrics is None:
+            return False
+        rail_top, rail_h = metrics[0], metrics[1]
+        rail_bottom = rail_top - rail_h
+        # Faixa de clique com 4 px de folga em cada lado do trilho.
+        if not (
+            _STANDINGS_RAIL_X - 4 <= x <= _STANDINGS_RAIL_X + _STANDINGS_RAIL_W + 4
+            and rail_bottom <= y <= rail_top
+        ):
+            return False
+        self._standing_drag = (y, min(self._standing_scroll, metrics[4]))
+        return True
+
+    def _drag_standings(self, y: float) -> None:
+        """Move a primeira posicao visivel conforme o ponteiro (y em design)."""
+
+        if self._standing_drag is None:
+            return
+        metrics = self._standings_bar_now()
+        if metrics is None or metrics[3] <= 0:
+            return
+        travel, max_start = metrics[3], metrics[4]
+        start, start_scroll = self._standing_drag
+        # Arrastar o cursor para baixo (y decrescendo) rola a classificacao para baixo.
+        position = round(start_scroll - (y - start) * max_start / travel)
+        self._standing_scroll = min(max(0, position), max_start)
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y) -> None:
         """Roda sobre a classificacao rola uma posicao por passo."""
